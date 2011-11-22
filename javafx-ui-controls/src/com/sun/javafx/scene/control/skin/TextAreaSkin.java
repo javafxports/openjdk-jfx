@@ -73,6 +73,16 @@ public class TextAreaSkin extends TextInputControlSkin<TextArea, TextAreaBehavio
     // *** NOTE: Multiple node mode is not yet fully implemented *** //
     private final boolean USE_MULTIPLE_NODES = false;
 
+    private double computedPrefWidth = Double.NEGATIVE_INFINITY;
+    private double computedPrefHeight = Double.NEGATIVE_INFINITY;
+    private double widthForComputedPrefHeight = Double.NEGATIVE_INFINITY;
+
+    @Override protected void invalidateMetrics() {
+        computedPrefWidth = Double.NEGATIVE_INFINITY;
+        computedPrefHeight = Double.NEGATIVE_INFINITY;
+    }
+
+
     private class ContentView extends Region {
         {
             getStyleClass().add("content");
@@ -107,6 +117,8 @@ public class TextAreaSkin extends TextInputControlSkin<TextArea, TextAreaBehavio
 
         @Override
         protected double computePrefWidth(double height) {
+          if (computedPrefWidth < 0) {
+
             Insets padding = getInsets();
 
             double prefWidth = 0;
@@ -121,11 +133,21 @@ public class TextAreaSkin extends TextInputControlSkin<TextArea, TextAreaBehavio
 
             prefWidth += padding.getLeft() + padding.getRight();
 
-            return Math.max(prefWidth, scrollPane.getViewportBounds().getWidth());
+            Bounds viewPortBounds = scrollPane.getViewportBounds();
+            computedPrefWidth = Math.max(prefWidth, (viewPortBounds != null) ? viewPortBounds.getWidth() : 0);
+          }
+          return computedPrefWidth;
         }
 
         @Override
         protected double computePrefHeight(double width) {
+          if (width != widthForComputedPrefHeight) {
+              invalidateMetrics();
+              widthForComputedPrefHeight = width;
+          }
+
+          if (computedPrefHeight < 0) {
+
             Insets padding = getInsets();
 
             double wrappingWidth;
@@ -149,7 +171,10 @@ public class TextAreaSkin extends TextInputControlSkin<TextArea, TextAreaBehavio
 
             prefHeight += padding.getTop() + padding.getBottom();
 
-            return Math.max(prefHeight, scrollPane.getViewportBounds().getHeight());
+            Bounds viewPortBounds = scrollPane.getViewportBounds();
+            computedPrefHeight = Math.max(prefHeight, (viewPortBounds != null) ? viewPortBounds.getHeight() : 0);
+          }
+          return computedPrefHeight;
         }
 
         @Override
@@ -358,6 +383,7 @@ public class TextAreaSkin extends TextInputControlSkin<TextArea, TextAreaBehavio
         textArea.wrapTextProperty().addListener(new ChangeListener<Boolean>() {
             @Override
             public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) {
+                invalidateMetrics();
                 scrollPane.setFitToWidth(newValue);
             }
         });
@@ -365,6 +391,7 @@ public class TextAreaSkin extends TextInputControlSkin<TextArea, TextAreaBehavio
         textArea.prefColumnCountProperty().addListener(new ChangeListener<Number>() {
             @Override
             public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+                invalidateMetrics();
                 updatePrefViewportWidth();
             }
         });
@@ -372,6 +399,7 @@ public class TextAreaSkin extends TextInputControlSkin<TextArea, TextAreaBehavio
         textArea.prefRowCountProperty().addListener(new ChangeListener<Number>() {
             @Override
             public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+                invalidateMetrics();
                 updatePrefViewportHeight();
             }
         });
@@ -380,6 +408,14 @@ public class TextAreaSkin extends TextInputControlSkin<TextArea, TextAreaBehavio
             @Override public void invalidated(Observable valueModel) {
                 updatePrefViewportWidth();
                 updatePrefViewportHeight();
+            }
+        });
+
+        scrollPane.viewportBoundsProperty().addListener(new InvalidationListener() {
+            @Override public void invalidated(Observable valueModel) {
+                if (scrollPane.getViewportBounds() != null) {
+                    invalidateMetrics();
+                }
             }
         });
 
@@ -434,6 +470,7 @@ public class TextAreaSkin extends TextInputControlSkin<TextArea, TextAreaBehavio
       } else {
         textArea.textProperty().addListener(new InvalidationListener() {
             @Override public void invalidated(Observable observable) {
+                invalidateMetrics();
                 ((Text)paragraphNodes.getChildren().get(0)).setText(textArea.getText());
                 contentView.requestLayout();
             }
@@ -840,6 +877,53 @@ public class TextAreaSkin extends TextInputControlSkin<TextArea, TextAreaBehavio
         targetCaretX = -1;
     }
 
+
+    public void paragraphStart(boolean previousIfAtStart, boolean select) {
+        TextArea textArea = getSkinnable();
+        String text = textArea.getText();
+        int pos = textArea.getCaretPosition();
+
+        if (pos > 0) {
+            if (previousIfAtStart && text.codePointAt(pos-1) == 0x0a) {
+                // We are at the beginning of a paragraph.
+                // Back up to the previous paragraph.
+                pos--;
+            }
+            // Back up to the beginning of this paragraph
+            while (pos > 0 && text.codePointAt(pos-1) != 0x0a) {
+                pos--;
+            }
+            if (select) {
+                textArea.selectPositionCaret(pos);
+            } else {
+                textArea.positionCaret(pos);
+            }
+        }
+    }
+
+    public void paragraphEnd(boolean nextIfAtEnd, boolean select) {
+        TextArea textArea = getSkinnable();
+        String text = textArea.getText();
+        int pos = textArea.getCaretPosition();
+        int len = text.length();
+
+        if (pos < len - 1) {
+            if (nextIfAtEnd && text.codePointAt(pos) == 0x0a) {
+                // We are at the end of a paragraph.
+                // Move to the next paragraph.
+                pos++;
+            }
+            // Go to the end of this paragraph
+            while (pos < len - 1 && text.codePointAt(pos) != 0x0a) {
+                pos++;
+            }
+            if (select) {
+                textArea.selectPositionCaret(pos);
+            } else {
+                textArea.positionCaret(pos);
+            }
+        }
+    }
 
     @Override protected PathElement[] getUnderlineShape(int start, int end) {
         int pStart = 0;

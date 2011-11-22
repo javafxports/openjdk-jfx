@@ -29,9 +29,6 @@ import com.sun.javafx.logging.PlatformLogger;
 import com.sun.javafx.scene.control.Logging;
 import java.util.HashMap;
 import java.util.Map;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
-import javafx.collections.ListChangeListener;
 
 import javafx.scene.control.FocusModel;
 import javafx.scene.control.ListCell;
@@ -48,36 +45,25 @@ public class ListCellBehavior extends CellBehaviorBase<ListCell> {
     // resolving RT-11446
     private static final Map<ListView, Integer> map = new HashMap<ListView, Integer>();
     
-    private ListChangeListener<Integer> selectedIndicesListener = new ListChangeListener<Integer>() {
-        @Override public void onChanged(ListChangeListener.Change c) {
-            while (c.next()) {
-                // there are no selected items, so lets clear out the anchor
-                if (c.getList().isEmpty()) {
-                    map.remove(getControl().getListView());
-                }
-            }
-        }
-    };
-
-    public ListCellBehavior(ListCell control) {
-        super(control);
+    static int getAnchor(ListView list) {
+        FocusModel fm = list.getFocusModel();
+        if (fm == null) return -1;
         
-        // Fix for RT-16565
-        control.getListView().selectionModelProperty().addListener(new ChangeListener<MultipleSelectionModel>() {
-            @Override public void changed(ObservableValue observable, MultipleSelectionModel oldValue, MultipleSelectionModel newValue) {
-                if (oldValue != null) {
-                    oldValue.getSelectedIndices().removeListener(selectedIndicesListener);
-                }
-                if (newValue != null) {
-                    newValue.getSelectedIndices().addListener(selectedIndicesListener);
-                }
-            }
-        });
-        if (control.getListView().getSelectionModel() != null) {
-            control.getListView().getSelectionModel().getSelectedIndices().addListener(selectedIndicesListener);
+        return map.containsKey(list) ? map.get(list) : fm.getFocusedIndex();
+    }
+    
+    static void setAnchor(ListView list, int anchor) {
+        if (list != null && anchor < 0) {
+            map.remove(list);
+        } else {
+            map.put(list, anchor);
         }
     }
 
+    public ListCellBehavior(ListCell control) {
+        super(control);
+    }
+    
     @Override public void mousePressed(MouseEvent e) {
         // Note that list.select will reset selection
         // for out of bounds indexes. So, need to check
@@ -135,7 +121,7 @@ public class ListCellBehavior extends CellBehaviorBase<ListCell> {
             } else if (e.isShiftDown()) {
                 // we add all rows between the current focus and
                 // this row (inclusive) to the current selection.
-                int focusIndex = map.containsKey(listView) ? map.get(listView) : fm.getFocusedIndex();
+                int focusIndex = getAnchor(listView);
 
                 // and then determine all row and columns which must be selected
                 int minRow = Math.min(focusIndex, index);
