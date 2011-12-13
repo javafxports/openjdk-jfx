@@ -37,7 +37,6 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.SelectionModel;
 import javafx.scene.input.MouseEvent;
 
-import com.sun.javafx.runnable.Runnable0;
 import com.sun.javafx.scene.control.WeakListChangeListener;
 import com.sun.javafx.scene.control.behavior.ListViewBehavior;
 import javafx.util.Callback;
@@ -59,8 +58,8 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListViewB
         flow.setPannable(false);
         flow.setVertical(getSkinnable().getOrientation() == Orientation.VERTICAL);
         flow.setFocusTraversable(getSkinnable().isFocusTraversable());
-        flow.setCreateCell(new Runnable0<ListCell>() {
-            @Override public ListCell run() {
+        flow.setCreateCell(new Callback<VirtualFlow, ListCell>() {
+            @Override public ListCell call(VirtualFlow flow) {
                 return ListViewSkin.this.createCell();
             }
         });
@@ -161,7 +160,8 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListViewB
             listViewItems.addListener(weakListViewItemsListener);
         }
 
-        updateCellCount();
+        itemCountDirty = true;
+        requestLayout();
     }
 
     @Override public int getItemCount() {
@@ -171,16 +171,16 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListViewB
     void updateCellCount() {
         if (flow == null) return;
         
-        // we're about to recreate all cells - but before that we detach them
-        // from the ListView, such that their listeners can be uninstalled.
-        // If we don't do this, we start to get multiple events firing when
-        // properties on the ListView trigger listeners in the cells.
-        for (int i = 0; i < flow.cells.size(); i++) {
-            ((ListCell)flow.cells.get(i)).updateListView(null);
-        }
+        int oldCount = flow.getCellCount();
+        int newCount = getItemCount();
         
         flow.setCellCount(getItemCount());
-        flow.recreateCells();
+        
+        if (newCount != oldCount) {
+            flow.recreateCells();
+        } else {
+            flow.reconfigureCells();
+        }
     }
 
     @Override public ListCell<T> createCell() {

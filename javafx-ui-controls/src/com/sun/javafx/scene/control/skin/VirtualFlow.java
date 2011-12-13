@@ -49,8 +49,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.shape.Rectangle;
 
-import com.sun.javafx.runnable.Runnable0;
-import com.sun.javafx.runnable.Runnable1;
+import javafx.util.Callback;
 
 /**
  * Implementation of a virtualized container using a cell based mechanism.
@@ -173,12 +172,17 @@ public class VirtualFlow extends Region {
     private int cellCount;
     public int getCellCount() { return cellCount; }
     public void setCellCount(int i) {
+        int oldCount = getCellCount();
         this.cellCount = i;
+        
+        boolean countChanged = oldCount != cellCount;
 
         // ensure that the virtual scrollbar adjusts in size based on the current
         // cell count.
-        VirtualScrollBar lengthBar = isVertical() ? vbar : hbar;
-        lengthBar.setMax(i);
+        if (countChanged) {
+            VirtualScrollBar lengthBar = isVertical() ? vbar : hbar;
+            lengthBar.setMax(i);
+        }
 
         // I decided *not* to reset maxPrefBreadth here for the following
         // situation. Suppose I have 30 cells and then I add 10 more. Just
@@ -196,7 +200,7 @@ public class VirtualFlow extends Region {
         // was at its maximum position.
         // FIXME this should be only executed on the pulse, so this will likely
         // lead to performance degradation until it is handled properly.
-        layoutChildren();
+        if (countChanged) layoutChildren();
 
         // Fix for RT-13965: Without this line of code, the number of items in
         // the sheet would constantly grow, leaking memory for the life of the
@@ -204,8 +208,10 @@ public class VirtualFlow extends Region {
         // cells changes - regardless of whether it became bigger or smaller.
         sheet.getChildren().clear();
 
-        Parent parent = getParent();
-        if (parent != null) parent.requestLayout();
+        if (countChanged) {
+            Parent parent = getParent();
+            if (parent != null) parent.requestLayout();
+        }
         // TODO suppose I had 100 cells and I added 100 more. Further
         // suppose I was scrolled to the bottom when that happened. I
         // actually want to update the position of the mapper such that
@@ -259,12 +265,13 @@ public class VirtualFlow extends Region {
      * IndexedCell. The VirtualFlow attempts to reuse cells whenever possible
      * and only creates the minimal number of cells necessary.
      */
-    private Runnable0<? extends IndexedCell> createCell;
-    public Runnable0<? extends IndexedCell> getCreateCell() { return createCell; }
-    protected void setCreateCell(Runnable0<? extends IndexedCell> cc) {
+    private Callback<VirtualFlow, ? extends IndexedCell> createCell;
+    public Callback<VirtualFlow, ? extends IndexedCell> getCreateCell() { return createCell; }
+    protected void setCreateCell(Callback<VirtualFlow, ? extends IndexedCell> cc) {
         this.createCell = cc;
 
         if (createCell != null) {
+            accumCell = null;
             setNeedsLayout(true);
             recreateCells();
             if (getParent() != null) getParent().requestLayout();
@@ -463,8 +470,8 @@ public class VirtualFlow extends Region {
 
     public VirtualFlow() {
         mapper = new PositionMapper();
-        mapper.setGetItemSize(new Runnable1<Double, Integer>() {
-            @Override public Double run(Integer itemIndex) {
+        mapper.setGetItemSize(new Callback<Integer, Double>() {
+            @Override public Double call(Integer itemIndex) {
                 return getCellLength(itemIndex);
             }
         });
@@ -703,6 +710,25 @@ public class VirtualFlow extends Region {
     }
 
     @Override protected void layoutChildren() {
+       if (needsRecreateCells) {
+            maxPrefBreadth = -1;
+            lastWidth = -1;
+            lastHeight = -1;
+            releaseCell(accumCell);
+            accumCell = null;
+            accumCellParent.getChildren().clear();
+            addAllToPile();
+            pile.clear();
+            needsRecreateCells = false;
+        } 
+        
+        if (needsReconfigureCells) {
+            maxPrefBreadth = -1;
+            lastWidth = -1;
+            lastHeight = -1;
+            needsReconfigureCells = false;
+        }
+
         // if the width and/or height is 0, then there is no point doing
         // any of this work. In particular, this can happen during startup
         if (getWidth() <= 0 || getHeight() <= 0) {
@@ -1120,12 +1146,14 @@ public class VirtualFlow extends Region {
 
     @Override protected void setWidth(double value) {
         super.setWidth(value);
-        layoutChildren();
+        setNeedsLayout(true);
+        requestLayout();
     }
     
     @Override protected void setHeight(double value) {
         super.setHeight(value);
-        layoutChildren();
+        setNeedsLayout(true);
+        requestLayout();
     }
 
     private void updateScrollBarsAndViewport(double lastViewportLength) {
@@ -1335,7 +1363,7 @@ public class VirtualFlow extends Region {
 
         // We need to use the accumCell and return that
         if (accumCell == null && getCreateCell() != null) {
-            accumCell = getCreateCell().run();
+            accumCell = getCreateCell().call(this);
             accumCellParent.getChildren().add(accumCell);
         }
         setCellIndex(accumCell, index);
@@ -1433,12 +1461,10 @@ public class VirtualFlow extends Region {
 
     private void setCellIndex(IndexedCell cell, int index) {
         if (cell == null) return;
-        int old = cell.getIndex();
 
-        if (old != index) {
-            cell.updateIndex(index);
+        cell.updateIndex(index);
+        if (cell.isNeedsLayout()) {
             cell.impl_processCSS(false);
-//            cell.layout();
         }
     }
 
@@ -1454,23 +1480,31 @@ public class VirtualFlow extends Region {
      * necessary.
      */
     private IndexedCell getAvailableCell(int prefIndex) {
+        IndexedCell cell = null;
+        
         // Fix for RT-12822. We try to retrieve the cell from the pile rather
         // than just grab a random cell from the pile (or create another cell).
         for (int i = 0; i < pile.size(); i++) {
-            IndexedCell cell = pile.get(i);
-            if (cell != null && cell.getIndex() == prefIndex) {
+            IndexedCell _cell = pile.get(i);
+            if (_cell != null && _cell.getIndex() == prefIndex) {
                 pile.remove(i);
-                return cell;
+                cell = _cell;
             }
         }
 
-        if (pile.size() > 0) {
-            return pile.removeFirst();
-        } else {
-            IndexedCell cell = createCell.run();
-            sheet.getChildren().add(cell);
-            return cell;
+        if (cell == null) {
+            if (pile.size() > 0) {
+                cell = pile.removeFirst();
+            } else {
+                cell = createCell.call(this);
+            }
         }
+        
+        if (! sheet.getChildren().contains(cell)) {
+            sheet.getChildren().add(cell);
+        }
+        
+        return cell;
     }
 
     private void addAllToPile() {
@@ -1748,32 +1782,16 @@ public class VirtualFlow extends Region {
         return delta; // TODO fake
     }
 
-//    // current *HACK* for the TreeView
-//    public void updateCount(int newCount, boolean stable) {
-//        // for the viewport to remain stable, we need to ...
-//        setCellCount(newCount);
-//        if (getPosition() == 1.0f) {
-//            mapper.adjustPosition(.9999f);
-//        }
-//        reconfigureCells();
-//    }
-
+    private boolean needsReconfigureCells = false;
+    private boolean needsRecreateCells = false;
+    
     public void reconfigureCells() {
-        maxPrefBreadth = -1;
-        lastWidth = -1;
-        lastHeight = -1;
+        needsReconfigureCells = true;
         requestLayout();
     }
 
     public void recreateCells() {
-        maxPrefBreadth = -1;
-        lastWidth = -1;
-        lastHeight = -1;
-        releaseCell(accumCell);
-        accumCell = null;
-        accumCellParent.getChildren().clear();
-        addAllToPile();
-        pile.clear();
+        needsRecreateCells = true;
         requestLayout();
     }
 

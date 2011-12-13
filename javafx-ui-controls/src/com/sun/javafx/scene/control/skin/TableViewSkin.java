@@ -37,7 +37,6 @@ import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
-import javafx.scene.control.IndexedCell;
 import javafx.scene.control.Label;
 import javafx.scene.control.SelectionModel;
 import javafx.scene.control.TableColumn;
@@ -49,7 +48,6 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.util.Callback;
 
-import com.sun.javafx.runnable.Runnable0;
 import com.sun.javafx.scene.control.behavior.TableViewBehavior;
 import com.sun.javafx.scene.control.WeakListChangeListener;
 import com.sun.javafx.scene.control.skin.resources.ControlResources;
@@ -65,8 +63,8 @@ public class TableViewSkin<T> extends VirtualContainerBase<TableView<T>, TableVi
         flow = new VirtualFlow();
         flow.setPannable(false);
         flow.setFocusTraversable(getSkinnable().isFocusTraversable());
-        flow.setCreateCell(new Runnable0<TableRow>() {
-            @Override public TableRow run() {
+        flow.setCreateCell(new Callback<VirtualFlow, TableRow>() {
+            @Override public TableRow call(VirtualFlow flow) {
                 return TableViewSkin.this.createCell();
             }
         });
@@ -523,7 +521,8 @@ public class TableViewSkin<T> extends VirtualContainerBase<TableView<T>, TableVi
             newList.addListener(weakRowCountListener);
         }
 
-        updateRowCount();
+        rowCountDirty = true;
+        requestLayout();
     }
 
     /**
@@ -602,7 +601,8 @@ public class TableViewSkin<T> extends VirtualContainerBase<TableView<T>, TableVi
     }
 
     private void refreshView() {
-        updateRowCount();
+        rowCountDirty = true;
+        requestLayout();
     }
 
     private void reconfigureCells() {
@@ -611,24 +611,23 @@ public class TableViewSkin<T> extends VirtualContainerBase<TableView<T>, TableVi
 
     private void updateRowCount() {
         updatePlaceholderRegionVisibility();
-        
-        // we're about to recreate all cells - but before that we detach them
-        // from the TableView, such that their listeners can be uninstalled.
-        // If we don't do this, we start to get multiple events firing when
-        // properties on the TableView trigger listeners in the cells.
-        for (int i = 0; i < flow.cells.size(); i++) {
-            ((TableRow)flow.cells.get(i)).updateTableView(null);
-        }
 
+        int oldCount = flow.getCellCount();
+        int newCount = getItemCount();
+        
         // if this is not called even when the count is the same, we get a 
         // memory leak in VirtualFlow.sheet.children. This can probably be 
         // optimised in the future when time permits.
-        flow.setCellCount(getItemCount());
+        flow.setCellCount(newCount);
         
-        // FIXME updateRowCount is called _a lot_. Perhaps we can make recreateCells
-        // smarter. Imagine if items has one million items added - do we really
-        // need to recreateCells a million times?
-        flow.recreateCells();
+        if (newCount != oldCount) {
+            // FIXME updateRowCount is called _a lot_. Perhaps we can make recreateCells
+            // smarter. Imagine if items has one million items added - do we really
+            // need to recreateCells a million times?
+            flow.recreateCells();
+        } else {
+            flow.reconfigureCells();
+        }
     }
 
     private void onFocusPreviousCell() {
