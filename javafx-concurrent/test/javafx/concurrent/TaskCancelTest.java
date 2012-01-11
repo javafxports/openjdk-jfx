@@ -124,7 +124,10 @@ public class TaskCancelTest {
      *
      */
     @Test public void aFreeRunningCancelledTaskReturnValueShouldBeIgnored() throws Exception {
-        RunAwayTask runAway = new RunAwayTask();
+        RunAwayTask runAway = new RunAwayTask() {
+                protected void loop(int count) throws Exception {
+                }
+        };
         Thread th = new Thread(runAway);
         th.start();
         runAway.runningSemaphore.acquire();
