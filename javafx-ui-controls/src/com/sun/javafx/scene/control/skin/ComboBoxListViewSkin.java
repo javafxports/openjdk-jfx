@@ -77,6 +77,28 @@ public class ComboBoxListViewSkin<T> extends ComboBoxPopupControl<T> {
             }
         });
         
+        // Fix for RT-19431 (also tested via ComboBoxListViewSkinTest)
+        comboBox.valueProperty().addListener(new ChangeListener<T>() {
+            @Override public void changed(ObservableValue<? extends T> ov, T oldValue, T newValue) {
+                if (newValue == null) {
+                    listView.getSelectionModel().clearSelection();
+                } else {
+                    int index = comboBox.getSelectionModel().getSelectedIndex();
+                    if (index < comboBox.getItems().size()) {
+                        T itemsObj = comboBox.getItems().get(index);
+                        if (itemsObj != null && itemsObj.equals(newValue)) {
+                            listView.getSelectionModel().select(index);
+                        } else {
+                            listView.getSelectionModel().select(newValue);
+                        }
+                    } else {
+                        // just select the first instance of newValue in the list
+                        listView.getSelectionModel().select(newValue);
+                    }
+                }
+            }
+        });
+        
         updateListViewItems();
         
         registerChangeListener(comboBox.itemsProperty(), "ITEMS");
@@ -248,7 +270,7 @@ public class ComboBoxListViewSkin<T> extends ComboBoxPopupControl<T> {
                         rowsToMeasure = (Integer) comboBox.getProperties().get(COMBO_BOX_ROWS_TO_MEASURE_WIDTH_KEY);
                     }
                     
-                    pw = skin.getMaxCellWidth(rowsToMeasure) + 20;
+                    pw = skin.getMaxCellWidth(rowsToMeasure) + 30;
                 } else {
                     pw = Math.max(100, comboBox.getWidth());
                 }
@@ -283,6 +305,7 @@ public class ComboBoxListViewSkin<T> extends ComboBoxPopupControl<T> {
             }
         };
 
+        listView.setId("list-view");
         listView.cellFactoryProperty().bind(comboBox.cellFactoryProperty());
         listView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
 
@@ -334,5 +357,16 @@ public class ComboBoxListViewSkin<T> extends ComboBoxPopupControl<T> {
     
     @Override protected double computeMinWidth(double height) {
         return 50;
+    }
+    
+    
+    /**************************************************************************
+     * 
+     * API for testing
+     * 
+     *************************************************************************/
+    
+    ListView<T> getListView() {
+        return listView;
     }
 }
