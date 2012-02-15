@@ -73,7 +73,7 @@ public abstract class Effect {
      abstract com.sun.scenario.effect.Effect impl_createImpl();
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -93,7 +93,7 @@ public abstract class Effect {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -102,7 +102,7 @@ public abstract class Effect {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -139,7 +139,7 @@ public abstract class Effect {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -246,7 +246,7 @@ public abstract class Effect {
     * NOT take a null bounds object. The returned value may be
     * the same bounds object passed in, or it may be a new object.
     *
-    * @treatasprivate implementation detail
+    * @treatAsPrivate implementation detail
     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
     */
     @Deprecated

@@ -87,7 +87,7 @@ public class FloatMap {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -131,7 +131,7 @@ public class FloatMap {
      *   Default:    1
      *  Identity:  n/a
      * </pre>
-     * @defaultvalue 1
+     * @defaultValue 1
      */
     private IntegerProperty width;
 
@@ -176,7 +176,7 @@ public class FloatMap {
      *   Default:    1
      *  Identity:  n/a
      * </pre>
-     * @defaultvalue 1
+     * @defaultValue 1
      */
     private IntegerProperty height;
 

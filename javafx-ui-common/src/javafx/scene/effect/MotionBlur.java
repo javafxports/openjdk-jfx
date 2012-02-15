@@ -87,7 +87,7 @@ public class MotionBlur extends Effect {
      * If set to {@code null}, or left unspecified, a graphical image of
      * the {@code Node} to which the {@code Effect} is attached will be
      * used as the input.
-     * @defaultvalue null
+     * @defaultValue null
      */
     private ObjectProperty<Effect> input;
 
@@ -125,7 +125,7 @@ public class MotionBlur extends Effect {
      *   Default: 10.0
      *  Identity:  0.0
      * </pre>
-     * @defaultvalue 10.0
+     * @defaultValue 10.0
      */
     private DoubleProperty radius;
 
@@ -170,7 +170,7 @@ public class MotionBlur extends Effect {
      *   Default: 0.0
      *  Identity: n/a
      * </pre>
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty angle;
 
@@ -236,7 +236,7 @@ public class MotionBlur extends Effect {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

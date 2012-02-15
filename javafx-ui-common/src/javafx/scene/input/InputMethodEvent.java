@@ -84,7 +84,7 @@ public class InputMethodEvent extends InputEvent {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -94,7 +94,7 @@ public class InputMethodEvent extends InputEvent {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -113,7 +113,7 @@ public class InputMethodEvent extends InputEvent {
      * appropriate visual feedback that represents the {@link InputMethodHighlight}s
      * attached to each run.
      *
-     * @defaultvalue null
+     * @defaultValue null
      */
     private ObservableList<InputMethodTextRun> composed;
 
@@ -135,7 +135,7 @@ public class InputMethodEvent extends InputEvent {
      * The text that is committed by the input method as the result of the
      * composition.
      *
-     * @defaultvalue empty string
+     * @defaultValue empty string
      */
     private String committed = new String();
 
@@ -153,7 +153,7 @@ public class InputMethodEvent extends InputEvent {
      * The input method caret position within the composed text.
      * If the position is -1, the caret should be invisible.
      *
-     * @defaultvalue 0
+     * @defaultValue 0
      */
     private int caretPosition;
 

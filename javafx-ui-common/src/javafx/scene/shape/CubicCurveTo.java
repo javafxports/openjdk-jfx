@@ -98,7 +98,7 @@ public class CubicCurveTo extends PathElement {
     /**
      * Defines the X coordinate of the first B&eacute;zier control point.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty controlX1;
 
@@ -137,7 +137,7 @@ public class CubicCurveTo extends PathElement {
     /**
      * Defines the Y coordinate of the first B&eacute;zier control point.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty controlY1;
 
@@ -176,7 +176,7 @@ public class CubicCurveTo extends PathElement {
     /**
      * Defines the X coordinate of the second B&eacute;zier control point.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty controlX2;
 
@@ -215,7 +215,7 @@ public class CubicCurveTo extends PathElement {
     /**
      * Defines the Y coordinate of the second B&eacute;zier control point.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty controlY2;
 
@@ -254,7 +254,7 @@ public class CubicCurveTo extends PathElement {
     /**
      * Defines the X coordinate of the final end point.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty x;
 
@@ -293,7 +293,7 @@ public class CubicCurveTo extends PathElement {
     /**
      * Defines the Y coordinate of the final end point.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty y;
 
@@ -348,7 +348,7 @@ public class CubicCurveTo extends PathElement {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

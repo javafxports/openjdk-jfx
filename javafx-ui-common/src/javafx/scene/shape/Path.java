@@ -142,7 +142,7 @@ public class Path extends Shape {
      * {@code FillRile.EVEN_ODD} or {@code FillRule.NON_ZERO}.
      * The default value is {@code FillRule.NON_ZERO}.
      *
-     * @defaultvalue FillRule.NON_ZERO
+     * @defaultValue FillRule.NON_ZERO
      */
     private ObjectProperty<FillRule> fillRule;
 
@@ -184,7 +184,7 @@ public class Path extends Shape {
     /**
      * Defines the array of path elements of this path.
      *
-     * @defaultvalue empty
+     * @defaultValue empty
      */
     private final ObservableList<PathElement> elements = new TrackableObservableList<PathElement>() {
         @Override
@@ -238,7 +238,7 @@ public class Path extends Shape {
     public final ObservableList<PathElement> getElements() { return elements; }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -248,7 +248,7 @@ public class Path extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -257,7 +257,7 @@ public class Path extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -277,7 +277,7 @@ public class Path extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -307,7 +307,7 @@ public class Path extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -345,7 +345,7 @@ public class Path extends Shape {
 
     /**
      * Super-lazy instantiation pattern from Bill Pugh.
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      */
     private static class StyleableProperties {
 
@@ -384,7 +384,7 @@ public class Path extends Shape {
      * Super-lazy instantiation pattern from Bill Pugh. StyleableProperty is referenced
      * no earlier (and therefore loaded no earlier by the class loader) than
      * the moment that  impl_CSS_STYLEABLES() is called.
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

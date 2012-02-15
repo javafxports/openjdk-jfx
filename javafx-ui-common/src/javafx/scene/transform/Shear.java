@@ -93,7 +93,7 @@ public class Shear extends Transform {
      * of the positive X axis as a factor of their Y coordinate. Typical values
      * are in the range -1 to 1, exclusive.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty x;
 
@@ -134,7 +134,7 @@ public class Shear extends Transform {
      * of the positive Y axis as a factor of their X coordinate. Typical values
      * are in the range -1 to 1, exclusive.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty y;
 
@@ -246,7 +246,7 @@ public class Shear extends Transform {
 
     
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

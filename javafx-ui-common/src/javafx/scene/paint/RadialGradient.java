@@ -97,7 +97,7 @@ public final class RadialGradient extends Paint {
      * the shape that the gradient fills.
      * The last color of the gradient is mapped to the perimeter of this circle.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     public final double getCenterX() {
         return centerX;
@@ -112,7 +112,7 @@ public final class RadialGradient extends Paint {
      * the shape that the gradient fills.
      * The last color of the gradient is mapped to the perimeter of this circle.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     public final double getCenterY() {
         return centerY;
@@ -126,7 +126,7 @@ public final class RadialGradient extends Paint {
      * size relative to  unit square that will be scaled to match the size of the
      * the shape that the gradient fills.
      *
-     * @defaultvalue 1.0
+     * @defaultValue 1.0
      */
     public final double getRadius() {
         return radius;
@@ -143,7 +143,7 @@ public final class RadialGradient extends Paint {
      * If this flag is false, then the center coordinates and the radius are
      * specified in the local coordinate system of the node.
      *
-     * @defaultvalue true
+     * @defaultValue true
      */
     public final boolean isProportional() {
         return proportional;
@@ -156,7 +156,7 @@ public final class RadialGradient extends Paint {
      * to the {@code LinearGradient}: {@code CycleMethod.NO_CYCLE},
      * {@code CycleMethod.REFLECT}, or {@code CycleMethod.REPEAT}.
      *
-     * @defaultvalue NO_CYCLE
+     * @defaultValue NO_CYCLE
      */
     public final CycleMethod getCycleMethod() {
         return cycleMethod;
@@ -176,7 +176,7 @@ public final class RadialGradient extends Paint {
      * <p>The list is unmodifiable and will throw
      * {@code UnsupportedOperationException} on each modification attempt.</p>
      *
-     * @defaultvalue empty
+     * @defaultValue empty
      */
     @ReturnsUnmodifiableCollection
     public final List<Stop> getStops() {
@@ -261,7 +261,7 @@ public final class RadialGradient extends Paint {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

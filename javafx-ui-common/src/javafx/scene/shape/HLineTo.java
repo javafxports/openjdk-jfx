@@ -69,7 +69,7 @@ public class HLineTo extends PathElement {
     /**
      * Defines the X coordinate.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty x;
 
@@ -115,7 +115,7 @@ public class HLineTo extends PathElement {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

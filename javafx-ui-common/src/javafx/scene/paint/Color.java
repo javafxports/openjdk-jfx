@@ -1436,7 +1436,7 @@ public class Color extends Paint implements Interpolatable<Color> { // final
     /**
      * The red component of the {@code Color}, in the range {@code 0.0-1.0}.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     public final double getRed() { return red; }
     private float red;
@@ -1444,7 +1444,7 @@ public class Color extends Paint implements Interpolatable<Color> { // final
     /**
      * The green component of the {@code Color}, in the range {@code 0.0-1.0}.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     public final double getGreen() { return green; }
     private float green;
@@ -1452,7 +1452,7 @@ public class Color extends Paint implements Interpolatable<Color> { // final
     /**
      * The blue component of the {@code Color}, in the range {@code 0.0-1.0}.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     public final double getBlue() { return blue; }
     private float blue;
@@ -1460,7 +1460,7 @@ public class Color extends Paint implements Interpolatable<Color> { // final
     /**
      * The opacity of the {@code Color}, in the range {@code 0.0-1.0}.
      *
-     * @defaultvalue 1.0
+     * @defaultValue 1.0
      */
     public final double getOpacity() { return opacity; }
     private float opacity = 1;
@@ -1495,7 +1495,7 @@ public class Color extends Paint implements Interpolatable<Color> { // final
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

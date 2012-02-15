@@ -116,7 +116,7 @@ import javafx.collections.ListChangeListener.Change;
 public abstract class Shape extends Node {
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -151,7 +151,7 @@ public abstract class Shape extends Node {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -186,7 +186,7 @@ public abstract class Shape extends Node {
      * </p>
      *
      * @see StrokeType
-     * @defaultvalue CENTERED
+     * @defaultValue CENTERED
      * @since JavaFX 1.3
      */
     public final ObjectProperty<StrokeType> strokeTypeProperty() {
@@ -206,7 +206,7 @@ public abstract class Shape extends Node {
      * Defines a square pen line width. A value of 0.0 specifies a hairline
      * stroke. A value of less than 0.0 will be treated as 0.0.
      *
-     * @defaultvalue 1.0
+     * @defaultValue 1.0
      */
     public final DoubleProperty strokeWidthProperty() {
         return getStrokeAttributes().widthProperty();
@@ -233,7 +233,7 @@ public abstract class Shape extends Node {
      * </p>
      *
      * @see StrokeLineJoin
-     * @defaultvalue MITER
+     * @defaultValue MITER
      */
     public final ObjectProperty<StrokeLineJoin> strokeLineJoinProperty() {
         return getStrokeAttributes().lineJoinProperty();
@@ -259,7 +259,7 @@ public abstract class Shape extends Node {
      * </p>
      *
      * @see StrokeLineCap
-     * @defaultvalue SQUARE
+     * @defaultValue SQUARE
      */
     public final ObjectProperty<StrokeLineCap> strokeLineCapProperty() {
         return getStrokeAttributes().lineCapProperty();
@@ -289,7 +289,7 @@ public abstract class Shape extends Node {
      * <img src="doc-files/strokemiterlimit.png"/>
      * </p>
      *
-     * @defaultvalue 10.0
+     * @defaultValue 10.0
      */
     public final DoubleProperty strokeMiterLimitProperty() {
         return getStrokeAttributes().miterLimitProperty();
@@ -319,7 +319,7 @@ public abstract class Shape extends Node {
      * <img src="doc-files/strokedashoffset.png"/>
      * </p>
      *
-     * @defaultvalue 0
+     * @defaultValue 0
      */
     public final DoubleProperty strokeDashOffsetProperty() {
         return getStrokeAttributes().dashOffsetProperty();
@@ -342,7 +342,7 @@ public abstract class Shape extends Node {
      * <img src="doc-files/strokedasharray.png"/>
      * </p>
      *
-     * @defaultvalue empty
+     * @defaultValue empty
      */
     public final ObservableList<Double> getStrokeDashArray() {        
         return getStrokeAttributes().dashArrayProperty();
@@ -361,7 +361,7 @@ public abstract class Shape extends Node {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -481,7 +481,7 @@ public abstract class Shape extends Node {
 
     // Used by Text
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -491,7 +491,7 @@ public abstract class Shape extends Node {
      * Defines whether antialiasing hints are used or not for this {@code Shape}.
      * If the value equals true the rendering hints are applied.
      *
-     * @defaultvalue true
+     * @defaultValue true
      */
     private BooleanProperty smooth;
 
@@ -540,7 +540,7 @@ public abstract class Shape extends Node {
 
      /**
       * Super-lazy instantiation pattern from Bill Pugh.
-      * @treatasprivate implementation detail
+      * @treatAsPrivate implementation detail
       */
      protected static class StyleableProperties {
 
@@ -789,7 +789,7 @@ public abstract class Shape extends Node {
      * Super-lazy instantiation pattern from Bill Pugh. StyleableProperty is referenced
      * no earlier (and therefore loaded no earlier by the class loader) than
      * the moment that  impl_CSS_STYLEABLES() is called.
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -798,7 +798,7 @@ public abstract class Shape extends Node {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -809,7 +809,7 @@ public abstract class Shape extends Node {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -819,7 +819,7 @@ public abstract class Shape extends Node {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -866,7 +866,7 @@ public abstract class Shape extends Node {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -882,7 +882,7 @@ public abstract class Shape extends Node {
     private ShapeChangeListener shapeChangeListener;
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -891,7 +891,7 @@ public abstract class Shape extends Node {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1438,7 +1438,7 @@ public abstract class Shape extends Node {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

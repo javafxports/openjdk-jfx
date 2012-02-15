@@ -376,6 +376,26 @@ public class ContextMenuContent extends StackPane {
                 }
             }
         });
+        
+        // RT-19624 calling requestFocus inside layout was casuing repeated layouts.
+        contextMenu.addEventHandler(Menu.ON_SHOWN, new EventHandler() {
+            @Override public void handle(Event event) {
+                for (Node child : itemsContainer.getChildren()) {
+                    if (child instanceof MenuItemContainer) {
+                        final MenuItem item = ((MenuItemContainer)child).item;
+                        // When the choiceBox popup is shown, if this menu item is selected
+                        // do a requestFocus so CSS kicks in and the item is highlighted.
+                        if ("choice-box-menu-item".equals(item.getId())) {
+                            if (((RadioMenuItem)item).isSelected()) {
+                                child.requestFocus();
+                                break;
+                            }
+                        }
+                    }
+
+                }
+            }
+        });
 
 //        // FIXME For some reason getSkinnable()Behavior traversal functions don't
 //        // get called as expected, so I've just put the important code below.
@@ -774,7 +794,7 @@ public class ContextMenuContent extends StackPane {
      *                                                                         *
      **************************************************************************/
 
-     /** @treatasprivate */
+     /** @treatAsPrivate */
     private static class StyleableProperties {
 
         private static final List<StyleableProperty> STYLEABLES;
@@ -800,7 +820,7 @@ public class ContextMenuContent extends StackPane {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1179,13 +1199,6 @@ public class ContextMenuContent extends StackPane {
                     positionInArea(n, getInsets().getLeft(), 0, getWidth(), prefHeight, 0, HPos.LEFT, VPos.CENTER);
                 }
             }
-            // When the choiceBox popup is shown, if this menu item is selected
-            // do a requestFocus so CSS kicks in and the item is highlighted.
-            if ("choice-box-menu-item".equals(item.getId())) {
-                 if (((RadioMenuItem)item).isSelected()) {
-                     requestFocus();
-                 }
-             }
         }
 
         @Override

@@ -89,7 +89,7 @@ public  class QuadCurve extends Shape {
      * Defines the X coordinate of the start point
      * of the quadratic curve segment.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty startX;
 
@@ -131,7 +131,7 @@ public  class QuadCurve extends Shape {
      * Defines the Y coordinate of the start point
      * of the quadratic curve segment.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty startY;
 
@@ -173,7 +173,7 @@ public  class QuadCurve extends Shape {
      * Defines the X coordinate of the control point
      * of the quadratic curve segment.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty controlX;
 
@@ -215,7 +215,7 @@ public  class QuadCurve extends Shape {
      * Defines the Y coordinate of the control point
      * of the quadratic curve segment.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty controlY;
 
@@ -256,7 +256,7 @@ public  class QuadCurve extends Shape {
      * Defines the X coordinate of the end point
      * of the quadratic curve segment.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty endX;
 
@@ -297,7 +297,7 @@ public  class QuadCurve extends Shape {
      * Defines the Y coordinate of the end point
      * of the quadratic curve segment.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty endY;
 
@@ -335,7 +335,7 @@ public  class QuadCurve extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -349,7 +349,7 @@ public  class QuadCurve extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -365,7 +365,7 @@ public  class QuadCurve extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

@@ -97,7 +97,7 @@ public class BoxBlur extends Effect {
      * If set to {@code null}, or left unspecified, a graphical image of
      * the {@code Node} to which the {@code Effect} is attached will be
      * used as the input.
-     * @defaultvalue null
+     * @defaultValue null
      */
     private ObjectProperty<Effect> input;
 
@@ -140,7 +140,7 @@ public class BoxBlur extends Effect {
      *   Default:   5.0
      *  Identity:  &lt;1.0
      * </pre>
-     * @defaultvalue 5.0
+     * @defaultValue 5.0
      */
     private DoubleProperty width;
 
@@ -190,7 +190,7 @@ public class BoxBlur extends Effect {
      *   Default:   5.0
      *  Identity:  &lt;1.0
      * </pre>
-     * @defaultvalue 5.0
+     * @defaultValue 5.0
      */
     private DoubleProperty height;
 
@@ -238,7 +238,7 @@ public class BoxBlur extends Effect {
      *   Default:   1
      *  Identity:   0
      * </pre>
-     * @defaultvalue 1
+     * @defaultValue 1
      */
     private IntegerProperty iterations;
 
@@ -303,7 +303,7 @@ public class BoxBlur extends Effect {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

@@ -179,7 +179,7 @@ public class KeyEvent extends InputEvent {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -188,7 +188,7 @@ public class KeyEvent extends InputEvent {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -217,7 +217,7 @@ public class KeyEvent extends InputEvent {
 
     /**
      * For use by unit testing
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      */
     static KeyEvent testKeyEvent(EventTarget target, String character,
             KeyCode code, boolean shiftDown, boolean controlDown,

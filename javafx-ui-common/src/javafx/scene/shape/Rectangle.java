@@ -124,7 +124,7 @@ public  class Rectangle extends Shape {
     /**
      * Defines the X coordinate of the upper-left corner of the rectangle.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty x;
 
@@ -164,7 +164,7 @@ public  class Rectangle extends Shape {
     /**
      * Defines the Y coordinate of the upper-left corner of the rectangle.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty y;
 
@@ -204,7 +204,7 @@ public  class Rectangle extends Shape {
     /**
      * Defines the width of the rectangle.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty width;
 
@@ -244,7 +244,7 @@ public  class Rectangle extends Shape {
     /**
      * Defines the height of the rectangle.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty height;
 
@@ -285,7 +285,7 @@ public  class Rectangle extends Shape {
      * Defines the horizontal diameter of the arc
      * at the four corners of the rectangle.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty arcWidth;
 
@@ -330,7 +330,7 @@ public  class Rectangle extends Shape {
      * Defines the vertical diameter of the arc
      * at the four corners of the rectangle.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty arcHeight;
 
@@ -372,7 +372,7 @@ public  class Rectangle extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -393,7 +393,7 @@ public  class Rectangle extends Shape {
 
       /**
       * Super-lazy instantiation pattern from Bill Pugh.
-      * @treatasprivate implementation detail
+      * @treatAsPrivate implementation detail
       */
      private static class StyleableProperties {
          private static final StyleableProperty<Rectangle,Number> ARC_HEIGHT =
@@ -444,7 +444,7 @@ public  class Rectangle extends Shape {
      * Super-lazy instantiation pattern from Bill Pugh. StyleableProperties is referenced
      * no earlier (and therefore loaded no earlier by the class loader) than
      * the moment that  impl_CSS_STYLEABLES() is called.
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -453,7 +453,7 @@ public  class Rectangle extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -480,7 +480,7 @@ public  class Rectangle extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -512,7 +512,7 @@ public  class Rectangle extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -531,7 +531,7 @@ public  class Rectangle extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

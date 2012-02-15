@@ -215,7 +215,7 @@ public final class Font {
      * then you can use one of the {@link #font} factory methods defined in
      * this class.
      *
-     * @defaultvalue empty string
+     * @defaultValue empty string
      */
     public final String getName() { return name; }
     private String name;
@@ -239,7 +239,7 @@ public final class Font {
      * {@code 11.5}. If the specified value is < 0 the default size will be
      * used.
      *
-     * @defaultvalue 12
+     * @defaultValue 12
      */
     public final double getSize() { return size; }
     private double size;
@@ -459,14 +459,14 @@ public final class Font {
     private Object nativeFont;
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
     public Object impl_getNativeFont() { return nativeFont; }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -478,7 +478,7 @@ public final class Font {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

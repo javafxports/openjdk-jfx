@@ -121,7 +121,7 @@ public class Circle extends Shape {
     /**
      * Defines the horizontal position of the center of the circle in pixels.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty centerX;
 
@@ -162,7 +162,7 @@ public class Circle extends Shape {
     /**
      * Defines the vertical position of the center of the circle in pixels.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty centerY;
 
@@ -203,7 +203,7 @@ public class Circle extends Shape {
     /**
      * Defines the radius of the circle in pixels.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty radius;
 
@@ -219,7 +219,7 @@ public class Circle extends Shape {
 
     //used in Magnetism app
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -251,7 +251,7 @@ public class Circle extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -264,7 +264,7 @@ public class Circle extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -287,7 +287,7 @@ public class Circle extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -323,7 +323,7 @@ public class Circle extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -338,7 +338,7 @@ public class Circle extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

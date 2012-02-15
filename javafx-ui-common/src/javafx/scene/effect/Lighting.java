@@ -154,7 +154,7 @@ public class Lighting extends Effect {
      * If set to {@code null}, or left unspecified, a graphical image of
      * the {@code Node} to which the {@code Effect} is attached will be
      * used to generate a default bump map.
-     * @defaultvalue a Shadow effect with a radius of 10
+     * @defaultValue a Shadow effect with a radius of 10
      */
     private ObjectProperty<Effect> bumpInput;
 
@@ -179,7 +179,7 @@ public class Lighting extends Effect {
      * If set to {@code null}, or left unspecified, a graphical image of
      * the {@code Node} to which the {@code Effect} is attached will be
      * used as the input.
-     * @defaultvalue null
+     * @defaultValue null
      */
     private ObjectProperty<Effect> contentInput;
 
@@ -221,7 +221,7 @@ public class Lighting extends Effect {
      *   Default: 1.0
      *  Identity: n/a
      * </pre>
-     * @defaultvalue 1.0
+     * @defaultValue 1.0
      */
     private DoubleProperty diffuseConstant;
 
@@ -265,7 +265,7 @@ public class Lighting extends Effect {
      *   Default: 0.3
      *  Identity: n/a
      * </pre>
-     * @defaultvalue 0.3
+     * @defaultValue 0.3
      */
     private DoubleProperty specularConstant;
 
@@ -309,7 +309,7 @@ public class Lighting extends Effect {
      *   Default: 20.0
      *  Identity:  n/a
      * </pre>
-     * @defaultvalue 20.0
+     * @defaultValue 20.0
      */
     private DoubleProperty specularExponent;
 
@@ -353,7 +353,7 @@ public class Lighting extends Effect {
      *   Default:  1.5
      *  Identity:  n/a
      * </pre>
-     * @defaultvalue 1.5
+     * @defaultValue 1.5
      */
     private DoubleProperty surfaceScale;
 
@@ -418,7 +418,7 @@ public class Lighting extends Effect {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

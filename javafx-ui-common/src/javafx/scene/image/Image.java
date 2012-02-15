@@ -91,12 +91,12 @@ public class Image {
     /**
      * The string representing the URL to use in fetching the pixel data.
      *
-     * @defaultvalue empty string
+     * @defaultValue empty string
      */
     private final String url;
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -105,7 +105,7 @@ public class Image {
     }
 
     /**
-     * @treatasprivate
+     * @treatAsPrivate
      */
     private final InputStream impl_source;
 
@@ -118,7 +118,7 @@ public class Image {
      * has been completed. A positive value between 0 and 1 where 0 is 0% and 1
      * is 100%.
      *
-     * @defaultvalue 0
+     * @defaultValue 0
      */
     private ReadOnlyDoubleWrapper progress;
 
@@ -151,7 +151,7 @@ public class Image {
      * {@code requestedWidth}, {@code requestedHeight} and {@code preserveRatio}
      * attributes.
      *
-     * @defaultvalue 0
+     * @defaultValue 0
      */
     private final double requestedWidth;
 
@@ -179,7 +179,7 @@ public class Image {
      * {@code requestedWidth}, {@code requestedHeight} and {@code preserveRatio}
      * attributes.
      *
-     * @defaultvalue 0
+     * @defaultValue 0
      */
     private final double requestedHeight;
 
@@ -305,7 +305,7 @@ public class Image {
      * </ul>
      * </p>
      *
-     * @defaultvalue false
+     * @defaultValue false
      */
     private final boolean preserveRatio;
 
@@ -356,7 +356,7 @@ public class Image {
      * used.
      * </p>
      *
-     * @defaultvalue true
+     * @defaultValue true
      */
     private final boolean smooth;
 
@@ -382,7 +382,7 @@ public class Image {
     /**
      * Indicates whether the image is being loaded in the background.
      *
-     * @defaultvalue false
+     * @defaultValue false
      */
     private final boolean backgroundLoading;
 
@@ -397,7 +397,7 @@ public class Image {
     /**
      * Indicates whether an error was detected while loading an image.
      *
-     * @defaultvalue false
+     * @defaultValue false
      */
     private ReadOnlyBooleanWrapper error;
 
@@ -424,14 +424,14 @@ public class Image {
     /**
      * The underlying platform representation of this Image object.
      *
-     * @defaultvalue null
-     * @treatasprivate implementation detail
+     * @defaultValue null
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     private ObjectPropertyImpl<Object> platformImage;
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      */
     @Deprecated
     public final Object impl_getPlatformImage() {
@@ -439,7 +439,7 @@ public class Image {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      */
     @Deprecated
     public final ReadOnlyObjectProperty<Object> impl_platformImageProperty() {
@@ -632,7 +632,7 @@ public class Image {
     }
 
     /**
-     * @treatasprivate used for testing
+     * @treatAsPrivate used for testing
      */
     void dispose() {
         cancel();
@@ -759,7 +759,7 @@ public class Image {
 
     // Used by SwingUtils.toFXImage
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -897,7 +897,7 @@ public class Image {
      *
      * @param imgType either a Class object that specifies the type of image,
      *      or an actual image object of the desired type and format.
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -910,7 +910,7 @@ public class Image {
      * If the specified image class is not supported, then null will be returned.
      *
      * @param extImage - an image to convert.
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -924,7 +924,7 @@ public class Image {
      * This method indicates whether conversion to/from the specified external
      * format is possible.
      *
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

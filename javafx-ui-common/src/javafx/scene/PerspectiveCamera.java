@@ -52,7 +52,7 @@ public  class PerspectiveCamera extends Camera {
     /**
      * Specifies the vertical angle of the camera's projection.
      *
-     * @defaultvalue 30.0
+     * @defaultValue 30.0
      */
     private DoubleProperty fieldOfView;
 
@@ -97,7 +97,7 @@ public  class PerspectiveCamera extends Camera {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

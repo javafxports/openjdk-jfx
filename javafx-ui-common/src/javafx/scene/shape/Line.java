@@ -98,7 +98,7 @@ public class Line extends Shape {
     /**
      * The X coordinate of the start point of the line segment.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty startX;
 
@@ -138,7 +138,7 @@ public class Line extends Shape {
     /**
      * The Y coordinate of the start point of the line segment.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty startY;
 
@@ -179,7 +179,7 @@ public class Line extends Shape {
     /**
      * The X coordinate of the end point of the line segment.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty endX;
 
@@ -220,7 +220,7 @@ public class Line extends Shape {
     /**
      * The Y coordinate of the end point of the line segment.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private DoubleProperty endY;
 
@@ -259,7 +259,7 @@ public class Line extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -273,7 +273,7 @@ public class Line extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -376,7 +376,7 @@ public class Line extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -387,7 +387,7 @@ public class Line extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -417,7 +417,7 @@ public class Line extends Shape {
 
     /**
      * Super-lazy instantiation pattern from Bill Pugh.
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      */
     private static class StyleableProperties {
 
@@ -456,7 +456,7 @@ public class Line extends Shape {
      * Super-lazy instantiation pattern from Bill Pugh. StyleableProperty is referenced
      * no earlier (and therefore loaded no earlier by the class loader) than
      * the moment that  impl_CSS_STYLEABLES() is called.
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated

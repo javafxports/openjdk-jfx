@@ -33,7 +33,7 @@ public abstract class Bounds {
     /**
      * The x coordinate of the upper-left corner of this {@code Bounds}.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     public final double getMinX() { return minX; }
     private double minX;
@@ -41,14 +41,14 @@ public abstract class Bounds {
     /**
      * The y coordinate of the upper-left corner of this {@code Bounds}.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     public final double getMinY() { return minY; }
     private double minY;
     /**
      * The minimum z coordinate of this {@code Bounds}.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      * @since JavaFX 1.3
      */
     public final double getMinZ() { return minZ; }
@@ -56,21 +56,21 @@ public abstract class Bounds {
     /**
      * The width of this {@code Bounds}.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     public final double getWidth() { return width; }
     private double width;
     /**
      * The height of this {@code Bounds}.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     public final double getHeight() { return height; }
     private double height;
     /**
      * The depth of this {@code Bounds}.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      * @since JavaFX 1.3
      */
     public final double getDepth() { return depth; }
@@ -78,21 +78,21 @@ public abstract class Bounds {
     /**
      * The x coordinate of the lower-right corner of this {@code Bounds}.
      *
-     * @defaultvalue {@code minX + width}
+     * @defaultValue {@code minX + width}
      */
     public final double getMaxX() { return maxX; }
     private double maxX;
     /**
      * The y coordinate of the lower-right corner of this {@code Bounds}.
      *
-     * @defaultvalue {@code minY + height}
+     * @defaultValue {@code minY + height}
      */
     public final double getMaxY() { return maxY; }
     private double maxY;
     /**
      * The maximum z coordinate of this {@code Bounds}.
      *
-     * @defaultvalue {@code minZ + depth}
+     * @defaultValue {@code minZ + depth}
      * @since JavaFX 1.3
      */
     public final double getMaxZ() { return maxZ; }

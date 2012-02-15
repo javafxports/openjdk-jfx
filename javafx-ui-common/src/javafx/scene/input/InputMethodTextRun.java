@@ -54,7 +54,7 @@ package javafx.scene.input;
  */
 public class InputMethodTextRun {
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -68,7 +68,7 @@ public class InputMethodTextRun {
     /**
      * The text in this run.
      *
-     * @defaultvalue empty string
+     * @defaultValue empty string
      */
     private String text = new String();
 
@@ -82,7 +82,7 @@ public class InputMethodTextRun {
     /**
      * The highlight used for displaying this text.
      *
-     * @defaultvalue null
+     * @defaultValue null
      */
     private InputMethodHighlight highlight;
 

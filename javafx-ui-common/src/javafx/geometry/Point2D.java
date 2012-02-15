@@ -32,7 +32,7 @@ public class Point2D {
     /**
      * The x coordinate.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private double x;
 
@@ -47,7 +47,7 @@ public class Point2D {
     /**
      * The y coordinate.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private double y;
 

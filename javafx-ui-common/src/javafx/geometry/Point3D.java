@@ -35,7 +35,7 @@ public class Point3D {
     /**
      * The x coordinate.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private double x;
 
@@ -50,7 +50,7 @@ public class Point3D {
     /**
      * The y coordinate.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private double y;
 
@@ -65,7 +65,7 @@ public class Point3D {
     /**
      * The z coordinate.
      *
-     * @defaultvalue 0.0
+     * @defaultValue 0.0
      */
     private double z;
 
