@@ -108,7 +108,7 @@ text.setText("The quick brown fox jumps over the lazy dog");
 public final class Text extends Shape {
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -155,7 +155,7 @@ public final class Text extends Shape {
     /**
      * Defines text string that is to be displayed.
      *
-     * @defaultvalue empty string
+     * @defaultValue empty string
      * @profile common
      */
     private StringProperty text;
@@ -214,7 +214,7 @@ public final class Text extends Shape {
     /**
      * Defines the X coordinate of text origin.
      *
-     * @defaultvalue 0
+     * @defaultValue 0
      * @profile common
      */
     private DoubleProperty x;
@@ -255,7 +255,7 @@ public final class Text extends Shape {
     /**
      * Defines the Y coordinate of text origin.
      *
-     * @defaultvalue 0
+     * @defaultValue 0
      * @profile common
      */
     private DoubleProperty y;
@@ -296,7 +296,7 @@ public final class Text extends Shape {
     /**
      * Defines the font of text.
      *
-     * @defaultvalue Font{}
+     * @defaultValue Font{}
      * @profile common
      */
     private ObjectProperty<Font> font;
@@ -355,7 +355,7 @@ public final class Text extends Shape {
      * {@code VPos.TOP} define the origin of the top row while
      * {@code VPos.BOTTOM} defines the origin of the bottom row.
      *
-     * @defaultvalue VPos.BASELINE
+     * @defaultValue VPos.BASELINE
      * @profile common
      */
     private ObjectProperty<VPos> textOrigin;
@@ -403,7 +403,7 @@ public final class Text extends Shape {
      * Logical bounds is a more appropriate default for text than
      * the visual bounds. See {@code TextBoundsType} for more information.
      *
-     * @defaultvalue TextBoundsType.LOGICAL
+     * @defaultValue TextBoundsType.LOGICAL
      * @profile common
      * @since JavaFX 1.3
      */
@@ -448,7 +448,7 @@ public final class Text extends Shape {
      * to satisfy this constraint.
      *
      * @profile common
-     * @defaultvalue 0
+     * @defaultValue 0
      */
     private DoubleProperty wrappingWidth;
 
@@ -488,7 +488,7 @@ public final class Text extends Shape {
      * Defines if each line of text should have a line below it.
      *
      * @profile common
-     * @defaultvalue false
+     * @defaultValue false
      */
     private BooleanProperty underline;
 
@@ -533,7 +533,7 @@ public final class Text extends Shape {
      * Defines if each line of text should have a line through it.
      *
      * @profile common
-     * @defaultvalue false
+     * @defaultValue false
      */
     private BooleanProperty strikethrough;
 
@@ -585,7 +585,7 @@ public final class Text extends Shape {
      * has no effect.
      *
      * @profile common
-     * @defaultvalue TextAlignment.LEFT
+     * @defaultValue TextAlignment.LEFT
      */
     private ObjectProperty<TextAlignment> textAlignment;
 
@@ -633,7 +633,6 @@ public final class Text extends Shape {
      * @profile common
      * @since JavaFX 1.3
      */
-    //TODO(aim): not sure this needs to be a field vs. just a getter function that lazily computes it
     private ReadOnlyDoubleWrapper baselineOffset;
 
     private void setBaselineOffset(double value) {
@@ -665,7 +664,7 @@ public final class Text extends Shape {
      * compositing modes, where effects are applied and very large glyphs.
      *
      * @profile common
-     * @defaultvalue FontSmoothingType.GRAY
+     * @defaultValue FontSmoothingType.GRAY
      */
     private ObjectProperty<FontSmoothingType> fontSmoothingType;
 
@@ -722,7 +721,7 @@ public final class Text extends Shape {
      * Picking based on bounds is more efficient and allows the spaces within
      * and between characters to be picked.
      *
-     * @defaultvalue true
+     * @defaultValue true
      * @profile common
      * @since JavaFX 1.3
      */
@@ -731,7 +730,7 @@ public final class Text extends Shape {
     // private API to enable cursor and selection for text editing control
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -743,7 +742,7 @@ public final class Text extends Shape {
     //public-read var impl_selectionShape:PathElement[] = null;
     /**
      * Shape of selection in local coordinates.
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -751,7 +750,7 @@ public final class Text extends Shape {
     //public-read var impl_selectionShape:PathElement[] = null;
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -760,7 +759,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -769,7 +768,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -786,14 +785,14 @@ public final class Text extends Shape {
      * Selection start index in the content.
      * set to {@code -1} to unset selection.
      *
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
     private IntegerProperty impl_selectionStart;
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -802,7 +801,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -811,7 +810,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -843,14 +842,14 @@ public final class Text extends Shape {
      * Selection end index in the content.
      * set to {@code -1} to unset selection.
      *
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
     private IntegerProperty impl_selectionEnd;
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -859,7 +858,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -868,7 +867,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -898,7 +897,7 @@ public final class Text extends Shape {
 
     /**
      * stroke paint to be used for selected content.
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -908,7 +907,7 @@ public final class Text extends Shape {
 
     /**
      * Shape of caret in local coordinates.
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -916,7 +915,7 @@ public final class Text extends Shape {
     private ObjectProperty<PathElement[]> impl_caretShape;
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -925,7 +924,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -934,7 +933,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -951,14 +950,14 @@ public final class Text extends Shape {
      * caret index in the content.
      * set to {@code -1} to unset caret.
      *
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
     private IntegerProperty impl_caretPosition;
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -967,7 +966,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -976,7 +975,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1006,14 +1005,14 @@ public final class Text extends Shape {
     /**
      * caret bias in the content. true means a bias towards forward charcter
      *
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
     private BooleanProperty impl_caretBias;
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1022,7 +1021,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1031,7 +1030,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1061,7 +1060,7 @@ public final class Text extends Shape {
     /**
      * Maps local point to index in the content.
      *
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1072,7 +1071,7 @@ public final class Text extends Shape {
     /**
      * Returns shape for the range of the text in local coordinates.
      *
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1084,7 +1083,7 @@ public final class Text extends Shape {
     /**
      * Returns shape for the underline in local coordinates.
      *
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1097,17 +1096,6 @@ public final class Text extends Shape {
      * updates decoration Shapes: selectionShape, caretShape
      */
     private void getDecorationShapes() {
-        /*
-         * TODO: if we do not read boundsInLocal our boundsInLocalListener
-         * "on replace" does not work. It is updated once for null value and
-         * never again. Richard?
-         */
-         // TODO!! There appears to be a bug here, where if I attempt to read
-         // boundsInLocal at this time, then it will cause an invalid Bounds
-         // to be created. Seems like an initialization order bug, maybe in the
-         // compiler?
-        //var t = boundsInLocal;
-
         if (getImpl_caretPosition() >= 0) {
             //convert insertion postiion into character index
             int charIndex = getImpl_caretPosition() - ((isImpl_caretBias()) ? 0 : 1);
@@ -1132,7 +1120,7 @@ public final class Text extends Shape {
     /**
      * Shows/Hides on-screen keyboard if available (mobile platform)
      *
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1156,7 +1144,7 @@ public final class Text extends Shape {
     private boolean impl_layoutBoundsInvalid = true;
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1168,7 +1156,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1188,7 +1176,7 @@ public final class Text extends Shape {
      * Returns layout bounds for a text node. Depending on bounds
      * reporting mode for this node, this may be logical or visual bounds.
      *
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1208,7 +1196,7 @@ public final class Text extends Shape {
 
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1221,22 +1209,11 @@ public final class Text extends Shape {
         {
             return bounds.makeEmpty();
         }
-
-        // TODO: Scenario has this odd "isDegradedTransform" function for
-        // handling an apparent bug on mac which happened when transform was
-        // not identity but really close to it, which caused the bounds to
-        // be computed as some enormous value. I'm not sure if this is a
-        // problem yet in this implementation, but if so, then we need to do
-        // the check right here.
-        //if (isDegradedTransform(tx)) {
-        //    tx = BaseTransform.IDENTITY_TRANSFORM;
-        //}
-
         return getTextHelper().computeBounds(bounds, tx);
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1250,7 +1227,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1266,7 +1243,7 @@ public final class Text extends Shape {
     private ObjectProperty<Paint> selectionFill;
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1285,7 +1262,7 @@ public final class Text extends Shape {
 
      /**
       * Super-lazy instantiation pattern from Bill Pugh.
-      * @treatasprivate implementation detail
+      * @treatAsPrivate implementation detail
       */
      private static class StyleableProperties {
          
@@ -1409,7 +1386,7 @@ public final class Text extends Shape {
      * Super-lazy instantiation pattern from Bill Pugh. StyleableProperties is referenced
      * no earlier (and therefore loaded no earlier by the class loader) than
      * the moment that  impl_CSS_STYLEABLES() is called.
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
@@ -1458,7 +1435,7 @@ public final class Text extends Shape {
     }
 
     /**
-     * @treatasprivate implementation detail
+     * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
