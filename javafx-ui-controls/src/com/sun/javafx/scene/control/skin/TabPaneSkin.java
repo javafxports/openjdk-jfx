@@ -1290,7 +1290,7 @@ public class TabPaneSkin extends SkinBase<TabPane, TabPaneBehavior> {
         private boolean showControlButtons;
         private ContextMenu popup;
 
-        public TabControlButtons() {
+        public TabControlButtons() {            
             getStyleClass().setAll("control-buttons-tab");
 
             TabPane tabPane = getSkinnable();
@@ -1515,6 +1515,9 @@ public class TabPaneSkin extends SkinBase<TabPane, TabPaneBehavior> {
             timeline.getKeyFrames().clear();
             timeline.getKeyFrames().add(new KeyFrame(Duration.millis(ANIMATION_SPEED), new EventHandler<ActionEvent>() {
                 @Override public void handle(ActionEvent event) {
+                    if (popup == null) {
+                        setupPopupMenu();
+                    }
                     requestLayout();
                 }
             }, keyValue));
