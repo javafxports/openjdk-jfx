@@ -996,16 +996,16 @@ public abstract class Node implements EventTarget {
      * Specifies how opaque (that is, solid) the {@code Node} appears. A Node
      * with 0% opacity is fully translucent. That is, while it is still
      * {@link #visibleProperty visible} and rendered, you generally won't be able to see it. The
-     * exception to this rule is when the Z{@code Node} is combined with a
+     * exception to this rule is when the {@code Node} is combined with a
      * blending mode and blend effect in which case a translucent Node may still
      * have an impact in rendering. An opacity of 50% will render the node as
      * being 50% transparent.
      * <p>
      * A {@link #visibleProperty visible} node with any opacity setting still receives mouse
      * events and can receive keyboard focus. For example, if you want to have
-     * a large invisible rectangle overlay all Nodes in the scene graph in order
-     * to intercept mouse events but not be visible to the user, you could
-     * create a large Rectangle that had an opacity of 0%.
+     * a large invisible rectangle overlay all {@code Node}s in the scene graph
+     * in order to intercept mouse events but not be visible to the user, you could
+     * create a large {@code Rectangle} that had an opacity of 0%.
      * <p>
      * Opacity is specified as a value between 0 and 1. Values less than 0 are
      * treated as 0, values greater than 1 are treated as 1.
@@ -1184,7 +1184,7 @@ public abstract class Node implements EventTarget {
      * little benefit to caching Nodes as bitmaps when blurs and other effects
      * are used since they are very fast to render on the GPU.
      *
-     * The {@code cacheHint} variable provides additional options for enabling
+     * The {@link cacheHint} variable provides additional options for enabling
      * more aggressive bitmap caching.
      *
      * <p>
@@ -1299,11 +1299,11 @@ public abstract class Node implements EventTarget {
 
     /**
      * Indicates whether depth testing is used when rendering this node.
-     * If the depthTest flag is DepthTest.DISABLE, then depth testing
+     * If the depthTest flag is {@code DepthTest.DISABLE}, then depth testing
      * is disabled for this node.
-     * If the depthTest flag is DepthTest.ENABLE, then depth testing
+     * If the depthTest flag is {@code DepthTest.ENABLE}, then depth testing
      * is enabled for this node.
-     * If the depthTest flag is DepthTest.INHERIT, then depth testing
+     * If the depthTest flag is {@code DepthTest.INHERIT}, then depth testing
      * is enabled for this node if it is enabled for the parent node or the
      * parent node is null.
      * <p>
@@ -1867,7 +1867,8 @@ public abstract class Node implements EventTarget {
     /**
      * Defines whether or not this node's layout will be managed by it's parent.
      * If the node is managed, it's parent will factor the node's geometry
-     * into its own preferred size and layoutBounds calculations and will lay it
+     * into its own preferred size and {@link #layoutBoundsProperty layoutBounds}
+     * calculations and will lay it
      * out during the scene's layout pass.  If a managed node's layoutBounds
      * changes, it will automatically trigger relayout up the scene-graph
      * to the nearest layout root (which is typically the scene's root node).
@@ -1875,15 +1876,17 @@ public abstract class Node implements EventTarget {
      * If the node is unmanaged, its parent will ignore the child in both preferred
      * size computations and layout.   Changes in layoutBounds will not trigger
      * relayout above it.   If an unmanaged node is of type {@link javafx.scene.Parent Parent},
-     * it will act as a "layout root", meaning that calls to requestLayout()
+     * it will act as a "layout root", meaning that calls to {@link requestLayout()}
      * beneath it will cause only the branch rooted by the node to be relayed out,
      * thereby isolating layout changes to that root and below.  It's the application's
      * responsibility to set the size and position of an unmanaged node.
      * <p>
      * By default all nodes are managed.
-     * <p>
+     * </p>
+     * 
      * @see #isResizable()
-     * @see #getLayoutBounds()
+     * @see #layoutBoundsProperty()
+     * @see Parent#requestLayout()
      *
      */
     private BooleanProperty managed;
@@ -1926,7 +1929,7 @@ public abstract class Node implements EventTarget {
      * Defines the x coordinate of the translation that is added to this {@code Node}'s
      * transform for the purpose of layout.  The value should be computed as the
      * offset required to adjust the position of the node from its current
-     * {@code layoutBounds minX} position (which might not be 0) to the desired location.
+     * {@link #layoutBoundsProperty() layoutBounds minX} position (which might not be 0) to the desired location.
      *
      * <p>For example, if {@code textnode} should be positioned at {@code finalX}
      * <code><pre>
@@ -1934,7 +1937,7 @@ public abstract class Node implements EventTarget {
      * </pre></code>
      * <p>
      * Failure to subtract {@code layoutBounds minX} may result in misplacement
-     * of the node.  The {@code relocate(x,y)} method will automatically do the
+     * of the node.  The {@link #relocate(double, double) relocate(x, y)} method will automatically do the
      * correct computation and should generally be used over setting layoutX directly.
      * <p>
      * The node's final translation will be computed as {@code layoutX} + {@link #translateXProperty translateX},
@@ -1947,7 +1950,8 @@ public abstract class Node implements EventTarget {
      * own layout policy.   If the node is unmanaged or parented by a {@link Group},
      * then the application may set {@code layoutX} directly to position it.
      * <p>
-     * @see #relocate(double, double) 
+     * @see #relocate(double, double)
+     * @see #layoutBoundsProperty()
      *
      */
     private DoubleProperty layoutX;
@@ -1987,7 +1991,7 @@ public abstract class Node implements EventTarget {
      * Defines the y coordinate of the translation that is added to this {@code Node}'s
      * transform for the purpose of layout.  The value should be computed as the
      * offset required to adjust the position of the node from its current
-     * {@code layoutBounds minY} position (which might not be 0) to the desired location.
+     * {@link #layoutBoundsProperty() layoutBounds minY} position (which might not be 0) to the desired location.
      *
      * <p>For example, if {@code textnode} should be positioned at {@code finalY}
      * <code><pre>
@@ -1995,7 +1999,7 @@ public abstract class Node implements EventTarget {
      * </pre></code>
      * <p>
      * Failure to subtract {@code layoutBounds minY} may result in misplacement
-     * of the node.  The {@code relocate(x,y)} method will automatically do the
+     * of the node.  The {@link #relocate(double, double) relocate(x, y)} method will automatically do the
      * correct computation and should generally be used over setting layoutY directly.
      * <p>
      * The node's final translation will be computed as {@code layoutY} + {@link #translateYProperty translateY},
@@ -2009,6 +2013,7 @@ public abstract class Node implements EventTarget {
      * then the application may set {@code layoutY} directly to position it.
      *
      * @see #relocate(double, double) 
+     * @see #layoutBoundsProperty()
      */
     private DoubleProperty layoutY;
 
@@ -4865,7 +4870,7 @@ public abstract class Node implements EventTarget {
      * due to the mouse being over the node, though it could be due to a pen
      * hovering on a graphics tablet or other form of input.
      *
-     * the <p>NOTE current implementation of hover relies on mouse enter and
+     * <p>Note that current implementation of hover relies on mouse enter and
      * exit events to determine whether this Node is in the hover state; this
      * means that this feature is currently supported only on systems that
      * have a mouse. Future implementations may provide alternative means of
@@ -5661,8 +5666,9 @@ public abstract class Node implements EventTarget {
      * Indicates whether this {@code Node} currently has the input focus.
      * To have the input focus, a node must be the {@code Scene}'s focus
      * owner, and the scene must be in a {@code Stage} that is visible
-     * and active. See {@code requestFocus()} for more information.
+     * and active. See {@link requestFocus()} for more information.
      *
+     * @see #requestFocus()
      * @defaultValue false
      */
     private ReadOnlyBooleanWrapper focused;
@@ -5717,8 +5723,9 @@ public abstract class Node implements EventTarget {
      * {@code Node} whose {@code focusTraversable} variable is true
      * and that is eligible to receive the focus,
      * unless the focus had been set explicitly via a call
-     * to {@code requestFocus()}.
+     * to {@link requestFocus()}.
      *
+     * @see #requestFocus()
      * @defaultValue false
      */
     private BooleanProperty focusTraversable;
