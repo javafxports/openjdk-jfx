@@ -113,6 +113,8 @@ import javafx.scene.input.SwipeEvent;
 import javafx.scene.input.TouchEvent;
 import javafx.scene.input.TouchPoint;
 import javafx.scene.input.ZoomEvent;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 
 /**
@@ -630,6 +632,7 @@ public class Scene implements EventTarget {
         }
         impl_peer.setFillPaint(getFill() == null ? null : tk.getPaint(getFill()));
         impl_peer.setCamera(getCamera() == null ? null : getCamera().getPlatformCamera());
+        pickingCamera = getCamera();
 
         impl_setAllowPGAccess(false);
 
@@ -797,6 +800,17 @@ public class Scene implements EventTarget {
         }
         return height;
     }
+
+    /*
+     * 3D pickRays are computed on the toolkit layer. The camera settings are
+     * pushed to the toolkit layer on pulse. So we need to keep track of the
+     * camera currently used by toolkit not to ask it to compute 3D pick ray
+     * when it thinks we are using 2D camera.
+     */
+    private Camera pickingCamera;
+
+    // Reusable target wrapper (to avoid creating new one for each picking)
+    private TargetWrapper tmpTargetWrapper = new TargetWrapper();
 
     /**
      * Specifies the type of camera use for rendering this {@code Scene}.
@@ -1302,23 +1316,13 @@ public class Scene implements EventTarget {
             Node sceneFocusOwner = keyHandler.getFocusOwner();
             eventTarget = sceneFocusOwner != null ? sceneFocusOwner : Scene.this;
         } else {
-            EventTarget pickedTarget = null;
-            if (getCamera() instanceof PerspectiveCamera) {
-                final PickRay pickRay = new PickRay();
-                Scene.this.impl_peer.computePickRay((float)x2, (float)y2, pickRay);
-                pickedTarget = mouseHandler.pickNode(pickRay);
-            }
-            else {
-                pickedTarget = mouseHandler.pickNode(x2, y2);
-            }
-            if (pickedTarget == null) {
-                pickedTarget = Scene.this;
-            }
-            eventTarget = pickedTarget;
+            eventTarget = pick(x2, y2);
         }
-        ContextMenuEvent context = ContextMenuEvent.impl_contextEvent(
-                x2, y2, xAbs, yAbs, isKeyboardTrigger, ContextMenuEvent.CONTEXT_MENU_REQUESTED);
-        Event.fireEvent(eventTarget, context);
+        if (eventTarget != null) {
+            ContextMenuEvent context = ContextMenuEvent.impl_contextEvent(
+                    x2, y2, xAbs, yAbs, isKeyboardTrigger, ContextMenuEvent.CONTEXT_MENU_REQUESTED);
+            Event.fireEvent(eventTarget, context);
+        }
         if (!isKeyboardTrigger) Scene.inMousePick = false;
     }
 
@@ -1335,16 +1339,8 @@ public class Scene implements EventTarget {
 
         if (gesture.target != null) {
             pickedTarget = gesture.target;
-        } else if (getCamera() instanceof PerspectiveCamera) {
-            final PickRay pickRay = new PickRay();
-            Scene.this.impl_peer.computePickRay((float)e.getX(), (float)e.getY(), pickRay);
-            pickedTarget = mouseHandler.pickNode(pickRay);
         } else {
-            pickedTarget = mouseHandler.pickNode(e.getX(), e.getY());
-        }
-
-        if (pickedTarget == null) {
-            pickedTarget = Scene.this;
+            pickedTarget = pick(e.getX(), e.getY());
         }
 
         if (e.getEventType() == ZoomEvent.ZOOM_STARTED ||
@@ -1360,7 +1356,9 @@ public class Scene implements EventTarget {
             gesture.screenCoords = new Point2D(e.getScreenX(), e.getScreenY());
         }
 
-        Event.fireEvent(pickedTarget, e);
+        if (pickedTarget != null) {
+            Event.fireEvent(pickedTarget, e);
+        }
 
         inMousePick = false;
     }
@@ -1371,17 +1369,7 @@ public class Scene implements EventTarget {
         for (TouchPoint tp : touchPoints) {
             EventTarget pickedTarget = touchTargets.get(tp.getId());
             if (pickedTarget == null) {
-                if (getCamera() instanceof PerspectiveCamera) {
-                    final PickRay pickRay = new PickRay();
-                    Scene.this.impl_peer.computePickRay((float)tp.getX(), (float)tp.getY(), pickRay);
-                    pickedTarget = mouseHandler.pickNode(pickRay);
-                } else {
-                    pickedTarget = mouseHandler.pickNode(tp.getX(), tp.getY());
-                }
-
-                if (pickedTarget == null) {
-                    pickedTarget = Scene.this;
-                }
+                pickedTarget = pick(tp.getX(), tp.getY());
             } else {
                 tp.grab(pickedTarget);
             }
@@ -1402,27 +1390,29 @@ public class Scene implements EventTarget {
 
         // fire all the events
         for (TouchPoint tp : touchPoints) {
-            EventType<TouchEvent> type = null;
-            switch (tp.getState()) {
-                case MOVED:
-                    type = TouchEvent.TOUCH_MOVED;
-                    break;
-                case PRESSED:
-                    type = TouchEvent.TOUCH_PRESSED;
-                    break;
-                case RELEASED:
-                    type = TouchEvent.TOUCH_RELEASED;
-                    break;
-                case STATIONARY:
-                    type = TouchEvent.TOUCH_STATIONARY;
-                    break;
+            if (tp.getTarget() != null) {
+                EventType<TouchEvent> type = null;
+                switch (tp.getState()) {
+                    case MOVED:
+                        type = TouchEvent.TOUCH_MOVED;
+                        break;
+                    case PRESSED:
+                        type = TouchEvent.TOUCH_PRESSED;
+                        break;
+                    case RELEASED:
+                        type = TouchEvent.TOUCH_RELEASED;
+                        break;
+                    case STATIONARY:
+                        type = TouchEvent.TOUCH_STATIONARY;
+                        break;
+                }
+
+                TouchEvent te = TouchEvent.impl_touchEvent(type, tp, touchList,
+                        touchEventSetId, e.isShiftDown(), e.isControlDown(),
+                        e.isAltDown(), e.isMetaDown());
+
+                Event.fireEvent(tp.getTarget(), te);
             }
-
-            TouchEvent te = TouchEvent.impl_touchEvent(type, tp, touchList,
-                    touchEventSetId, e.isShiftDown(), e.isControlDown(),
-                    e.isAltDown(), e.isMetaDown());
-
-            Event.fireEvent(tp.getTarget(), te);
         }
 
         // process grabbing
@@ -1448,6 +1438,43 @@ public class Scene implements EventTarget {
         Node pickedNode = mouseHandler.pickNode(x, y);
         inMousePick = false;
         return pickedNode;
+    }
+
+    private EventTarget pick(final double x, final double y) {
+        pick(tmpTargetWrapper, x, y);
+        return tmpTargetWrapper.getEventTarget();
+    }
+
+    private void pick(TargetWrapper target, final double x, final double y) {
+        Node n = null;
+
+        if (pickingCamera instanceof PerspectiveCamera) {
+            final PickRay pickRay = new PickRay();
+            Scene.this.impl_peer.computePickRay(
+                    (float)x, (float)y, pickRay);
+            n = mouseHandler.pickNode(pickRay);
+        } else {
+            n = mouseHandler.pickNode(x, y);
+        }
+
+        if (n != null) {
+            target.setNode(n);
+        } else if (
+                x >= 0 && y >= 0 &&
+                x <= getWidth() &&
+                y <= getHeight())  {
+
+            Window w = getWindow();
+            if (w instanceof Stage
+                    && ((Stage) w).getStyle() == StageStyle.TRANSPARENT
+                    && getFill() == null) {
+                target.clear();
+            }
+
+            target.setScene(this);
+        } else {
+            target.clear();
+        }
     }
 
     /***************************************************************************
@@ -1887,8 +1914,10 @@ public class Scene implements EventTarget {
                 if (getCamera() != null) {
                     getCamera().impl_update();
                     impl_peer.setCamera(getCamera().getPlatformCamera());
+                    pickingCamera = getCamera();
                 } else {
                     impl_peer.setCamera(null);
+                    pickingCamera = null;
                 }
             }
 
@@ -2304,7 +2333,7 @@ public class Scene implements EventTarget {
 
            Scene.this.dndGesture = new DnDGesture();
            final DragEvent de = Toolkit.getToolkit().convertDragRecognizedEventToFX(e, null);
-           final Node pickedNode = Scene.this.mouseHandler.pickNode(de.getX(), de.getY());
+           final EventTarget pickedNode = pick(de.getX(), de.getY());
            Scene.this.dndGesture.dragboard = de.impl_getPlatformDragboard();
 
             if (Scene.this.dndGesture.processRecognized(pickedNode, de)) {
@@ -2339,17 +2368,12 @@ public class Scene implements EventTarget {
         private EventTarget fullPDRSource = null;
 
         /**
-         * Returns the given target or scene if it's null
-         */
-        private EventTarget targetOrScene(EventTarget target) {
-            return target != null ? target : Scene.this;
-        }
-
-        /**
          * Fires event on a given target or on scene if the node is null
          */
         private void fireEvent(EventTarget target, Event e) {
-            Event.fireEvent(targetOrScene(target), e);
+            if (target != null) {
+                Event.fireEvent(target, e);
+            }
         }
 
         /**
@@ -2384,8 +2408,7 @@ public class Scene implements EventTarget {
         /**
          * Sets the default dragDetect value
          */
-        private void processDragDetection(MouseEvent mouseEvent,
-                EventTarget target) {
+        private void processDragDetection(MouseEvent mouseEvent) {
 
             if (dragDetected != DragDetectedState.NOT_YET) {
                 mouseEvent.setDragDetect(false);
@@ -2423,11 +2446,13 @@ public class Scene implements EventTarget {
 
                     processingDragDetected();
 
-                    final MouseEvent detectedEvent = MouseEvent.impl_copy(
-                            mouseEvent.getSource(), target, mouseEvent,
-                            MouseEvent.DRAG_DETECTED);
+                    if (target != null) {
+                        final MouseEvent detectedEvent = MouseEvent.impl_copy(
+                                mouseEvent.getSource(), target, mouseEvent,
+                                MouseEvent.DRAG_DETECTED);
 
-                    fireEvent(target, detectedEvent);
+                        fireEvent(target, detectedEvent);
+                    }
 
                     dragDetectedProcessed();
                 }
@@ -2444,7 +2469,7 @@ public class Scene implements EventTarget {
          * the publicly visible drag and drop API, as it is responsible for calling
          * the Node.onDragSourceRecognized function.
          */
-        private boolean processRecognized(Node n, DragEvent de) {
+        private boolean processRecognized(EventTarget target, DragEvent de) {
             MouseEvent me = MouseEvent.impl_mouseEvent(de.getX(), de.getY(),
                     de.getSceneX(), de.getScreenY(), MouseButton.PRIMARY, 1,
                     false, false, false, false, false, true, false, false, false,
@@ -2452,7 +2477,7 @@ public class Scene implements EventTarget {
 
             processingDragDetected();
 
-            fireEvent(n, me);
+            fireEvent(target, me);
 
             dragDetectedProcessed();
 
@@ -2479,7 +2504,8 @@ public class Scene implements EventTarget {
 
             Event.fireEvent(source, de);
 
-            handleExitEnter(de, null);
+            tmpTargetWrapper.clear();
+            handleExitEnter(de, tmpTargetWrapper);
 
             // at this point the drag and drop operation is completely over, so we
             // can tell the toolkit that it can clean up if needs be.
@@ -2487,34 +2513,28 @@ public class Scene implements EventTarget {
         }
 
         private TransferMode processTargetEnterOver(DragEvent de) {
-            final Node pickedNode = Scene.this.mouseHandler.pickNode(de.getX(), de.getY());
-            if (pickedNode == null || pickedNode.impl_isTreeVisible()) {
+            pick(tmpTargetWrapper, de.getX(), de.getY());
+            final EventTarget pickedTarget = tmpTargetWrapper.getEventTarget();
 
-                if (dragboard == null) {
-                    dragboard = createDragboard();
-                }
-
-                de = DragEvent.impl_copy(de.getSource(), pickedNode, source,
-                        potentialTarget, dragboard, de);
-
-                handleExitEnter(de, targetOrScene(pickedNode));
-
-                de = DragEvent.impl_copy(de.getSource(), pickedNode, source,
-                        potentialTarget, de, DragEvent.DRAG_OVER);
-
-                fireEvent(pickedNode, de);
-
-                Object acceptingObject = de.impl_getAcceptingObject();
-                potentialTarget = acceptingObject instanceof EventTarget
-                        ? (EventTarget) acceptingObject : null;
-                acceptedTransferMode = de.getAcceptedTransferMode();
-                return acceptedTransferMode;
-            } else {
-                processTargetExit(de);
+            if (dragboard == null) {
+                dragboard = createDragboard();
             }
 
-            acceptedTransferMode = null;
-            return null;
+            de = DragEvent.impl_copy(de.getSource(), pickedTarget, source,
+                    potentialTarget, dragboard, de);
+
+            handleExitEnter(de, tmpTargetWrapper);
+
+            de = DragEvent.impl_copy(de.getSource(), pickedTarget, source,
+                    potentialTarget, de, DragEvent.DRAG_OVER);
+
+            fireEvent(pickedTarget, de);
+
+            Object acceptingObject = de.impl_getAcceptingObject();
+            potentialTarget = acceptingObject instanceof EventTarget
+                    ? (EventTarget) acceptingObject : null;
+            acceptedTransferMode = de.getAcceptedTransferMode();
+            return acceptedTransferMode;
         }
 
         private void processTargetActionChanged(DragEvent de) {
@@ -2536,60 +2556,48 @@ public class Scene implements EventTarget {
         private void processTargetExit(DragEvent de) {
             if (currentTargets.size() > 0) {
                 potentialTarget = null;
-                handleExitEnter(de, null);
+                tmpTargetWrapper.clear();
+                handleExitEnter(de, tmpTargetWrapper);
             }
         }
 
         private TransferMode processTargetDrop(DragEvent de) {
-            final Node pickedNode = Scene.this.mouseHandler.pickNode(de.getX(), de.getY());
-            if (pickedNode == null || pickedNode.impl_isTreeVisible()) {
+            pick(tmpTargetWrapper, de.getX(), de.getY());
+            final EventTarget pickedTarget = tmpTargetWrapper.getEventTarget();
 
-                de = DragEvent.impl_copy(de.getSource(), pickedNode, source,
-                        potentialTarget, acceptedTransferMode, de,
-                        DragEvent.DRAG_DROPPED);
+            de = DragEvent.impl_copy(de.getSource(), pickedTarget, source,
+                    potentialTarget, acceptedTransferMode, de,
+                    DragEvent.DRAG_DROPPED);
 
-                if (dragboard == null) {
-                    dragboard = createDragboard();
-                }
-
-                handleExitEnter(de, targetOrScene(pickedNode));
-
-                fireEvent(pickedNode, de);
-
-                Object acceptingObject = de.impl_getAcceptingObject();
-                potentialTarget = acceptingObject instanceof EventTarget
-                        ? (EventTarget) acceptingObject : null;
-                target = potentialTarget;
-
-                TransferMode result = de.isDropCompleted() ?
-                    de.getAcceptedTransferMode() : null;
-
-                handleExitEnter(de, null);
-
-                return result;
-            } else {
-                processTargetExit(de);
+            if (dragboard == null) {
+                dragboard = createDragboard();
             }
-            return null;
+
+            handleExitEnter(de, tmpTargetWrapper);
+
+            fireEvent(pickedTarget, de);
+
+            Object acceptingObject = de.impl_getAcceptingObject();
+            potentialTarget = acceptingObject instanceof EventTarget
+                    ? (EventTarget) acceptingObject : null;
+            target = potentialTarget;
+
+            TransferMode result = de.isDropCompleted() ?
+                de.getAcceptedTransferMode() : null;
+
+            tmpTargetWrapper.clear();
+            handleExitEnter(de, tmpTargetWrapper);
+
+            return result;
         }
 
-        private void handleExitEnter(DragEvent e, EventTarget target) {
+        private void handleExitEnter(DragEvent e, TargetWrapper target) {
             EventTarget currentTarget =
                     currentTargets.size() > 0 ? currentTargets.get(0) : null;
 
-            if (target != currentTarget) {
+            if (target.getEventTarget() != currentTarget) {
 
-                newTargets.clear();
-                if (target instanceof Node) {
-                    Node newNode = (Node) target;
-                    while(newNode != null) {
-                        newTargets.add(newNode);
-                        newNode = newNode.getParent();
-                    }
-                }
-                if (target != null) {
-                    newTargets.add(Scene.this);
-                }
+                target.fillHierarchy(newTargets);
 
                 int i = currentTargets.size() - 1;
                 int j = newTargets.size() - 1;
@@ -2648,7 +2656,8 @@ public class Scene implements EventTarget {
                     Event.fireEvent(source, de);
                 }
 
-                handleExitEnter(de, null);
+                tmpTargetWrapper.clear();
+                handleExitEnter(de, tmpTargetWrapper);
 
                 return false;
             }
@@ -2728,7 +2737,6 @@ public class Scene implements EventTarget {
         private boolean still;
         private Timeline timeout;
         private double pressedX, pressedY;
-        private EventTarget clickTarget;
 
         private void inc() { count++; }
         private int get() { return count; }
@@ -2736,7 +2744,6 @@ public class Scene implements EventTarget {
 
         private void clear() {
             count = 0;
-            clickTarget = null;
             stopTimeout();
         }
 
@@ -2781,34 +2788,6 @@ public class Scene implements EventTarget {
             still = true;
         }
 
-        private void setTarget(EventTarget target) {
-            this.clickTarget = target;
-        }
-
-        private void checkTarget(EventTarget target) {
-            if (clickTarget == null) {
-                return;
-            }
-
-            boolean isThere = false;
-            if (target instanceof Node) {
-                Node n = (Node) target;
-                while(n != null) {
-                    if (n == clickTarget) {
-                        isThere = true;
-                        break;
-                    }
-                    n = n.getParent();
-                }
-            }
-            if (clickTarget == Scene.this) {
-                isThere = true;
-            }
-            if (!isThere) {
-                out();
-            }
-        }
-
         private void stopTimeout() {
             if (timeout != null) {
                 timeout.stop();
@@ -2822,6 +2801,8 @@ public class Scene implements EventTarget {
 
         private Map<MouseButton, ClickCounter> counters =
                 new EnumMap<MouseButton, ClickCounter>(MouseButton.class);
+        private List<EventTarget> pressedTargets = new ArrayList<EventTarget>();
+        private List<EventTarget> releasedTargets = new ArrayList<EventTarget>();
 
         public ClickGenerator() {
             for (MouseButton mb : MouseButton.values()) {
@@ -2831,7 +2812,7 @@ public class Scene implements EventTarget {
             }
         }
 
-        private void preProcess(MouseEvent e, EventTarget target) {
+        private void preProcess(MouseEvent e) {
             for (ClickCounter cc : counters.values()) {
                 cc.moved(e.getSceneX(), e.getSceneY());
             }
@@ -2845,7 +2826,6 @@ public class Scene implements EventTarget {
                 if (! e.isSecondaryButtonDown()) { counters.get(MouseButton.SECONDARY).clear(); }
                 if (! e.isMiddleButtonDown()) { counters.get(MouseButton.MIDDLE).clear(); }
 
-                cc.checkTarget(target);
                 cc.applyOut();
                 cc.inc();
                 cc.start(e.getSceneX(), e.getSceneY());
@@ -2857,32 +2837,27 @@ public class Scene implements EventTarget {
                     still);
         }
 
-        private void postProcess(MouseEvent e, EventTarget target) {
+        private void postProcess(MouseEvent e, TargetWrapper target, TargetWrapper pickedTarget) {
+
             if (e.getEventType() == MouseEvent.MOUSE_RELEASED) {
                 ClickCounter cc = counters.get(e.getButton());
+
+                target.fillHierarchy(pressedTargets);
+                pickedTarget.fillHierarchy(releasedTargets);
+                int i = pressedTargets.size() - 1;
+                int j = releasedTargets.size() - 1;
+
                 EventTarget clickedTarget = null;
-                if (target instanceof Node) {
-                    Node n = (Node) target;
-                    while(n != null) {
-                        if (n.contains(n.sceneToLocal(e.getSceneX(), e.getSceneY()))) {
-                            clickedTarget = n;
-                            break;
-                        }
-                        n = n.getParent();
-                    }
-                }
-                if (clickedTarget == null &&
-                        e.getSceneX() >= 0 && e.getSceneY() >= 0 &&
-                        e.getSceneX() <= Scene.this.getWidth() &&
-                        e.getSceneY() <= Scene.this.getHeight())  {
-                    clickedTarget = Scene.this;
+                while (i >= 0 && j >= 0 && pressedTargets.get(i) == releasedTargets.get(j)) {
+                    clickedTarget = pressedTargets.get(i);
+                    i--;
+                    j--;
                 }
 
                 if (clickedTarget != null) {
                     MouseEvent click = MouseEvent.impl_copy(null, clickedTarget, e,
                             MouseEvent.MOUSE_CLICKED);
                     click.impl_setClickParams(cc.get(), lastPress.isStill());
-                    cc.setTarget(clickedTarget);
                     Event.fireEvent(clickedTarget, click);
                 }
             }
@@ -2890,7 +2865,7 @@ public class Scene implements EventTarget {
     }
 
     class MouseHandler {
-        private EventTarget pdrEventTarget = null; // pdr - press-drag-release
+        private TargetWrapper pdrEventTarget = new TargetWrapper(); // pdr - press-drag-release
         private boolean pdrInProgress = false;
         private boolean fullPDREntered = false;
 
@@ -2903,6 +2878,7 @@ public class Scene implements EventTarget {
         private boolean middleButtonDown = false;
 
         private EventTarget fullPDRSource = null;
+        private TargetWrapper fullPDRTmpTargetWrapper = new TargetWrapper();
 
         /* lists needed for enter/exit events generation */
         private final List<EventTarget> pdrEventTargets = new ArrayList<EventTarget>();
@@ -2930,7 +2906,7 @@ public class Scene implements EventTarget {
             pdrInProgress = false;
             currentEventTarget = currentEventTargets.size() > 0
                     ? currentEventTargets.get(0) : null;
-            pdrEventTarget = null;
+            pdrEventTarget.clear();
         }
 
         public void enterFullPDR(EventTarget gestureSource) {
@@ -2955,22 +2931,15 @@ public class Scene implements EventTarget {
             fullPDRCurrentEventTargets.clear();
             fullPDRCurrentTarget = null;
         }
-        
-        private void handleEnterExit(MouseEvent e, EventTarget pickedTarget) {
-            if (pickedTarget != currentEventTarget ||
+
+        private void handleEnterExit(MouseEvent e, TargetWrapper pickedTarget) {
+            if (pickedTarget.getEventTarget() != currentEventTarget ||
                     e.getEventType() == MouseEvent.MOUSE_EXITED) {
 
-                newEventTargets.clear();
-
-                if (e.getEventType() != MouseEvent.MOUSE_EXITED) {
-                    if (pickedTarget instanceof Node) {
-                        Node newNode = (Node) pickedTarget;
-                        while(newNode != null) {
-                            newEventTargets.add(newNode);
-                            newNode = newNode.getParent();
-                        }
-                    }
-                    newEventTargets.add(Scene.this);
+                if (e.getEventType() == MouseEvent.MOUSE_EXITED) {
+                    newEventTargets.clear();
+                } else {
+                    pickedTarget.fillHierarchy(newEventTargets);
                 }
 
                 int newTargetsSize = newEventTargets.size();
@@ -3008,7 +2977,7 @@ public class Scene implements EventTarget {
                             MouseEvent.MOUSE_ENTERED_TARGET));
                 }
 
-                currentEventTarget = pickedTarget;
+                currentEventTarget = pickedTarget.getEventTarget();
                 currentEventTargets.clear();
                 for (j++; j < newTargetsSize; j++) {
                     currentEventTargets.add(newEventTargets.get(j));
@@ -3048,81 +3017,48 @@ public class Scene implements EventTarget {
                 middleButtonDown = e.isMiddleButtonDown();
             }
 
-            //maps parent to most visible child
-            EventTarget pickedTarget = null;
-
             if (e.getEventType() != MouseEvent.MOUSE_EXITED) {
-                if (getCamera() instanceof PerspectiveCamera) {
-                    final PickRay pickRay = new PickRay();
-                    Scene.this.impl_peer.computePickRay((float)e.getX(), (float)e.getY(), pickRay);
-                    pickedTarget = pickNode(pickRay);
-                }
-                else {
-                    pickedTarget = pickNode(e.getX(), e.getY());
-                }
+                pick(tmpTargetWrapper, e.getX(), e.getY());
+            } else {
+                tmpTargetWrapper.clear();
             }
 
-            if (pickedTarget == null) {
-                pickedTarget = Scene.this;
-            }
-
-            EventTarget target;
+            TargetWrapper target;
             if (pdrInProgress) {
                 target = pdrEventTarget;
             } else {
-                target = pickedTarget;
+                target = tmpTargetWrapper;
             }
 
             if (gestureStarted) {
-                pdrEventTarget = target;
-
-                pdrEventTargets.clear();
-                if (pdrEventTarget instanceof Node) {
-                    Node n = (Node) pdrEventTarget;
-                    while(n != null) {
-                        pdrEventTargets.add(n);
-                        n = n.getParent();
-                    }
-                }
-
-                pdrEventTargets.add(Scene.this);
+                pdrEventTarget.copy(target);
+                pdrEventTarget.fillHierarchy(pdrEventTargets);
             }
 
             if (!onPulse) {
-                clickGenerator.preProcess(e, target);
+                clickGenerator.preProcess(e);
             }
 
             // enter/exit handling
-            handleEnterExit(e, pickedTarget);
+            handleEnterExit(e, tmpTargetWrapper);
 
-            Cursor cursor = null;
+            Cursor cursor = target.getCursor();
 
             //deliver event to the target node
-            if (target instanceof Node) {
-
-                if (cursor == null) {
-                    cursor = ((Node) target).getCursor();
-                    Parent p = ((Node) target).getParent();
-                    while (cursor == null && p != null) {
-                        cursor = p.getCursor();
-                        p = p.getParent();
-                    }
-                }
-            }
 
             if (Scene.this.dndGesture != null) {
-                Scene.this.dndGesture.processDragDetection(e, target);
+                Scene.this.dndGesture.processDragDetection(e);
             }
 
             if (fullPDREntered && e.getEventType() == MouseEvent.MOUSE_RELEASED) {
                 processFullPDR(e, onPulse);
             }
 
-            if (target != null) {
+            if (target.getEventTarget() != null) {
                 if (e.getEventType() != MouseEvent.MOUSE_ENTERED
                         && e.getEventType() != MouseEvent.MOUSE_EXITED
                         && !onPulse) {
-                    Event.fireEvent(target, e);
+                    Event.fireEvent(target.getEventTarget(), e);
                 }
             }
 
@@ -3131,14 +3067,14 @@ public class Scene implements EventTarget {
             }
 
             if (!onPulse) {
-                clickGenerator.postProcess(e, target);
+                clickGenerator.postProcess(e, target, tmpTargetWrapper);
             }
 
             // handle drag and drop
 
             if (!PLATFORM_DRAG_GESTURE_INITIATION && !onPulse) {
                 if (Scene.this.dndGesture != null) {
-                    if (!Scene.this.dndGesture.process(e, target)) {
+                    if (!Scene.this.dndGesture.process(e, target.getEventTarget())) {
                         dndGesture = null;
                     }
                 }
@@ -3160,7 +3096,7 @@ public class Scene implements EventTarget {
                     !(primaryButtonDown || secondaryButtonDown || middleButtonDown)) {
                 clearPDREventTargets();
                 exitFullPDR(e);
-                handleEnterExit(e, pickedTarget);
+                handleEnterExit(e, tmpTargetWrapper);
             }
 
             lastEvent = e;
@@ -3169,42 +3105,14 @@ public class Scene implements EventTarget {
 
         private void processFullPDR(MouseEvent e, boolean onPulse) {
 
-            // picking
-            EventTarget target = null;
+            pick(fullPDRTmpTargetWrapper, e.getX(), e.getY());
 
-            if (e.getEventType() != MouseEvent.MOUSE_EXITED) {
-                if (getCamera() instanceof PerspectiveCamera) {
-                    final PickRay pickRay = new PickRay();
-                    Scene.this.impl_peer.computePickRay(
-                            (float)e.getX(), (float)e.getY(), pickRay);
-                    target = pickNode(pickRay);
-                } else {
-                    target = pickNode(e.getX(), e.getY());
-                }
-            }
-
-            if (target == null &&
-                    e.getSceneX() >= 0 && e.getSceneY() >= 0 &&
-                    e.getSceneX() <= Scene.this.getWidth() &&
-                    e.getSceneY() <= Scene.this.getHeight())  {
-                target = Scene.this;
-            }
+            final EventTarget eventTarget = fullPDRTmpTargetWrapper.getEventTarget();
 
             // enter/exit handling
-            if (target != fullPDRCurrentTarget) {
+            if (eventTarget != fullPDRCurrentTarget) {
 
-                fullPDRNewEventTargets.clear();
-
-                if (target != null) {
-                    if (target instanceof Node) {
-                        Node newNode = (Node) target;
-                        while(newNode != null) {
-                            fullPDRNewEventTargets.add(newNode);
-                            newNode = newNode.getParent();
-                        }
-                    }
-                    fullPDRNewEventTargets.add(Scene.this);
-                }
+                fullPDRTmpTargetWrapper.fillHierarchy(fullPDRNewEventTargets);
 
                 int newTargetsSize = fullPDRNewEventTargets.size();
                 int i = fullPDRCurrentEventTargets.size() - 1;
@@ -3230,22 +3138,22 @@ public class Scene implements EventTarget {
                             MouseDragEvent.MOUSE_DRAG_ENTERED_TARGET));
                 }
 
-                fullPDRCurrentTarget = target;
+                fullPDRCurrentTarget = eventTarget;
                 fullPDRCurrentEventTargets.clear();
                 fullPDRCurrentEventTargets.addAll(fullPDRNewEventTargets);
             }
             // done enter/exit handling
 
             // event delivery
-            if (target != null && !onPulse) {
+            if (eventTarget != null && !onPulse) {
                 if (e.getEventType() == MouseEvent.MOUSE_DRAGGED) {
-                    Event.fireEvent(target, MouseDragEvent.impl_copy(
-                            target, target, fullPDRSource, e,
+                    Event.fireEvent(eventTarget, MouseDragEvent.impl_copy(
+                            eventTarget, eventTarget, fullPDRSource, e,
                             MouseDragEvent.MOUSE_DRAG_OVER));
                 }
                 if (e.getEventType() == MouseEvent.MOUSE_RELEASED) {
-                    Event.fireEvent(target, MouseDragEvent.impl_copy(
-                            target, target, fullPDRSource, e,
+                    Event.fireEvent(eventTarget, MouseDragEvent.impl_copy(
+                            eventTarget, eventTarget, fullPDRSource, e,
                             MouseDragEvent.MOUSE_DRAG_RELEASED));
                 }
             }
@@ -3645,7 +3553,7 @@ public class Scene implements EventTarget {
 
         return tail;
     }
-    
+
     /***************************************************************************
      *                                                                         *
      *                             Context Menus                               *
@@ -5341,5 +5249,70 @@ public class Scene implements EventTarget {
             };
         }
         return onInputMethodTextChanged;
+    }
+
+    /*
+     * This class represents a picked target - either node, or scne, or null.
+     * It provides functionality needed for the targets and covers the fact
+     * that they are different kinds of animals.
+     */
+    private class TargetWrapper {
+        private Scene scene;
+        private Node node;
+
+        /**
+         * Fills the list with the target and all its parents (including scene)
+         */
+        public void fillHierarchy(final List<EventTarget> list) {
+            list.clear();
+            Node n = node;
+            while(n != null) {
+                list.add(n);
+                n = n.getParent();
+            }
+
+            if (scene != null) {
+                list.add(scene);
+            }
+        }
+
+        public EventTarget getEventTarget() {
+            return node != null ? node : scene;
+        }
+
+        public Cursor getCursor() {
+            Cursor cursor = null;
+            if (node != null) {
+                cursor = node.getCursor();
+                Parent p = node.getParent();
+                while (cursor == null && p != null) {
+                    cursor = p.getCursor();
+                    p = p.getParent();
+                }
+            }
+            return cursor;
+        }
+
+        public void clear() {
+            set(null, null);
+        }
+
+        public void setScene(Scene scene) {
+            set(null, scene);
+        }
+
+        public void setNode(Node node) {
+            set(node, node.getScene());
+        }
+
+        public void copy(TargetWrapper tw) {
+            node = tw.node;
+            scene = tw.scene;
+        }
+
+        private void set(Node n, Scene s) {
+            node = n;
+            scene = s;
+        }
     }
 }
