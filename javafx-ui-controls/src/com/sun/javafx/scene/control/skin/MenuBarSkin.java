@@ -57,6 +57,7 @@ import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 
@@ -98,14 +99,28 @@ public class MenuBarSkin extends SkinBase<MenuBar, BehaviorBase<MenuBar>> implem
     private List<MenuBase> wrappedMenus;
 
     private static void setSystemMenu(Stage stage) {
-        if (stage.isFocused() && stage != currentMenuBarStage) {
-            List<MenuBase> menuList = null;
-            MenuBarSkin skin = systemMenuMap.get(stage);
-            if (skin != null) {
-                menuList = skin.wrappedMenus;
+        if (stage.isFocused()) {
+            while (stage.getOwner() instanceof Stage) {
+                MenuBarSkin skin = systemMenuMap.get(stage);
+                if (skin != null && skin.wrappedMenus != null) {
+                    break;
+                } else {
+                    // This is a secondary stage (dialog) that doesn't
+                    // have own menu bar.
+                    //
+                    // Continue looking for a menu bar in the parent stage.
+                    stage = (Stage)stage.getOwner();
+                }
             }
-            Toolkit.getToolkit().getSystemMenu().setMenus((menuList != null) ? menuList : emptyMenuList);
-            currentMenuBarStage = stage;
+            if (stage != currentMenuBarStage) {
+                List<MenuBase> menuList = null;
+                MenuBarSkin skin = systemMenuMap.get(stage);
+                if (skin != null) {
+                    menuList = skin.wrappedMenus;
+                }
+                Toolkit.getToolkit().getSystemMenu().setMenus((menuList != null) ? menuList : emptyMenuList);
+                currentMenuBarStage = stage;
+            }
         }
     }
 
@@ -372,13 +387,18 @@ public class MenuBarSkin extends SkinBase<MenuBar, BehaviorBase<MenuBar>> implem
             Scene scene = getSkinnable().getScene();
             if (scene.getWindow() instanceof Stage) {
                 Stage stage = (Stage)scene.getWindow();
+                MenuBarSkin curMBSkin = (systemMenuMap != null) ? systemMenuMap.get(stage) : null;
                 if (getSkinnable().isUseSystemMenuBar() && !menusContainCustomMenuItem()) {
+                    if (curMBSkin != null &&
+                        (curMBSkin.getScene() == null || curMBSkin.getScene().getWindow() == null)) {
+                        // Fix for RT-20951. The MenuBar may have been removed from the Stage.
+                        systemMenuMap.remove(stage);
+                        curMBSkin = null;
+                    }
+
                     // Set the system menu bar if not set by another
                     // MenuBarSkin instance on this stage.
-                    if (systemMenuMap == null ||
-                        systemMenuMap.get(stage) == null ||
-                        systemMenuMap.get(stage) == this) {
-
+                    if (systemMenuMap == null || curMBSkin == null || curMBSkin == this) {
                         if (systemMenuMap == null) {
                             initSystemMenuBar();
                         }
@@ -403,7 +423,8 @@ public class MenuBarSkin extends SkinBase<MenuBar, BehaviorBase<MenuBar>> implem
                         return;
                     }
                 }
-                if (systemMenuMap != null && systemMenuMap.get(stage) == this) {
+
+                if (curMBSkin == this) {
                     // This MenuBar was previously installed in the
                     // system menu bar. Remove it.
                     wrappedMenus = null;
