@@ -295,7 +295,8 @@ public class StyleablePropertyTest {
             @Override
             public StyleHelper impl_createStyleHelper() {
                 shelper = StyleHelper.create(cascadingStyles, 0, 0);
-                shelper.valueCache = new HashMap<Reference<StyleHelper.StyleCacheKey>, List<StyleHelper.CacheEntry>>();
+                shelper.valueCache = new HashMap<StyleHelper.StyleCacheKey, List<StyleHelper.CacheEntry>>();
+                shelper.keysInUse = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
                 return shelper;
             }
             
@@ -327,7 +328,8 @@ public class StyleablePropertyTest {
             @Override
             public StyleHelper impl_createStyleHelper() {
                 shelper = StyleHelper.create(cascadingStyles, 0, 1);
-                shelper.valueCache = new HashMap<Reference<StyleHelper.StyleCacheKey>, List<StyleHelper.CacheEntry>>();
+                shelper.valueCache = new HashMap<StyleHelper.StyleCacheKey, List<StyleHelper.CacheEntry>>();
+                shelper.keysInUse = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
                 return shelper;
             }
             
@@ -363,7 +365,8 @@ public class StyleablePropertyTest {
         @Override
         public StyleHelper impl_createStyleHelper() {
             shelper = StyleHelper.create(cascadingStyles, 0, 1);
-            shelper.valueCache = new HashMap<Reference<StyleHelper.StyleCacheKey>, List<StyleHelper.CacheEntry>>();
+            shelper.valueCache = new HashMap<StyleHelper.StyleCacheKey, List<StyleHelper.CacheEntry>>();
+            shelper.keysInUse = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
             return shelper;
         }
             
@@ -1068,7 +1071,7 @@ public class StyleablePropertyTest {
             createCascadingStyle(root, fxBase), 
             createCascadingStyle(root, fxColor)
         );
-        group.setStyle("-fx-fill: red;");
+        group.setStyle("-fx-fill: black;");
         
         final Rectangle rectangle = createRectangle(
             createCascadingStyle(rect, fxFill), 
@@ -1092,13 +1095,11 @@ public class StyleablePropertyTest {
 //        System.out.println("matchingStyles: " + matchingStyles);
 //        System.out.println("expecteds: " + expecteds);
 //        System.out.println("actuals: " + actuals);
-
-        assertEquals(expecteds.size(), actuals.size(), 0);
                 
         for (Style style : expecteds) {
-            if (!actuals.remove(style)) fail();
+            actuals.remove(style);
         }
-        assertTrue(actuals.isEmpty());
+        assertTrue(actuals.toString(), actuals.isEmpty());
     }    
     
     @Test

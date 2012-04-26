@@ -583,7 +583,7 @@ public class VirtualFlow extends Region {
                     ** if we scrolled on the other plane.
                     */
                     ScrollBar nonVirtualBar = isVertical() ? hbar : vbar;
-                    if (nonVirtualBar.isVisible()) {
+                    if (nonVirtualBar.isVisible()) {                        
 
                         double nonVirtualDelta = isVertical() ? event.getDeltaX() : event.getDeltaY();
                         double newValue = nonVirtualBar.getValue() - nonVirtualDelta;
@@ -717,6 +717,14 @@ public class VirtualFlow extends Region {
 //        addChangedListener(VERTICAL, listenerY);
 //        vbar.addChangedListener(ScrollBar.VALUE, listenerY);
 
+        ChangeListener listenerY = new ChangeListener() {
+            @Override
+            public void changed(ObservableValue ov, Object t, Object t1) {
+                clipView.setClipY(isVertical() ? 0 : vbar.getValue());
+            }
+        };
+        vbar.valueProperty().addListener(listenerY);
+        
         /*
          * Watch the PositionMapper.position property, and when it changes
          * update the location position value within this VirtualFlow instance.
@@ -1792,6 +1800,13 @@ public class VirtualFlow extends Region {
 //                layingOut = false;
                 return;
             }
+
+            // In this case, we're asked to show a random cell
+//            layingOut = true;
+            mapper.adjustPositionToIndex(index);
+            addAllToPile();
+            requestLayout();
+//            layingOut = false;            
         }
     }
 
