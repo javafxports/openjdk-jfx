@@ -2,20 +2,21 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.sun.javafx.scene.control;
+package com.sun.javafx.scene.control.skin;
 
+import com.sun.javafx.scene.control.*;
 import com.sun.javafx.css.StyleManager;
 import java.util.List;
-import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.PopupControl;
 import javafx.scene.control.Separator;
 import javafx.scene.effect.DropShadow;
@@ -49,10 +50,11 @@ public class ColorPalette extends Region {
     Path path;
     ColorPicker colorPicker;
     GridPane customColorGrid = new GridPane();
-    Button addColorButton = new Button("Add Color...");
+//    Button addColorButton = new Button("Add Color...");
+    Hyperlink customColorLink = new Hyperlink("Custom Color..");
     Separator separator = new Separator();
     Window owner;
-    ColorPickerAddColorPane addColorDialog = null;
+    CustomColorDialog customColorDialog = null;
     int customColumnIndex = 0, customRowIndex = 0;
     private final List<ColorSquare> customSquares = FXCollections.observableArrayList();
  
@@ -61,47 +63,47 @@ public class ColorPalette extends Region {
     private PopupControl popupControl;
     private ColorSquare focusedSquare;
     
-    private ObjectProperty<Color> customColor = new SimpleObjectProperty<Color>(Color.WHITE);
-    public ObjectProperty<Color> customColorProperty() { return customColor; }
-    public Color getcustomColor() { return customColor.get(); }
-    public void setCustomColor(Color newColor) { customColor.set(newColor);}
-    
-    public ColorPalette(Color initPaint, ColorPicker colorPicker) {
+    public ColorPalette(Color initPaint, final ColorPicker colorPicker) {
         getStyleClass().add("color-panel");
         this.colorPicker = colorPicker;
+        owner = colorPicker.getScene().getWindow();
         cpg = new ColorPickerGrid(initPaint);
-        addColorDialog = new ColorPickerAddColorPane(owner, colorPicker.colorProperty());
-        addColorButton.setPrefWidth(cpg.prefWidth(-1));
-        addColorButton.setOnAction(new EventHandler<ActionEvent>() {
+        customColorDialog = new CustomColorDialog(owner, colorPicker.valueProperty());
+        customColorLink.setPrefWidth(cpg.prefWidth(-1));
+        customColorLink.setAlignment(Pos.CENTER);
+        customColorLink.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent t) {
                 if (popupControl != null) popupControl.setAutoHide(false);
-                addColorDialog.show(x, y);
+                customColorDialog.show(x, y);
                 if (popupControl != null) popupControl.setAutoHide(true);
             }
         });
-        addColorDialog.customColorProperty.addListener(new ChangeListener<Color>() {
+        customColorDialog.customColorProperty.addListener(new ChangeListener<Color>() {
             @Override public void changed(ObservableValue<? extends Color> ov, Color t, Color t1) {
-                if (!customColorAdded) {
-                    customColorAdded = true;
-                    customColorGrid.setGridLinesVisible(true);
-                }
-                ColorSquare cs = new ColorSquare(addColorDialog.customColorProperty.get());
-                customSquares.add(cs);
-                customColorGrid.add(cs, customColumnIndex, customRowIndex);
-                if (customColumnIndex == 0) { // new row - add empty squares
-                    for (int i = 0; i < NUM_OF_COLUMNS - 1; i++) {
-                        ColorSquare emptySquare = new ColorSquare(null);
-                        customSquares.add(emptySquare);
-                        customColorGrid.add(emptySquare, i+1, customRowIndex);
+                if (customColorDialog.saveCustomColor) {
+                    if (!customColorAdded) {
+                        customColorAdded = true;
+                        customColorGrid.setGridLinesVisible(true);
                     }
+                    ColorSquare cs = new ColorSquare(customColorDialog.customColorProperty.get());
+                    customSquares.add(cs);
+                    customColorGrid.add(cs, customColumnIndex, customRowIndex);
+                    if (customColumnIndex == 0) { // new row - add empty squares
+                        for (int i = 0; i < NUM_OF_COLUMNS - 1; i++) {
+                            ColorSquare emptySquare = new ColorSquare(null);
+                            customSquares.add(emptySquare);
+                            customColorGrid.add(emptySquare, i+1, customRowIndex);
+                        }
+                    }
+                    customColumnIndex++;
+                    if (customColumnIndex == NUM_OF_COLUMNS) {
+                        customColumnIndex = 0;
+                        customRowIndex++;
+                    } 
+                    requestLayout();
                 }
-                customColumnIndex++;
-                if (customColumnIndex == NUM_OF_COLUMNS) {
-                    customColumnIndex = 0;
-                    customRowIndex++;
-                } 
-                requestLayout();
+                colorPicker.setValue(customColorDialog.customColorProperty.get());
             }
         });
         
@@ -114,9 +116,9 @@ public class ColorPalette extends Region {
         path.setEffect(new DropShadow(15, 0, 1, Color.gray(0, 0.6)));
         path.setCache(true);
         initNavigation();
-        getChildren().addAll(path, cpg, customColorGrid, separator, addColorButton);
+        getChildren().addAll(path, cpg, customColorGrid, separator, customColorLink);
     }
-    
+
     private void initNavigation() {
         setOnKeyPressed(new EventHandler<KeyEvent>() {
             @Override public void handle(KeyEvent ke) {
@@ -147,6 +149,7 @@ public class ColorPalette extends Region {
                                     (index-1) : (NUM_OF_ROWS*NUM_OF_COLUMNS)-1);
                 prevSquare.setHoverValue(true);
                 focusedSquare = prevSquare;
+                System.out.println("cs isFocused = "+prevSquare.isFocused());
                 break;
             } 
         }
@@ -186,6 +189,7 @@ public class ColorPalette extends Region {
                 ColorSquare prevSquare = cpg.getSquares().get(
                         (index != (NUM_OF_ROWS*NUM_OF_COLUMNS)-1) ? (index+1) : 0);
                 prevSquare.setHoverValue(true);
+                System.out.println("cs isFocused = "+prevSquare.isFocused());
                 focusedSquare = prevSquare;
                 break;
             } 
@@ -229,11 +233,6 @@ public class ColorPalette extends Region {
     public ColorPickerGrid getColorGrid() {
         return cpg;
     }
-    public void setOwner(ColorPicker colorPicker) {
-        this.colorPicker = colorPicker;
-        owner = colorPicker.getScene().getWindow();
-        cpg.owner = colorPicker.getScene().getWindow();
-    }
     
     @Override protected void layoutChildren() {
         double paddingX = getInsets().getLeft();
@@ -266,7 +265,7 @@ public class ColorPalette extends Region {
         }
         separator.resizeRelocate(x, y, cpg.prefWidth(-1), separator.prefHeight(-1));
         y = y+separator.prefHeight(-1)+GAP;
-        addColorButton.resizeRelocate(x, y, cpg.prefWidth(-1), addColorButton.prefHeight(-1));
+        customColorLink.resizeRelocate(x, y, cpg.prefWidth(-1), customColorLink.prefHeight(-1));
     }
     
     @Override protected double computePrefWidth(double height) {
@@ -275,16 +274,12 @@ public class ColorPalette extends Region {
     
     @Override protected double computePrefHeight(double width) {
         double totalHeight = cpg.prefHeight(-1) + GAP + customColorGrid.prefHeight(-1) +
-                GAP + separator.prefHeight(-1) + GAP + addColorButton.prefHeight(-1);
+                GAP + separator.prefHeight(-1) + GAP + customColorLink.prefHeight(-1);
         return getInsets().getTop() + totalHeight + getInsets().getBottom();
     }
-    
-    private void setCustomColorAdded(boolean value) {
-        this.customColorAdded = value;
-    }
-    
+   
     public boolean isAddColorDialogShowing() {
-        return addColorDialog.isVisible();
+        return customColorDialog.isVisible();
     }
 
     class ColorSquare extends StackPane {
@@ -308,8 +303,8 @@ public class ColorPalette extends Region {
                     if (event.getClickCount() == 1) {
                         if (rectangle.getFill() != null) {
                             if (rectangle.getFill() instanceof Color) {
-                                colorPicker.setColor((Color) rectangle.getFill());
-                                cpg.setColor((Color)rectangle.getFill());
+                                colorPicker.setValue((Color) rectangle.getFill());
+                                colorPicker.fireEvent(new ActionEvent());
                             }
                             event.consume();
                         }
@@ -378,7 +373,6 @@ public class ColorPalette extends Region {
     
     class ColorPickerGrid extends GridPane {
 
-        private Color currentColor = null;
         private final List<ColorSquare> squares;
         Window owner;
 
@@ -407,21 +401,11 @@ public class ColorPalette extends Region {
                     rowIndex++;
                 }
             }
-            setColor(initPaint);
         }
         
         public List<ColorSquare> getSquares() {
             return squares;
         }
-        
-        private ObjectProperty<Color> color = new SimpleObjectProperty<Color>(Color.RED) {
-            @Override protected void invalidated() {
-                currentColor = get(); 
-            }
-        };
-        public ObjectProperty<Color> colorProperty() { return color; }
-        public Color getColor() { return color.get(); }
-        public void setColor(Color newColor) { color.set(newColor);}
 
         double[] rawValues = {
             255, 255, 255, // first row
