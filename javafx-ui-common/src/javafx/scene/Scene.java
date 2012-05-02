@@ -1163,7 +1163,7 @@ public class Scene implements EventTarget {
      * with the scene graph, see the <a href="doc-files/cssref.html">CSS Reference
      * Guide</a>.
      *
-     * @returns the list of stylesheets to use with this scene
+     * @return the list of stylesheets to use with this scene
      */
     public final ObservableList<String> getStylesheets() { return stylesheets; }
 
