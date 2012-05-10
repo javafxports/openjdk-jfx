@@ -98,7 +98,7 @@ import com.sun.javafx.tk.TKScenePaintListener;
 import com.sun.javafx.tk.TKStage;
 import com.sun.javafx.tk.Toolkit;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ObjectPropertyBase;
@@ -439,7 +439,9 @@ public class Scene implements EventTarget {
      * so that it can be laid out on the next pulse without requiring its
      * ancestors to be laid out.
      */
-    private Set<Node> dirtyLayoutRoots = new HashSet<Node>(10);
+    private Set<Parent> dirtyLayoutRootsA = new LinkedHashSet<Parent>(10);
+    private Set<Parent> dirtyLayoutRootsB = new LinkedHashSet<Parent>(10);
+    private Set<Parent> dirtyLayoutRoots = dirtyLayoutRootsA;
 
     /**
      * Add the specified parent to this scene's dirty layout list.
@@ -454,18 +456,14 @@ public class Scene implements EventTarget {
             Toolkit.getToolkit().requestNextPulse();
         }
         // Add the node.
-        if (!dirtyLayoutRoots.contains(p)) {
-            dirtyLayoutRoots.add(p);
-        }
+        dirtyLayoutRoots.add(p);
     }
 
     /**
      * Remove the specified parent from this scene's dirty layout list.
      */
     void removeFromDirtyLayoutList(Parent p) {
-        if (dirtyLayoutRoots.contains(p)) {
-            dirtyLayoutRoots.remove(p);
-        }
+        dirtyLayoutRoots.remove(p);
     }
 
     private void doLayoutPass() {
@@ -488,12 +486,14 @@ public class Scene implements EventTarget {
     private void layoutDirtyRoots() {
         if (dirtyLayoutRoots.size() > 0) {
             PlatformLogger logger = Logging.getLayoutLogger();
-            ArrayList temp = new ArrayList(dirtyLayoutRoots);
-            dirtyLayoutRoots.clear();
-            int cnt = temp.size();
+            Set<Parent> temp = dirtyLayoutRoots;
+            if (dirtyLayoutRoots == dirtyLayoutRootsA) {
+                dirtyLayoutRoots = dirtyLayoutRootsB;
+            } else {
+                dirtyLayoutRoots = dirtyLayoutRootsA;
+            }
 
-            for (int i = 0; i < cnt; i++) {
-                final Parent parent = (Parent) temp.get(i);
+            for (Parent parent : temp) {
                 if (parent.getScene() == this && parent.isNeedsLayout()) {
                     if (logger.isLoggable(PlatformLogger.FINE)) {
                         logger.fine("<<< START >>> root = "+parent.toString());
@@ -504,6 +504,7 @@ public class Scene implements EventTarget {
                     }
                 }
             }
+            temp.clear();
         }
     }
 
@@ -1016,6 +1017,9 @@ public class Scene implements EventTarget {
      * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
+    // SB-dependency: RT-21222 has been filed to track this
+    // TODO: need to ensure that both SceneBuilder and JDevloper have migrated
+    // to new 2.2 public API before we remove this.
     @Deprecated
     public Object renderToImage(Object platformImage) {
         return renderToImage(platformImage, 1.0f);
@@ -1697,6 +1701,7 @@ public class Scene implements EventTarget {
      * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
+    // SB-dependency: RT-11080 has been filed to track this
     @Deprecated
     public Node impl_getFocusOwner() {
         return getKeyHandler().getFocusOwner();
@@ -1709,6 +1714,7 @@ public class Scene implements EventTarget {
      * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
+    // SB-dependency: RT-11080 has been filed to track this
     @Deprecated
     private ObjectProperty<Node> impl_focusOwner;
 
@@ -1734,6 +1740,7 @@ public class Scene implements EventTarget {
      * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
+    // SB-dependency: RT-11080 has been filed to track this
     @Deprecated
     public final ObjectProperty<Node> impl_focusOwnerProperty() {
         if (impl_focusOwner == null) {

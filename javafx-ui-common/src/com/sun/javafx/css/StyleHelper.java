@@ -70,7 +70,7 @@ public class StyleHelper {
      * used to represent SKIP because if a String constant were used it might
      * accidentally match some actual string value specified in the CSS.
      */
-    private static final Object SKIP = new int[0];
+    private static final CalculatedValue SKIP = new CalculatedValue(new int[0], null, true);
 
     /**
      * Constructs and returns a StyleHelper for the given sequence of styles.
@@ -153,17 +153,48 @@ public class StyleHelper {
      * Note that all StyleHelper instances within a given Scene all 
      * share the same valueCache! 
      */
-    Map<StyleCacheKey, List<CacheEntry>> valueCache;
+    Map<StyleCacheKey, StyleCacheEntry> styleCache;
+    Map<StyleCacheKey, Reference<StyleCacheKey>> styleCacheKeyRefs;
     
-    /**
-     * Outside of StyleHelper, StyleCacheKeys are Reference&lt;StyleCacheKey&gt;.
-     * This Map holds the StyleHelper as the key so the Reference won't get
-     * collected. At least, thats the theory. This is set from StyleManager.
-     * As with valueCache, there is only one shared instance of this Map
-     * for a given Scene.
-     */
-    Map<StyleCacheKey,Reference<StyleCacheKey>> keysInUse;
+    public static final class StyleCacheKey {
+        final int[] indices;
+        
+        StyleCacheKey(int[] indices) {
+            this.indices = indices;
+        }
 
+        private static int[] getIndices(Node node, int count) {
+            if (node == null) return new int[count];
+            int[] indices = getIndices(node.getParent(), ++count);
+            StyleHelper sh = node.impl_getStyleHelper();
+            indices[count-1] = (sh != null) ? sh.helperIndex : 0;
+            return indices;
+        }
+        
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final StyleCacheKey other = (StyleCacheKey) obj;
+            if (!Arrays.equals(this.indices, other.indices)) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 5;
+            hash = 67 * hash + Arrays.hashCode(this.indices);
+            return hash;
+        }
+        
+    }
+    
     /**
      * Called from Node.impl_createStyleHelper before a getting a new
      * StyleHelper for a Node. The impl_createStyleHelper method is called
@@ -172,15 +203,13 @@ public class StyleHelper {
      * to a parent, etc. Since the CSS structure has changed, the cached
      * values are invalid.
      */
-    public void clearCachedValues(Reference<StyleCacheKey> key) {
-        if (key != null && valueCache != null) {
-            List<CacheEntry> entries = valueCache.remove(key);
-            if (entries == null || entries.isEmpty()) return;
-            for(CacheEntry entry : entries) {
-                if (entry.values != null) entry.values.clear();
-            }
-            key.clear();
-            entries.clear();
+    public void clearCachedValues(Reference<StyleCacheKey> keyRef) {
+        if (keyRef != null && keyRef.get() != null) {
+            final StyleCacheKey key = keyRef.get();
+            final StyleCacheEntry styleCacheEntry = styleCache.remove(key);
+            styleCacheEntry.clearEntries();
+            styleCacheKeyRefs.remove(key);
+            keyRef.clear();
         }
     }
 
@@ -190,47 +219,35 @@ public class StyleHelper {
      */
     public Reference<StyleCacheKey> createStyleCacheKey(Node node) {
 
-        int[] indices = StyleCacheKey.getIndices(node, 0);
 
         // Note: valueCache will not be null. The valueCache is owned
         // by the StylesheetContainer (see StyleManager) and is set when the
         // stylehelper is created.
-        assert(valueCache != null);
+        assert(styleCache != null);
 
+        final int[] indices = StyleCacheKey.getIndices(node, 0);
+        final StyleCacheKey styleCacheKey = new StyleCacheKey(indices);
+        
         //
         // Look to see if there is already a cache for this set of helpers
         //
-
-        // If we encounter a key with a null referent, then the key is added
-        // to a list and then removed later in order to avoid concurrent mod.
-        List<StyleCacheKey> keysToRemove = null;
-
-        Reference<StyleCacheKey> existingKeyRef = null;
-
-        for(Entry<StyleCacheKey,Reference<StyleCacheKey>> entry : keysInUse.entrySet()) {
-            final StyleCacheKey key = entry.getKey();
-            final Reference<StyleCacheKey> keyRef = entry.getValue();
-            if (keyRef.get() == null) {
-                if (keysToRemove == null) keysToRemove = new ArrayList<StyleCacheKey>();
-                keysToRemove.add(key);
-                continue;
-            }
-            if (Arrays.equals(key.indices, indices)) {
-                existingKeyRef = keyRef;
-                break;
-            }
-        }
-
-        if (keysToRemove != null) {
-            for (StyleCacheKey key : keysToRemove) {
-                keysInUse.remove(key);
-                for(CacheEntry entry : valueCache.remove(key)) {
-                    entry.values.clear();
+        final Reference<StyleCacheKey> existingKeyRef = styleCacheKeyRefs.get(styleCacheKey);
+        if (existingKeyRef != null) {
+            
+            if (existingKeyRef.get() != null) {
+                return existingKeyRef;
+                
+            } else {
+                // key not in use, clean up
+                styleCacheKeyRefs.remove(styleCacheKey);
+                
+                final StyleCacheEntry styleCacheEntry = styleCache.remove(styleCacheKey);
+                if (styleCacheEntry != null) {
+                    styleCacheEntry.clearEntries();
                 }
             }
+            
         }
-
-        if (existingKeyRef != null) return existingKeyRef;
 
         // The List<CacheEntry> should only contain entries for those
         // pseudoclass states that have styles. The StyleHelper's
@@ -252,37 +269,41 @@ public class StyleHelper {
             parent = parent.getParent();
         }
 
-        // No existing cache was found for this set of helpers.
-        final StyleCacheKey key = new StyleCacheKey(indices, pclassMasks);
-        final Reference<StyleCacheKey> keyRef = new WeakReference(key);
-        valueCache.put(key, new ArrayList<CacheEntry>());
-        keysInUse.put(key, keyRef);
+        final StyleCacheEntry value = new StyleCacheEntry(pclassMasks);
+        styleCache.put(styleCacheKey, value);
+        
+        final Reference<StyleCacheKey> keyRef = 
+            new WeakReference<StyleCacheKey>(styleCacheKey);
+        styleCacheKeyRefs.put(styleCacheKey, keyRef);
+        
         return keyRef;
     }
 
     /**
-     * There should only ever be one instance of a StyleCacheKey for a given
+     * There should only ever be one instance of a StyleCache for a given
      * set of indices. See the createStyleCacheKey method.
      */
-    public final static class StyleCacheKey {
-        private final int[] indices;
+    final static class StyleCacheEntry {
+        
         // see comments in createStyleCacheKey
         private final long[] pclassMask;
+        
+        private final List<CacheEntry> entries;
 
-        private StyleCacheKey(int[] indices, long[] pclassMask) {
-            this.indices = indices;
+        private StyleCacheEntry(long[] pclassMask) {
             this.pclassMask = pclassMask;
+            this.entries = new ArrayList<CacheEntry>();
         }
-
-        private static int[] getIndices(Node node, int count) {
-            if (node == null) return new int[count];
-            int[] indices = getIndices(node.getParent(), ++count);
-            StyleHelper sh = node.impl_getStyleHelper();
-            indices[count-1] = (sh != null) ? sh.helperIndex : 0;
-            return indices;
+        
+        void clearEntries() {
+            for (int n=0, nMax=entries.size(); n<nMax; n++) {
+                CacheEntry ce = entries.get(n);
+                ce.values.clear();
+            }
+            entries.clear();
         }
+        
     }
-
 
     /**
      * An entry in the valueCache. See the valueCache comments for more.
@@ -310,8 +331,14 @@ public class StyleHelper {
         final StyleCacheKey key = keyRef != null ? keyRef.get() : null;
         if(key == null) return null;
         
-        final List<CacheEntry> cachedValues = valueCache.get(key);
-        if (cachedValues == null) return null;
+        final StyleCacheEntry styleCacheEntry = styleCache.get(key);
+        if (styleCacheEntry == null) {
+            styleCache.remove(key);
+            styleCacheKeyRefs.remove(key);
+            return null;
+        }
+               
+        final List<CacheEntry> cachedValues = styleCacheEntry.entries;
 
         //
         // Find the entry in the list that matches the states
@@ -321,11 +348,11 @@ public class StyleHelper {
         // style maps of this set of StyleHelpers. Calculated values are
         // cached by pseudoclass state, but only the pseudoclass states
         // that mater are used in the search.
-        final long[] pclassMask = new long[key.pclassMask.length];
+        final long[] pclassMask = new long[styleCacheEntry.pclassMask.length];
         assert (pclassMask.length == states.length);
 
         for (int n=0; n<pclassMask.length; n++) {
-            pclassMask[n] = key.pclassMask[n] & states[n];
+            pclassMask[n] = styleCacheEntry.pclassMask[n] & states[n];
         }
 
         // the return value...
@@ -691,9 +718,12 @@ public class StyleHelper {
                 // the style came from the user agent stylesheet, then
                 // skip the value. A style from a user agent stylesheet should
                 // not override the user set style.
-                if (calculatedValue != null &&
-                    (calculatedValue.origin == Stylesheet.Origin.USER_AGENT) &&
-                        isUserSetProperty(node, styleable)) {
+                if (calculatedValue == SKIP
+                    || (   calculatedValue != null
+                        && calculatedValue.origin == Stylesheet.Origin.USER_AGENT
+                        && isUserSetProperty(node, styleable)
+                       )
+                    ) {
                     continue;
                 }
 
@@ -712,10 +742,10 @@ public class StyleHelper {
 
             }
 
-            final Object value = calculatedValue.value;
             // If the CalculatedValue value is not SKIP then we will set it.
-            if (value == SKIP) continue;
+            if (calculatedValue == SKIP) continue;
             
+                final Object value = calculatedValue.value;
                 if (LOGGER.isLoggable(PlatformLogger.FINER)) {
                     LOGGER.finer("call " + node + ".impl_cssSet(" +
                                     property + ", " + value + ")");
@@ -730,6 +760,8 @@ public class StyleHelper {
                     }
                     
                 } catch (Exception e) {
+                    final String msg = String.format("Failed to set css [%s] due to %s\n", styleable, e.getMessage());
+                    StyleManager.getInstance().errorsProperty().add(msg);                    
                     // TODO: use logger here
                     PlatformLogger logger = Logging.getCSSLogger();
                     if (logger.isLoggable(PlatformLogger.WARNING)) {
@@ -870,7 +902,7 @@ public class StyleHelper {
                     CalculatedValue constituent = 
                         lookup(node, subkey, isUserSet, states, userStyles, 
                             originatingNode, cacheEntry, styleList);
-                    if (constituent.value != SKIP) {
+                    if (constituent != SKIP) {
                         if (subs == null) {
                             subs = new HashMap<StyleableProperty,Object>();
                         }
@@ -896,12 +928,14 @@ public class StyleHelper {
                     final Object ret = keyType.convert(subs);
                     return new CalculatedValue(ret, origin, isCacheable);
                 } catch (ClassCastException cce) {
+                    final String msg = formatExceptionMessage(node, styleable, style.getStyle(), cce);
+                    StyleManager.getInstance().errorsProperty().add(msg);
                     if (LOGGER.isLoggable(PlatformLogger.WARNING)) {
                         LOGGER.warning("caught: ", cce);
                         LOGGER.warning("styleable = " + styleable);
                         LOGGER.warning("node = " + node.toString());
                     }
-                    return new CalculatedValue(SKIP, null, true);
+                    return SKIP;
                 }
             }                
             
@@ -913,7 +947,7 @@ public class StyleHelper {
             // skip the value. A style from a user agent stylesheet should
             // not override the user set style.
             if (isUserSet && style.getOrigin() == Stylesheet.Origin.USER_AGENT) {
-                return new CalculatedValue(SKIP, style.getOrigin(), true);
+                return SKIP;
             }
 
             // If there was a style found, then we want to check whether the
@@ -952,7 +986,7 @@ public class StyleHelper {
             // the property, do not look for inherited styles.
             if (isUserSet) {
 
-                    return new CalculatedValue(SKIP, Stylesheet.Origin.USER, true);
+                    return SKIP;
                     
             }
 
@@ -966,7 +1000,7 @@ public class StyleHelper {
 
             // Not inherited. There is no style but we don't want to
             // set the default value if the user set the property
-            return new CalculatedValue(SKIP, null, true);
+            return SKIP;
 
         } else if (smap.containsKey(styleable.getProperty())) {
 
@@ -995,11 +1029,11 @@ public class StyleHelper {
                 styleList.add(initialStyle);
             }
 
-            return new CalculatedValue(initialValue, null, false);
+            return new CalculatedValue(initialValue, null, true);
 
         } else {
 
-            return new CalculatedValue(SKIP, null, true);
+            return SKIP;
 
         }
     }
@@ -1021,7 +1055,7 @@ public class StyleHelper {
         }
 
         if (parent == null) {
-            return new CalculatedValue(SKIP, null, true);
+            return SKIP;
         }
         return parentStyleHelper.lookup(parent, styleable, false,
                 parentStyleHelper.getPseudoClassState(parent),
@@ -1192,6 +1226,31 @@ public class StyleHelper {
         return sbuf.toString();
     }
 
+    private String formatExceptionMessage(Node node, StyleableProperty styleable, Style style, Exception e) {
+        
+        StringBuilder sbuf = new StringBuilder();
+        sbuf.append("Caught ")
+            .append(e.toString())
+            .append("'")
+            .append(" while calculating value for '")
+            .append(styleable.getProperty())
+            .append("'");
+        
+        final Rule rule = style != null ? style.getDeclaration().getRule(): null;
+        final Stylesheet stylesheet = rule != null ? rule.getStylesheet() : null;
+        final java.net.URL url = stylesheet != null ? stylesheet.getUrl() : null;
+        if (url != null) {
+            sbuf.append(" from rule '")
+                .append(style.getSelector())
+                .append("' in stylesheet ").append(url.toExternalForm());
+        } else if (stylesheet != null && Stylesheet.Origin.INLINE == stylesheet.getOrigin()) {
+            sbuf.append(" from inline style on " )
+                .append(node.toString());            
+        }
+        
+        return sbuf.toString();
+    }
+    
     private CalculatedValue calculateValue(
             final CascadingStyle style, 
             final Node node, 
@@ -1244,7 +1303,7 @@ public class StyleHelper {
                 return new CalculatedValue(val, origin, cacheable.get());
                 
             } catch (ClassCastException cce) {
-                String msg = formatUnresolvedLookupMessage(node, styleable, style.getStyle(),resolved);
+                final String msg = formatUnresolvedLookupMessage(node, styleable, style.getStyle(),resolved);
                 StyleManager.getInstance().errorsProperty().add(msg);
                 if (LOGGER.isLoggable(PlatformLogger.WARNING)) {
                     LOGGER.warning(msg);
@@ -1252,21 +1311,25 @@ public class StyleHelper {
                     LOGGER.fine("styleable = " + styleable);
                     LOGGER.fine("styles = " + styleable.getMatchingStyles(node));
                 }
-                return new CalculatedValue(SKIP, null, true);
+                return SKIP;
             } catch (IllegalArgumentException iae) {
+                final String msg = formatExceptionMessage(node, styleable, style.getStyle(), iae);
+                StyleManager.getInstance().errorsProperty().add(msg);
                 if (LOGGER.isLoggable(PlatformLogger.WARNING)) {
                     LOGGER.warning("caught: ", iae);
                     LOGGER.fine("styleable = " + styleable);
                     LOGGER.fine("node = " + node.toString());
                 }
-                return new CalculatedValue(SKIP, null, true);
+                return SKIP;
             } catch (NullPointerException npe) {
+                final String msg = formatExceptionMessage(node, styleable, style.getStyle(), npe);
+                StyleManager.getInstance().errorsProperty().add(msg);
                 if (LOGGER.isLoggable(PlatformLogger.WARNING)) {
                     LOGGER.warning("caught: ", npe);
                     LOGGER.fine("styleable = " + styleable);
                     LOGGER.fine("node = " + node.toString());
                 }
-                return new CalculatedValue(SKIP, null, true);
+                return SKIP;
             } finally {
                 resolved.nullResolved();
             }
@@ -1712,7 +1775,7 @@ public class StyleHelper {
             size   == -1   &&
             weight == null &&
             style  == null) {
-            return new CalculatedValue(SKIP, null, true);
+            return SKIP;
         }
         
         // Now we have all the pieces from the stylesheet

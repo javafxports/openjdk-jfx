@@ -27,8 +27,10 @@ package com.sun.javafx.css;
 
 import com.sun.javafx.css.StyleHelper.StyleCacheKey;
 import com.sun.javafx.css.converters.SizeConverter;
+import com.sun.javafx.tk.Toolkit;
 import javafx.scene.paint.Color;
 import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,7 +42,10 @@ import javafx.beans.value.ObservableValue;
 import javafx.beans.value.WritableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.MapChangeListener;
+import javafx.scene.Group;
+import javafx.scene.Scene;
 import javafx.scene.shape.Rectangle;
+import javafx.stage.Stage;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -97,29 +102,32 @@ public class Node_cssStyleMap_Test {
 
             // I'm bypassing StyleManager by creating StyleHelper directly. 
             StyleHelper shelper = null;
-            
+                                   
             @Override
-            public Reference<StyleCacheKey> impl_getStyleCacheKey() {
+            public Reference<StyleHelper.StyleCacheKey> impl_getStyleCacheKey() {
                 return shelper.createStyleCacheKey(this);
             }
             
+            @Override public StyleHelper impl_getStyleHelper() {
+                if (shelper == null) shelper = impl_createStyleHelper();
+                return shelper;
+            }            
+            
             @Override
             public StyleHelper impl_createStyleHelper() {
-                
                 // If no styleclass, then create an StyleHelper with no mappings.
                 // Otherwise, create a StyleHelper matching the "rect" style class.
-                if (this.getStyleClass().isEmpty()) {
+                if (getStyleClass().isEmpty()) {
                     shelper = StyleHelper.create(Collections.EMPTY_LIST, 0, 0);
-                    shelper.valueCache = new HashMap<StyleHelper.StyleCacheKey, List<StyleHelper.CacheEntry>>();
-                    shelper.keysInUse = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
+                    shelper.styleCache = new HashMap<StyleHelper.StyleCacheKey, StyleHelper.StyleCacheEntry>();
+                    shelper.styleCacheKeyRefs = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
                 } else  {
                     shelper = StyleHelper.create(styles, 0, 0);
-                    shelper.valueCache = new HashMap<StyleHelper.StyleCacheKey, List<StyleHelper.CacheEntry>>();
-                    shelper.keysInUse = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
+                    shelper.styleCache = new HashMap<StyleHelper.StyleCacheKey, StyleHelper.StyleCacheEntry>();
+                    shelper.styleCacheKeyRefs = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
                 }
                 return shelper;
             }
-            
         };
                 
         rect.getStyleClass().add("rect");
@@ -145,7 +153,7 @@ public class Node_cssStyleMap_Test {
                 }
             }
         });
-        
+               
         rect.impl_processCSS(true);
         assertEquals(decls.size(), nchanges);
 

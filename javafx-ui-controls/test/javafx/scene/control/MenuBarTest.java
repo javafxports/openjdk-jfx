@@ -101,7 +101,7 @@ public class MenuBarTest {
         assertTrue(menu.isShowing());
         
     }
-    
+
     @Test public void testSubMenuDismissalWithKeyNavigation() {
         final MouseEventGenerator generator = new MouseEventGenerator();
         AnchorPane root = new AnchorPane();

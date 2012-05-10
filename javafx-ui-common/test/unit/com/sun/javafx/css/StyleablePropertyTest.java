@@ -43,10 +43,20 @@ import com.sun.javafx.geom.transform.BaseTransform;
 import com.sun.javafx.jmx.MXNodeAlgorithm;
 import com.sun.javafx.jmx.MXNodeAlgorithmContext;
 import com.sun.javafx.sg.PGNode;
+import java.io.File;
+import java.io.IOException;
 import java.lang.ref.Reference;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.net.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.value.WritableValue;
 import javafx.scene.Group;
@@ -295,8 +305,8 @@ public class StyleablePropertyTest {
             @Override
             public StyleHelper impl_createStyleHelper() {
                 shelper = StyleHelper.create(cascadingStyles, 0, 0);
-                shelper.valueCache = new HashMap<StyleHelper.StyleCacheKey, List<StyleHelper.CacheEntry>>();
-                shelper.keysInUse = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
+                shelper.styleCache = new HashMap<StyleHelper.StyleCacheKey, StyleHelper.StyleCacheEntry>();
+                shelper.styleCacheKeyRefs = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
                 return shelper;
             }
             
@@ -328,8 +338,8 @@ public class StyleablePropertyTest {
             @Override
             public StyleHelper impl_createStyleHelper() {
                 shelper = StyleHelper.create(cascadingStyles, 0, 1);
-                shelper.valueCache = new HashMap<StyleHelper.StyleCacheKey, List<StyleHelper.CacheEntry>>();
-                shelper.keysInUse = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
+                shelper.styleCache = new HashMap<StyleHelper.StyleCacheKey, StyleHelper.StyleCacheEntry>();
+                shelper.styleCacheKeyRefs = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
                 return shelper;
             }
             
@@ -365,8 +375,8 @@ public class StyleablePropertyTest {
         @Override
         public StyleHelper impl_createStyleHelper() {
             shelper = StyleHelper.create(cascadingStyles, 0, 1);
-            shelper.valueCache = new HashMap<StyleHelper.StyleCacheKey, List<StyleHelper.CacheEntry>>();
-            shelper.keysInUse = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
+            shelper.styleCache = new HashMap<StyleHelper.StyleCacheKey, StyleHelper.StyleCacheEntry>();
+            shelper.styleCacheKeyRefs = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
             return shelper;
         }
             
@@ -1266,4 +1276,139 @@ public class StyleablePropertyTest {
         }
         assertTrue(actuals.isEmpty());
     }    
+    
+    @Test
+    public void testRT18097() {
+        try {
+            ClassLoader cl = Thread.currentThread().getContextClassLoader();
+            URL base = cl.getResource("javafx/..");
+            File f = new File(base.toURI());
+            System.out.println(f.getPath());
+            recursiveCheck(f, f.getPath().length());
+        } catch (Exception ex) {
+            ex.printStackTrace(System.err);
+            fail(ex.getMessage());
+        }
+    }
+
+    private static void checkClass(Class someClass) {
+        
+        if (javafx.scene.Node.class.isAssignableFrom(someClass) &&
+                Modifier.isAbstract(someClass.getModifiers()) == false) {
+            
+            String what = someClass.getName();
+            try {
+                // should get NoSuchMethodException if ctor is not public
+//                Constructor ctor = someClass.getConstructor((Class[])null);
+                Method m = someClass.getMethod("impl_CSS_STYLEABLES", (Class[]) null);
+//                Node node = (Node)ctor.newInstance((Object[])null);
+                Node node = (Node)someClass.newInstance();
+                for (StyleableProperty styleable : (List<StyleableProperty>) m.invoke(null)) {
+                    
+                    what = someClass.getName() + " " + styleable.getProperty();
+                    WritableValue writable = styleable.getWritableValue(node);
+                    assertNotNull(what, writable);
+                    
+                    Object defaultValue = writable.getValue();
+                    Object initialValue = styleable.getInitialValue((Node) someClass.newInstance());
+                    
+                    if (defaultValue instanceof Number) {
+                        // 5 and 5.0 are not the same according to equals,
+                        // but they should be...
+                        assert(initialValue instanceof Number);
+                        double d1 = ((Number)defaultValue).doubleValue();
+                        double d2 = ((Number)initialValue).doubleValue();
+                        assertEquals(what, d1, d2, .001);
+                        
+                    } else if (defaultValue != null && defaultValue.getClass().isArray()) {
+                        assertTrue(what, Arrays.equals((Object[])defaultValue, (Object[])initialValue));
+                    } else {
+                        assertEquals(what, defaultValue, initialValue);
+                    }
+                    
+                }
+
+            } catch (NoSuchMethodException ex) {
+                System.err.println("NoSuchMethodException: " + what);
+            } catch (IllegalAccessException ex) {
+                System.err.println("IllegalAccessException: " + what);
+            } catch (IllegalArgumentException ex) {
+                System.err.println("IllegalArgumentException: " + what);
+            } catch (InvocationTargetException ex) {
+                System.err.println("InvocationTargetException: " + what);
+            } catch (InstantiationException ex) {
+                System.err.println("InstantiationException: " + what);                
+            }
+        }
+    }
+
+    private static void checkDirectory(File directory, final int pathLength) {
+        if (directory.isDirectory()) {
+            
+            for (File file : directory.listFiles()) {
+                if (file.isFile() && file.getName().endsWith(".class")) {
+                    final String filePath = file.getPath();
+                    final int len = file.getPath().length() - ".class".length();
+                    final String clName = 
+                        file.getPath().substring(pathLength+1, len).replace(File.separatorChar,'.');
+                    try {
+                        final Class cl = Class.forName(clName);
+                        if (cl != null) checkClass(cl);
+                    } catch(ClassNotFoundException ex) {
+                        System.err.println(ex.toString() + " " + clName);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void recursiveCheck(File directory, int pathLength) {
+        if (directory.isDirectory()) {
+//            System.out.println(directory.getPath());
+            checkDirectory(directory, pathLength);
+
+            for (File subFile : directory.listFiles()) {
+                recursiveCheck(subFile, pathLength);
+            }
+        }
+    }    
+    
+    @Test
+    public void testRT_21185() {
+        
+        Color c1 = new Color(.1,.2,.3,1.0);
+        Color c2 = new Color(.1,.2,.3,1.0);
+                
+        Rectangle rect = new Rectangle();
+        rect.setFill(c1);
+        
+        StyleableProperty fill = StyleableProperty.getStyleableProperty(rect.fillProperty());
+        Stylesheet.Origin origin = StyleableProperty.getOrigin(rect.fillProperty());
+
+        // set should not change the value if the values are equal and origin is same
+        assertEquals(c1, c2);
+        fill.set(rect, c2, origin);
+        assert(c1 == rect.getFill()); // instance should not change.
+
+        // set should change the value if the values are not equal.
+        c2 = new Color(.3,.2,.1,1.0);
+        fill.set(rect, c2, origin);
+        assert(c2 == rect.getFill());
+        
+        // set should change the value if the origin is not the same
+        fill.set(rect, c2, Stylesheet.Origin.INLINE);
+        origin = StyleableProperty.getOrigin(rect.fillProperty());
+        assert(origin == Stylesheet.Origin.INLINE);
+        
+        // set should change the value if one is null and the other is not.
+        rect.setFill(null);
+        fill.set(rect, c2, origin);
+        assert(c2 == rect.getFill());
+        
+        // set should change the value if one is null and the other is not
+        fill.set(rect, null, origin);
+        assertNull(rect.getFill());
+        
+    }
+    
 }

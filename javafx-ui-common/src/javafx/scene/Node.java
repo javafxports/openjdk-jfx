@@ -5809,7 +5809,7 @@ public abstract class Node implements EventTarget {
 
     public final BooleanProperty focusTraversableProperty() {
         if (focusTraversable == null) {
-            focusTraversable = new StyleableBooleanProperty() {
+            focusTraversable = new StyleableBooleanProperty(false) {
 
                 @Override
                 public void invalidated() {
@@ -6375,7 +6375,7 @@ public abstract class Node implements EventTarget {
      * @treatAsPrivate implementation detail
      * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
      */    
-    @Deprecated
+    @Deprecated // SB-dependency: RT-21094 has been filed to track this
     public final Styleable impl_getStyleable() {
         
         if (styleable == null) {
@@ -6423,6 +6423,26 @@ public abstract class Node implements EventTarget {
     }
          
      /**
+      * Not everything uses the default value of false for focusTraversable. 
+      * This method provides a way to have them return the correct initial value.
+      * @treatAsPrivate implementation detail
+      */
+    @Deprecated
+    protected /*do not make final*/ Boolean impl_cssGetFocusTraversableInitialValue() {
+        return Boolean.FALSE;
+    }
+
+     /**
+      * Not everything uses the default value of null for cursor. 
+      * This method provides a way to have them return the correct initial value.
+      * @treatAsPrivate implementation detail
+      */
+    @Deprecated
+    protected /*do not make final*/ Cursor impl_cssGetCursorInitialValue() {
+        return null;
+    }
+    
+     /**
       * Super-lazy instantiation pattern from Bill Pugh.
       * @treatAsPrivate implementation detail
       */
@@ -6440,6 +6460,14 @@ public abstract class Node implements EventTarget {
                 public WritableValue<Cursor> getWritableValue(Node node) {
                     return node.cursorProperty();
                 }
+                
+                @Override
+                public Cursor getInitialValue(Node node) {
+                    // Most controls default focusTraversable to true. 
+                    // Give a way to have them return the correct default value.
+                    return node.impl_cssGetCursorInitialValue();
+                }
+                
             };
         private static final StyleableProperty<Node,Effect> EFFECT =
             new StyleableProperty<Node,Effect>("-fx-effect", EffectConverter.getInstance()) {
@@ -6467,6 +6495,14 @@ public abstract class Node implements EventTarget {
                 public BooleanProperty getWritableValue(Node node) {
                     return node.focusTraversableProperty();
                 }
+
+                @Override
+                public Boolean getInitialValue(Node node) {
+                    // Most controls default focusTraversable to true. 
+                    // Give a way to have them return the correct default value.
+                    return node.impl_cssGetFocusTraversableInitialValue();
+                }
+                
             };
         private static final StyleableProperty<Node,Number> OPACITY =
             new StyleableProperty<Node,Number>("-fx-opacity", 
@@ -6685,7 +6721,7 @@ public abstract class Node implements EventTarget {
       * @treatAsPrivate implementation detail
       * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
       */
-     @Deprecated
+     @Deprecated // SB-dependency: RT-21096 has been filed to track this
      public final ObservableMap<WritableValue, List<Style>> impl_getStyleMap() {
          return impl_getStyleable().getStyleMap();
      }
@@ -6695,7 +6731,7 @@ public abstract class Node implements EventTarget {
       * @treatAsPrivate implementation detail
       * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
       */
-     @Deprecated
+     @Deprecated // SB-dependency: RT-21096 has been filed to track this
      public final void impl_setStyleMap(ObservableMap<WritableValue, List<Style>> styleMap) {
          impl_getStyleable().setStyleMap(styleMap);
      }
@@ -6866,7 +6902,7 @@ public abstract class Node implements EventTarget {
      * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
-    @Deprecated
+    @Deprecated // SB-dependency: RT-21206 has been filed to track this
     public void impl_processCSS(boolean reapply) {
 
         StyleHelper styleHelper = null;
@@ -6929,7 +6965,7 @@ public abstract class Node implements EventTarget {
         // If we had a helper before, but don't now, then this
         // node's StyleHelper was nuked by the StyleManager
         // and we need to create a new one.
-        if (styleHelperRef != null && (helper = styleHelperRef.get()) == null) {
+        if (styleHelperRef == null || (helper = styleHelperRef.get()) == null) {
 
             helper = impl_createStyleHelper();
 

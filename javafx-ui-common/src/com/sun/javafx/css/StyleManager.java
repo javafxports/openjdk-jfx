@@ -546,8 +546,10 @@ public class StyleManager {
         if (defaultUserAgentStylesheet != null) {
             defaultUserAgentStylesheet.setOrigin(Stylesheet.Origin.USER_AGENT);
         }
-        if (defaultContainer != null) defaultContainer.destroy();
-        defaultContainer = null;
+        if (defaultContainer != null) {
+            defaultContainer.destroy();
+            defaultContainer = null;
+        }
         if (containerMap != null) {
             Iterator<StylesheetContainer> iter = containerMap.values().iterator();
             while(iter.hasNext()) {
@@ -654,6 +656,10 @@ public class StyleManager {
         // This should happen infrequently since adding and removing stylesheets
         // on the fly should be the exception rather than the rule.
         //
+        if (defaultContainer != null) {
+            defaultContainer.destroy();
+            defaultContainer = null;
+        }
         if (containerMap != null) {
 
             final StylesheetContainer container = remove(containerMap, scene);
@@ -880,18 +886,8 @@ public class StyleManager {
         // Since a StylesheetContainer is created for a Scene with stylesheets,
         // it makes sense that the container should own the valueCache. This
         // way, each scene gets its own valueCache.
-        private final Map<StyleHelper.StyleCacheKey, List<StyleHelper.CacheEntry>> valueCache;
-
-        // For the Reference<StyleHelper.StyleCacheKey>, we manage the 
-        // Reference, not the garbage collector. Basically, when a StyleHelper's
-        // cache is cleared, we want to clear the ref right away which lets
-        // the node know immediately that the StyleCacheKey is no longer valid.
-        // This is bending the Reference paradigm a bit, but it does convey that 
-        // the referent is subject to anhilation. Anyway, for this to work,
-        // the same Reference needs to be returned and the StyleHelper needs
-        // a place to keep them. Like the valueCache, there is one of these
-        // mappings per scene.
-        private final Map<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>> keysInUse;
+        private final Map<StyleHelper.StyleCacheKey, StyleHelper.StyleCacheEntry> styleCache;
+        private final Map<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>> styleCacheKeyRefs;
         
         // ditto
         private int helperCount;
@@ -925,8 +921,8 @@ public class StyleManager {
 
             StyleManager.getInstance().userAgentStylesheetMap.addListener(mapChangeListener);
 
-            valueCache = new HashMap<StyleHelper.StyleCacheKey, List<StyleHelper.CacheEntry>>();
-            keysInUse = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
+            styleCache = new HashMap<StyleHelper.StyleCacheKey, StyleHelper.StyleCacheEntry>();
+            styleCacheKeyRefs = new HashMap<StyleHelper.StyleCacheKey, Reference<StyleHelper.StyleCacheKey>>();
             helperCount = 0;
         }
 
@@ -939,17 +935,18 @@ public class StyleManager {
 
         private void clearCaches() {
 
-            for (Entry<StyleHelper.StyleCacheKey, List<StyleHelper.CacheEntry>> entry : valueCache.entrySet()) {
-                for (StyleHelper.CacheEntry cacheEntry : entry.getValue()) {
-                    cacheEntry.values.clear();
-                }
-                final Reference<StyleHelper.StyleCacheKey> ref = 
-                    keysInUse.remove(entry.getKey());
-                if (ref != null) ref.clear();
-                entry.getValue().clear();
+            for (StyleHelper.StyleCacheEntry value : styleCache.values()) {
+                value.clearEntries();
             }
-            valueCache.clear();
-
+            styleCache.clear();
+            
+            for (Reference<StyleHelper.StyleCacheKey> ref : styleCacheKeyRefs.values()) {
+                // don't wait for GC to figure it out - logic in Node
+                // depends on this                
+                ref.clear();
+            }
+            styleCacheKeyRefs.clear();
+            
             for(Cache cache : cacheMap.values()) {
                 cache.clear();
             }
@@ -1193,8 +1190,8 @@ public class StyleManager {
          */
         StyleHelper getStyleHelper(Scene scene) {
             StyleHelper helper = StyleHelper.create(getStyles(scene), 0, ++helperCount);
-            helper.valueCache = valueCache;
-            helper.keysInUse = keysInUse;
+            helper.styleCache = styleCache;
+            helper.styleCacheKeyRefs = styleCacheKeyRefs;
             return helper;
         }
 
@@ -1257,16 +1254,6 @@ public class StyleManager {
     public ObservableList<String> getErrors() {
         return errors;
     }
-
-    private static class StyleHelperCacheContainer {
-        private final StyleHelper styleHelper;
-        private final Reference<StyleHelper> styleHelperRef;
-        private StyleHelperCacheContainer(StyleHelper styleHelper, 
-                Reference<StyleHelper> styleHelperRef) {
-            this.styleHelper = styleHelper;
-            this.styleHelperRef = styleHelperRef;
-        }        
-    }
     
     /**
      * Creates and caches StyleHelpers, reusing them as often as practical.
@@ -1277,33 +1264,31 @@ public class StyleManager {
         private final List<Rule> rules;
         private final long pseudoclassStateMask;
         private final boolean impactsChildren;
-        private final Map<Long, StyleHelperCacheContainer> cache;
+        private final Map<Long, StyleHelper> cache;
+        private final Map<Long, Reference<StyleHelper>> refs;
 
         Cache(List<Rule> rules, long pseudoclassStateMask, boolean impactsChildren) {
             this.rules = rules;
             this.pseudoclassStateMask = pseudoclassStateMask;
             this.impactsChildren = impactsChildren;
-            cache = new HashMap<Long, StyleHelperCacheContainer>();
+            cache = new HashMap<Long, StyleHelper>();
+            refs = new HashMap<Long, Reference<StyleHelper>>();
         }
 
         private void clear() {
 
-            for(StyleHelperCacheContainer helperContainer : cache.values()) {
-                
-                final StyleHelper helper = (helperContainer != null)
-                        ? helperContainer.styleHelper
-                        : null;
-                
-                if (helper == null) {
-                    continue;
-                }
-                helper.valueCache = null;
+            for(StyleHelper helper : cache.values()) {
                 helper.clearStyleMap();
-                helperContainer.styleHelperRef.clear();
-                
+                helper.styleCache = null;                
             }
-
             cache.clear();
+            
+            for (Reference<StyleHelper> ref : refs.values()) {
+                // don't wait for GC to figure it out - logic in Node
+                // depends on this
+                ref.clear();
+            }
+            refs.clear();
             rules.clear();
         }
 
@@ -1348,13 +1333,21 @@ public class StyleManager {
                 }
                 mask = mask << 1;
             }
-
-            if (cache.containsKey(key)) {
-                final StyleHelperCacheContainer helperContainer = cache.get(key);
-                if (helperContainer != null) {
-                    return helperContainer.styleHelperRef;
+            
+            final Long keyObj = Long.valueOf(key);            
+            if (refs.containsKey(keyObj)) {
+                final Reference<StyleHelper> ref = refs.get(keyObj);
+                if (ref != null && ref.get() != null) {
+                    return ref;
+                } else {
+                    refs.remove(keyObj);
+                    final StyleHelper helper = cache.remove(keyObj);
+                    if (helper != null) {
+                        helper.clearStyleMap();
+                        helper.styleCache = null;
+                        helper.styleCacheKeyRefs = null;
+                    }
                 }
-                cache.remove(key);
             } 
             
             // We need to create a new StyleHelper, add it to the cache,
@@ -1364,14 +1357,13 @@ public class StyleManager {
                 StyleHelper.create(styles, pseudoclassStateMask,
                     ++(container.helperCount));
 
-            helper.valueCache = container.valueCache;
-            helper.keysInUse = container.keysInUse;
+            helper.styleCache = container.styleCache;
+            helper.styleCacheKeyRefs = container.styleCacheKeyRefs;
+            cache.put(keyObj, helper);
             
             final Reference<StyleHelper> helperRef =
                 new WeakReference<StyleHelper>(helper);            
-            final StyleHelperCacheContainer helperContainer = 
-                new StyleHelperCacheContainer(helper, helperRef);
-            cache.put(key, helperContainer);
+            refs.put(keyObj, helperRef);
 
             return helperRef;
         }
