@@ -2412,7 +2412,8 @@ public class Scene implements EventTarget {
                 throw new RuntimeException("Too many touch points reported");
             }
 
-            touchPoints[order] = new TouchPoint(id, state, x, y, xAbs, yAbs);
+            touchPoints[order] = TouchPoint.impl_touchPoint(id, state,
+                    x, y, xAbs, yAbs);
         }
 
         @Override

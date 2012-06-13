@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.sun.javafx.scene.control.skin.resources;
 
-package javafx.scene.input;
+import java.util.ResourceBundle;
 
-import com.sun.javafx.test.BuilderTestBase;
-import java.util.Arrays;
-import java.util.Collection;
-import javafx.scene.shape.Rectangle;
+public final class EmbeddedResources {
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+    private static ResourceBundle embeddedResourceBundle;
 
-@RunWith(Parameterized.class)
-public final class TouchPoint_builder_Test extends BuilderTestBase {
-    @Parameters
-    public static Collection data() {
-        BuilderTestBase.Configuration cfg = new BuilderTestBase.Configuration(TouchPoint.class);
-
-        cfg.addProperty("x", 1.0);
-        cfg.addProperty("y", 1.0);
-        cfg.addProperty("screenX", 1.0);
-        cfg.addProperty("screenY", 1.0);
-        cfg.addProperty("state", TouchPoint.State.MOVED);
-        cfg.addProperty("id", 1);
-
-        return Arrays.asList(new Object[] {
-            config(cfg)
-        });
+    public static ResourceBundle getBundle() {
+        if (embeddedResourceBundle == null) {
+            embeddedResourceBundle = ResourceBundle.getBundle("com/sun/javafx/scene/control/skin/resources/embedded");
+        }
+        return embeddedResourceBundle;
     }
 
-    public TouchPoint_builder_Test(final Configuration configuration) {
-        super(configuration);
+    public static String getString(String key) {
+        return getBundle().getString(key);
     }
 }
