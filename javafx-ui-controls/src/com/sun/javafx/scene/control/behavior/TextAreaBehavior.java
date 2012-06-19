@@ -31,6 +31,7 @@ import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
 import javafx.scene.Scene;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.IndexRange;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
@@ -175,9 +176,23 @@ public class TextAreaBehavior extends TextInputControlBehavior<TextArea> {
     @Override public void callAction(String name) {
         final TextArea textInputControl = getControl();
 
+        boolean done = false;
+
         if (textInputControl.isEditable()) {
 //            fnCaretAnim(false);
 //            setCaretOpacity(1.0);
+            setEditing(true);
+            done = true;
+            if ("InsertNewLine".equals(name)) insertNewLine();
+            else if ("InsertTab".equals(name)) insertTab();
+            else {
+                done = false;
+            }
+            setEditing(false);
+        }
+
+        if (!done) {
+            done = true;
             if ("LineStart".equals(name)) skin.lineStart(false, false);
             else if ("LineEnd".equals(name)) skin.lineEnd(false, false);
             else if ("SelectLineStart".equals(name)) skin.lineStart(true, false);
@@ -198,28 +213,35 @@ public class TextAreaBehavior extends TextInputControlBehavior<TextArea> {
             else if ("NextPage".equals(name)) skin.nextPage(false);
             else if ("SelectPreviousPage".equals(name)) skin.previousPage(true);
             else if ("SelectNextPage".equals(name)) skin.nextPage(true);
-            else if ("InsertNewLine".equals(name)) insertNewLine();
-            else if ("InsertTab".equals(name)) insertTab();
-            else super.callAction(name);
+            else {
+                done = false;
+            }
+        }
 //            fnCaretAnim(true);
 
-        } else if ("Copy".equals(name)) {
-            // if the key event is for the "copy" action then we go ahead
-            // and execute it, but for all other key events which occur
-            // when not editable, we don't allow.
-            textInputControl.copy();
-        } else if (name.startsWith("Traverse")) {
-            // call super.callAction() for any focus traversal actions even if
-            // it's not editable
+        if (!done) {
             super.callAction(name);
         }
     }
 
     private void insertNewLine() {
-        getControl().replaceSelection("\n");
+        TextArea textArea = getControl();
+        IndexRange selection = textArea.getSelection();
+        int start = selection.getStart();
+        int end = selection.getEnd();
+
+        getUndoManager().addChange(start, textArea.getText().substring(start, end), "\n", false);
+        textArea.replaceSelection("\n");
     }
+
     private void insertTab() {
-        getControl().replaceSelection("\t");
+        TextArea textArea = getControl();
+        IndexRange selection = textArea.getSelection();
+        int start = selection.getStart();
+        int end = selection.getEnd();
+
+        getUndoManager().addChange(start, textArea.getText().substring(start, end), "\t", false);
+        textArea.replaceSelection("\t");
     }
 
     @Override protected void deleteChar(boolean previous) {
