@@ -353,7 +353,7 @@ public abstract class Node implements EventTarget {
                 s.addToDirtyList(this);
         }
 
-        impl_setDirty(dirtyBit);
+        dirtyBits |= dirtyBit.getMask();
     }
 
     /**
@@ -365,17 +365,6 @@ public abstract class Node implements EventTarget {
     @Deprecated
     protected final boolean impl_isDirty(DirtyBits dirtyBit) {
         return (dirtyBits & dirtyBit.getMask()) != 0;
-    }
-
-    /**
-     * Set the specified dirty bit.
-     *
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
-     */
-    @Deprecated
-    private void impl_setDirty(DirtyBits dirtyBit) {
-        dirtyBits |= dirtyBit.getMask();
     }
 
     /**
@@ -678,11 +667,8 @@ public abstract class Node implements EventTarget {
 
     /**
      * Exists for Parent
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
-    @Deprecated
-    void impl_sceneChanged(Scene old) { }
+    void sceneChanged(Scene old) { }
 
     public final ReadOnlyObjectProperty<Scene> sceneProperty() {
         return scenePropertyImpl().getReadOnlyProperty();
@@ -696,14 +682,6 @@ public abstract class Node implements EventTarget {
                 @Override
                 protected void invalidated() {
                     Scene _scene = get();
-                    if (oldScene != _scene) {
-                        //Note: no need to remove from scene's dirty list
-                        //Scene's is checking if the node's scene is correct
-                        impl_reapplyCSS();
-                        if (_scene != null && !impl_isDirtyEmpty()) {
-                            _scene.addToDirtyList(Node.this);
-                        }
-                    }
                     if (getClip() != null) {
                         getClip().setScene(_scene);
                     }
@@ -718,7 +696,15 @@ public abstract class Node implements EventTarget {
                     }
                     focusSetDirty(oldScene);
                     focusSetDirty(_scene);
-                    impl_sceneChanged(oldScene);
+                    sceneChanged(oldScene);
+                    if (oldScene != _scene) {
+                        //Note: no need to remove from scene's dirty list
+                        //Scene's is checking if the node's scene is correct
+                        impl_reapplyCSS();
+                        if (_scene != null && !impl_isDirtyEmpty()) {
+                            _scene.addToDirtyList(Node.this);
+                        }
+                    }
                     oldScene = _scene;
                 }
 
@@ -1922,7 +1908,7 @@ public abstract class Node implements EventTarget {
      */
     public Dragboard startDragAndDrop(TransferMode... transferModes) {
         if (getScene() != null) {
-            return getScene().impl_startDragAndDrop(this, transferModes);
+            return getScene().startDragAndDrop(this, transferModes);
         }
         
         throw new IllegalStateException("Cannot start drag and drop on node "
@@ -1943,7 +1929,7 @@ public abstract class Node implements EventTarget {
      */
     public void startFullDrag() {
         if (getScene() != null) {
-            getScene().impl_startFullDrag(this);
+            getScene().startFullDrag(this);
             return;
         }
 
@@ -1963,7 +1949,7 @@ public abstract class Node implements EventTarget {
     private Node clipParent;
     // Use a getter function instead of giving clipParent package access,
     // so that clipParent doesn't get turned into a Location.
-    final Node impl_getClipParent() {
+    final Node getClipParent() {
         return clipParent;
     }
 
@@ -2013,7 +1999,7 @@ public abstract class Node implements EventTarget {
     public PGNode impl_getPGNode() {
         if (Utils.assertionEnabled()) {
             // Assertion checking code
-            if (!Scene.impl_isPGAccessAllowed()) {
+            if (!Scene.isPGAccessAllowed()) {
                 java.lang.System.err.println();
                 java.lang.System.err.println("*** unexpected PG access");
                 java.lang.Thread.dumpStack();
@@ -6311,16 +6297,6 @@ public abstract class Node implements EventTarget {
     }
 
     /**
-     * Some nodes require a special handling to request focus.
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
-     */
-    @Deprecated
-    public final void impl_requestFocusImpl(Runnable r) {
-        r.run();
-    }
-
-    /**
      * Traverses from this node in the direction indicated. Note that this
      * node need not actually have the focus, nor need it be focusTraversable.
      * However, the node must be part of a scene, otherwise this request
@@ -7178,11 +7154,8 @@ public abstract class Node implements EventTarget {
 
     /**
      * Needed for testing.
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
-    @Deprecated
-    final CSSFlags impl_getCSSFlags() { return cssFlag; }
+    final CSSFlags getCSSFlags() { return cssFlag; }
 
     /**
      * Used to specify that the list of which pseudoclasses apply to this
