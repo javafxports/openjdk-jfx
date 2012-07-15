@@ -94,27 +94,6 @@ public class StyleManager {
     private Stylesheet defaultUserAgentStylesheet;
 
     /**
-     * User agent stylesheets from Control.getUserAgentStylesheet.
-     * This does not include the default ua styleheet.
-     */
-    private ObservableMap<String,Stylesheet> userAgentStylesheetMap = FXCollections.observableHashMap();
-    private void addUserAgentStylesheet(String fname, Stylesheet stylesheet) {
-
-        if (stylesheet != null) {
-            stylesheet.setOrigin(Stylesheet.Origin.USER_AGENT);
-            userAgentStylesheetMap.put(fname, stylesheet);
-        } else {
-            userAgentStylesheetMap.remove(fname);
-        }
-        
-    }
-    private Stylesheet getUserAgentStylesheet(String fname) {
-
-            return userAgentStylesheetMap.get(fname);
-            
-    }
-
-    /**
      * A map from String => Stylesheet. If a stylesheet for the given URL has
      * already been loaded then we'll simply reuse the stylesheet rather than
      * loading a duplicate.
@@ -648,20 +627,51 @@ public class StyleManager {
         return null;
     }
 
+    
+    /**
+     * User agent stylesheets from Control.getUserAgentStylesheet.
+     */
+    private Map<String,Stylesheet> userAgentStylesheetMap = new HashMap<String,Stylesheet>();
+
+    
     /**
      * Add a user agent stylesheet, possibly overriding styles in the default
-     * user agent stylesheet. The node argument must be an instance of Control.
+     * user agent stylesheet.
      *
      * @param fname The file URL, either relative or absolute, as a String.
      */
     public void addUserAgentStylesheet(String fname) {
+        addUserAgentStylesheet(null, fname);
+    }
+    
+    /**
+     * Add a user agent stylesheet, possibly overriding styles in the default
+     * user agent stylesheet.
+     * @param scene Only used in CssError for tracking back to the scene that loaded the stylesheet
+     * @param fname  The file URL, either relative or absolute, as a String.
+     */
+    // For RT-20643    
+    public void addUserAgentStylesheet(Scene scene, String fname) {
                 
         // nothing to add
         if (fname == null ||  fname.trim().isEmpty()) return;
 
-        Stylesheet ua_stylesheet = loadStylesheet(fname);
+        if (userAgentStylesheetMap.containsKey(fname) == false) {
 
-        addUserAgentStylesheet(fname, ua_stylesheet);
+            // RT-20643
+            CssError.setCurrentScene(scene);
+            
+            Stylesheet ua_stylesheet = loadStylesheet(fname);
+            ua_stylesheet.setOrigin(Stylesheet.Origin.USER_AGENT);
+            userAgentStylesheetMap.put(fname, ua_stylesheet);
+            
+            if (ua_stylesheet != null) {
+                userAgentStylesheetsChanged();                
+            }
+            
+            // RT-20643
+            CssError.setCurrentScene(null);
+        }
 
     }
 
@@ -671,15 +681,31 @@ public class StyleManager {
      * @param fname The file URL, either relative or absolute, as a String.
      */
     public void setDefaultUserAgentStylesheet(String fname) {
+        setDefaultUserAgentStylesheet(null, fname);
+    }
+    
+    /**
+     * Set the default user agent stylesheet
+     * @param scene Only used in CssError for tracking back to the scene that loaded the stylesheet
+     * @param fname  The file URL, either relative or absolute, as a String.
+     */
+    // For RT-20643
+    public void setDefaultUserAgentStylesheet(Scene scene, String fname) {
 
         if (fname == null || fname.trim().isEmpty())
             throw new IllegalArgumentException("null arg fname");
 
+        // RT-20643
+        CssError.setCurrentScene(scene);
+        
         Stylesheet ua_stylesheet = loadStylesheet(fname);
         if (ua_stylesheet != null) {
             ua_stylesheet.setOrigin(Stylesheet.Origin.USER_AGENT);
             setDefaultUserAgentStylesheet(ua_stylesheet);
         } 
+        
+        // RT-20643
+        CssError.setCurrentScene(null);
 
     }
     
@@ -692,6 +718,10 @@ public class StyleManager {
         if (defaultUserAgentStylesheet != null) {
             defaultUserAgentStylesheet.setOrigin(Stylesheet.Origin.USER_AGENT);
         }
+        userAgentStylesheetsChanged();
+    }
+    
+    private void userAgentStylesheetsChanged() {
         if (defaultContainer != null) {
             //
             // RT-21563 if default ua stylesheet is set, then the default 
@@ -815,6 +845,9 @@ public class StyleManager {
         // if there are no stylesheets, then they were probably all removed.
         if (scene.getStylesheets().size() == 0) return;
 
+        // RT-20643
+        CssError.setCurrentScene(scene);
+        
         // create the stylesheets, one per URL supplied
         final Collection<Stylesheet> stylesheets = new ArrayList<Stylesheet>();
         for (int i = 0; i < scene.getStylesheets().size(); i++) {
@@ -834,6 +867,9 @@ public class StyleManager {
             }
         }
 
+        // RT-20643
+        CssError.setCurrentScene(scene);
+        
         // Look up existing user stylesheets and add new stylesheets.
         // We defer creation of the containerMap until needed
         if (containerMap == null) containerMap =
@@ -881,10 +917,7 @@ public class StyleManager {
                 if (value != null) strings.add(value);
             }
         }
-        // even though the list returned could be modified without causing 
-        // harm, returning an unmodifiableList is consistent with 
-        // SimpleSelector.getStyleClasses()
-        return Collections.unmodifiableList(strings);
+        return strings;
     }
 
     /*
@@ -1011,8 +1044,6 @@ public class StyleManager {
          */
         private final Key key;
 
-        private final MapChangeListener<String,Stylesheet> mapChangeListener;
-
         // The StyleHelper's cached values are relevant only for a given scene.
         // Since a StylesheetContainer is created for a Scene with stylesheets,
         // it makes sense that the container should own the valueCache. This
@@ -1031,31 +1062,19 @@ public class StyleManager {
             if (StyleManager.getInstance().defaultUserAgentStylesheet != null) {
                 stylesheets.add(StyleManager.getInstance().defaultUserAgentStylesheet);
             }            
-            stylesheets.addAll(StyleManager.getInstance().userAgentStylesheetMap.values());
+
+            if (StyleManager.getInstance().userAgentStylesheetMap != null &&
+                   StyleManager.getInstance().userAgentStylesheetMap.isEmpty() == false) {
+                stylesheets.addAll(StyleManager.getInstance().userAgentStylesheetMap.values());
+            }            
+            
             if (authorStylesheets != null) stylesheets.addAll(authorStylesheets);
             
-            mapChangeListener = new MapChangeListener<String,Stylesheet>() {
-
-                @Override
-                public void onChanged(Change<? extends String,? extends Stylesheet> change) {
-                    if (change.wasAdded()) {
-                        stylesheets.add(change.getValueAdded());
-                        clearCaches();
-                    } else if (change.wasRemoved()) {
-                        stylesheets.remove(change.getValueRemoved());
-                        clearCaches();
-                    }
-                }
-            };
-
-            StyleManager.getInstance().userAgentStylesheetMap.addListener(mapChangeListener);
-
             styleCache = new HashMap<StyleCacheKey, StyleCacheBucket>();
             smapCount = 0;
         }
 
         private void destroy() {
-            StyleManager.getInstance().userAgentStylesheetMap.removeListener(mapChangeListener);
             stylesheets.clear();
             clearCaches();
         }
@@ -1105,6 +1124,9 @@ public class StyleManager {
             
             final List<ParentStylesheetContainer> list = new ArrayList<ParentStylesheetContainer>();
             
+            // RT-20643 
+            CssError.setCurrentScene(parent.getScene());
+            
             for (int n=0, nMax=parentStylesheets.size(); n<nMax; n++) {
                 final String fname = parentStylesheets.get(n);
                 ParentStylesheetContainer container = null;
@@ -1131,6 +1153,8 @@ public class StyleManager {
                 }
                 if (container != null) list.add(container);
             }
+            // RT-20643 
+            CssError.setCurrentScene(null);
             
             return list;
         }
@@ -1145,7 +1169,7 @@ public class StyleManager {
             // of the node and lookup the associated Cache in the cacheMap
             final String className = node.getClass().getName();
             final String id = node.getId();
-            final long[] styleClass = node.impl_cssGetStyleClassBits();
+            final List<String> styleClass = node.getStyleClass();
             
             final int[] indicesOfParentsWithStylesheets =  
                 getIndicesOfParentsWithStylesheets(
@@ -1328,10 +1352,15 @@ public class StyleManager {
                 final Key newKey = new Key();
                 newKey.className = className;
                 newKey.id = id;
-                newKey.styleClass = styleClass;
+                // Copy the list.
+                // If the contents of the Node's styleClass changes,
+                // the cacheMap lookup should miss.
+                final int nElements = styleClass.size();
+                newKey.styleClass = new ArrayList<String>(nElements);
+                for(int n=0; n<nElements; n++) newKey.styleClass.add(styleClass.get(n));
                 newKey.indices = hasParentStylesheets ? indicesOfParentsWithStylesheets : null;
                 
-                cache = new Cache(this, rules, pseudoclassStateMask, impactsChildren);
+                cache = new Cache(rules, pseudoclassStateMask, impactsChildren);
                 cacheMap.put(newKey, cache);
                 
                 // RT-22565: remember where this cache is used if there are 
@@ -1347,7 +1376,7 @@ public class StyleManager {
             // Return the style helper looked up by the cache. The cache will
             // create a style helper if necessary (and possible), so we don't
             // have to worry about that part.
-            StyleMap smap = cache.getStyleMap(node);
+            StyleMap smap = cache.getStyleMap(this, node);
             if (smap == null) return null;
             
             StyleHelper helper = 
@@ -1363,12 +1392,26 @@ public class StyleManager {
     }
 
     private ObservableList<CssError> errors = null;
+    /** 
+     * Errors that may have occurred during css processing. 
+     * This list is null until errorsProperty() is called.
+     * @return 
+     */
     public ObservableList<CssError> errorsProperty() {
         if (errors == null) {
             errors = FXCollections.observableArrayList();
         }
         return errors;
     }
+    
+    /** 
+     * Errors that may have occurred during css processing.
+     * This list is null until errorsProperty() is called and is used 
+     * internally to figure out whether or  not anyone is interested in 
+     * receiving CssError.
+     * Not meant for general use - call errorsProperty() instead. 
+     * @return 
+     */
     public ObservableList<CssError> getErrors() {
         return errors;
     }
@@ -1392,7 +1435,7 @@ public class StyleManager {
      * Creates and caches maps of styles, reusing them as often as practical.
      */
     private static class Cache {
-        private final StylesheetContainer owner;
+
         // this must be initialized to the appropriate possible rules when
         // the helper cache is created by the StylesheetContainer
         private final List<Rule> rules;
@@ -1400,15 +1443,14 @@ public class StyleManager {
         private final boolean impactsChildren;
         private final Map<Long, StyleMap> cache;
         
-        Cache(StylesheetContainer owner, List<Rule> rules, long pseudoclassStateMask, boolean impactsChildren) {
-            this.owner = owner;
+        Cache(List<Rule> rules, long pseudoclassStateMask, boolean impactsChildren) {
             this.rules = rules;
             this.pseudoclassStateMask = pseudoclassStateMask;
             this.impactsChildren = impactsChildren;
             this.cache = new HashMap<Long, StyleMap>();
         }
 
-        private StyleMap getStyleMap(Node node) {
+        private StyleMap getStyleMap(StylesheetContainer owner, Node node) {
 
             // If this set of rules (which may be empty) impacts children,
             // then this node will get a StyleHelper.
@@ -1543,7 +1585,7 @@ public class StyleManager {
         // necessary.
         String className;
         String id;
-        long[] styleClass;
+        List<String> styleClass;
         
         // this will be initialized if a Parent has a stylesheet and will 
         // hold the indices of those Parents with stylesheets (the Parent's
@@ -1571,7 +1613,7 @@ public class StyleManager {
                         || (id != null && id.equals(other.id))
                        )
                     && (   (styleClass == null && other.styleClass == null)
-                        || (styleClass != null && Arrays.equals(styleClass, other.styleClass))
+                        || (styleClass != null && styleClass.containsAll(other.styleClass))
                        );
                 
                 if (eq && indices != null) {
@@ -1598,7 +1640,7 @@ public class StyleManager {
         public int hashCode() {
             int hash = className.hashCode();
             hash = 31 * (hash + ((id == null || id.isEmpty()) ? 1231 : id.hashCode()));
-            hash = 31 * (hash + ((styleClass == null) ? 1237 : Arrays.hashCode(styleClass)));
+            hash = 31 * (hash + ((styleClass == null || styleClass.isEmpty()) ? 1237 : styleClass.hashCode()));
             if (indices != null) hash = 31 * (hash + Arrays.hashCode(indices));
             return hash;
         }
