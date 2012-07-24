@@ -78,6 +78,7 @@ import javafx.scene.Node;
  * @see CheckBoxTreeCell
  * @see TreeItem
  * @see CheckBox
+ * @since 2.2
  */
 // TODO the TreeModificationEvent doesn't actually bubble in the same way as
 // TreeItem - it just looks that way as the 'bubbling' is done via changing the

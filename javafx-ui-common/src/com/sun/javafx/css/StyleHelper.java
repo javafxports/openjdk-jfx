@@ -303,7 +303,8 @@ public class StyleHelper {
         // member will be null. If this is a local cache, then this member
         // will point to the shared cache for the same states.
         //
-        private final CacheEntry sharedCache;
+        // RT-23079 - weakly reference the shared CacheEntry
+        private final Reference<CacheEntry> sharedCacheRef;
 
         private CacheEntry(long[] states) {
             this(states, null);
@@ -312,16 +313,20 @@ public class StyleHelper {
         private CacheEntry(long[] states, CacheEntry sharedCache) {
             this.states = states;
             this.values = new HashMap<String,CalculatedValue>();
-            this.sharedCache = sharedCache;
+            this.sharedCacheRef = new WeakReference<CacheEntry>(sharedCache);
         }
 
         private CalculatedValue get(String property) {
+            
             CalculatedValue cv = null;
             if (values.isEmpty() == false) {
                 cv = values.get(property);
             }
-            if (cv == null && sharedCache != null) {
-                cv = sharedCache.values.get(property);
+            if (cv == null && sharedCacheRef != null) {
+                final CacheEntry ce = sharedCacheRef.get();
+                if (ce != null) cv = ce.values.get(property);
+                // if referent is null, we should skip the value. 
+                else cv = SKIP; 
             }
             return cv;
         }
@@ -334,7 +339,7 @@ public class StyleHelper {
             // then use local cache if the font origin is inline or user and
             // the value was calculated from a relative size unit. 
             final boolean isLocal = 
-                (sharedCache == null
+                (sharedCacheRef == null
                     || cv.origin == Origin.INLINE
                     || cv.origin == Origin.USER)
                 || (cv.isRelative &&
@@ -343,9 +348,13 @@ public class StyleHelper {
             
             if (isLocal) {
                 values.put(property, cv);
-            } else if (sharedCache.values.containsKey(property) == false) {
-                // don't override value already in shared cache.
-                sharedCache.values.put(property, cv);
+            } else {
+                // if isLocal is false, then sharedCacheRef cannot be null. 
+                final CacheEntry ce = sharedCacheRef.get();
+                if (ce != null && ce.values.containsKey(property) == false) {
+                    // don't override value already in shared cache.
+                    ce.values.put(property, cv);
+                }
             }
         }
 
@@ -435,7 +444,7 @@ public class StyleHelper {
         final int max = entries.size();
         for (int n=0; n<max; n++) {
             CacheEntry entry = entries.get(n);
-            assert (entry.sharedCache != null);
+            assert (entry.sharedCacheRef != null);
             entry.values.clear();
             entry.font = null;
         }
@@ -738,15 +747,23 @@ public class StyleHelper {
         //
                 
         final CacheEntry cacheEntry = getCacheEntry(node, pseudoClassStates);
-        if (cacheEntry == null) {
+        if (cacheEntry == null 
+            || (cacheEntry.sharedCacheRef != null 
+                && cacheEntry.sharedCacheRef.get() == null)) {
             // If cacheEntry is null, then the StyleManager Cache from which
             // this StyleHelper was created has been blown away and this
             // StyleHelper is no good. If this is the case, we need to tell
             // this node to reapply CSS
+            //
+            // RT-23079 - if this is local cache, then the sharedCacheRef 
+            // will not be null. If sharedCacheRef is not null, but its 
+            // referent is null, then the styleMap in the StylesheetContainer
+            // has been cleared and we're working with a cache that is no good.
+            // 
             node.impl_reapplyCSS();
             return;
         }
-
+        
         //
         // if this node has a style map, then we'll populate it.
         // 
@@ -755,7 +772,7 @@ public class StyleHelper {
         //
         // If someone is watching the styles, then we have to take the slow path.
         //
-        boolean fastpath = styleMap == null;
+        boolean fastpath = styleMap == null && inlineStyles == null;
         
         if (cacheEntry.font == null) {
             final CalculatedValue font = 
@@ -782,6 +799,9 @@ public class StyleHelper {
         // Used in the for loop below, and a convenient place to stop when debugging.
         final int max = styleables.size();
 
+        // RT-20643
+        CssError.setCurrentScene(node.getScene());
+        
         // For each property that is settable, we need to do a lookup and
         // transition to that value.
         for(int n=0; n<max; n++) {
@@ -832,19 +852,6 @@ public class StyleHelper {
 
                 calculatedValue = cacheEntry.get(property);
 
-                // RT-10522:
-                // If the user set the property and there is a style and
-                // the style came from the user agent stylesheet, then
-                // skip the value. A style from a user agent stylesheet should
-                // not override the user set style.
-                if (calculatedValue == SKIP
-                    || (   calculatedValue != null
-                        && calculatedValue.origin == Origin.USER_AGENT
-                        && isUserSetProperty(node, styleable)
-                       )
-                    ) {
-                    continue;
-                }
             }
 
             if (calculatedValue == null) {
@@ -854,16 +861,36 @@ public class StyleHelper {
                 calculatedValue = lookup(node, styleable, isUserSet, states, 
                         inlineStyles, node, cacheEntry, styleList);
 
-//                if (fastpath) {
+                if (fastpath) {
                     // if userStyles is null and calculatedValue was null,
                     // then the calculatedValue didn't come from the cache
                     cacheEntry.put(property, calculatedValue);
-//                }
+                }
 
             }
 
-            // If the CalculatedValue value is not SKIP then we will set it.
-            if (calculatedValue == SKIP) continue;
+            // RT-10522:
+            // If the user set the property and there is a style and
+            // the style came from the user agent stylesheet, then
+            // skip the value. A style from a user agent stylesheet should
+            // not override the user set style.
+            //
+            // RT-21894: the origin might be null if the calculatedValue 
+            // comes from reverting back to the initial value. In this case,
+            // make sure the initial value doesn't overwrite the user set value.
+            // Also moved this condition from the fastpath block to here since
+            // the check needs to be done on any calculated value, not just
+            // calculatedValues from cache
+            //
+            if (calculatedValue == SKIP
+                || (   calculatedValue != null
+                    && (   calculatedValue.origin == Origin.USER_AGENT
+                        || calculatedValue.origin == null) 
+                    && isUserSetProperty(node, styleable)
+                    )
+                ) {
+                continue;
+            }
             
                 final Object value = calculatedValue.value;
                 if (LOGGER.isLoggable(PlatformLogger.FINER)) {
@@ -883,7 +910,7 @@ public class StyleHelper {
                     List<CssError> errors = null;
                     if ((errors = StyleManager.getInstance().getErrors()) != null) {
                         final String msg = String.format("Failed to set css [%s] due to %s\n", styleable, e.getMessage());
-                        final CssError error = new CssError.PropertySetError(styleable, node.impl_getStyleable(), msg);
+                        final CssError error = new CssError.PropertySetError(styleable, node, msg);
                         errors.add(error);
                     }
                     // TODO: use logger here
@@ -894,6 +921,10 @@ public class StyleHelper {
                 }
 
             }
+        
+        // RT-20643
+        CssError.setCurrentScene(null);
+
         // If the list weren't empty, we'd worry about animations at this
         // point. TODO need to implement animation trickery here
     }
@@ -1064,7 +1095,7 @@ public class StyleHelper {
                     final String msg = formatExceptionMessage(node, styleable, style.getStyle(), cce);
                     List<CssError> errors = null;
                     if ((errors = StyleManager.getInstance().getErrors()) != null) {
-                        final CssError error = new CssError.PropertySetError(styleable, node.impl_getStyleable(), msg);
+                        final CssError error = new CssError.PropertySetError(styleable, node, msg);
                         errors.add(error);
                     }
                     if (LOGGER.isLoggable(PlatformLogger.WARNING)) {
@@ -1512,7 +1543,7 @@ public class StyleHelper {
                 final String msg = formatUnresolvedLookupMessage(node, styleable, style.getStyle(),resolved);
                 List<CssError> errors = null;
                 if ((errors = StyleManager.getInstance().getErrors()) != null) {
-                    final CssError error = new CssError.PropertySetError(styleable, node.impl_getStyleable(), msg);
+                    final CssError error = new CssError.PropertySetError(styleable, node, msg);
                     errors.add(error);
                 }
                 if (LOGGER.isLoggable(PlatformLogger.WARNING)) {
@@ -1526,7 +1557,7 @@ public class StyleHelper {
                 final String msg = formatExceptionMessage(node, styleable, style.getStyle(), iae);
                 List<CssError> errors = null;
                 if ((errors = StyleManager.getInstance().getErrors()) != null) {
-                    final CssError error = new CssError.PropertySetError(styleable, node.impl_getStyleable(), msg);
+                    final CssError error = new CssError.PropertySetError(styleable, node, msg);
                     errors.add(error);
                 }
                 if (LOGGER.isLoggable(PlatformLogger.WARNING)) {
@@ -1539,7 +1570,7 @@ public class StyleHelper {
                 final String msg = formatExceptionMessage(node, styleable, style.getStyle(), npe);
                 List<CssError> errors = null;
                 if ((errors = StyleManager.getInstance().getErrors()) != null) {
-                    final CssError error = new CssError.PropertySetError(styleable, node.impl_getStyleable(), msg);
+                    final CssError error = new CssError.PropertySetError(styleable, node, msg);
                     errors.add(error);
                 }
                 if (LOGGER.isLoggable(PlatformLogger.WARNING)) {
