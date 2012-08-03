@@ -428,7 +428,43 @@ public abstract class Node implements EventTarget {
     }
 
     /**
-     * This function is called by the synchronizer to update the state of the
+     * A temporary rect used for computing bounds by the various bounds
+     * variables. This bounds starts life as a RectBounds, but may be promoted
+     * to a BoxBounds if there is a 3D transform mixed into its computation.
+     * These two fields were held in a thread local, but were then pulled
+     * out of it so that we could compute bounds before holding the
+     * synchronization lock. These objects have to be per-instance so
+     * that we can pass the right data down to the PG side later during
+     * synchronization (rather than statics as they were before).
+     */
+    public BaseBounds _geomBounds = new RectBounds(0, 0, -1, -1);
+    public BaseBounds _txBounds = new RectBounds(0, 0, -1, -1);
+
+    // Happens before we hold the sync lock
+    void updateBounds() {
+        if (impl_isDirty(DirtyBits.NODE_TRANSFORM)) {
+            updateLocalToParentTransform();
+            _txBounds = getTransformedBounds(_txBounds,
+                                             BaseTransform.IDENTITY_TRANSFORM);
+        }
+
+        if (impl_isDirty(DirtyBits.NODE_BOUNDS)) {
+            _geomBounds = getGeomBounds(_geomBounds,
+                    BaseTransform.IDENTITY_TRANSFORM);
+            if (!impl_isDirty(DirtyBits.NODE_TRANSFORM)) {
+                _txBounds = getTransformedBounds(_txBounds,
+                                                 BaseTransform.IDENTITY_TRANSFORM);
+            }
+        }
+
+        Node n = getClip();
+        if (n != null) {
+            n.updateBounds();
+        }
+    }
+ 
+    /**
+     * This function is called during synchronization to update the state of the
      * PG Node from the FX Node. Subclasses of Node should override this method
      * and must call super.impl_updatePG()
      *
@@ -438,29 +474,15 @@ public abstract class Node implements EventTarget {
     @Deprecated
     public void impl_updatePG() {
         final PGNode peer = impl_getPGNode();
-        TempState tempState = null;
         if (impl_isDirty(DirtyBits.NODE_TRANSFORM)) {
-            tempState = TempState.getInstance();
-            updateLocalToParentTransform();
             peer.setTransformMatrix(localToParentTx);
-            tempState.bounds = getTransformedBounds(
-                                       tempState.bounds,
-                                       BaseTransform.IDENTITY_TRANSFORM);
-            peer.setTransformedBounds(tempState.bounds);
+            peer.setTransformedBounds(_txBounds);
         }
 
         if (impl_isDirty(DirtyBits.NODE_BOUNDS)) {
-            if (tempState == null) {
-                tempState = TempState.getInstance();
-            }
-             tempState.bounds = getGeomBounds(tempState.bounds,
-                                             BaseTransform.IDENTITY_TRANSFORM);
-            peer.setContentBounds(tempState.bounds);
+            peer.setContentBounds(_geomBounds);
             if (!impl_isDirty(DirtyBits.NODE_TRANSFORM)) {
-                tempState.bounds = getTransformedBounds(
-                                           tempState.bounds,
-                                           BaseTransform.IDENTITY_TRANSFORM);
-                peer.setTransformedBounds(tempState.bounds);
+                peer.setTransformedBounds(_txBounds);
             }
         }
 
@@ -2169,9 +2191,11 @@ public abstract class Node implements EventTarget {
 
                 @Override
                 protected void invalidated() {
-                    if (getParent() != null) {
-                        getParent().requestLayout();
+                    final Parent parent = getParent();
+                    if (parent != null) {
+                        parent.managedChildChanged();
                     }
+                    notifyManagedChanged();
                 }
 
                 @Override
@@ -2188,6 +2212,13 @@ public abstract class Node implements EventTarget {
         }
         return managed;
     }
+
+    /**
+     * Called whenever the "managed" flag has changed. This is only
+     * used by Parent as an optimization to keep track of whether a
+     * Parent node is a layout root or not.
+     */
+    void notifyManagedChanged() { }
 
     /**
      * Defines the x coordinate of the translation that is added to this {@code Node}'s
