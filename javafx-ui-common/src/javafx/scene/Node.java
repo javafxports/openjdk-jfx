@@ -2139,7 +2139,7 @@ public abstract class Node implements EventTarget {
         //if (PerformanceTracker.isLoggingEnabled()) {
         //    PerformanceTracker.logEvent("Node.init for [{this}, id=\"{id}\"]");
         //}
-
+        this.styleHelper = new StyleHelper(this);
         setDirty();
         updateTreeVisible();
         //if (PerformanceTracker.isLoggingEnabled()) {
@@ -7451,11 +7451,11 @@ public abstract class Node implements EventTarget {
     @Deprecated // SB-dependency: RT-21206 has been filed to track this    
     public void impl_processCSS(StyleManager styleManager, boolean reapply) {
 
-        // Create a new StyleHelper either if I am told I need to reapply
+        // Match new styles if I am told I need to reapply
         // or if my own flag indicates I need to reapply
         if (reapply || (cssFlag == CSSFlags.REAPPLY)) {
 
-            styleHelper = styleManager.getStyleHelper(this);
+            styleHelper.resetStyleMap(styleManager);
 
         } 
         
@@ -7465,7 +7465,7 @@ public abstract class Node implements EventTarget {
 
         // Transition to the new state
         if (styleHelper != null) {
-            styleHelper.transitionToState(this);
+            styleHelper.transitionToState();
         }
     }
     
@@ -7474,18 +7474,8 @@ public abstract class Node implements EventTarget {
      * A StyleHelper contains all the css styles for this node
      * and knows how to apply them when our state changes.
      */
-    private StyleHelper styleHelper;
+    private final StyleHelper styleHelper;
     
-    /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
-     */
-//    @Deprecated
-//    protected StyleHelper impl_createStyleHelper() {
-//        
-//        styleHelper = getScene().styleManager.getStyleHelper(this);
-//        return styleHelper;
-//    }
 
     /**
      * Get this nodes StyleHelper
