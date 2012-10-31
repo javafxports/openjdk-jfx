@@ -235,6 +235,33 @@ public class VirtualFlow extends Region {
             requestLayout();
         }
     }
+
+    /**
+     * Cell change notification listener.
+     */
+    private Runnable cellChangeNotification;
+
+    /**
+     * Get the cell change notification listener. This can be set by the control
+     * skin when it needs to react to changes in the set of visible cells.
+     *
+     * @return The current cell change notification listener
+     */
+    public Runnable getCellChangeNotificationListener() {
+        return cellChangeNotification;
+    }
+
+    /**
+     * Set the cell change notification listener. This can be set by the control
+     * skin when it needs to react to changes in the set of visible cells. There
+     * is only one listener for performance reasons so setting it will replace
+     * any existing listener.
+     *
+     * @param listener The cell change notification listener to set
+     */
+    public void setCellChangeNotificationListener(Runnable listener) {
+        this.cellChangeNotification = listener;
+    }
     
     /**
      * Use this (temporary) key to set a fixed cell length in the ListView,
@@ -753,7 +780,7 @@ public class VirtualFlow extends Region {
     }
 
     @Override protected void layoutChildren() {
-       if (needsRecreateCells) {
+        if (needsRecreateCells) {
             maxPrefBreadth = -1;
             lastWidth = -1;
             lastHeight = -1;
@@ -761,19 +788,33 @@ public class VirtualFlow extends Region {
             releaseCell(accumCell);
 //            accumCell = null;
 //            accumCellParent.getChildren().clear();
+            for (int i=0; i<cells.size(); i++) {
+                cells.get(i).updateIndex(-1);
+            }
             cells.clear();
             pile.clear();
-            needsRecreateCells = false;
-        } 
-        
-        if (needsReconfigureCells) {
+        } else if (needsRebuildCells) {
             maxPrefBreadth = -1;
             lastWidth = -1;
             lastHeight = -1;
             numCellsVisibleOnScreen = -1;
-            needsReconfigureCells = false;
+            releaseCell(accumCell);
+            for (int i=0; i<cells.size(); i++) {
+                cells.get(i).updateIndex(-1);
+            }
+            addAllToPile();
+        } else if (needsReconfigureCells) {
+            maxPrefBreadth = -1;
+            lastWidth = -1;
+            lastHeight = -1;
         }
-        
+
+        boolean changed = needsRebuildCells || needsReconfigureCells || needsRecreateCells;
+        needsRecreateCells = false;
+        needsReconfigureCells = false;
+        needsRebuildCells = false;
+
+
         if (needsCellsLayout) {
             for (int i = 0, max = cells.size(); i < max; i++) {
                 Cell cell = cells.get(i);
@@ -983,6 +1024,10 @@ public class VirtualFlow extends Region {
         lastCellCount = getCellCount();
         lastVertical = isVertical();
         lastPosition = getPosition();
+
+        if (changed && cellChangeNotification != null) {
+            cellChangeNotification.run();
+        }
     }
 
     /**
@@ -1430,6 +1475,14 @@ public class VirtualFlow extends Region {
                 // pile.remove(i);
                 return cell;
             }
+        }
+
+        if (pile.size() > 0) {
+            // TODO The above code checks for null values returned from the pile. Is that possible?
+            // TODO I would not have thought so, there should be an assert added to addToPile to
+            // TODO make sure we never add null to the pile (since it doesn't make sense to do so)
+            // TODO and then we can get rid of the cell != null check on line 1422 above.
+            return pile.get(0);
         }
 
         // We need to use the accumCell and return that
@@ -1905,12 +1958,16 @@ public class VirtualFlow extends Region {
         updateScrollBarsAndCells();
         lastPosition = getPosition();
 
+        if (cellChangeNotification != null) {
+            cellChangeNotification.run();
+        }
         // notify
         return delta; // TODO fake
     }
 
-    private boolean needsReconfigureCells = false;
-    private boolean needsRecreateCells = false;
+    private boolean needsReconfigureCells = false; // when cell contents are the same
+    private boolean needsRecreateCells = false; // when cell factory changed
+    private boolean needsRebuildCells = false; // when cell contents have changed
     private boolean needsCellsLayout = false;
     
     public void reconfigureCells() {
@@ -1922,7 +1979,12 @@ public class VirtualFlow extends Region {
         needsRecreateCells = true;
         requestLayout();
     }
-    
+
+    public void rebuildCells() {
+        needsRebuildCells = true;
+        requestLayout();
+    }
+
     public void requestCellLayout() {
         needsCellsLayout = true;
         requestLayout();
