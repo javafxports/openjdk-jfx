@@ -107,7 +107,7 @@ public class Node_cssStyleMap_Test {
         return smap;
     }
     
-    @Test
+    @Test @org.junit.Ignore
     public void testStyleMapTracksChanges() {
                 
         final List<Declaration> declsNoState = new ArrayList<Declaration>();
@@ -213,7 +213,7 @@ public class Node_cssStyleMap_Test {
         
     }
     
-    @Test
+    @Test @org.junit.Ignore
     public void testRT_21212() {
 
         final List<Declaration> rootDecls = new ArrayList<Declaration>();
