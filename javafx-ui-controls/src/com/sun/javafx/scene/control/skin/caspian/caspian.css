@@ -347,7 +347,6 @@
  ** section that defines the following:                                       **
  **                                                                           **
  ** .control-name {                                                           **
- **     -fx-skin: "com.sun.javafx.scene.control.skin.ControlNameSkin";        **
  **     -fx-background-color: a, b, c, d                                      **
  **     -fx-background-insets: e, f, g, h                                     **
  **     -fx-background-radius: i, j, k, l                                     **
@@ -468,7 +467,6 @@
  ******************************************************************************/
 
 .label {
-    -fx-skin: "com.sun.javafx.scene.control.skin.LabelSkin";
     -fx-text-fill: -fx-text-background-color;
 }
 
@@ -494,7 +492,6 @@
  ******************************************************************************/
 
 .button {
-    -fx-skin: "com.sun.javafx.scene.control.skin.ButtonSkin";
     -fx-background-color: -fx-shadow-highlight-color, -fx-outer-border, -fx-inner-border, -fx-body-color;
     -fx-background-insets: 0 0 -1 0, 0, 1, 2;
     -fx-background-radius: 5, 5, 4, 3;
@@ -540,7 +537,6 @@
  ******************************************************************************/
 
 .toggle-button {
-    -fx-skin: "com.sun.javafx.scene.control.skin.ToggleButtonSkin";
     -fx-background-color: -fx-shadow-highlight-color, -fx-outer-border, -fx-inner-border, -fx-body-color;
     -fx-background-insets: 0 0 -1 0, 0, 1, 2;
     -fx-background-radius: 5, 5, 4, 3;
@@ -601,7 +597,6 @@
  ******************************************************************************/
 
 .radio-button {
-    -fx-skin: "com.sun.javafx.scene.control.skin.RadioButtonSkin";
     -fx-label-padding: 0.0em 0.0em 0.0em 0.416667em; /* 0 0 0 5 */
     -fx-text-fill: -fx-text-background-color;
 }
@@ -657,7 +652,6 @@
  ******************************************************************************/
 
 .check-box {
-    -fx-skin: "com.sun.javafx.scene.control.skin.CheckBoxSkin";
     -fx-label-padding: 0.0em 0.0em 0.0em 0.416667em; /* 0 0 0 5 */
     -fx-text-fill: -fx-text-background-color;
 }
@@ -722,7 +716,6 @@
  ******************************************************************************/
 
 .hyperlink {
-    -fx-skin: "com.sun.javafx.scene.control.skin.HyperlinkSkin";
     -fx-padding: 0.166667em; /* 2 */
     -fx-cursor: hand;
     -fx-content-display: LEFT;
@@ -762,7 +755,6 @@
  ******************************************************************************/
 
 .context-menu {
-    -fx-skin: "com.sun.javafx.scene.control.skin.ContextMenuSkin";
     -fx-background-color:
         derive(-fx-color,-40%),
         derive(-fx-color,100%),
@@ -800,7 +792,6 @@
  ******************************************************************************/
 
 .menu {
-/*    -fx-skin: "com.sun.javafx.scene.control.skin.MenuSkin";*/
     -fx-background-color: transparent;
     -fx-padding: 0.333333em 0.666667em 0.333333em 0.666667em; /* 4 8 4 8 */
 }
@@ -861,7 +852,6 @@
  * derive(-fx-base,-70%); #3e3e3e                                     */
 
 .menu-bar {
-    -fx-skin: "com.sun.javafx.scene.control.skin.MenuBarSkin";
     -fx-padding: 0.0em 0.666667em 0.0em 0.666667em; /* 0 8 0 8 */
     -fx-spacing: 0.166667em; /* 2 */
     -fx-base: derive(#d0d0d0,-70%);
@@ -911,7 +901,6 @@
  ******************************************************************************/
 
 .menu-item {
-/*    -fx-skin: "com.sun.javafx.scene.control.skin.MenuItemSkin";*/
     -fx-background-color: transparent;
     -fx-padding: 0.333333em 0.41777em 0.333333em 0.41777em;  /* 4 5 4 5 */
 }
@@ -1010,7 +999,6 @@
  ******************************************************************************/
 
 .choice-box {
-    -fx-skin: "com.sun.javafx.scene.control.skin.ChoiceBoxSkin";
     -fx-background-color: -fx-shadow-highlight-color, -fx-outer-border, -fx-inner-border, -fx-body-color;
     -fx-background-insets: 0 0 -1 0, 0, 1, 2;
     -fx-background-radius: 5, 5, 4, 3;
@@ -1083,10 +1071,6 @@
  *                                                                             *
  ******************************************************************************/
 
-.slider {
-    -fx-skin: "com.sun.javafx.scene.control.skin.SliderSkin";
-}
-
 .slider > .thumb {
     -fx-background-color:
         derive(-fx-color,-36%),
@@ -1151,10 +1135,6 @@
  * ScrollBar                                                                   *
  *                                                                             *
  ******************************************************************************/
-
-.scroll-bar {
-    -fx-skin: "com.sun.javafx.scene.control.skin.ScrollBarSkin";
-}
 
 .scroll-bar:horizontal {
     -fx-background-color:
@@ -1309,7 +1289,6 @@
  ******************************************************************************/
 
 .scroll-pane {
-    -fx-skin: "com.sun.javafx.scene.control.skin.ScrollPaneSkin";
     -fx-background-color: -fx-box-border,-fx-background;
     -fx-background-insets: 0, 1;
     -fx-padding: 1.0;
@@ -1344,10 +1323,6 @@
  * Separator                                                                   *
  *                                                                             *
  ******************************************************************************/
-
-.separator {
-    -fx-skin: "com.sun.javafx.scene.control.skin.SeparatorSkin";
-}
 
 .separator > .line {
     -fx-border-style: segments(0.166667em, 0.166667em);
@@ -1385,7 +1360,6 @@
  ******************************************************************************/
 
 .text-field {
-    -fx-skin: "com.sun.javafx.scene.control.skin.TextFieldSkin";
     -fx-background-color: -fx-shadow-highlight-color, -fx-text-box-border, -fx-control-inner-background;
     -fx-background-insets: 0, 1, 2;
     -fx-background-radius: 3, 2, 2;
@@ -1413,7 +1387,6 @@
  ******************************************************************************/
 
 .password-field {
-    -fx-skin: "com.sun.javafx.scene.control.skin.PasswordFieldSkin";
     -fx-text-fill: -fx-text-inner-color;
 }
 
@@ -1424,7 +1397,6 @@
  ******************************************************************************/
 
 .text-area {
-    -fx-skin: "com.sun.javafx.scene.control.skin.TextAreaSkin";
     -fx-background-color: -fx-shadow-highlight-color, -fx-text-box-border, -fx-control-inner-background;
     -fx-background-insets: 0, 1, 2;
     -fx-background-radius: 3, 2, 2;
@@ -1486,7 +1458,6 @@
  ******************************************************************************/
 
 .list-view {
-    -fx-skin: "com.sun.javafx.scene.control.skin.ListViewSkin";
     -fx-background-color: -fx-box-border, -fx-control-inner-background;
     -fx-background-insets: 0, 1;
 
@@ -1525,7 +1496,6 @@
 }
 
 .list-cell {
-    -fx-skin: "com.sun.javafx.scene.control.skin.ListCellSkin";
     -fx-background-color: -fx-control-inner-background;
     -fx-padding: 0.25em; /* 3 */
     -fx-text-fill: -fx-text-inner-color;
@@ -1604,7 +1574,6 @@
  ******************************************************************************/
 
 .tree-view {
-    -fx-skin: "com.sun.javafx.scene.control.skin.TreeViewSkin";
     -fx-background-color: -fx-box-border, -fx-control-inner-background;
     -fx-background-insets: 0, 1;
 
@@ -1643,7 +1612,6 @@
 }
 
 .tree-cell {
-    -fx-skin: "com.sun.javafx.scene.control.skin.TreeCellSkin";
     -fx-background-color: -fx-control-inner-background;
     -fx-padding: 0.25em; /* 3 */
     -fx-text-fill: -fx-text-inner-color;
@@ -1751,7 +1719,6 @@
  ******************************************************************************/
 
 .menu-button {
-    -fx-skin: "com.sun.javafx.scene.control.skin.MenuButtonSkin";
     -fx-background-color: -fx-shadow-highlight-color, -fx-outer-border, -fx-inner-border, -fx-body-color;
     -fx-background-insets: 0 0 -1 0, 0, 1, 2;
     -fx-background-radius: 5, 5, 4, 3;
@@ -1817,7 +1784,6 @@
  ******************************************************************************/
 
 .split-menu-button {
-    -fx-skin: "com.sun.javafx.scene.control.skin.SplitMenuButtonSkin";
     -fx-background-color: -fx-shadow-highlight-color;
     -fx-background-insets: 0 0 -1 0;
     -fx-background-radius: 5;
@@ -1892,7 +1858,6 @@
  ******************************************************************************/
 
 .tooltip {
-    -fx-skin: "com.sun.javafx.scene.control.skin.TooltipSkin";
     -fx-background-color:
         linear-gradient(#cec340, #a59c31),
         linear-gradient(#fefefc, #e6dd71),
@@ -1923,10 +1888,6 @@
  * derive(-fx-base,65%); #efefef                                               *
  *                                                                             *
  ******************************************************************************/
-
-.tool-bar {
-    -fx-skin: "com.sun.javafx.scene.control.skin.ToolBarSkin";    
-}
 
 .tool-bar:vertical {
     -fx-background: derive(-fx-base,-20%);
@@ -2003,7 +1964,6 @@
  ******************************************************************************/
 
 .progress-bar {
-    -fx-skin: "com.sun.javafx.scene.control.skin.ProgressBarSkin";
     -fx-background-color:
         -fx-box-border,
         linear-gradient(to bottom, derive(-fx-color,30%) 5%, derive(-fx-color,-17%));
@@ -2045,7 +2005,6 @@
  ******************************************************************************/
 
 .progress-indicator {
-    -fx-skin: "com.sun.javafx.scene.control.skin.ProgressIndicatorSkin";
     -fx-progress-color: dodgerblue;
 }
 
@@ -2096,7 +2055,6 @@
  ******************************************************************************/
 
 .table-view {
-    -fx-skin: "com.sun.javafx.scene.control.skin.TableViewSkin";
     -fx-background-color: -fx-box-border, -fx-control-inner-background;
     -fx-background-insets: 0,1;
 
@@ -2150,7 +2108,6 @@
 /* Each row in the table is a table-row-cell. Inside a table-row-cell is any
    number of table-cell. */
 .table-row-cell {
-    -fx-skin: "com.sun.javafx.scene.control.skin.TableRowSkin";
     -fx-background-color: -fx-table-cell-border-color, -fx-control-inner-background;
     -fx-background-insets: 0, 0 0 1 0;
     -fx-padding: 0.0em; /* 0 */
@@ -2237,7 +2194,6 @@
 }
 
 .table-cell {
-    -fx-skin: "com.sun.javafx.scene.control.skin.TableCellSkin";
     -fx-padding: 0.166667em; /* 2px, plus border adds 1px */
 
     -fx-background-color: transparent;
@@ -2453,7 +2409,6 @@
  ******************************************************************************/
 
 .titled-pane {
-    -fx-skin: "com.sun.javafx.scene.control.skin.TitledPaneSkin";    
     -fx-text-fill: -fx-text-base-color;
 }
 
@@ -2508,10 +2463,6 @@
  * Accordion                                                                   *
  *                                                                             *
  ******************************************************************************/
-
-.accordion {
-    -fx-skin: "com.sun.javafx.scene.control.skin.AccordionSkin";
-}
 
 .accordion > .titled-pane > .title {
     -fx-background-color:
@@ -2570,7 +2521,6 @@
  }
 
 .split-pane {
-    -fx-skin: "com.sun.javafx.scene.control.skin.SplitPaneSkin";
     -fx-background-color: -fx-box-border, -fx-control-inner-background;
     -fx-background-insets: 0, 1;
     -fx-padding: 1;
@@ -2615,7 +2565,6 @@
  ******************************************************************************/
 
 .tab-pane {
-    -fx-skin: "com.sun.javafx.scene.control.skin.TabPaneSkin";
     /* -fx-tab-min-width: 4.583em;  55 */
     /* -fx-tab-max-width: 4.583em; 55 */
     -fx-tab-min-height: 2em; /* 24 */
@@ -2623,7 +2572,6 @@
 }
 
 .tab-pane > .tab-header-area > .headers-region > .tab > .tab-container > .tab-label {
-    -fx-skin: "com.sun.javafx.scene.control.skin.LabelSkin";
     -fx-background-color: transparent;    
     -fx-alignment: CENTER;
     -fx-text-fill: -fx-text-base-color;
@@ -3087,7 +3035,6 @@
 
 /* ------- MAIN BUTTON ------- */
 .combo-box-base  {
-    -fx-skin: "com.sun.javafx.scene.control.skin.ComboBoxBaseSkin";
     -fx-background-color: -fx-shadow-highlight-color, -fx-outer-border, -fx-inner-border, -fx-body-color;
     -fx-background-radius: 5, 5, 4, 3;
     -fx-background-insets: 0 0 -1 0, 0, 1, 2;
@@ -3178,9 +3125,6 @@ Only the properties with values that are different from the TextBox are specifie
 }
 
 /* -------------- STYLES FOR THE DEFAULT LISTVIEW-BASED COMBOBOX ------------- */
-.combo-box {
-    -fx-skin: "com.sun.javafx.scene.control.skin.ComboBoxListViewSkin";
-}
 
 /* Customie the ListCell that appears in the ComboBox button itself */
 .combo-box > .list-cell {
@@ -3217,9 +3161,6 @@ Only the properties with values that are different from the TextBox are specifie
 }
 
 /* -------------------------- STYLES FOR THE COLOR-PICKER CONTROL ----- */
-.color-picker {
-    -fx-skin: "com.sun.javafx.scene.control.skin.ColorPickerSkin";
-}
 
 .color-picker > .arrow-button {
     -fx-background-color: null;
@@ -3427,12 +3368,7 @@ Only the properties with values that are different from the TextBox are specifie
     -fx-padding: 0 0 0 5;
 }
 
-.custom-color-dialog #input-text-field {
-    -fx-skin: "com.sun.javafx.scene.control.skin.TextFieldSkin";
-}
-
 .custom-color-dialog .input-field {
-    -fx-skin: "com.sun.javafx.scene.control.skin.InputFieldSkin";
     -fx-background-color: -fx-shadow-highlight-color, -fx-text-box-border, -fx-control-inner-background;
     -fx-background-insets: 0, 1, 2;
     -fx-background-radius: 3, 2, 2;
@@ -3452,7 +3388,6 @@ Only the properties with values that are different from the TextBox are specifie
 }
 
 .custom-color-dialog .integer-field {
-    -fx-skin: "com.sun.javafx.scene.control.skin.IntegerFieldSkin";
     -fx-background-color: -fx-shadow-highlight-color, -fx-text-box-border, -fx-control-inner-background;
     -fx-background-insets: 0, 1, 2;
     -fx-background-radius: 3, 2, 2;
@@ -3472,7 +3407,6 @@ Only the properties with values that are different from the TextBox are specifie
 }*/
 
 .custom-color-dialog .double-field {
-    -fx-skin: "com.sun.javafx.scene.control.skin.DoubleFieldSkin";
     -fx-background-color: -fx-shadow-highlight-color, -fx-text-box-border, -fx-control-inner-background;
     -fx-background-insets: 0, 1, 2;
     -fx-background-radius: 3, 2, 2;
@@ -3493,7 +3427,6 @@ Only the properties with values that are different from the TextBox are specifie
 
 
 .custom-color-dialog .webcolor-field {
-    -fx-skin: "com.sun.javafx.scene.control.skin.WebColorFieldSkin";
     -fx-background-color: -fx-shadow-highlight-color, -fx-text-box-border, -fx-control-inner-background;
     -fx-background-insets: 0, 1, 2;
     -fx-background-radius: 3, 2, 2;
@@ -3515,7 +3448,6 @@ Only the properties with values that are different from the TextBox are specifie
 
 /* -------------------------- STYLES FOR PAGINATION CONTROL ----- */
 .pagination {
-    -fx-skin: "com.sun.javafx.scene.control.skin.PaginationSkin";
     -fx-padding: 0;        
     -fx-arrows-visible: true;
     -fx-tooltip-visible: true;
@@ -3600,8 +3532,6 @@ Only the properties with values that are different from the TextBox are specifie
  * targeting different CSS style classes).                                     *
  ******************************************************************************/
 
-.tree-table-view {
-    -fx-skin: "com.sun.javafx.scene.control.skin.TreeTableViewSkin";
     -fx-background-color: -fx-box-border, -fx-control-inner-background;
     -fx-background-insets: 0,1;
 
@@ -3615,10 +3545,7 @@ Only the properties with values that are different from the TextBox are specifie
     -fx-table-header-border-color: #959595;
 /*    -fx-table-header-background-color: linear (0%,0%) to (0%,100%) stops (80%, #bbbbbb) (10%, #f6f6f6);*/
     -fx-table-cell-border-color: #bbbbbb;
-}
-
 .tree-table-row-cell {
-    -fx-skin: "com.sun.javafx.scene.control.skin.TreeTableRowSkin";
     -fx-background-color: -fx-control-inner-background;
     -fx-padding: 0.0em; /* 0 */
     -fx-text-fill: -fx-text-inner-color;
@@ -3665,7 +3592,6 @@ Only the properties with values that are different from the TextBox are specifie
     -fx-background-insets: 0 1 0 0, 1 2 1 1, 2 3 2 2;
     -fx-background: -fx-accent;
     -fx-text-fill: -fx-selection-bar-text;
-}
 
 
 /** Hover styles */

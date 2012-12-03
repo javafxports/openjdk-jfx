@@ -37,6 +37,9 @@ import javafx.scene.control.TablePositionBase;
 import javafx.scene.control.TableSelectionModel;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TableView.TableViewSelectionModel;
+import com.sun.javafx.css.StyleManager;
+import com.sun.javafx.scene.control.skin.Utils;
+
 
 public class TableViewBehavior<T> extends TableViewBehaviorBase<TableView<T>, T, TableColumn<T, ?>> {
     
@@ -64,7 +67,17 @@ public class TableViewBehavior<T> extends TableViewBehaviorBase<TableView<T>, T,
     private final WeakChangeListener<TableViewSelectionModel<T>> weakSelectionModelListener = 
             new WeakChangeListener<TableViewSelectionModel<T>>(selectionModelListener);
     
+    private TwoLevelFocusBehavior tlFocus;
+
     
+
+        /*
+        ** only add this if we're on an embedded
+        ** platform that supports 5-button navigation 
+        */
+        if (Utils.isEmbeddedNonTouch()) {
+            tlFocus = new TwoLevelFocusBehavior(control); // needs to be last.
+        }
     
     /**************************************************************************
      *                                                                        *
@@ -157,4 +170,20 @@ public class TableViewBehavior<T> extends TableViewBehaviorBase<TableView<T>, T,
             getTablePosition(int row, TableColumnBase<T, ?> tc) {
         return new TablePosition(getControl(), row, (TableColumn)tc);
     }
+
+    private static final long INTERNAL_PSEUDOCLASS_STATE = StyleManager.getPseudoclassMask("internal-focus");
+    private static final long EXTERNAL_PSEUDOCLASS_STATE = StyleManager.getPseudoclassMask("external-focus");
+
+    /**
+     * @treatAsPrivate implementation detail
+     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     */
+    @Deprecated @Override public long impl_getPseudoClassState() {
+        long mask = super.impl_getPseudoClassState();
+        if (tlFocus != null) {
+            mask |= tlFocus.isExternalFocus() ? EXTERNAL_PSEUDOCLASS_STATE : INTERNAL_PSEUDOCLASS_STATE;
+        }
+        return mask;
+    }
+
 }

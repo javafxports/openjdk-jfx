@@ -25,6 +25,7 @@
 package javafx.scene.control;
 
 import com.sun.javafx.Utils;
+import javafx.application.Application;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.DoublePropertyBase;
 import javafx.beans.property.ObjectProperty;
@@ -43,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.sun.javafx.application.PlatformImpl;
 import com.sun.javafx.collections.TrackableObservableList;
 import com.sun.javafx.css.*;
 import com.sun.javafx.css.converters.StringConverter;
@@ -69,11 +71,12 @@ public class PopupControl extends PopupWindow implements Skinnable {
       * computeMaxWidth(), or computeMaxHeight().
       */
     public static final double USE_COMPUTED_SIZE = -1;
-    
-    // Ensures that the caspian.css file is set as the user agent style sheet
-    // when the first popupcontrol is created.
+
     static {
-        UAStylesheetLoader.doLoad();
+        // Ensures that the default application user agent stylesheet is loaded
+        if (Application.getUserAgentStylesheet() == null) {
+            PlatformImpl.setDefaultPlatformUserAgentStylesheet();
+        }
     }
 
     /**
@@ -876,6 +879,17 @@ public class PopupControl extends PopupWindow implements Skinnable {
         else bridge.getChildren().clear();
     }
 
+    /**
+     * Create a new instance of the default skin for this control. This is called to create a skin for the control if
+     * no skin is provided via CSS {@code -fx-skin} or set explicitly in a sub-class with {@code  setSkin(...)}.
+     *
+     * @return  new instance of default skin for this control. If null then the control will have no skin unless one
+     *          is provided by css.
+     */
+    protected Skin<?> createDefaultSkin() {
+        return null;
+    }
+
     /***************************************************************************
      *                                                                         *
      *                         StyleSheet Handling                             *
@@ -1238,6 +1252,45 @@ public class PopupControl extends PopupWindow implements Skinnable {
                 Logging.getControlsLogger().severe(msg, e.getCause());
             }
         }
+
+        /**
+         * @treatAsPrivate implementation detail
+         * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+         */
+        @Deprecated
+        @Override protected void impl_processCSS() {
+            super.impl_processCSS();
+
+            if (getSkin() == null) {
+                // try to create default skin
+                final Skin<?> defaultSkin = createDefaultSkin();
+                if (defaultSkin != null) {
+                    skinProperty().set(defaultSkin);
+                    // we have to reapply css again so that the newly set skin gets css applied as well.
+                    super.impl_processCSS();
+                } else {
+                    final String msg = "The -fx-skin property has not been defined in CSS for " + this +
+                            " and createDefaultSkin() returned null.";
+                    final List<CssError> errors = StyleManager.getErrors();
+                    if (errors != null) {
+                        CssError error = new CssError(msg);
+                        errors.add(error); // RT-19884
+                    }
+                    Logging.getControlsLogger().severe(msg);
+                }
+            }
+        }
         
+    }
+
+    /**
+     * The pseudo classes associated with 2-level focus have changed.
+     * @treatAsPrivate implementation detail
+     * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
+     */
+    @Deprecated
+    public  void impl_focusPseudoClassChanged() {
+        impl_pseudoClassStateChanged("internal-focus");
+        impl_pseudoClassStateChanged("external-focus");
     }
 }

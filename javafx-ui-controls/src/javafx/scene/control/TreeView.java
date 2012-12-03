@@ -40,6 +40,7 @@ import javafx.scene.control.TreeItem.TreeModificationEvent;
 import javafx.util.Callback;
 
 import com.sun.javafx.scene.control.WeakEventHandler;
+import com.sun.javafx.scene.control.skin.TreeViewSkin;
 import com.sun.javafx.scene.control.skin.VirtualContainerBase;
 import java.lang.ref.WeakReference;
 import javafx.beans.DefaultProperty;
@@ -759,8 +760,11 @@ public class TreeView<T> extends Control {
         int r = isShowRoot() ? row : (row + 1);
         return TreeUtil.getItem(getRoot(), r, treeItemCountDirty);
     }
-    
-    
+
+    /** {@inheritDoc} */
+    @Override protected Skin<?> createDefaultSkin() {
+        return new TreeViewSkin(this);
+    }
     
     /***************************************************************************
      *                                                                         *

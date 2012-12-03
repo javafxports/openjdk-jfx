@@ -875,6 +875,11 @@ public class TableView<S> extends Control {
         return visibleLeafColumns.get(column);
     }
 
+    /** {@inheritDoc} */
+    @Override protected Skin<?> createDefaultSkin() {
+        return new TableViewSkin(this);
+    }
+
     /***************************************************************************
      *                                                                         *
      * Private Implementation                                                  *

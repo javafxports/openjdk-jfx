@@ -32,6 +32,8 @@ import javafx.collections.ListChangeListener;
 import javafx.event.Event;
 import javafx.scene.control.TableView.TableViewFocusModel;
 
+import com.sun.javafx.property.PropertyReference;
+import com.sun.javafx.scene.control.skin.TableCellSkin;
 import javafx.collections.WeakListChangeListener;
 import java.lang.ref.WeakReference;
 import javafx.beans.property.ReadOnlyObjectProperty;
@@ -362,13 +364,16 @@ public class TableCell<S,T> extends IndexedCell<T> {
         setSelected(selected);
     }
 
-    
+    /** {@inheritDoc} */
+    @Override protected Skin<?> createDefaultSkin() {
+        return new TableCellSkin(this);
+    }
 
     /* *************************************************************************
-     *                                                                         *
-     * Private Implementation                                                  *
-     *                                                                         *
-     **************************************************************************/
+    *                                                                         *
+    * Private Implementation                                                  *
+    *                                                                         *
+    **************************************************************************/
     
     @Override void indexChanged() {
         super.indexChanged();

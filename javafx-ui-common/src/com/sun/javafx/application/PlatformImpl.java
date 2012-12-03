@@ -25,6 +25,7 @@
 
 package com.sun.javafx.application;
 
+import com.sun.javafx.css.StyleManager;
 import com.sun.javafx.runtime.SystemProperties;
 import java.util.List;
 import java.util.Set;
@@ -103,7 +104,7 @@ public class PlatformImpl {
         if (!taskbarApplication) {
             AccessController.doPrivileged(new PrivilegedAction<Void>() {
                 @Override public Void run() {
-                    System.setProperty("com.sun.glass.taskbarApplication", "false");
+                    System.setProperty("glass.taskbarApplication", "false");
                     return null;
                 }
             });
@@ -344,4 +345,24 @@ public class PlatformImpl {
         public void exitCalled();
     }
 
+    /**
+     *
+     */
+    public static void setDefaultPlatformUserAgentStylesheet() {
+        AccessController.doPrivileged(
+                new PrivilegedAction() {
+                    @Override public Object run() {
+                        StyleManager.setDefaultUserAgentStylesheet("com/sun/javafx/scene/control/skin/caspian/caspian.css");
+
+                        if (com.sun.javafx.PlatformUtil.isEmbedded()) {
+                            StyleManager.addUserAgentStylesheet("com/sun/javafx/scene/control/skin/caspian/embedded.css");
+
+                            if (com.sun.javafx.Utils.isQVGAScreen()) {
+                                StyleManager.addUserAgentStylesheet("com/sun/javafx/scene/control/skin/caspian/embedded-qvga.css");
+                            }
+                        }
+                        return null;
+                    }
+                });
+    }
 }

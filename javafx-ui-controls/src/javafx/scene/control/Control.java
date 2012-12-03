@@ -26,11 +26,13 @@
 package javafx.scene.control;
 
 import com.sun.javafx.Utils;
+import com.sun.javafx.application.PlatformImpl;
 import com.sun.javafx.beans.annotations.DuplicateInBuilderProperties;
 import com.sun.javafx.css.*;
 import com.sun.javafx.css.converters.StringConverter;
 import com.sun.javafx.logging.PlatformLogger;
 import com.sun.javafx.scene.control.Logging;
+import javafx.application.Application;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ObjectPropertyBase;
 import javafx.beans.property.SimpleObjectProperty;
@@ -71,14 +73,12 @@ import java.util.List;
 @DuplicateInBuilderProperties(properties = {"minHeight", "minWidth", "maxHeight", "maxWidth", "prefHeight", "prefWidth"})
 public abstract class Control extends Region implements Skinnable {
 
-
     static {
-        // Ensures that the caspian.css file is set as the user agent style sheet
-        // when the first control is created.
-        UAStylesheetLoader.doLoad();
+        // Ensures that the default application user agent stylesheet is loaded
+        if (Application.getUserAgentStylesheet() == null) {
+            PlatformImpl.setDefaultPlatformUserAgentStylesheet();
+        }
     }
-    
-    
     
     /***************************************************************************
      *                                                                         *
@@ -171,6 +171,19 @@ public abstract class Control extends Region implements Skinnable {
             // result in reinstalling the skin
             currentSkinClassName = v == null ? null : v.getClass().getName();
             
+            // If skinClassName is null, then someone called setSkin directly
+            // rather than the skin being set via css. We know this is because 
+            // impl_processCSS ensures the skin is set, and impl_processCSS
+            // expands the skin property to see if the skin has been set. 
+            // If skinClassName is null, then we need to see if there is
+            // a UA stylesheet at this point since the logic in impl_processCSS
+            // depends on skinClassName being null. 
+            if (skinClassName == null) {
+                final String url = Control.this.getUserAgentStylesheet();
+                if (url != null) {
+                    StyleManager.addUserAgentStylesheet(url);
+                }
+            }
             // if someone calls setSkin, we need to make it look like they 
             // called set on skinClassName in order to keep CSS from overwriting
             // the skin. 
@@ -506,25 +519,35 @@ public abstract class Control extends Region implements Skinnable {
         
         return mask;
     }
-    
-    
+
+    /**
+     * Create a new instance of the default skin for this control. This is called to create a skin for the control if
+     * no skin is provided via CSS {@code -fx-skin} or set explicitly in a sub-class with {@code  setSkin(...)}.
+     *
+     * @return  new instance of default skin for this control. If null then the control will have no skin unless one
+     *          is provided by css.
+     */
+    protected Skin<?> createDefaultSkin() {
+        return null;
+    }
+
     /***************************************************************************
      *                                                                         *
      * Package API for SkinBase                                                *
      *                                                                         *
-     **************************************************************************/       
-    
+     **************************************************************************/
+
     // package private for SkinBase
     ObservableList<Node> getControlChildren() {
         return getChildren();
     }
 
-    
+
     /***************************************************************************
      *                                                                         *
      * Private implementation                                                  *
      *                                                                         *
-     **************************************************************************/    
+     **************************************************************************/
 
     /**
      * Gets the Skin's node, or returns null if there is no Skin.
@@ -743,22 +766,33 @@ public abstract class Control extends Region implements Skinnable {
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
      */
     @Deprecated
-    @Override protected void impl_processCSS(StyleManager styleManager, boolean reapply) {
-        if (reapply && getUserAgentStylesheet() != null) {
-            styleManager.addUserAgentStylesheet(getUserAgentStylesheet());
+    @Override protected void impl_processCSS() {
+        if (skinClassNameProperty().get() == null) {
+            final String url = Control.this.getUserAgentStylesheet();
+            if (url != null) {
+                StyleManager.addUserAgentStylesheet(url);
+            }
         }
 
-        super.impl_processCSS(styleManager, reapply);
+        super.impl_processCSS();
 
         if (getSkin() == null) {
-            final String msg = 
-                "The -fx-skin property has not been defined in CSS for " + this;
-            final List<CssError> errors = StyleManager.getErrors();
-            if (errors != null) {
-                CssError error = new CssError(msg);
-                errors.add(error); // RT-19884
-            } 
-            Logging.getControlsLogger().severe(msg);
+            // try to create default skin
+            final Skin<?> defaultSkin = createDefaultSkin();
+            if (defaultSkin != null) {
+                skinProperty().set(defaultSkin);
+                // we have to reapply css again so that the newly set skin gets css applied as well.
+                super.impl_processCSS();
+            } else {
+                final String msg = "The -fx-skin property has not been defined in CSS for " + this +
+                                   " and createDefaultSkin() returned null.";
+                final List<CssError> errors = StyleManager.getErrors();
+                if (errors != null) {
+                    CssError error = new CssError(msg);
+                    errors.add(error); // RT-19884
+                }
+                Logging.getControlsLogger().severe(msg);
+            }
         }
     }
     
@@ -780,4 +814,14 @@ public abstract class Control extends Region implements Skinnable {
         return null; // return a valid value for specific controls accessible objects
     }
 
+    /**
+     * The pseudo classes associated with 2-level focus have changed.
+     * @treatAsPrivate implementation detail
+     * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
+     */
+    @Deprecated
+    public  void impl_focusPseudoClassChanged() {
+        impl_pseudoClassStateChanged("internal-focus");
+        impl_pseudoClassStateChanged("external-focus");
+    }
 }
