@@ -710,7 +710,7 @@ public class MenuBarSkin extends BehaviorSkinBase<MenuBar, BehaviorBase<MenuBar>
                         }
                         if (openMenu == null) return;
                         updateFocusedIndex();
-                        if (openMenu.isShowing()) {
+                        if (openMenu.isShowing() && openMenu != menu) {
                          // hide the currently visible menu, and move to the new one
                             openMenu.hide();
                             if (!isMenuEmpty(menu)) {
