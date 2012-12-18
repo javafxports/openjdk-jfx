@@ -54,7 +54,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.util.Callback;
 
 import com.sun.javafx.css.StyleableDoubleProperty;
-import com.sun.javafx.css.StyleablePropertyMetaData;
+import com.sun.javafx.css.CssMetaData;
 import com.sun.javafx.css.converters.SizeConverter;
 import com.sun.javafx.scene.control.MultiplePropertyChangeListenerHandler;
 import javafx.collections.WeakListChangeListener;
@@ -108,6 +108,7 @@ public class TableColumnHeader extends Region {
             changeListenerHandler.registerChangeListener(column.styleProperty(), "TABLE_COLUMN_STYLE");
             changeListenerHandler.registerChangeListener(column.widthProperty(), "TABLE_COLUMN_WIDTH");
             changeListenerHandler.registerChangeListener(column.visibleProperty(), "TABLE_COLUMN_VISIBLE");
+            changeListenerHandler.registerChangeListener(column.sortNodeProperty(), "TABLE_COLUMN_SORT_NODE");
         }
     }
     
@@ -145,6 +146,8 @@ public class TableColumnHeader extends Region {
             if (arrow != null) {
                 arrow.setRotate(column.getSortType() == ASCENDING ? 180 : 0.0);
             }
+        } else if ("TABLE_COLUMN_SORT_NODE".equals(p)) {
+            updateSortGrid();
         }
     }
     
@@ -260,7 +263,7 @@ public class TableColumnHeader extends Region {
                     return "size";
                 }
 
-                @Override public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                @Override public CssMetaData getCssMetaData() {
                     return StyleableProperties.SIZE;
                 }
             };
@@ -390,7 +393,7 @@ public class TableColumnHeader extends Region {
     }
     
     private void updateSortGrid() {
-        // Fixe for RT-14488
+        // Fix for RT-14488
         if (this instanceof NestedTableColumnHeader) return;
         
         getChildren().clear();
@@ -799,8 +802,8 @@ public class TableColumnHeader extends Region {
       * @treatAsPrivate implementation detail
       */
      private static class StyleableProperties {
-         private static final StyleablePropertyMetaData<TableColumnHeader,Number> SIZE =
-            new StyleablePropertyMetaData<TableColumnHeader,Number>("-fx-size",
+         private static final CssMetaData<TableColumnHeader,Number> SIZE =
+            new CssMetaData<TableColumnHeader,Number>("-fx-size",
                  SizeConverter.getInstance(), 20.0) {
 
             @Override
@@ -814,11 +817,11 @@ public class TableColumnHeader extends Region {
             }
         };
 
-         private static final List<StyleablePropertyMetaData> STYLEABLES;
+         private static final List<CssMetaData> STYLEABLES;
          static {
 
-            final List<StyleablePropertyMetaData> styleables = 
-                new ArrayList<StyleablePropertyMetaData>(Region.getClassStyleablePropertyMetaData());
+            final List<CssMetaData> styleables = 
+                new ArrayList<CssMetaData>(Region.getClassCssMetaData());
             Collections.addAll(styleables,
                 SIZE
             );
@@ -828,21 +831,19 @@ public class TableColumnHeader extends Region {
     }
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * @return The CssMetaData associated with this class, which may include the
+     * CssMetaData of its super classes.
      */
-    @Deprecated
-    public static List<StyleablePropertyMetaData> getClassStyleablePropertyMetaData() {
+    public static List<CssMetaData> getClassCssMetaData() {
         return StyleableProperties.STYLEABLES;
-    };
+    }
 
     /**
-     * RT-19263
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
+     * {@inheritDoc}
      */
-    @Deprecated
-    @Override public List<StyleablePropertyMetaData> getStyleablePropertyMetaData() {
-        return getClassStyleablePropertyMetaData();
+    @Override
+    public List<CssMetaData> getCssMetaData() {
+        return getClassCssMetaData();
     }
+
 }
