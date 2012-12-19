@@ -68,8 +68,8 @@ import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
-import com.sun.javafx.css.StyleablePropertyMetaData;
-import com.sun.javafx.css.StyleManager;
+import com.sun.javafx.css.CssMetaData;
+import com.sun.javafx.css.PseudoClass;
 import java.util.Iterator;
 import javafx.geometry.NodeOrientation;
 import javafx.stage.Window;
@@ -893,19 +893,19 @@ public class ContextMenuContent extends Region {
      /** @treatAsPrivate */
     private static class StyleableProperties {
 
-        private static final List<StyleablePropertyMetaData> STYLEABLES;
+        private static final List<CssMetaData> STYLEABLES;
         static {
 
-            final List<StyleablePropertyMetaData> styleables =
-                new ArrayList<StyleablePropertyMetaData>(Region.getClassStyleablePropertyMetaData());
+            final List<CssMetaData> styleables =
+                new ArrayList<CssMetaData>(Region.getClassCssMetaData());
 
             //
             // SkinBase only has Region's unique StlyleableProperty's, none of Nodes
             // So, we need to add effect back in. The effect property is in a
             // private inner class, so get the property from Node the hard way.
-            final List<StyleablePropertyMetaData> nodeStyleables = Node.getClassStyleablePropertyMetaData();
+            final List<CssMetaData> nodeStyleables = Node.getClassCssMetaData();
             for(int n=0, max=nodeStyleables.size(); n<max; n++) {
-                StyleablePropertyMetaData styleable = nodeStyleables.get(n);
+                CssMetaData styleable = nodeStyleables.get(n);
                 if ("effect".equals(styleable.getProperty())) {
                     styleables.add(styleable);
                     break;
@@ -916,24 +916,20 @@ public class ContextMenuContent extends Region {
     }
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * @return The CssMetaData associated with this class, which may include the
+     * CssMetaData of its super classes.
      */
-    @Deprecated
-    public static List<StyleablePropertyMetaData> getClassStyleablePropertyMetaData() {
+    public static List<CssMetaData> getClassCssMetaData() {
         return StyleableProperties.STYLEABLES;
     }
 
     /**
-     * RT-19263
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
+     * {@inheritDoc}
      */
-    @Deprecated
-    public List<StyleablePropertyMetaData> getStyleablePropertyMetaData() {
-        return getClassStyleablePropertyMetaData();
+    @Override
+    public List<CssMetaData> getCssMetaData() {
+        return getClassCssMetaData();
     }
-
     
     protected Label getLabelAt(int index) {
         return (Label)((MenuItemContainer)itemsContainer.getChildren().get(index)).getLabel();
@@ -1323,17 +1319,17 @@ public class ContextMenuContent extends Region {
         }
 
         @Override
-        public long impl_getPseudoClassState() {
-            long mask = super.impl_getPseudoClassState();
+        public PseudoClass.States getPseudoClassStates() {
+            PseudoClass.States states = super.getPseudoClassStates();
             if (item instanceof Menu && item.equals(openSubmenu) && submenu.isShowing()) {
-                mask |= SELECTED_PSEUDOCLASS_STATE;
+                states.addState(SELECTED_PSEUDOCLASS_STATE);
             } else if (item instanceof RadioMenuItem && ((RadioMenuItem)item).isSelected()) {
-                mask |= CHECKED_PSEUDOCLASS_STATE;
+                states.addState(CHECKED_PSEUDOCLASS_STATE);
             } else if (item instanceof CheckMenuItem && ((CheckMenuItem)item).isSelected()) {
-                mask |= CHECKED_PSEUDOCLASS_STATE;
+                states.addState(CHECKED_PSEUDOCLASS_STATE);
             }
-            if (item.isDisable()) mask |= DISABLED_PSEUDOCLASS_STATE;
-            return mask;
+            if (item.isDisable()) states.addState(DISABLED_PSEUDOCLASS_STATE);
+            return states;
         }
 
 
@@ -1365,7 +1361,8 @@ public class ContextMenuContent extends Region {
         private void listen(ObservableBooleanValue property, final String pseudoClass) {
             property.addListener(new InvalidationListener() {
                 @Override public void invalidated(Observable valueModel) {
-                    impl_pseudoClassStateChanged(pseudoClass);
+                    PseudoClass.State state = PseudoClass.getState(pseudoClass);
+                    pseudoClassStateChanged(state);
                 }
             });
         }
@@ -1402,12 +1399,12 @@ public class ContextMenuContent extends Region {
     }
 
 
-    private static final long SELECTED_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("selected");
-    private static final long DISABLED_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("disabled");
-    private static final long CHECKED_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("checked");
+    private static final PseudoClass.State SELECTED_PSEUDOCLASS_STATE =
+            PseudoClass.getState("selected");
+    private static final PseudoClass.State DISABLED_PSEUDOCLASS_STATE =
+            PseudoClass.getState("disabled");
+    private static final PseudoClass.State CHECKED_PSEUDOCLASS_STATE =
+            PseudoClass.getState("checked");
 
     private class MenuLabel extends Label {
 

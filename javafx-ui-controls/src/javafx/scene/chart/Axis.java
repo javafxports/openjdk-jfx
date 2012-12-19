@@ -24,7 +24,11 @@
  */
 package javafx.scene.chart;
 
-import com.sun.javafx.css.*;
+import com.sun.javafx.css.CssMetaData;
+import com.sun.javafx.css.PseudoClass;
+import com.sun.javafx.css.StyleableBooleanProperty;
+import com.sun.javafx.css.StyleableDoubleProperty;
+import com.sun.javafx.css.StyleableObjectProperty;
 import com.sun.javafx.css.converters.BooleanConverter;
 import com.sun.javafx.css.converters.EnumConverter;
 import com.sun.javafx.css.converters.PaintConverter;
@@ -100,15 +104,15 @@ public abstract class Axis<T> extends Region {
     private ObjectProperty<Side> side = new StyleableObjectProperty<Side>(){
         @Override protected void invalidated() {
             // cause refreshTickMarks
-            impl_pseudoClassStateChanged(PSEUDO_CLASS_TOP);
-            impl_pseudoClassStateChanged(PSEUDO_CLASS_RIGHT);
-            impl_pseudoClassStateChanged(PSEUDO_CLASS_BOTTOM);
-            impl_pseudoClassStateChanged(PSEUDO_CLASS_LEFT);
+            pseudoClassStateChanged(TOP_PSEUDOCLASS_STATE);
+            pseudoClassStateChanged(RIGHT_PSEUDOCLASS_STATE);
+            pseudoClassStateChanged(BOTTOM_PSEUDOCLASS_STATE);
+            pseudoClassStateChanged(LEFT_PSEUDOCLASS_STATE);
             requestAxisLayout();
         }
         
         @Override
-        public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+        public CssMetaData getCssMetaData() {
             return StyleableProperties.SIDE;
         }
 
@@ -155,7 +159,7 @@ public abstract class Axis<T> extends Region {
         }
 
         @Override
-        public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+        public CssMetaData getCssMetaData() {
             return StyleableProperties.TICK_MARK_VISIBLE;
         }
         @Override
@@ -183,7 +187,7 @@ public abstract class Axis<T> extends Region {
         }
         
         @Override
-        public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+        public CssMetaData getCssMetaData() {
             return StyleableProperties.TICK_LABELS_VISIBLE;
         }
 
@@ -213,7 +217,7 @@ public abstract class Axis<T> extends Region {
         }
 
         @Override
-        public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+        public CssMetaData getCssMetaData() {
             return StyleableProperties.TICK_LENGTH;
         }        
         @Override
@@ -266,7 +270,7 @@ public abstract class Axis<T> extends Region {
         }
 
         @Override 
-        public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+        public CssMetaData getCssMetaData() {
             return StyleableProperties.TICK_LABEL_FONT;
         }
         
@@ -291,7 +295,7 @@ public abstract class Axis<T> extends Region {
         }
 
         @Override
-        public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+        public CssMetaData getCssMetaData() {
             return StyleableProperties.TICK_LABEL_FILL;
         }
         
@@ -316,7 +320,7 @@ public abstract class Axis<T> extends Region {
         }
 
         @Override
-        public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+        public CssMetaData getCssMetaData() {
             return StyleableProperties.TICK_LABEL_TICK_GAP;
         }
         
@@ -1029,19 +1033,10 @@ public abstract class Axis<T> extends Region {
 
     // -------------- STYLESHEET HANDLING ------------------------------------------------------------------------------
 
-    /** Pseudoclass indicating this is a vertical Left side Axis. */
-    private static final String PSEUDO_CLASS_TOP = "top";
-    /** Pseudoclass indicating this is a vertical Left side Axis. */
-    private static final String PSEUDO_CLASS_RIGHT = "right";
-    /** Pseudoclass indicating this is a vertical Left side Axis. */
-    private static final String PSEUDO_CLASS_BOTTOM = "bottom";
-    /** Pseudoclass indicating this is a vertical Left side Axis. */
-    private static final String PSEUDO_CLASS_LEFT = "left";
-
     /** @treatAsPrivate implementation detail */
     private static class StyleableProperties {
-        private static final StyleablePropertyMetaData<Axis,Side> SIDE =
-            new StyleablePropertyMetaData<Axis,Side>("-fx-side",
+        private static final CssMetaData<Axis,Side> SIDE =
+            new CssMetaData<Axis,Side>("-fx-side",
                 new EnumConverter<Side>(Side.class)) {
 
             @Override
@@ -1055,8 +1050,8 @@ public abstract class Axis<T> extends Region {
             }
         };
         
-        private static final StyleablePropertyMetaData<Axis,Number> TICK_LENGTH =
-            new StyleablePropertyMetaData<Axis,Number>("-fx-tick-length",
+        private static final CssMetaData<Axis,Number> TICK_LENGTH =
+            new CssMetaData<Axis,Number>("-fx-tick-length",
                 SizeConverter.getInstance(), 8.0) {
 
             @Override
@@ -1070,8 +1065,8 @@ public abstract class Axis<T> extends Region {
             }
         };
         
-        private static final StyleablePropertyMetaData<Axis,Font> TICK_LABEL_FONT =
-            new StyleablePropertyMetaData.FONT<Axis>("-fx-tick-label-font",
+        private static final CssMetaData<Axis,Font> TICK_LABEL_FONT =
+            new CssMetaData.FONT<Axis>("-fx-tick-label-font",
                 Font.font("system", 8.0)) {
 
             @Override
@@ -1085,8 +1080,8 @@ public abstract class Axis<T> extends Region {
             }
         };
 
-        private static final StyleablePropertyMetaData<Axis,Paint> TICK_LABEL_FILL =
-            new StyleablePropertyMetaData<Axis,Paint>("-fx-tick-label-fill",
+        private static final CssMetaData<Axis,Paint> TICK_LABEL_FILL =
+            new CssMetaData<Axis,Paint>("-fx-tick-label-fill",
                 PaintConverter.getInstance(), Color.BLACK) {
 
             @Override
@@ -1100,8 +1095,8 @@ public abstract class Axis<T> extends Region {
             }
         };
         
-        private static final StyleablePropertyMetaData<Axis,Number> TICK_LABEL_TICK_GAP =
-            new StyleablePropertyMetaData<Axis,Number>("-fx-tick-label-gap",
+        private static final CssMetaData<Axis,Number> TICK_LABEL_TICK_GAP =
+            new CssMetaData<Axis,Number>("-fx-tick-label-gap",
                 SizeConverter.getInstance(), 3.0) {
 
             @Override
@@ -1115,8 +1110,8 @@ public abstract class Axis<T> extends Region {
             }
         };
         
-        private static final StyleablePropertyMetaData<Axis,Boolean> TICK_MARK_VISIBLE =
-            new StyleablePropertyMetaData<Axis,Boolean>("-fx-tick-mark-visible",
+        private static final CssMetaData<Axis,Boolean> TICK_MARK_VISIBLE =
+            new CssMetaData<Axis,Boolean>("-fx-tick-mark-visible",
                 BooleanConverter.getInstance(), Boolean.TRUE) {
 
             @Override
@@ -1130,8 +1125,8 @@ public abstract class Axis<T> extends Region {
             }
         };
         
-        private static final StyleablePropertyMetaData<Axis,Boolean> TICK_LABELS_VISIBLE =
-            new StyleablePropertyMetaData<Axis,Boolean>("-fx-tick-labels-visible",
+        private static final CssMetaData<Axis,Boolean> TICK_LABELS_VISIBLE =
+            new CssMetaData<Axis,Boolean>("-fx-tick-labels-visible",
                 BooleanConverter.getInstance(), Boolean.TRUE) {
 
             @Override
@@ -1145,10 +1140,10 @@ public abstract class Axis<T> extends Region {
             }
         };
 
-        private static final List<StyleablePropertyMetaData> STYLEABLES;
+        private static final List<CssMetaData> STYLEABLES;
         static {
-        final List<StyleablePropertyMetaData> styleables =
-            new ArrayList<StyleablePropertyMetaData>(Region.getClassStyleablePropertyMetaData());
+        final List<CssMetaData> styleables =
+            new ArrayList<CssMetaData>(Region.getClassCssMetaData());
             Collections.addAll(styleables,
                 SIDE,
                 TICK_LENGTH,
@@ -1161,41 +1156,41 @@ public abstract class Axis<T> extends Region {
             STYLEABLES = Collections.unmodifiableList(styleables);
         }
     }
-                                
+
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * @return The CssMetaData associated with this class, which may include the
+     * CssMetaData of its super classes.
      */
-    @Deprecated
-    public static List<StyleablePropertyMetaData> getClassStyleablePropertyMetaData() {
-        return Axis.StyleableProperties.STYLEABLES;
+    public static List<CssMetaData> getClassCssMetaData() {
+        return StyleableProperties.STYLEABLES;
     }
 
     /**
-     * RT-19263
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
+     * {@inheritDoc}
      */
-    @Deprecated
-    public List<StyleablePropertyMetaData> getStyleablePropertyMetaData() {
-        return getClassStyleablePropertyMetaData();
+    @Override
+    public List<CssMetaData> getCssMetaData() {
+        return getClassCssMetaData();
     }
 
-    private static final long TOP_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("top");
-    private static final long BOTTOM_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("bottom");
-    private static final long LEFT_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("left");
-    private static final long RIGHT_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("right");
+    /** Pseudoclass indicating this is a vertical Top side Axis. */
+    private static final PseudoClass.State TOP_PSEUDOCLASS_STATE =
+            PseudoClass.getState("top");
+    /** Pseudoclass indicating this is a vertical Bottom side Axis. */
+    private static final PseudoClass.State BOTTOM_PSEUDOCLASS_STATE =
+            PseudoClass.getState("bottom");
+    /** Pseudoclass indicating this is a vertical Left side Axis. */
+    private static final PseudoClass.State LEFT_PSEUDOCLASS_STATE =
+            PseudoClass.getState("left");
+    /** Pseudoclass indicating this is a vertical Right side Axis. */
+    private static final PseudoClass.State RIGHT_PSEUDOCLASS_STATE =
+            PseudoClass.getState("right");
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * {@inheritDoc}
      */
-    @Deprecated @Override public long impl_getPseudoClassState() {
-        long mask = super.impl_getPseudoClassState();
+    @Override public PseudoClass.States getPseudoClassStates() {
+        PseudoClass.States states = super.getPseudoClassStates();
         if (getSide() == null) {
             // RT-18270 XYChart has not initialized Side values and it could be null
             // note: We do not have initial default property on creation, as the default
@@ -1205,18 +1200,18 @@ public abstract class Axis<T> extends Region {
         } 
         switch(getSide()) {
             case TOP:
-                mask |= TOP_PSEUDOCLASS_STATE;
+                states.addState(TOP_PSEUDOCLASS_STATE);
                 break;
             case RIGHT:
-                mask |= RIGHT_PSEUDOCLASS_STATE;
+                states.addState(RIGHT_PSEUDOCLASS_STATE);
                 break;
             case BOTTOM:
-                mask |= BOTTOM_PSEUDOCLASS_STATE;
+                states.addState(BOTTOM_PSEUDOCLASS_STATE);
                 break;
             case LEFT:
-                mask |= LEFT_PSEUDOCLASS_STATE;
+                states.addState(LEFT_PSEUDOCLASS_STATE);
                 break;
         }
-        return mask;
+        return states;
     }
 }

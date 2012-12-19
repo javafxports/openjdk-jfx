@@ -42,8 +42,13 @@ import javafx.geometry.Orientation;
 import javafx.util.StringConverter;
 
 import com.sun.javafx.Utils;
-import com.sun.javafx.css.*;
+import com.sun.javafx.css.CssMetaData;
 import com.sun.javafx.css.Origin;
+import com.sun.javafx.css.PseudoClass;
+import com.sun.javafx.css.StyleableBooleanProperty;
+import com.sun.javafx.css.StyleableDoubleProperty;
+import com.sun.javafx.css.StyleableIntegerProperty;
+import com.sun.javafx.css.StyleableObjectProperty;
 import com.sun.javafx.css.converters.BooleanConverter;
 import com.sun.javafx.css.converters.EnumConverter;
 import com.sun.javafx.css.converters.SizeConverter;
@@ -267,12 +272,12 @@ public class Slider extends Control {
         if (orientation == null) {
             orientation = new StyleableObjectProperty<Orientation>(Orientation.HORIZONTAL) {
                 @Override protected void invalidated() {
-                    impl_pseudoClassStateChanged(PSEUDO_CLASS_VERTICAL);
-                    impl_pseudoClassStateChanged(PSEUDO_CLASS_HORIZONTAL);
+                    pseudoClassStateChanged(VERTICAL_PSEUDOCLASS_STATE);
+                    pseudoClassStateChanged(HORIZONTAL_PSEUDOCLASS_STATE);
                 }
                 
                 @Override 
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return StyleableProperties.ORIENTATION;
                 }
 
@@ -311,7 +316,7 @@ public class Slider extends Control {
 
                 
                 @Override 
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return StyleableProperties.SHOW_TICK_LABELS;
                 }
 
@@ -346,7 +351,7 @@ public class Slider extends Control {
 
                 
                 @Override 
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return StyleableProperties.SHOW_TICK_MARKS;
                 }
 
@@ -397,7 +402,7 @@ public class Slider extends Control {
                 }
                 
                 @Override 
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return StyleableProperties.MAJOR_TICK_UNIT;
                 }
 
@@ -434,7 +439,7 @@ public class Slider extends Control {
 
                 
                 @Override 
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return StyleableProperties.MINOR_TICK_COUNT;
                 }
 
@@ -470,7 +475,7 @@ public class Slider extends Control {
             snapToTicks = new StyleableBooleanProperty(false) {
                 
                 @Override 
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return StyleableProperties.SNAP_TO_TICKS;
                 }
 
@@ -529,7 +534,7 @@ public class Slider extends Control {
             blockIncrement = new StyleableDoubleProperty(10) {
 
                 @Override 
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return StyleableProperties.BLOCK_INCREMENT;
                 }
 
@@ -639,8 +644,8 @@ public class Slider extends Control {
     private static final String PSEUDO_CLASS_HORIZONTAL = "horizontal";
 
     private static class StyleableProperties {
-        private static final StyleablePropertyMetaData<Slider,Number> BLOCK_INCREMENT =
-            new StyleablePropertyMetaData<Slider,Number>("-fx-block-increment",
+        private static final CssMetaData<Slider,Number> BLOCK_INCREMENT =
+            new CssMetaData<Slider,Number>("-fx-block-increment",
                 SizeConverter.getInstance(), 10.0) {
 
             @Override
@@ -654,8 +659,8 @@ public class Slider extends Control {
             }
         };
         
-        private static final StyleablePropertyMetaData<Slider,Boolean> SHOW_TICK_LABELS =
-            new StyleablePropertyMetaData<Slider,Boolean>("-fx-show-tick-labels",
+        private static final CssMetaData<Slider,Boolean> SHOW_TICK_LABELS =
+            new CssMetaData<Slider,Boolean>("-fx-show-tick-labels",
                 BooleanConverter.getInstance(), Boolean.FALSE) {
 
             @Override
@@ -669,8 +674,8 @@ public class Slider extends Control {
             }
         };
                     
-        private static final StyleablePropertyMetaData<Slider,Boolean> SHOW_TICK_MARKS =
-            new StyleablePropertyMetaData<Slider,Boolean>("-fx-show-tick-marks",
+        private static final CssMetaData<Slider,Boolean> SHOW_TICK_MARKS =
+            new CssMetaData<Slider,Boolean>("-fx-show-tick-marks",
                 BooleanConverter.getInstance(), Boolean.FALSE) {
 
             @Override
@@ -684,8 +689,8 @@ public class Slider extends Control {
             }
         };
             
-        private static final StyleablePropertyMetaData<Slider,Boolean> SNAP_TO_TICKS =
-            new StyleablePropertyMetaData<Slider,Boolean>("-fx-snap-to-ticks",
+        private static final CssMetaData<Slider,Boolean> SNAP_TO_TICKS =
+            new CssMetaData<Slider,Boolean>("-fx-snap-to-ticks",
                 BooleanConverter.getInstance(), Boolean.FALSE) {
 
             @Override
@@ -699,8 +704,8 @@ public class Slider extends Control {
             }
         };
         
-        private static final StyleablePropertyMetaData<Slider,Number> MAJOR_TICK_UNIT =
-            new StyleablePropertyMetaData<Slider,Number>("-fx-major-tick-unit",
+        private static final CssMetaData<Slider,Number> MAJOR_TICK_UNIT =
+            new CssMetaData<Slider,Number>("-fx-major-tick-unit",
                 SizeConverter.getInstance(), 25.0) {
 
             @Override
@@ -714,8 +719,8 @@ public class Slider extends Control {
             }
         };
         
-        private static final StyleablePropertyMetaData<Slider,Number> MINOR_TICK_COUNT =
-            new StyleablePropertyMetaData<Slider,Number>("-fx-minor-tick-count",
+        private static final CssMetaData<Slider,Number> MINOR_TICK_COUNT =
+            new CssMetaData<Slider,Number>("-fx-minor-tick-count",
                 SizeConverter.getInstance(), 3.0) {
 
             @Override public void set(Slider node, Number value, Origin origin) {
@@ -733,8 +738,8 @@ public class Slider extends Control {
             }
         };
         
-        private static final StyleablePropertyMetaData<Slider,Orientation> ORIENTATION =
-            new StyleablePropertyMetaData<Slider,Orientation>("-fx-orientation",
+        private static final CssMetaData<Slider,Orientation> ORIENTATION =
+            new CssMetaData<Slider,Orientation>("-fx-orientation",
                 new EnumConverter<Orientation>(Orientation.class), 
                 Orientation.HORIZONTAL) {
 
@@ -755,10 +760,10 @@ public class Slider extends Control {
             }
         };
 
-        private static final List<StyleablePropertyMetaData> STYLEABLES;
+        private static final List<CssMetaData> STYLEABLES;
         static {
-            final List<StyleablePropertyMetaData> styleables = 
-                new ArrayList<StyleablePropertyMetaData>(Control.getClassStyleablePropertyMetaData());
+            final List<CssMetaData> styleables = 
+                new ArrayList<CssMetaData>(Control.getClassCssMetaData());
             Collections.addAll(styleables,
                 BLOCK_INCREMENT,
                 SHOW_TICK_LABELS,
@@ -773,12 +778,11 @@ public class Slider extends Control {
     }
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * @return The CssMetaData associated with this class, which may include the
+     * CssMetaData of its super classes.
      */
-    @Deprecated
-    public static List<StyleablePropertyMetaData> getClassStyleablePropertyMetaData() {
-        return Slider.StyleableProperties.STYLEABLES;
+    public static List<CssMetaData> getClassCssMetaData() {
+        return StyleableProperties.STYLEABLES;
     }
 
     /**
@@ -787,24 +791,23 @@ public class Slider extends Control {
      * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
      */
     @Deprecated
-    @Override protected List<StyleablePropertyMetaData> impl_getControlStyleableProperties() {
-        return getClassStyleablePropertyMetaData();
+    @Override protected List<CssMetaData> impl_getControlStyleableProperties() {
+        return getClassCssMetaData();
     }
 
-    private static final long VERTICAL_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("vertical");
-    private static final long HORIZONTAL_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("horizontal");
+    private static final PseudoClass.State VERTICAL_PSEUDOCLASS_STATE =
+            PseudoClass.getState("vertical");
+    private static final PseudoClass.State HORIZONTAL_PSEUDOCLASS_STATE =
+            PseudoClass.getState("horizontal");
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * {@inheritDoc}
      */
-    @Deprecated @Override public long impl_getPseudoClassState() {
-        long mask = super.impl_getPseudoClassState();
-        mask |= (getOrientation() == Orientation.VERTICAL) ?
-            VERTICAL_PSEUDOCLASS_STATE : HORIZONTAL_PSEUDOCLASS_STATE;
-        return mask;
+    @Override public PseudoClass.States getPseudoClassStates() {
+        PseudoClass.States states = super.getPseudoClassStates();
+        if (getOrientation() == Orientation.VERTICAL) states.addState(VERTICAL_PSEUDOCLASS_STATE);
+        else states.addState(HORIZONTAL_PSEUDOCLASS_STATE);
+        return states;
     }
 
     private AccessibleSlider accSlider ;

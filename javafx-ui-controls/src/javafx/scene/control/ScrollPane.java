@@ -25,7 +25,10 @@
 
 package javafx.scene.control;
 
-import com.sun.javafx.css.*;
+import com.sun.javafx.css.CssMetaData;
+import com.sun.javafx.css.PseudoClass;
+import com.sun.javafx.css.StyleableBooleanProperty;
+import com.sun.javafx.css.StyleableObjectProperty;
 import com.sun.javafx.css.converters.BooleanConverter;
 import com.sun.javafx.css.converters.EnumConverter;
 import com.sun.javafx.scene.control.skin.ScrollPaneSkin;
@@ -99,8 +102,8 @@ public class ScrollPane extends Control {
         // focusTraversable is styleable through css. Calling setFocusTraversable
         // makes it look to css like the user set the value and css will not 
         // override. Initializing focusTraversable by calling set on the 
-        // StyleablePropertyMetaData ensures that css will be able to override the value.
-        final StyleablePropertyMetaData prop = StyleablePropertyMetaData.getStyleablePropertyMetaData(focusTraversableProperty());
+        // CssMetaData ensures that css will be able to override the value.
+        final CssMetaData prop = CssMetaData.getCssMetaData(focusTraversableProperty());
         prop.set(this, Boolean.FALSE);            
     }
     /***************************************************************************
@@ -125,7 +128,7 @@ public class ScrollPane extends Control {
             hbarPolicy = new StyleableObjectProperty<ScrollBarPolicy>(ScrollBarPolicy.AS_NEEDED) {
 
                 @Override
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return StyleableProperties.HBAR_POLICY;
                 }
 
@@ -159,7 +162,7 @@ public class ScrollPane extends Control {
             vbarPolicy = new StyleableObjectProperty<ScrollBarPolicy>(ScrollBarPolicy.AS_NEEDED) {
 
                 @Override
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return StyleableProperties.VBAR_POLICY;
                 }
 
@@ -347,11 +350,11 @@ public class ScrollPane extends Control {
         if (fitToWidth == null) {
             fitToWidth = new StyleableBooleanProperty(false) {
                 @Override public void invalidated() {
-                    impl_pseudoClassStateChanged(PSEUDO_CLASS_FIT_TO_WIDTH);
+                    pseudoClassStateChanged(FIT_TO_WIDTH_PSEUDOCLASS_STATE);
                 }
                 
                 @Override
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return StyleableProperties.FIT_TO_WIDTH;
                 }
 
@@ -384,11 +387,11 @@ public class ScrollPane extends Control {
         if (fitToHeight == null) {
             fitToHeight = new StyleableBooleanProperty(false) {
                 @Override public void invalidated() {
-                    impl_pseudoClassStateChanged(PSEUDO_CLASS_FIT_TO_HEIGHT);
+                    pseudoClassStateChanged(FIT_TO_HEIGHT_PSEUDOCLASS_STATE);
                 }
 
                 @Override
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return StyleableProperties.FIT_TO_HEIGHT;
                 }
 
@@ -423,11 +426,11 @@ public class ScrollPane extends Control {
         if (pannable == null) {
             pannable = new StyleableBooleanProperty(false) {
                 @Override public void invalidated() {
-                    impl_pseudoClassStateChanged(PSEUDO_CLASS_PANNABLE);
+                    pseudoClassStateChanged(PANNABLE_PSEUDOCLASS_STATE);
                 }
 
                 @Override
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return StyleableProperties.PANNABLE;
                 }
                 
@@ -596,8 +599,8 @@ public class ScrollPane extends Control {
      * @treatAsPrivate
      */
     private static class StyleableProperties {
-        private static final StyleablePropertyMetaData<ScrollPane,ScrollBarPolicy> HBAR_POLICY =
-            new StyleablePropertyMetaData<ScrollPane,ScrollBarPolicy>("-fx-hbar-policy",
+        private static final CssMetaData<ScrollPane,ScrollBarPolicy> HBAR_POLICY =
+            new CssMetaData<ScrollPane,ScrollBarPolicy>("-fx-hbar-policy",
                  new EnumConverter<ScrollBarPolicy>(ScrollBarPolicy.class),
                         ScrollBarPolicy.AS_NEEDED){
 
@@ -612,8 +615,8 @@ public class ScrollPane extends Control {
             }
         };
                 
-        private static final StyleablePropertyMetaData<ScrollPane,ScrollBarPolicy> VBAR_POLICY =
-            new StyleablePropertyMetaData<ScrollPane,ScrollBarPolicy>("-fx-vbar-policy",
+        private static final CssMetaData<ScrollPane,ScrollBarPolicy> VBAR_POLICY =
+            new CssMetaData<ScrollPane,ScrollBarPolicy>("-fx-vbar-policy",
                 new EnumConverter<ScrollBarPolicy>(ScrollBarPolicy.class),
                         ScrollBarPolicy.AS_NEEDED){
 
@@ -628,8 +631,8 @@ public class ScrollPane extends Control {
             }
         };
                 
-        private static final StyleablePropertyMetaData<ScrollPane,Boolean> FIT_TO_WIDTH =
-            new StyleablePropertyMetaData<ScrollPane, Boolean>("-fx-fit-to-width",
+        private static final CssMetaData<ScrollPane,Boolean> FIT_TO_WIDTH =
+            new CssMetaData<ScrollPane, Boolean>("-fx-fit-to-width",
                 BooleanConverter.getInstance(), Boolean.FALSE){
 
             @Override
@@ -643,8 +646,8 @@ public class ScrollPane extends Control {
             }
         };
                 
-        private static final StyleablePropertyMetaData<ScrollPane,Boolean> FIT_TO_HEIGHT =
-            new StyleablePropertyMetaData<ScrollPane, Boolean>("-fx-fit-to-height",
+        private static final CssMetaData<ScrollPane,Boolean> FIT_TO_HEIGHT =
+            new CssMetaData<ScrollPane, Boolean>("-fx-fit-to-height",
                 BooleanConverter.getInstance(), Boolean.FALSE){
 
             @Override
@@ -658,8 +661,8 @@ public class ScrollPane extends Control {
             }
         };
                 
-        private static final StyleablePropertyMetaData<ScrollPane,Boolean> PANNABLE =
-            new StyleablePropertyMetaData<ScrollPane, Boolean>("-fx-pannable",
+        private static final CssMetaData<ScrollPane,Boolean> PANNABLE =
+            new CssMetaData<ScrollPane, Boolean>("-fx-pannable",
                 BooleanConverter.getInstance(), Boolean.FALSE){
 
             @Override
@@ -673,10 +676,10 @@ public class ScrollPane extends Control {
             }
         };
 
-        private static final List<StyleablePropertyMetaData> STYLEABLES;
+        private static final List<CssMetaData> STYLEABLES;
         static {
-            final List<StyleablePropertyMetaData> styleables = 
-                new ArrayList<StyleablePropertyMetaData>(Control.getClassStyleablePropertyMetaData());
+            final List<CssMetaData> styleables = 
+                new ArrayList<CssMetaData>(Control.getClassCssMetaData());
             Collections.addAll(styleables,
                 HBAR_POLICY,
                 VBAR_POLICY,
@@ -689,47 +692,43 @@ public class ScrollPane extends Control {
     }
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * @return The CssMetaData associated with this class, which may include the
+     * CssMetaData of its super classes.
      */
-    @Deprecated
-    public static List<StyleablePropertyMetaData> getClassStyleablePropertyMetaData() {
-        return ScrollPane.StyleableProperties.STYLEABLES;
+    public static List<CssMetaData> getClassCssMetaData() {
+        return StyleableProperties.STYLEABLES;
     }
 
     /**
-     * RT-19263
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
+     * {@inheritDoc}
      */
-    @Deprecated
-    @Override protected List<StyleablePropertyMetaData> impl_getControlStyleableProperties() {
-        return getClassStyleablePropertyMetaData();
+    @Override
+    public List<CssMetaData> getCssMetaData() {
+        return getClassCssMetaData();
     }
 
-    private static final long PANNABLE_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("pannable");
-    private static final long FIT_TO_WIDTH_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("fitToWidth");
-    private static final long FIT_TO_HEIGHT_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("fitToHeight");
+    private static final PseudoClass.State PANNABLE_PSEUDOCLASS_STATE =
+            PseudoClass.getState("pannable");
+    private static final PseudoClass.State FIT_TO_WIDTH_PSEUDOCLASS_STATE =
+            PseudoClass.getState("fitToWidth");
+    private static final PseudoClass.State FIT_TO_HEIGHT_PSEUDOCLASS_STATE =
+            PseudoClass.getState("fitToHeight");
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * {@inheritDoc}
      */
-    @Deprecated @Override public long impl_getPseudoClassState() {
-        long mask = super.impl_getPseudoClassState();
+    @Override public PseudoClass.States getPseudoClassStates() {
+        PseudoClass.States states = super.getPseudoClassStates();
         if (isPannable()) {
-            mask |= PANNABLE_PSEUDOCLASS_STATE;
+            states.addState(PANNABLE_PSEUDOCLASS_STATE);
         }
         if (isFitToWidth()) {
-            mask |= FIT_TO_WIDTH_PSEUDOCLASS_STATE;
+            states.addState(FIT_TO_WIDTH_PSEUDOCLASS_STATE);
         }
         if (isFitToHeight()) {
-            mask |= FIT_TO_HEIGHT_PSEUDOCLASS_STATE;
+            states.addState(FIT_TO_HEIGHT_PSEUDOCLASS_STATE);
         }
-        return mask;
+        return states;
     }
     
     
