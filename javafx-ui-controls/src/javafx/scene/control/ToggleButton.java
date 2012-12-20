@@ -32,8 +32,8 @@ import javafx.beans.property.ObjectPropertyBase;
 import javafx.event.ActionEvent;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import com.sun.javafx.css.StyleManager;
-import com.sun.javafx.css.StyleablePropertyMetaData;
+import com.sun.javafx.css.CssMetaData;
+import com.sun.javafx.css.PseudoClass;
 import com.sun.javafx.scene.control.skin.ToggleButtonSkin;
 
 /**
@@ -121,8 +121,8 @@ import com.sun.javafx.scene.control.skin.ToggleButtonSkin;
         // alignment is styleable through css. Calling setAlignment
         // makes it look to css like the user set the value and css will not 
         // override. Initializing alignment by calling set on the 
-        // StyleablePropertyMetaData ensures that css will be able to override the value.
-        final StyleablePropertyMetaData prop = StyleablePropertyMetaData.getStyleablePropertyMetaData(alignmentProperty());
+        // CssMetaData ensures that css will be able to override the value.
+        final CssMetaData prop = CssMetaData.getCssMetaData(alignmentProperty());
         prop.set(this, Pos.CENTER);
         setMnemonicParsing(true);     // enable mnemonic auto-parsing by default
     }
@@ -155,7 +155,7 @@ import com.sun.javafx.scene.control.skin.ToggleButtonSkin;
                             getToggleGroup().clearSelectedToggle();
                         }
                     }
-                    impl_pseudoClassStateChanged(PSEUDO_CLASS_SELECTED);
+                    pseudoClassStateChanged(PSEUDO_CLASS_SELECTED);
                 }
 
                 @Override
@@ -243,18 +243,16 @@ import com.sun.javafx.scene.control.skin.ToggleButtonSkin;
      **************************************************************************/
 
     private static final String DEFAULT_STYLE_CLASS = "toggle-button";
-    private static final String PSEUDO_CLASS_SELECTED = "selected";
-
-    private static final long SELECTED_PSEUDOCLASS_STATE = StyleManager.getPseudoclassMask("selected");
+    private static final PseudoClass.State PSEUDO_CLASS_SELECTED =
+            PseudoClass.getState("selected");
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * {@inheritDoc}
      */
-    @Deprecated @Override public long impl_getPseudoClassState() {
-        long mask = super.impl_getPseudoClassState();
-        if (isSelected()) mask |= SELECTED_PSEUDOCLASS_STATE;
-        return mask;
+    @Override public PseudoClass.States getPseudoClassStates() {
+        PseudoClass.States states = super.getPseudoClassStates();
+        if (isSelected()) states.addState(PSEUDO_CLASS_SELECTED);
+        return states;
     }
     
      /**

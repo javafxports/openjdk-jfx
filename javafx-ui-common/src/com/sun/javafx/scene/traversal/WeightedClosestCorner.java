@@ -25,21 +25,13 @@
 
 package com.sun.javafx.scene.traversal;
 
-import static com.sun.javafx.scene.traversal.Direction.DOWN;
-import static com.sun.javafx.scene.traversal.Direction.LEFT;
-import static com.sun.javafx.scene.traversal.Direction.NEXT;
-import static com.sun.javafx.scene.traversal.Direction.PREVIOUS;
-import static com.sun.javafx.scene.traversal.Direction.UP;
-
 import java.util.List;
-
 import javafx.geometry.Bounds;
 import javafx.scene.Node;
-
 import com.sun.javafx.Logging;
-import com.sun.javafx.logging.PlatformLogger;
+import sun.util.logging.PlatformLogger;
 
-
+import static com.sun.javafx.scene.traversal.Direction.*;
 
 /**
  * First search for on-axis nodes. A node is on-axis if any part of its
@@ -173,7 +165,7 @@ public class WeightedClosestCorner implements Algorithm {
 
     public Node traverse(Node node, Direction dir, TraversalEngine engine) {
         Node newNode = null;
-        List<Node> nodes = engine.getTargetNodes();
+        List<Node> nodes = engine.getAllTargetNodes();
         List<Bounds> bounds = engine.getTargetBounds(nodes);
 
         if (focusLogger.isLoggable(PlatformLogger.FINER)) {

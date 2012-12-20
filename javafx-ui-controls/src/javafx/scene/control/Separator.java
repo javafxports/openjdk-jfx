@@ -35,9 +35,9 @@ import javafx.geometry.HPos;
 import javafx.geometry.Orientation;
 import javafx.geometry.VPos;
 
-import com.sun.javafx.css.StyleManager;
 import com.sun.javafx.css.StyleableObjectProperty;
-import com.sun.javafx.css.StyleablePropertyMetaData;
+import com.sun.javafx.css.CssMetaData;
+import com.sun.javafx.css.PseudoClass;
 import com.sun.javafx.css.converters.EnumConverter;
 import com.sun.javafx.scene.control.skin.SeparatorSkin;
 
@@ -80,8 +80,8 @@ public class Separator extends Control {
         // focusTraversable is styleable through css. Calling setFocusTraversable
         // makes it look to css like the user set the value and css will not 
         // override. Initializing focusTraversable by calling set on the 
-        // StyleablePropertyMetaData ensures that css will be able to override the value.
-        final StyleablePropertyMetaData prop = StyleablePropertyMetaData.getStyleablePropertyMetaData(focusTraversableProperty());
+        // CssMetaData ensures that css will be able to override the value.
+        final CssMetaData prop = CssMetaData.getCssMetaData(focusTraversableProperty());
         prop.set(this, Boolean.FALSE);            
     }
 
@@ -111,12 +111,12 @@ public class Separator extends Control {
         new StyleableObjectProperty<Orientation>(Orientation.HORIZONTAL) {
 
             @Override protected void invalidated() {
-                impl_pseudoClassStateChanged(PSEUDO_CLASS_VERTICAL);
-                impl_pseudoClassStateChanged(PSEUDO_CLASS_HORIZONTAL);
+                pseudoClassStateChanged(VERTICAL_PSEUDOCLASS_STATE);
+                pseudoClassStateChanged(HORIZONTAL_PSEUDOCLASS_STATE);
             }
 
             @Override 
-            public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+            public CssMetaData getCssMetaData() {
                 return StyleableProperties.ORIENTATION;
             }
 
@@ -164,7 +164,7 @@ public class Separator extends Control {
                 }
 
                 @Override
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return StyleableProperties.HALIGNMENT;
                 }
                 
@@ -202,7 +202,7 @@ public class Separator extends Control {
                 }
 
                 @Override
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return StyleableProperties.VALIGNMENT;
                 }
                 
@@ -228,8 +228,8 @@ public class Separator extends Control {
     private static final String PSEUDO_CLASS_HORIZONTAL = "horizontal";
 
     private static class StyleableProperties {
-        private static final StyleablePropertyMetaData<Separator,Orientation> ORIENTATION = 
-                new StyleablePropertyMetaData<Separator,Orientation>("-fx-orientation",
+        private static final CssMetaData<Separator,Orientation> ORIENTATION = 
+                new CssMetaData<Separator,Orientation>("-fx-orientation",
                 new EnumConverter<Orientation>(Orientation.class),
                 Orientation.HORIZONTAL) {
 
@@ -250,8 +250,8 @@ public class Separator extends Control {
             }
         };
         
-        private static final StyleablePropertyMetaData<Separator,HPos> HALIGNMENT = 
-                new StyleablePropertyMetaData<Separator,HPos>("-fx-halignment",
+        private static final CssMetaData<Separator,HPos> HALIGNMENT = 
+                new CssMetaData<Separator,HPos>("-fx-halignment",
                 new EnumConverter<HPos>(HPos.class),
                 HPos.CENTER) {
 
@@ -266,8 +266,8 @@ public class Separator extends Control {
             }
         };
         
-        private static final StyleablePropertyMetaData<Separator,VPos> VALIGNMENT = 
-                new StyleablePropertyMetaData<Separator,VPos>("-fx-valignment",
+        private static final CssMetaData<Separator,VPos> VALIGNMENT = 
+                new CssMetaData<Separator,VPos>("-fx-valignment",
                 new EnumConverter<VPos>(VPos.class),
                 VPos.CENTER){
 
@@ -282,10 +282,10 @@ public class Separator extends Control {
             }
         };
 
-        private static final List<StyleablePropertyMetaData> STYLEABLES;
+        private static final List<CssMetaData> STYLEABLES;
         static {
-            final List<StyleablePropertyMetaData> styleables =
-                new ArrayList<StyleablePropertyMetaData>(Control.getClassStyleablePropertyMetaData());
+            final List<CssMetaData> styleables =
+                new ArrayList<CssMetaData>(Control.getClassCssMetaData());
             Collections.addAll(styleables,
                 ORIENTATION,
                 HALIGNMENT,
@@ -296,11 +296,10 @@ public class Separator extends Control {
     }
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * @return The CssMetaData associated with this class, which may include the
+     * CssMetaData of its super classes.
      */
-    @Deprecated
-    public static List<StyleablePropertyMetaData> getClassStyleablePropertyMetaData() {
+    public static List<CssMetaData> getClassCssMetaData() {
         return Separator.StyleableProperties.STYLEABLES;
     }
 
@@ -310,22 +309,21 @@ public class Separator extends Control {
      * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
      */
     @Deprecated
-    @Override protected List<StyleablePropertyMetaData> impl_getControlStyleableProperties() {
-        return getClassStyleablePropertyMetaData();
+    @Override protected List<CssMetaData> impl_getControlStyleableProperties() {
+        return getClassCssMetaData();
     }
 
-    private static final long VERTICAL_PSEUDOCLASS_STATE = StyleManager.getPseudoclassMask("vertical");
-    private static final long HORIZONTAL_PSEUDOCLASS_STATE = StyleManager.getPseudoclassMask("horizontal");
+    private static final PseudoClass.State VERTICAL_PSEUDOCLASS_STATE = PseudoClass.getState("vertical");
+    private static final PseudoClass.State HORIZONTAL_PSEUDOCLASS_STATE = PseudoClass.getState("horizontal");
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * {@inheritDoc}
      */
-    @Deprecated @Override public long impl_getPseudoClassState() {
-        long mask = super.impl_getPseudoClassState();
-        mask |= (getOrientation() == Orientation.VERTICAL) ?
-            VERTICAL_PSEUDOCLASS_STATE : HORIZONTAL_PSEUDOCLASS_STATE;
-        return mask;
+    @Override public PseudoClass.States getPseudoClassStates() {
+        PseudoClass.States states = super.getPseudoClassStates();
+        if (getOrientation() == Orientation.VERTICAL) states.addState(VERTICAL_PSEUDOCLASS_STATE);
+        else states.addState(HORIZONTAL_PSEUDOCLASS_STATE);
+        return states;
     }
 
     

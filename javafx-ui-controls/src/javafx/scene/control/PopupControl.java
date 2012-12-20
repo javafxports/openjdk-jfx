@@ -24,7 +24,11 @@
  */
 package javafx.scene.control;
 
-import com.sun.javafx.Utils;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import javafx.application.Application;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.DoublePropertyBase;
@@ -38,18 +42,18 @@ import javafx.collections.ObservableList;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.stage.PopupWindow;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
+import com.sun.javafx.Utils;
 import com.sun.javafx.application.PlatformImpl;
 import com.sun.javafx.collections.TrackableObservableList;
-import com.sun.javafx.css.*;
+import com.sun.javafx.css.CssError;
+import com.sun.javafx.css.CssMetaData;
+import com.sun.javafx.css.PseudoClass;
+import com.sun.javafx.css.StyleManager;
+import com.sun.javafx.css.Styleable;
+import com.sun.javafx.css.StyleableStringProperty;
 import com.sun.javafx.css.converters.StringConverter;
-import com.sun.javafx.logging.PlatformLogger;
 import com.sun.javafx.scene.control.Logging;
+import sun.util.logging.PlatformLogger;
 
 /**
  * An extension of PopupWindow that allows for CSS styling.
@@ -897,8 +901,8 @@ public class PopupControl extends PopupWindow implements Skinnable {
      **************************************************************************/
 
     private static class StyleableProperties {
-        private static final StyleablePropertyMetaData<CSSBridge,String> SKIN = 
-            new StyleablePropertyMetaData<CSSBridge,String>("-fx-skin",
+        private static final CssMetaData<CSSBridge,String> SKIN = 
+            new CssMetaData<CSSBridge,String>("-fx-skin",
                 StringConverter.getInstance()) {
 
             @Override
@@ -912,10 +916,10 @@ public class PopupControl extends PopupWindow implements Skinnable {
             }
         };
 
-        private static final List<StyleablePropertyMetaData> STYLEABLES;
+        private static final List<CssMetaData> STYLEABLES;
         static {
-            final List<StyleablePropertyMetaData> styleables =
-                new ArrayList<StyleablePropertyMetaData>();
+            final List<CssMetaData> styleables =
+                new ArrayList<CssMetaData>();
             Collections.addAll(styleables,
                 SKIN
             );
@@ -924,32 +928,28 @@ public class PopupControl extends PopupWindow implements Skinnable {
     }
     
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * @return The CssMetaData associated with this class, which may include the
+     * CssMetaData of its super classes.
      */
-    @Deprecated
-    public static List<StyleablePropertyMetaData> getClassStyleablePropertyMetaData() {
+    public static List<CssMetaData> getClassCssMetaData() {
         return StyleableProperties.STYLEABLES;
     }
 
-
     /**
-     * RT-19263
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
+     * This method should delegate to {@link Node#getClassCssMetaData()} so that
+     * a Node's CssMetaData can be accessed without the need for reflection.
+     * @return The CssMetaData associated with this node, which may include the
+     * CssMetaData of its super classes.
      */
-    @Deprecated
-    public List<StyleablePropertyMetaData> getStyleablePropertyMetaData() {
-        return getClassStyleablePropertyMetaData();
+    public List<CssMetaData> getCssMetaData() {
+        return getClassCssMetaData();
     }
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * @see Node#pseudoClassStateChanged(com.sun.javafx.css.PseudoClass.State) 
      */
-    @Deprecated
-    protected void impl_pseudoClassStateChanged(String s) {
-        bridge.impl_pseudoClassStateChanged(s);
+    protected void pseudoClassStateChanged(PseudoClass.State s) {
+        bridge.pseudoClassStateChanged(s);
     }
 
     /**
@@ -995,8 +995,8 @@ public class PopupControl extends PopupWindow implements Skinnable {
                 * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
                 */
                 @Deprecated @Override
-                public List<StyleablePropertyMetaData> getStyleablePropertyMetaData() {
-                    return PopupControl.this.getStyleablePropertyMetaData();
+                public List<CssMetaData> getCssMetaData() {
+                    return PopupControl.this.getCssMetaData();
                 }                
                 
                 @Override
@@ -1013,11 +1013,10 @@ public class PopupControl extends PopupWindow implements Skinnable {
         private String currentSkinClassName = null;
         
         /**
-        * @treatAsPrivate implementation detail
-        * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+        * {@inheritDoc}
         */
-        @Deprecated @Override public void impl_pseudoClassStateChanged(String s) {
-            super.impl_pseudoClassStateChanged(s);
+        @Override protected void pseudoClassStateChanged(PseudoClass.State s) {
+            super.pseudoClassStateChanged(s);
         }
         
         /**
@@ -1026,8 +1025,8 @@ public class PopupControl extends PopupWindow implements Skinnable {
         * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
         */
         @Deprecated @Override 
-        public List<StyleablePropertyMetaData> getStyleablePropertyMetaData() {
-            return PopupControl.this.getStyleablePropertyMetaData();
+        public List<CssMetaData> getCssMetaData() {
+            return PopupControl.this.getCssMetaData();
         }
 
         /**
@@ -1168,7 +1167,7 @@ public class PopupControl extends PopupWindow implements Skinnable {
                     }
 
                     @Override
-                    public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                    public CssMetaData getCssMetaData() {
                         return StyleableProperties.SKIN;
                     }
 
@@ -1281,6 +1280,8 @@ public class PopupControl extends PopupWindow implements Skinnable {
         
     }
 
+    private static final PseudoClass.State INTERNAL_FOCUS = PseudoClass.getState("internal-focus");
+    private static final PseudoClass.State EXTERNAL_FOCUS = PseudoClass.getState("external-focus");
     /**
      * The pseudo classes associated with 2-level focus have changed.
      * @treatAsPrivate implementation detail
@@ -1288,7 +1289,7 @@ public class PopupControl extends PopupWindow implements Skinnable {
      */
     @Deprecated
     public  void impl_focusPseudoClassChanged() {
-        impl_pseudoClassStateChanged("internal-focus");
-        impl_pseudoClassStateChanged("external-focus");
+        pseudoClassStateChanged(INTERNAL_FOCUS);
+        pseudoClassStateChanged(EXTERNAL_FOCUS);
     }
 }

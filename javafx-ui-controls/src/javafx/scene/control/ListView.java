@@ -51,9 +51,8 @@ import javafx.event.EventType;
 import javafx.geometry.Orientation;
 import javafx.util.Callback;
 
-import com.sun.javafx.css.StyleManager;
 import com.sun.javafx.css.StyleableObjectProperty;
-import com.sun.javafx.css.StyleablePropertyMetaData;
+import com.sun.javafx.css.CssMetaData;
 import com.sun.javafx.css.converters.EnumConverter;
 import javafx.collections.WeakListChangeListener;
 import com.sun.javafx.scene.control.accessible.AccessibleList;
@@ -61,6 +60,7 @@ import com.sun.javafx.scene.control.skin.ListViewSkin;
 import com.sun.javafx.scene.control.skin.VirtualContainerBase;
 import java.lang.ref.WeakReference;
 import com.sun.javafx.accessible.providers.AccessibleProvider;
+import com.sun.javafx.css.PseudoClass;
 import javafx.beans.DefaultProperty;
 
 /**
@@ -423,12 +423,12 @@ public class ListView<T> extends Control {
         if (orientation == null) {
             orientation = new StyleableObjectProperty<Orientation>(Orientation.VERTICAL) {
                 @Override public void invalidated() {
-                    impl_pseudoClassStateChanged(PSEUDO_CLASS_VERTICAL);
-                    impl_pseudoClassStateChanged(PSEUDO_CLASS_HORIZONTAL);
+                    pseudoClassStateChanged(PSEUDO_CLASS_VERTICAL);
+                    pseudoClassStateChanged(PSEUDO_CLASS_HORIZONTAL);
                 }
                 
                 @Override 
-                public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                public CssMetaData getCssMetaData() {
                     return ListView.StyleableProperties.ORIENTATION;
                 }
                 
@@ -720,7 +720,7 @@ public class ListView<T> extends Control {
      *      size of the items list contained within the given ListView.
      */
     public void scrollTo(int index) {
-       getProperties().put(VirtualContainerBase.SCROLL_TO_INDEX_CENTERED, index);
+       getProperties().put(VirtualContainerBase.SCROLL_TO_INDEX_TOP, index);
     }
 
     private AccessibleList accListView ;
@@ -755,13 +755,10 @@ public class ListView<T> extends Control {
 
     private static final String DEFAULT_STYLE_CLASS = "list-view";
 
-    private static final String PSEUDO_CLASS_VERTICAL = "vertical";
-    private static final String PSEUDO_CLASS_HORIZONTAL = "horizontal";
-
     /** @treatAsPrivate */
     private static class StyleableProperties {
-        private static final StyleablePropertyMetaData<ListView,Orientation> ORIENTATION = 
-            new StyleablePropertyMetaData<ListView,Orientation>("-fx-orientation",
+        private static final CssMetaData<ListView,Orientation> ORIENTATION = 
+            new CssMetaData<ListView,Orientation>("-fx-orientation",
                 new EnumConverter<Orientation>(Orientation.class), 
                 Orientation.VERTICAL) {
 
@@ -782,10 +779,10 @@ public class ListView<T> extends Control {
             }
         };
             
-        private static final List<StyleablePropertyMetaData> STYLEABLES;
+        private static final List<CssMetaData> STYLEABLES;
         static {
-            final List<StyleablePropertyMetaData> styleables =
-                new ArrayList<StyleablePropertyMetaData>(Control.getClassStyleablePropertyMetaData());
+            final List<CssMetaData> styleables =
+                new ArrayList<CssMetaData>(Control.getClassCssMetaData());
             Collections.addAll(styleables,
                 ORIENTATION
             );
@@ -794,38 +791,37 @@ public class ListView<T> extends Control {
     }
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * @return The CssMetaData associated with this class, which may include the
+     * CssMetaData of its super classes.
      */
-    @Deprecated
-    public static List<StyleablePropertyMetaData> getClassStyleablePropertyMetaData() {
-        return ListView.StyleableProperties.STYLEABLES;
+    public static List<CssMetaData> getClassCssMetaData() {
+        return StyleableProperties.STYLEABLES;
     }
 
     /**
-     * RT-19263
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
+     * {@inheritDoc}
      */
-    @Deprecated
-    protected List<StyleablePropertyMetaData> impl_getControlStyleableProperties() {
-        return getClassStyleablePropertyMetaData();
+    @Override
+    public List<CssMetaData> getCssMetaData() {
+        return getClassCssMetaData();
     }
 
-    private static final long VERTICAL_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("vertical");
-    private static final long HORIZONTAL_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("horizontal");
+    private static final PseudoClass.State PSEUDO_CLASS_VERTICAL =
+            PseudoClass.getState("vertical");
+    private static final PseudoClass.State PSEUDO_CLASS_HORIZONTAL =
+            PseudoClass.getState("horizontal");
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * {@inheritDoc}
      */
-    @Deprecated @Override public long impl_getPseudoClassState() {
-        long mask = super.impl_getPseudoClassState();
-        mask |= (getOrientation() == Orientation.VERTICAL) ?
-            VERTICAL_PSEUDOCLASS_STATE : HORIZONTAL_PSEUDOCLASS_STATE;
-        return mask;
+    @Override public PseudoClass.States getPseudoClassStates() {
+        PseudoClass.States states = super.getPseudoClassStates();
+        if (getOrientation() == Orientation.VERTICAL) {
+            states.addState(PSEUDO_CLASS_VERTICAL);
+        } else {            
+            states.addState(PSEUDO_CLASS_HORIZONTAL);
+        }
+        return states;
     }
 
 

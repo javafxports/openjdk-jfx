@@ -50,9 +50,9 @@ import javafx.util.Duration;
 
 import com.sun.javafx.charts.Legend;
 import com.sun.javafx.charts.Legend.LegendItem;
-import com.sun.javafx.css.StyleManager;
 import com.sun.javafx.css.StyleableDoubleProperty;
-import com.sun.javafx.css.StyleablePropertyMetaData;
+import com.sun.javafx.css.CssMetaData;
+import com.sun.javafx.css.PseudoClass;
 import com.sun.javafx.css.converters.SizeConverter;
 import javafx.beans.value.WritableValue;
 
@@ -92,7 +92,7 @@ public class BarChart<X,Y> extends XYChart<X,Y> {
             return "barGap";
         }
 
-        public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+        public CssMetaData getCssMetaData() {
             return StyleableProperties.BAR_GAP;
         }
     };
@@ -117,7 +117,7 @@ public class BarChart<X,Y> extends XYChart<X,Y> {
             return "categoryGap";
         }
 
-        public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+        public CssMetaData getCssMetaData() {
             return StyleableProperties.CATEGORY_GAP;
         }
     };
@@ -164,8 +164,8 @@ public class BarChart<X,Y> extends XYChart<X,Y> {
             orientation = Orientation.HORIZONTAL;
         }
         // update css
-        impl_pseudoClassStateChanged(PSEUDO_CLASS_HORIZONTAL);
-        impl_pseudoClassStateChanged(PSEUDO_CLASS_VERTICAL);
+        pseudoClassStateChanged(HORIZONTAL_PSEUDOCLASS_STATE);
+        pseudoClassStateChanged(VERTICAL_PSEUDOCLASS_STATE);
         setData(data);
     }
 
@@ -471,7 +471,7 @@ public class BarChart<X,Y> extends XYChart<X,Y> {
             bar = new StackPane();
             item.setNode(bar);
         }
-        bar.getStyleClass().setAll("chart-bar", "series" + seriesIndex, "data" + itemIndex,series.defaultColorStyleClass);
+        bar.getStyleClass().addAll("chart-bar", "series" + seriesIndex, "data" + itemIndex,series.defaultColorStyleClass);
         return bar;
     }
 
@@ -482,18 +482,13 @@ public class BarChart<X,Y> extends XYChart<X,Y> {
 
     // -------------- STYLESHEET HANDLING ------------------------------------------------------------------------------
 
-    /** Pseudoclass indicating this is a vertical chart. */
-    private static final String PSEUDO_CLASS_VERTICAL = "vertical";
-    /** Pseudoclass indicating this is a horizontal chart. */
-    private static final String PSEUDO_CLASS_HORIZONTAL = "horizontal";
-
     /**
       * Super-lazy instantiation pattern from Bill Pugh.
       * @treatAsPrivate implementation detail
       */
      private static class StyleableProperties {
-         private static final StyleablePropertyMetaData<BarChart,Number> BAR_GAP = 
-             new StyleablePropertyMetaData<BarChart,Number>("-fx-bar-gap",
+         private static final CssMetaData<BarChart,Number> BAR_GAP = 
+             new CssMetaData<BarChart,Number>("-fx-bar-gap",
                  SizeConverter.getInstance(), 4.0) {
 
             @Override
@@ -507,8 +502,8 @@ public class BarChart<X,Y> extends XYChart<X,Y> {
             }
         };
          
-         private static final StyleablePropertyMetaData<BarChart,Number> CATEGORY_GAP = 
-             new StyleablePropertyMetaData<BarChart,Number>("-fx-category-gap",
+         private static final CssMetaData<BarChart,Number> CATEGORY_GAP = 
+             new CssMetaData<BarChart,Number>("-fx-category-gap",
                  SizeConverter.getInstance(), 10.0)  {
 
             @Override
@@ -522,11 +517,11 @@ public class BarChart<X,Y> extends XYChart<X,Y> {
             }
         };
 
-         private static final List<StyleablePropertyMetaData> STYLEABLES;
+         private static final List<CssMetaData> STYLEABLES;
          static {
 
-            final List<StyleablePropertyMetaData> styleables =
-                new ArrayList<StyleablePropertyMetaData>(XYChart.getClassStyleablePropertyMetaData());
+            final List<CssMetaData> styleables =
+                new ArrayList<CssMetaData>(XYChart.getClassCssMetaData());
             Collections.addAll(styleables,
                 BAR_GAP,
                 CATEGORY_GAP
@@ -536,36 +531,37 @@ public class BarChart<X,Y> extends XYChart<X,Y> {
     }
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * @return The CssMetaData associated with this class, which may include the
+     * CssMetaData of its super classes.
      */
-    @Deprecated
-    public static List<StyleablePropertyMetaData> getClassStyleablePropertyMetaData() {
-        return BarChart.StyleableProperties.STYLEABLES;
+    public static List<CssMetaData> getClassCssMetaData() {
+        return StyleableProperties.STYLEABLES;
     }
 
     /**
-     * RT-19263
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
+     * {@inheritDoc}
      */
-    @Deprecated
-    public List<StyleablePropertyMetaData> getStyleablePropertyMetaData() {
-        return getClassStyleablePropertyMetaData();
+    @Override
+    public List<CssMetaData> getCssMetaData() {
+        return getClassCssMetaData();
     }
 
-    private static final long VERTICAL_PSEUDOCLASS_STATE = StyleManager.getPseudoclassMask("vertical");
-    private static final long HORIZONTAL_PSEUDOCLASS_STATE = StyleManager.getPseudoclassMask("horizontal");
+    /** Pseudoclass indicating this is a vertical chart. */
+    private static final PseudoClass.State VERTICAL_PSEUDOCLASS_STATE =
+            PseudoClass.getState("vertical");
+
+    /** Pseudoclass indicating this is a horizontal chart. */
+    private static final PseudoClass.State HORIZONTAL_PSEUDOCLASS_STATE = 
+            PseudoClass.getState("horizontal");
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * {@inheritDoc}
      */
-    @Deprecated @Override public long impl_getPseudoClassState() {
-        long mask = super.impl_getPseudoClassState();
-        mask |= (orientation == Orientation.VERTICAL) ?
-            VERTICAL_PSEUDOCLASS_STATE : HORIZONTAL_PSEUDOCLASS_STATE;
-        return mask;
+    @Override public PseudoClass.States getPseudoClassStates() {
+        PseudoClass.States states = super.getPseudoClassStates();
+        if (orientation == Orientation.VERTICAL) states.addState(VERTICAL_PSEUDOCLASS_STATE);
+        else states.addState(HORIZONTAL_PSEUDOCLASS_STATE);
+        return states;
 
     }
 }

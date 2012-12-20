@@ -25,15 +25,18 @@
 
 package com.sun.javafx.scene.control.behavior;
 
-import com.sun.javafx.PlatformUtil;
+import java.util.List;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Bounds;
 import javafx.geometry.HorizontalDirection;
 import javafx.geometry.Point2D;
+import javafx.geometry.Rectangle2D;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.IndexRange;
@@ -41,27 +44,17 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.input.TouchEvent;
 import javafx.stage.Screen;
 import javafx.stage.Window;
 import javafx.util.Duration;
-import java.util.List;
-
 import com.sun.javafx.PlatformUtil;
-import com.sun.javafx.scene.control.skin.TextFieldSkin;
 import com.sun.javafx.css.StyleManager;
-import com.sun.javafx.scene.control.skin.Utils;
+import com.sun.javafx.geom.transform.Affine3D;
+import com.sun.javafx.scene.control.skin.TextFieldSkin;
 import com.sun.javafx.scene.text.HitInfo;
 
 import static com.sun.javafx.PlatformUtil.*;
-
-import com.sun.javafx.geom.transform.Affine3D;
-import javafx.scene.Node;
-import javafx.scene.text.Font;
-
-import javafx.geometry.Rectangle2D;
-import javafx.geometry.Bounds;
-import javafx.geometry.Insets;
+import com.sun.javafx.css.PseudoClass;
 
 /**
  * Text field behavior.
@@ -154,9 +147,9 @@ public class TextFieldBehavior extends TextInputControlBehavior<TextField> {
                 } else if (textField.getClass().equals(com.sun.javafx.scene.control.FocusableTextField.class)) {
                     type = TextInputTypes.EDITABLE_COMBO;
                 }
-                Bounds bnds = textField.getBoundsInParent();
-                double w = bnds.getWidth();
-                double h = bnds.getHeight();
+                final Bounds bounds = textField.getBoundsInParent();
+                double w = bounds.getWidth();
+                double h = bounds.getHeight();
                 Affine3D trans = calculateNodeToSceneTransform(textField);
 //                Insets insets = skin.getInsets();
 //                w -= insets.getLeft() + insets.getRight();
@@ -449,19 +442,21 @@ public class TextFieldBehavior extends TextInputControlBehavior<TextField> {
         TEXT_AREA;
     }
 
-    private static final long INTERNAL_PSEUDOCLASS_STATE = StyleManager.getPseudoclassMask("internal-focus");
-    private static final long EXTERNAL_PSEUDOCLASS_STATE = StyleManager.getPseudoclassMask("external-focus");
+    private static final PseudoClass.State INTERNAL_PSEUDOCLASS_STATE = 
+            PseudoClass.getState("internal-focus");
+    private static final PseudoClass.State EXTERNAL_PSEUDOCLASS_STATE = 
+            PseudoClass.getState("external-focus");
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * {@inheritDoc}
      */
-    @Deprecated @Override public long impl_getPseudoClassState() {
-        long mask = super.impl_getPseudoClassState();
+    @Override public PseudoClass.States getPseudoClassStates() {
+        PseudoClass.States states = super.getPseudoClassStates();
         if (tlFocus != null) {
-            mask |= tlFocus.isExternalFocus() ? EXTERNAL_PSEUDOCLASS_STATE : INTERNAL_PSEUDOCLASS_STATE;
+            if (tlFocus.isExternalFocus()) states.addState(EXTERNAL_PSEUDOCLASS_STATE);
+            else states.addState(INTERNAL_PSEUDOCLASS_STATE);
         }
-        return mask;
+        return states;
     }
 
 }

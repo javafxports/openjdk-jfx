@@ -25,49 +25,48 @@
 
 package com.sun.javafx.css;
 
-import java.awt.font.FontRenderContext;
+import java.io.FileNotFoundException;
+import java.io.FilePermission;
 import java.io.IOException;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.io.FilePermission;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PermissionCollection;
+import java.security.PrivilegedAction;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.WeakHashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-
-import javafx.collections.FXCollections;
-import javafx.scene.Node;
-import javafx.scene.Scene;
-
-import com.sun.javafx.css.parser.CSSParser;
-import com.sun.javafx.css.StyleHelper.StyleCacheBucket;
-import com.sun.javafx.css.StyleHelper.StyleCacheKey;
-import com.sun.javafx.logging.PlatformLogger;
-import java.io.FileNotFoundException;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
-import java.security.PrivilegedAction;
-import java.security.PrivilegedExceptionAction;
-import java.security.PrivilegedActionException;
-import java.util.*;
-import java.util.Map.Entry;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
-import javafx.collections.*;
+import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ListChangeListener.Change;
+import javafx.collections.ObservableList;
+import javafx.scene.Node;
 import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.text.Font;
 import javafx.stage.PopupWindow;
 import javafx.stage.Window;
+import com.sun.javafx.css.StyleHelper.StyleCacheBucket;
+import com.sun.javafx.css.StyleHelper.StyleCacheKey;
+import com.sun.javafx.css.parser.CSSParser;
+import sun.util.logging.PlatformLogger;
 
 /**
  * Contains the stylesheet state for a single scene. This includes both the
@@ -863,12 +862,14 @@ final public class StyleManager {
             }
 
             // load any fonts from @font-face
-            faceLoop: for(FontFace fontFace: stylesheet.getFontFaces()) {
-                for(FontFace.FontFaceSrc src: fontFace.getSources()) {
-                    if (src.getType() == FontFace.FontFaceSrcType.URL) {
-                        Font loadedFont = Font.loadFont(src.getSrc(),10);
-                        getLogger().info("Loaded @font-face font [" + (loadedFont == null ? "null" : loadedFont.getName()) + "]");
-                        continue faceLoop;
+            if (stylesheet != null) {
+                faceLoop: for(FontFace fontFace: stylesheet.getFontFaces()) {
+                    for(FontFace.FontFaceSrc src: fontFace.getSources()) {
+                        if (src.getType() == FontFace.FontFaceSrcType.URL) {
+                            Font loadedFont = Font.loadFont(src.getSrc(),10);
+                            getLogger().info("Loaded @font-face font [" + (loadedFont == null ? "null" : loadedFont.getName()) + "]");
+                            continue faceLoop;
+                        }
                     }
                 }
             }
@@ -1080,60 +1081,6 @@ final public class StyleManager {
 
     }
     
-    ////////////////////////////////////////////////////////////////////////////
-    //
-    // Pseudo-class state bit map handling
-    //
-    ////////////////////////////////////////////////////////////////////////////
-    
-    private static final Map<String,Long> pseudoclassMasks = new HashMap<String,Long>();
-
-    public static long getPseudoclassMask(String pclass) {
-        Long mask = pseudoclassMasks.get(pclass);
-        if (mask == null) {
-            final int exp = pseudoclassMasks.size();
-            mask = Long.valueOf(1L << exp); // same as Math.pow(2,exp)
-            pseudoclassMasks.put(pclass,mask);
-        }
-        return mask.longValue();
-    }
-
-    static long getPseudoclassMask(List<String> pseudoclasses) {
-        long mask = 0;
-
-        final int max = pseudoclasses != null ? pseudoclasses.size() : -1;
-        for (int n=0; n<max; n++) {
-            long m = getPseudoclassMask(pseudoclasses.get(n));
-            mask = mask | m;
-        }
-        return mask;
-    }
-
-    public static List<String> getPseudoclassStrings(long mask) {
-        if (mask == 0) {
-            return Collections.EMPTY_LIST;
-        }
-
-        Map<Long,String> stringMap = new HashMap<Long,String>();
-        for (Entry<String,Long> entry : pseudoclassMasks.entrySet()) {
-            stringMap.put(entry.getValue(), entry.getKey());
-        }
-        List<String> strings = new ArrayList<String>();
-        for (long exp=0; exp < Long.SIZE; exp++) {
-            long key = (1L << exp) & mask;
-            if (key != 0) {
-                String value = stringMap.get(key);
-                if (value != null) {
-                    strings.add(value);
-                }
-            }
-        }
-        // even though the list returned could be modified without causing 
-        // harm, returning an unmodifiableList is consistent with 
-        // SimpleSelector.getStyleClasses()
-        return Collections.unmodifiableList(strings);
-    }
-
     private void clearCache() {
         styleCache.clear();
         cacheMap.clear();
@@ -1229,7 +1176,7 @@ final public class StyleManager {
     /**
      * Finds matching styles for this Node.
      */
-    StyleMap findMatchingStyles(Node node, long[] pseudoclassBits) {
+    StyleMap findMatchingStyles(Node node, PseudoClass.States[] pseudoclassBits) {
 
         final int[] indicesOfParentsWithStylesheets =
                 getIndicesOfParentsWithStylesheets(
@@ -1422,7 +1369,7 @@ final public class StyleManager {
             this.cache = new HashMap<Long, StyleMap>();
         }
 
-        private StyleMap getStyleMap(StyleManager owner, Node node, long[] pseudoclassBits) {
+        private StyleMap getStyleMap(StyleManager owner, Node node, PseudoClass.States[] pseudoclassBits) {
             
             if (rules == null || rules.isEmpty()) {                
                 return StyleMap.EMPTY_MAP;
