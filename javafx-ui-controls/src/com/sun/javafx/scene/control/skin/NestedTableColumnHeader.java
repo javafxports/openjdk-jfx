@@ -57,7 +57,7 @@ public class NestedTableColumnHeader extends TableColumnHeader {
      *                                                                         *
      **************************************************************************/
     
-    NestedTableColumnHeader(final TableViewSkinBase skin, final TableColumnBase tc) {
+    public NestedTableColumnHeader(final TableViewSkinBase skin, final TableColumnBase tc) {
         super(skin, tc);
         
         getStyleClass().setAll("nested-column-header");
@@ -161,7 +161,7 @@ public class NestedTableColumnHeader extends TableColumnHeader {
         // any longer, in which case we should switch to a TableColumnHeader 
         // instead
         if (getColumns().isEmpty()) {
-            // switch out to be a TableColumn instead
+            // switch out to be a TableColumn instead, if we have a parent header
             NestedTableColumnHeader parentHeader = getParentHeader();
             if (parentHeader != null) {
                 List<TableColumnHeader> parentColumnHeaders = parentHeader.getColumnHeaders();
@@ -169,6 +169,9 @@ public class NestedTableColumnHeader extends TableColumnHeader {
                 if (index >= 0 && index < parentColumnHeaders.size()) {
                     parentColumnHeaders.set(index, createColumnHeader(getTableColumn()));
                 }
+            } else {
+                // otherwise just remove all the columns
+                getColumnHeaders().clear();
             }
         } else {
             List<TableColumnHeader> newHeaders = new ArrayList<TableColumnHeader>();
@@ -478,13 +481,15 @@ public class NestedTableColumnHeader extends TableColumnHeader {
     }
 
     private TableColumnHeader createColumnHeader(TableColumnBase col) {
-        TableColumnHeader newCol = col.getColumns().isEmpty() ?
-            new TableColumnHeader(getTableViewSkin(), col) :
-            new NestedTableColumnHeader(getTableViewSkin(), col);
-
+        TableColumnHeader newCol = createTableColumnHeader(col);
         newCol.setTableHeaderRow(getTableHeaderRow());
         newCol.setParentHeader(this);
-        
         return newCol;
     }
+    
+    protected TableColumnHeader createTableColumnHeader(TableColumnBase col) {
+        return col.getColumns().isEmpty() ?
+            new TableColumnHeader(getTableViewSkin(), col) :
+            new NestedTableColumnHeader(getTableViewSkin(), col);
+    } 
 }

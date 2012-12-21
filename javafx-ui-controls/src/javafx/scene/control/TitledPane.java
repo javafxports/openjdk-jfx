@@ -36,9 +36,9 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.WritableValue;
 import javafx.scene.Node;
 
-import com.sun.javafx.css.StyleManager;
+import com.sun.javafx.css.PseudoClass;
 import com.sun.javafx.css.StyleableBooleanProperty;
-import com.sun.javafx.css.StyleablePropertyMetaData;
+import com.sun.javafx.css.CssMetaData;
 import com.sun.javafx.css.converters.BooleanConverter;
 import com.sun.javafx.scene.control.skin.TitledPaneSkin;
 import javafx.beans.DefaultProperty;
@@ -134,8 +134,8 @@ public class TitledPane extends Labeled {
     private BooleanProperty expanded = new BooleanPropertyBase(true) {
         @Override protected void invalidated() {
             get();
-            impl_pseudoClassStateChanged(PSEUDO_CLASS_EXPANDED);
-            impl_pseudoClassStateChanged(PSEUDO_CLASS_COLLAPSED);
+            pseudoClassStateChanged(PSEUDO_CLASS_EXPANDED);
+            pseudoClassStateChanged(PSEUDO_CLASS_COLLAPSED);
         }
 
         @Override
@@ -182,7 +182,7 @@ public class TitledPane extends Labeled {
         }
 
         @Override
-        public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+        public CssMetaData getCssMetaData() {
             return StyleableProperties.ANIMATED;
         }
         
@@ -222,7 +222,7 @@ public class TitledPane extends Labeled {
         }
 
         @Override
-        public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+        public CssMetaData getCssMetaData() {
             return StyleableProperties.COLLAPSIBLE;
         }
         
@@ -265,13 +265,16 @@ public class TitledPane extends Labeled {
 
     private static final String DEFAULT_STYLE_CLASS = "titled-pane";
 
-    private static final String PSEUDO_CLASS_EXPANDED = "expanded";
-    private static final String PSEUDO_CLASS_COLLAPSED = "collapsed";
+    private static final PseudoClass.State PSEUDO_CLASS_EXPANDED =
+            PseudoClass.getState("expanded");
+    private static final PseudoClass.State PSEUDO_CLASS_COLLAPSED =
+            PseudoClass.getState("collapsed");
+
 
     private static class StyleableProperties {
 
-       private static final StyleablePropertyMetaData<TitledPane,Boolean> COLLAPSIBLE =
-           new StyleablePropertyMetaData<TitledPane,Boolean>("-fx-collapsible",
+       private static final CssMetaData<TitledPane,Boolean> COLLAPSIBLE =
+           new CssMetaData<TitledPane,Boolean>("-fx-collapsible",
                BooleanConverter.getInstance(), Boolean.TRUE) {
 
             @Override
@@ -285,8 +288,8 @@ public class TitledPane extends Labeled {
             }
         };
                
-        private static final StyleablePropertyMetaData<TitledPane,Boolean> ANIMATED =
-           new StyleablePropertyMetaData<TitledPane,Boolean>("-fx-animated",
+        private static final CssMetaData<TitledPane,Boolean> ANIMATED =
+           new CssMetaData<TitledPane,Boolean>("-fx-animated",
                BooleanConverter.getInstance(), Boolean.TRUE) {
 
             @Override
@@ -300,10 +303,10 @@ public class TitledPane extends Labeled {
             }
         };
 
-        private static final List<StyleablePropertyMetaData> STYLEABLES;
+        private static final List<CssMetaData> STYLEABLES;
         static {
-            final List<StyleablePropertyMetaData> styleables =
-                new ArrayList<StyleablePropertyMetaData>(Labeled.getClassStyleablePropertyMetaData());
+            final List<CssMetaData> styleables =
+                new ArrayList<CssMetaData>(Labeled.getClassCssMetaData());
             Collections.addAll(styleables,
                 COLLAPSIBLE,
                 ANIMATED
@@ -313,36 +316,28 @@ public class TitledPane extends Labeled {
     }
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * @return The CssMetaData associated with this class, which may include the
+     * CssMetaData of its super classes.
      */
-    @Deprecated
-    public static List<StyleablePropertyMetaData> getClassStyleablePropertyMetaData() {
+    public static List<CssMetaData> getClassCssMetaData() {
         return StyleableProperties.STYLEABLES;
     }
 
     /**
-     * RT-19263
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
+     * {@inheritDoc}
      */
-    @Deprecated
-    @Override protected List<StyleablePropertyMetaData> impl_getControlStyleableProperties() {
-        return getClassStyleablePropertyMetaData();
+    @Override
+    public List<CssMetaData> getCssMetaData() {
+        return getClassCssMetaData();
     }
 
-    private static final long EXPANDED_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("expanded");
-    private static final long COLLAPSED_PSEUDOCLASS_STATE =
-            StyleManager.getPseudoclassMask("collapsed");
-
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * {@inheritDoc}
      */
-    @Deprecated @Override public long impl_getPseudoClassState() {
-        long mask = super.impl_getPseudoClassState();
-        mask |= isExpanded() ? EXPANDED_PSEUDOCLASS_STATE : COLLAPSED_PSEUDOCLASS_STATE;
-        return mask;
+    @Override public PseudoClass.States getPseudoClassStates() {
+        PseudoClass.States states = super.getPseudoClassStates();
+        if (isExpanded()) states.addState(PSEUDO_CLASS_EXPANDED);
+        else states.addState(PSEUDO_CLASS_COLLAPSED);
+        return states;
     }
 }

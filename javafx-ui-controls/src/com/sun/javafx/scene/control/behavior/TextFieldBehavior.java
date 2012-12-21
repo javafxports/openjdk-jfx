@@ -25,15 +25,18 @@
 
 package com.sun.javafx.scene.control.behavior;
 
-import com.sun.javafx.PlatformUtil;
+import java.util.List;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Bounds;
 import javafx.geometry.HorizontalDirection;
 import javafx.geometry.Point2D;
+import javafx.geometry.Rectangle2D;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.IndexRange;
@@ -41,27 +44,17 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.input.TouchEvent;
 import javafx.stage.Screen;
 import javafx.stage.Window;
 import javafx.util.Duration;
-import java.util.List;
-
 import com.sun.javafx.PlatformUtil;
-import com.sun.javafx.scene.control.skin.TextFieldSkin;
 import com.sun.javafx.css.StyleManager;
-import com.sun.javafx.scene.control.skin.Utils;
+import com.sun.javafx.geom.transform.Affine3D;
+import com.sun.javafx.scene.control.skin.TextFieldSkin;
 import com.sun.javafx.scene.text.HitInfo;
 
 import static com.sun.javafx.PlatformUtil.*;
-
-import com.sun.javafx.geom.transform.Affine3D;
-import javafx.scene.Node;
-import javafx.scene.text.Font;
-
-import javafx.geometry.Rectangle2D;
-import javafx.geometry.Bounds;
-import javafx.geometry.Insets;
+import com.sun.javafx.css.PseudoClass;
 
 /**
  * Text field behavior.
@@ -145,21 +138,26 @@ public class TextFieldBehavior extends TextInputControlBehavior<TextField> {
 
         if (textField.isFocused()) {
             if (PlatformUtil.isIOS()) {
+                // special handling of focus on iOS is required to allow to
+                // control native keyboard, because nat. keyboard is poped-up only when native 
+                // text component gets focus. When we have JFX keyboard we can remove this code
                 TextInputTypes type = TextInputTypes.TEXT_FIELD;
                 if (textField.getClass().equals(javafx.scene.control.PasswordField.class)) {
                     type = TextInputTypes.PASSWORD_FIELD;
                 } else if (textField.getClass().equals(com.sun.javafx.scene.control.FocusableTextField.class)) {
                     type = TextInputTypes.EDITABLE_COMBO;
                 }
-                Bounds bnds = textField.getBoundsInParent();
-                double w = bnds.getWidth();
-                double h = bnds.getHeight();
+                final Bounds bounds = textField.getBoundsInParent();
+                double w = bounds.getWidth();
+                double h = bounds.getHeight();
                 Affine3D trans = calculateNodeToSceneTransform(textField);
 //                Insets insets = skin.getInsets();
 //                w -= insets.getLeft() + insets.getRight();
 //                h -= insets.getTop() + insets.getBottom();
                 String text = textField.getText();
 
+                // we need to display native text input component on the place where JFX component is drawn
+                // all parameters needed to do that are passed to native impl. here
                 textField.getScene().getWindow().impl_getPeer().requestInput(text, type.ordinal(), w, h, 
                         trans.getMxx(), trans.getMxy(), trans.getMxz(), trans.getMxt(),// + insets.getLeft(),
                         trans.getMyx(), trans.getMyy(), trans.getMyz(), trans.getMyt(),// + insets.getTop(),
@@ -171,6 +169,7 @@ public class TextFieldBehavior extends TextInputControlBehavior<TextField> {
             }
         } else {
             if (PlatformUtil.isIOS() && textField.getScene() != null) {
+                // releasing the focus => we need to hide the native component and also native keyboard
                 textField.getScene().getWindow().impl_getPeer().releaseInput();
             }
             textField.selectRange(0, 0);
@@ -431,26 +430,33 @@ public class TextFieldBehavior extends TextInputControlBehavior<TextField> {
         getControl().selectAll();
     }
     
-    public enum TextInputTypes {
+    // Enumeration of all types of text input that can be simulated on 
+    // touch device, such as iPad. Type is passed to native code and 
+    // native text component is shown. It's used as workaround for iOS
+    // devices since keyboard control is not possible without native 
+    // text component being displayed
+    enum TextInputTypes {
         TEXT_FIELD,
         PASSWORD_FIELD,
         EDITABLE_COMBO,
         TEXT_AREA;
     }
 
-    private static final long INTERNAL_PSEUDOCLASS_STATE = StyleManager.getPseudoclassMask("internal-focus");
-    private static final long EXTERNAL_PSEUDOCLASS_STATE = StyleManager.getPseudoclassMask("external-focus");
+    private static final PseudoClass.State INTERNAL_PSEUDOCLASS_STATE = 
+            PseudoClass.getState("internal-focus");
+    private static final PseudoClass.State EXTERNAL_PSEUDOCLASS_STATE = 
+            PseudoClass.getState("external-focus");
 
     /**
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
+     * {@inheritDoc}
      */
-    @Deprecated @Override public long impl_getPseudoClassState() {
-        long mask = super.impl_getPseudoClassState();
+    @Override public PseudoClass.States getPseudoClassStates() {
+        PseudoClass.States states = super.getPseudoClassStates();
         if (tlFocus != null) {
-            mask |= tlFocus.isExternalFocus() ? EXTERNAL_PSEUDOCLASS_STATE : INTERNAL_PSEUDOCLASS_STATE;
+            if (tlFocus.isExternalFocus()) states.addState(EXTERNAL_PSEUDOCLASS_STATE);
+            else states.addState(INTERNAL_PSEUDOCLASS_STATE);
         }
-        return mask;
+        return states;
     }
 
 }

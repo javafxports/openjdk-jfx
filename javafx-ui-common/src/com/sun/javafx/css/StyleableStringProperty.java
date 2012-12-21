@@ -27,7 +27,19 @@ package com.sun.javafx.css;
 import javafx.beans.property.StringPropertyBase;
 import javafx.beans.value.ObservableValue;
 
-
+/**
+ * This class extends {@code StringPropertyBase} and provides a partial
+ * implementation of a {@code StyleableProperty}. The method 
+ * {@link StyleableProperty#getCssMetaData()} is not implemented. 
+ * 
+ * This class is used to make a {@link javafx.beans.property.StringProperty}, 
+ * that would otherwise be implemented as a {@link StringPropertyBase}, 
+ * style&#8209;able by CSS.
+ * 
+ * @see javafx.beans.property.StringPropertyBase
+ * @see CssMetaData
+ * @see StyleableProperty
+ */
 public abstract class StyleableStringProperty 
     extends StringPropertyBase implements StyleableProperty<String> {
 
@@ -48,11 +60,7 @@ public abstract class StyleableStringProperty
         super(initialValue);
     }
     
-    Origin origin = null;
-    
-    @Override
-    public Origin getOrigin() { return origin; }
-    
+    /** {@inheritDoc} */
     @Override
     public void applyStyle(Origin origin, String v) {
         // call set here in case the set method is overriden
@@ -60,16 +68,25 @@ public abstract class StyleableStringProperty
         this.origin = origin;
     }
             
+    /** {@inheritDoc} */
     @Override
     public void bind(ObservableValue<? extends String> observable) {
         super.bind(observable);
         origin = Origin.USER;
     }
 
+    /** {@inheritDoc} */
     @Override
     public void set(String v) {
         super.set(v);
         origin = Origin.USER;
     }
 
+    
+    /** {@inheritDoc} */
+    @Override
+    public final Origin getOrigin() { return origin; }
+
+    private Origin origin = null;    
+    
 }

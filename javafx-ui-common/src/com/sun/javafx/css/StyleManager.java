@@ -25,6 +25,7 @@
 
 package com.sun.javafx.css;
 
+import java.awt.font.FontRenderContext;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -64,6 +65,7 @@ import javafx.beans.value.ObservableValue;
 import javafx.collections.*;
 import javafx.collections.ListChangeListener.Change;
 import javafx.scene.Parent;
+import javafx.scene.text.Font;
 import javafx.stage.PopupWindow;
 import javafx.stage.Window;
 
@@ -810,28 +812,32 @@ final public class StyleManager {
 
         try {
             final String ext = (parse) ? (".css") : (".bss");
-
-            final String name =
-                (fname.endsWith(".css") || fname.endsWith(".bss")) ?
-                    fname.substring(0, fname.length() - 4) : fname;
-
-            java.net.URL url = getURL(name+ext);
-            if (url == null && (parse = !parse)) {
-                // If we failed to get the URL for the .bss file,
-                // fall back to the .css file.
-                // Note that 'parse' is toggled in the test.
-                url = getURL(name+".css");
-            }
-
+            java.net.URL url = null;
             Stylesheet stylesheet = null;
-            if ((url != null) && !parse) {
-                stylesheet = Stylesheet.loadBinary(url);
+            // check if url has extension, if not then just url as is and always parse as css text
+            if (!(fname.endsWith(".css") || fname.endsWith(".bss"))) {
+                url = getURL(fname);
+                parse = true;
+            } else {
+                final String name = fname.substring(0, fname.length() - 4);
 
-                if (stylesheet == null && (parse = !parse)) {
-                    // If we failed to load the .bss file,
+                url = getURL(name+ext);
+                if (url == null && (parse = !parse)) {
+                    // If we failed to get the URL for the .bss file,
                     // fall back to the .css file.
                     // Note that 'parse' is toggled in the test.
                     url = getURL(name+".css");
+                }
+
+                if ((url != null) && !parse) {
+                    stylesheet = Stylesheet.loadBinary(url);
+
+                    if (stylesheet == null && (parse = !parse)) {
+                        // If we failed to load the .bss file,
+                        // fall back to the .css file.
+                        // Note that 'parse' is toggled in the test.
+                        url = getURL(fname);
+                    }
                 }
             }
 
@@ -855,6 +861,20 @@ final public class StyleManager {
                     );
                 }
             }
+
+            // load any fonts from @font-face
+            if (stylesheet != null) {
+                faceLoop: for(FontFace fontFace: stylesheet.getFontFaces()) {
+                    for(FontFace.FontFaceSrc src: fontFace.getSources()) {
+                        if (src.getType() == FontFace.FontFaceSrcType.URL) {
+                            Font loadedFont = Font.loadFont(src.getSrc(),10);
+                            getLogger().info("Loaded @font-face font [" + (loadedFont == null ? "null" : loadedFont.getName()) + "]");
+                            continue faceLoop;
+                        }
+                    }
+                }
+            }
+
             return stylesheet;
 
         } catch (FileNotFoundException fnfe) {
@@ -1062,60 +1082,6 @@ final public class StyleManager {
 
     }
     
-    ////////////////////////////////////////////////////////////////////////////
-    //
-    // Pseudo-class state bit map handling
-    //
-    ////////////////////////////////////////////////////////////////////////////
-    
-    private static final Map<String,Long> pseudoclassMasks = new HashMap<String,Long>();
-
-    public static long getPseudoclassMask(String pclass) {
-        Long mask = pseudoclassMasks.get(pclass);
-        if (mask == null) {
-            final int exp = pseudoclassMasks.size();
-            mask = Long.valueOf(1L << exp); // same as Math.pow(2,exp)
-            pseudoclassMasks.put(pclass,mask);
-        }
-        return mask.longValue();
-    }
-
-    static long getPseudoclassMask(List<String> pseudoclasses) {
-        long mask = 0;
-
-        final int max = pseudoclasses != null ? pseudoclasses.size() : -1;
-        for (int n=0; n<max; n++) {
-            long m = getPseudoclassMask(pseudoclasses.get(n));
-            mask = mask | m;
-        }
-        return mask;
-    }
-
-    public static List<String> getPseudoclassStrings(long mask) {
-        if (mask == 0) {
-            return Collections.EMPTY_LIST;
-        }
-
-        Map<Long,String> stringMap = new HashMap<Long,String>();
-        for (Entry<String,Long> entry : pseudoclassMasks.entrySet()) {
-            stringMap.put(entry.getValue(), entry.getKey());
-        }
-        List<String> strings = new ArrayList<String>();
-        for (long exp=0; exp < Long.SIZE; exp++) {
-            long key = (1L << exp) & mask;
-            if (key != 0) {
-                String value = stringMap.get(key);
-                if (value != null) {
-                    strings.add(value);
-                }
-            }
-        }
-        // even though the list returned could be modified without causing 
-        // harm, returning an unmodifiableList is consistent with 
-        // SimpleSelector.getStyleClasses()
-        return Collections.unmodifiableList(strings);
-    }
-
     private void clearCache() {
         styleCache.clear();
         cacheMap.clear();
@@ -1211,7 +1177,7 @@ final public class StyleManager {
     /**
      * Finds matching styles for this Node.
      */
-    StyleMap findMatchingStyles(Node node, long[] pseudoclassBits) {
+    StyleMap findMatchingStyles(Node node, PseudoClass.States[] pseudoclassBits) {
 
         final int[] indicesOfParentsWithStylesheets =
                 getIndicesOfParentsWithStylesheets(
@@ -1404,7 +1370,7 @@ final public class StyleManager {
             this.cache = new HashMap<Long, StyleMap>();
         }
 
-        private StyleMap getStyleMap(StyleManager owner, Node node, long[] pseudoclassBits) {
+        private StyleMap getStyleMap(StyleManager owner, Node node, PseudoClass.States[] pseudoclassBits) {
             
             if (rules == null || rules.isEmpty()) {                
                 return StyleMap.EMPTY_MAP;

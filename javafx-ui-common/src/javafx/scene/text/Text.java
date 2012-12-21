@@ -60,10 +60,12 @@ import javafx.scene.shape.Shape;
 import javafx.scene.shape.StrokeType;
 
 import com.sun.javafx.css.StyleableBooleanProperty;
+import com.sun.javafx.css.StyleableDoubleProperty;
 import com.sun.javafx.css.StyleableObjectProperty;
-import com.sun.javafx.css.StyleablePropertyMetaData;
+import com.sun.javafx.css.CssMetaData;
 import com.sun.javafx.css.converters.BooleanConverter;
 import com.sun.javafx.css.converters.EnumConverter;
+import com.sun.javafx.css.converters.SizeConverter;
 import com.sun.javafx.geom.BaseBounds;
 import com.sun.javafx.geom.Path2D;
 import com.sun.javafx.geom.RectBounds;
@@ -258,6 +260,7 @@ public class Text extends Shape {
             if (alignment == null) alignment = DEFAULT_TEXT_ALIGNMENT;
             layout.setContent(string, font);
             layout.setAlignment(alignment.ordinal());
+            layout.setLineSpacing((float)getLineSpacing());
             layout.setWrapWidth((float)getWrappingWidth());
             if (getEffectiveNodeOrientation() == NodeOrientation.RIGHT_TO_LEFT) {
                 layout.setDirection(TextLayout.DIRECTION_RTL);
@@ -505,7 +508,7 @@ public class Text extends Shape {
             font = new StyleableObjectProperty<Font>(Font.getDefault()) {
                 @Override public Object getBean() { return Text.this; }
                 @Override public String getName() { return "font"; }
-                @Override public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                @Override public CssMetaData getCssMetaData() {
                     return StyleableProperties.FONT;
                 }
                 @Override public void invalidated() {
@@ -665,6 +668,28 @@ public class Text extends Shape {
         return getTextAttribute().textAlignmentProperty();
     }
 
+    public final void setLineSpacing(double spacing) {
+        lineSpacingProperty().set(spacing);
+    }
+
+    public final double getLineSpacing() {
+        if (attributes == null || attributes.lineSpacing == null) {
+            return DEFAULT_LINE_SPACING;
+        }
+        return attributes.getLineSpacing();
+    }
+
+    /**
+     * Defines the vertical space in pixel between lines.
+     *
+     * @defaultValue 0
+     *
+     * @since 8.0
+     */
+    public final DoubleProperty lineSpacingProperty() {
+        return getTextAttribute().lineSpacingProperty();
+    }
+
     @Override
     public final double getBaselineOffset() {
         return baselineOffsetProperty().get();
@@ -710,7 +735,7 @@ public class Text extends Shape {
                                                (FontSmoothingType.GRAY) {
                 @Override public Object getBean() { return Text.this; }
                 @Override public String getName() { return "fontSmoothingType"; }
-                @Override public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                @Override public CssMetaData getCssMetaData() {
                     return StyleableProperties.FONT_SMOOTHING_TYPE;
                 }
                 @Override public void invalidated() {
@@ -1214,8 +1239,8 @@ public class Text extends Shape {
       */
      private static class StyleableProperties {
 
-         private static final StyleablePropertyMetaData<Text,Font> FONT =
-            new StyleablePropertyMetaData.FONT<Text>("-fx-font", Font.getDefault()) {
+         private static final CssMetaData<Text,Font> FONT =
+            new CssMetaData.FONT<Text>("-fx-font", Font.getDefault()) {
 
             @Override
             public boolean isSettable(Text node) {
@@ -1228,8 +1253,8 @@ public class Text extends Shape {
             }
          };
 
-         private static final StyleablePropertyMetaData<Text,Boolean> UNDERLINE =
-            new StyleablePropertyMetaData<Text,Boolean>("-fx-underline",
+         private static final CssMetaData<Text,Boolean> UNDERLINE =
+            new CssMetaData<Text,Boolean>("-fx-underline",
                  BooleanConverter.getInstance(), Boolean.FALSE) {
 
             @Override
@@ -1245,8 +1270,8 @@ public class Text extends Shape {
             }
          };
 
-         private static final StyleablePropertyMetaData<Text,Boolean> STRIKETHROUGH =
-            new StyleablePropertyMetaData<Text,Boolean>("-fx-strikethrough",
+         private static final CssMetaData<Text,Boolean> STRIKETHROUGH =
+            new CssMetaData<Text,Boolean>("-fx-strikethrough",
                  BooleanConverter.getInstance(), Boolean.FALSE) {
 
             @Override
@@ -1263,8 +1288,8 @@ public class Text extends Shape {
          };
 
          private static final
-             StyleablePropertyMetaData<Text,TextAlignment> TEXT_ALIGNMENT =
-                 new StyleablePropertyMetaData<Text,TextAlignment>("-fx-text-alignment",
+             CssMetaData<Text,TextAlignment> TEXT_ALIGNMENT =
+                 new CssMetaData<Text,TextAlignment>("-fx-text-alignment",
                  new EnumConverter<TextAlignment>(TextAlignment.class),
                  TextAlignment.LEFT) {
 
@@ -1281,8 +1306,8 @@ public class Text extends Shape {
             }
          };
 
-         private static final StyleablePropertyMetaData<Text,VPos> TEXT_ORIGIN =
-                 new StyleablePropertyMetaData<Text,VPos>("-fx-text-origin",
+         private static final CssMetaData<Text,VPos> TEXT_ORIGIN =
+                 new CssMetaData<Text,VPos>("-fx-text-origin",
                  new EnumConverter<VPos>(VPos.class),
                  VPos.BASELINE) {
 
@@ -1299,9 +1324,9 @@ public class Text extends Shape {
             }
          };
 
-         private static final StyleablePropertyMetaData<Text,FontSmoothingType>
+         private static final CssMetaData<Text,FontSmoothingType>
              FONT_SMOOTHING_TYPE =
-             new StyleablePropertyMetaData<Text,FontSmoothingType>(
+             new CssMetaData<Text,FontSmoothingType>(
                  "-fx-font-smoothing-type",
                  new EnumConverter<FontSmoothingType>(FontSmoothingType.class),
                  FontSmoothingType.GRAY) {
@@ -1320,44 +1345,55 @@ public class Text extends Shape {
             }
          };
 
-         private static final List<StyleablePropertyMetaData> STYLEABLES;
+         private static final
+             CssMetaData<Text,Number> LINE_SPACING =
+                 new CssMetaData<Text,Number>("-fx-line-spacing",
+                 SizeConverter.getInstance(), 0) {
+
+            @Override
+            public boolean isSettable(Text node) {
+                return node.attributes == null ||
+                       node.attributes.lineSpacing == null ||
+                      !node.attributes.lineSpacing.isBound();
+            }
+
+            @Override
+            public WritableValue<Number> getWritableValue(Text node) {
+                return node.lineSpacingProperty();
+            }
+         };
+
+	 private final static List<CssMetaData> STYLEABLES;
          static {
-            final List<StyleablePropertyMetaData> styleables =
-                new ArrayList<StyleablePropertyMetaData>(Shape.getClassStyleablePropertyMetaData());
+            final List<CssMetaData> styleables =
+                new ArrayList<CssMetaData>(Shape.getClassCssMetaData());
             Collections.addAll(styleables,
                 FONT,
                 UNDERLINE,
                 STRIKETHROUGH,
                 TEXT_ALIGNMENT,
                 TEXT_ORIGIN,
-                FONT_SMOOTHING_TYPE
+                FONT_SMOOTHING_TYPE,
+                LINE_SPACING
             );
             STYLEABLES = Collections.unmodifiableList(styleables);
          }
     }
 
     /**
-     * Super-lazy instantiation pattern from Bill Pugh.
-     * StyleableProperties is referenced  no earlier
-     * (and therefore loaded no earlier by the class loader) than
-     * the moment that  getClassStyleablePropertyMetaData() is called.
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended
-     * for use and will be removed in the next version
+     * @return The CssMetaData associated with this class, which may include the
+     * CssMetaData of its super classes.
      */
-    @Deprecated
-    public static List<StyleablePropertyMetaData> getClassStyleablePropertyMetaData() {
-        return Text.StyleableProperties.STYLEABLES;
+    public static List<CssMetaData> getClassCssMetaData() {
+        return StyleableProperties.STYLEABLES;
     }
 
     /**
-     * RT-19263
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
+     * {@inheritDoc}
      */
-    @Deprecated
-    public List<StyleablePropertyMetaData> getStyleablePropertyMetaData() {
-        return getClassStyleablePropertyMetaData();
+    @Override
+    public List<CssMetaData> getCssMetaData() {
+        return getClassCssMetaData();
     }
 
     @SuppressWarnings("deprecation")
@@ -1443,6 +1479,7 @@ public class Text extends Shape {
     private static final boolean DEFAULT_UNDERLINE = false;
     private static final boolean DEFAULT_STRIKETHROUGH = false;
     private static final TextAlignment DEFAULT_TEXT_ALIGNMENT = TextAlignment.LEFT;
+    private static final double DEFAULT_LINE_SPACING = 0;
     private static final int DEFAULT_CARET_POSITION = -1;
     private static final int DEFAULT_SELECTION_START = -1;
     private static final int DEFAULT_SELECTION_END = -1;
@@ -1462,7 +1499,7 @@ public class Text extends Shape {
                 textOrigin = new StyleableObjectProperty<VPos>(DEFAULT_TEXT_ORIGIN) {
                     @Override public Object getBean() { return Text.this; }
                     @Override public String getName() { return "textOrigin"; }
-                    @Override public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                    @Override public CssMetaData getCssMetaData() {
                         return StyleableProperties.TEXT_ORIGIN;
                     }
                     @Override public void invalidated() {
@@ -1503,7 +1540,7 @@ public class Text extends Shape {
                 underline = new StyleableBooleanProperty() {
                     @Override public Object getBean() { return Text.this; }
                     @Override public String getName() { return "underline"; }
-                    @Override public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                    @Override public CssMetaData getCssMetaData() {
                         return StyleableProperties.UNDERLINE;
                     }
                     @Override public void invalidated() {
@@ -1525,7 +1562,7 @@ public class Text extends Shape {
                 strikethrough = new StyleableBooleanProperty() {
                     @Override public Object getBean() { return Text.this; }
                     @Override public String getName() { return "strikethrough"; }
-                    @Override public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                    @Override public CssMetaData getCssMetaData() {
                         return StyleableProperties.STRIKETHROUGH;
                     }
                     @Override public void invalidated() {
@@ -1548,7 +1585,7 @@ public class Text extends Shape {
                     new StyleableObjectProperty<TextAlignment>(DEFAULT_TEXT_ALIGNMENT) {
                     @Override public Object getBean() { return Text.this; }
                     @Override public String getName() { return "textAlignment"; }
-                    @Override public StyleablePropertyMetaData getStyleablePropertyMetaData() {
+                    @Override public CssMetaData getCssMetaData() {
                         return StyleableProperties.TEXT_ALIGNMENT;
                     }
                     @Override public void invalidated() {
@@ -1568,6 +1605,34 @@ public class Text extends Shape {
             return textAlignment;
         }
         
+        private DoubleProperty lineSpacing;
+
+        public final double getLineSpacing() {
+            return lineSpacing == null ? DEFAULT_LINE_SPACING : lineSpacing.get();
+        }
+
+        public final DoubleProperty lineSpacingProperty() {
+            if (lineSpacing == null) {
+                lineSpacing =
+                    new StyleableDoubleProperty(DEFAULT_LINE_SPACING) {
+                    @Override public Object getBean() { return Text.this; }
+                    @Override public String getName() { return "lineSpacing"; }
+                    @Override public CssMetaData getCssMetaData() {
+                        return StyleableProperties.LINE_SPACING;
+                    }
+                    @Override public void invalidated() {
+                        if (!isSpan()) {
+                            TextLayout layout = getTextLayout();
+                            if (layout.setLineSpacing((float)get())) {
+                                needsTextLayout();
+                            }
+                        }
+                    }
+                };
+            }
+            return lineSpacing;
+        }
+
         private ReadOnlyDoubleWrapper baselineOffset;
 
         public final ReadOnlyDoubleProperty baselineOffsetProperty() {

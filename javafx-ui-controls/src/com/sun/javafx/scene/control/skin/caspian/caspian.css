@@ -1345,6 +1345,11 @@
 
 .text-input {
     -fx-text-fill: -fx-text-inner-color;
+    -fx-highlight-fill: derive(-fx-control-inner-background,-20%);
+    -fx-highlight-text-fill: -fx-text-inner-color;
+}
+
+.text-input:focused {
     -fx-highlight-fill: -fx-accent;
     -fx-highlight-text-fill: white;
 }
@@ -2720,6 +2725,7 @@
     -fx-background-color: -fx-tab-border-color, -fx-control-inner-background;
     -fx-background-insets: 0, 1;
     -fx-background-radius: 5, 4;
+    -fx-padding: 2;
 }
 
 .tab-pane.floating > .tab-header-area > .headers-region > .tab {

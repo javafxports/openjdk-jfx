@@ -258,7 +258,7 @@ public class VirtualFlow extends Region {
         this.fixedCellLength = value;
         layoutChildren();
     }
-
+    
     /**
      * Callback which is invoked whenever the VirtualFlow needs a new
      * IndexedCell. The VirtualFlow attempts to reuse cells whenever possible
@@ -761,6 +761,7 @@ public class VirtualFlow extends Region {
             releaseCell(accumCell);
 //            accumCell = null;
 //            accumCellParent.getChildren().clear();
+            sheet.getChildren().clear();
             cells.clear();
             pile.clear();
             needsRecreateCells = false;
@@ -1788,7 +1789,7 @@ public class VirtualFlow extends Region {
         }
     }
 
-    public void scrollTo(int index, boolean centered) {
+    public void scrollTo(int index) {
         boolean posSet = false;
         
         if (index >= cellCount - 1) {
@@ -1800,17 +1801,9 @@ public class VirtualFlow extends Region {
         }
         
         if (! posSet) {
-            double offset = 0;
-            for (int i = 0; i < index; i++) {
-                offset += getCellLength(i);
-            }
-            
-            if (centered) {
-                offset += (getCellLength(index) / 2.0);
-                offset -= (getHeight() / 2.0);// + (getHbar() == null ? 0 : getHbar().getHeight()));
-            }
-
-            adjustByPixelChunk(offset);
+            adjustPositionToIndex(index);
+            double offset = - computeOffsetForCell(index);
+            adjustByPixelAmount(offset);
         }
         
         requestLayout();        

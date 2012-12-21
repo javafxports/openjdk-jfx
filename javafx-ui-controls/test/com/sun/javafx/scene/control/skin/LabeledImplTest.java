@@ -5,7 +5,7 @@
 package com.sun.javafx.scene.control.skin;
 
 import com.sun.javafx.css.StyleConverter;
-import com.sun.javafx.css.StyleablePropertyMetaData;
+import com.sun.javafx.css.CssMetaData;
 import java.util.ArrayList;
 
 import java.util.Arrays;
@@ -52,7 +52,7 @@ public class LabeledImplTest {
         }        
     }
     
-    private static Configuration config(StyleablePropertyMetaData styleable) {
+    private static Configuration config(CssMetaData styleable) {
         WritableValue source = styleable.getWritableValue(LABELED);
         WritableValue mirror   = styleable.getWritableValue(LABELED_IMPL);
         Object value = null;
@@ -109,6 +109,8 @@ public class LabeledImplTest {
                 value = .5;
             } else if ("-fx-ellipsis-string".equals(prop)) {
                 value = "...";
+            } else if ("-fx-line-spacing".equals(prop)) {
+                value = 0.0;
             } else {
                 fail(prop + " not accounted for");
                 return null;
@@ -128,8 +130,8 @@ public class LabeledImplTest {
 
         Collection<Configuration[]> data = new ArrayList<Configuration[]>();
         
-        List<StyleablePropertyMetaData> styleables = LabeledImpl.StyleableProperties.STYLEABLES_TO_MIRROR;
-        for(StyleablePropertyMetaData styleable : styleables) {
+        List<CssMetaData> styleables = LabeledImpl.StyleableProperties.STYLEABLES_TO_MIRROR;
+        for(CssMetaData styleable : styleables) {
             
             // LabeledImpl doesn't track -fx-skin since the Labeled
             // isn't necessarily a Label

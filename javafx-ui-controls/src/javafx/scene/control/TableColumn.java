@@ -26,11 +26,12 @@ package javafx.scene.control;
 
 import com.sun.javafx.beans.annotations.NoBuilder;
 import com.sun.javafx.css.Styleable;
-import com.sun.javafx.css.StyleablePropertyMetaData;
+import com.sun.javafx.css.CssMetaData;
 import com.sun.javafx.scene.control.skin.NestedTableColumnHeader;
 import com.sun.javafx.scene.control.skin.TableColumnHeader;
 import com.sun.javafx.scene.control.skin.TableHeaderRow;
 import com.sun.javafx.scene.control.skin.TableViewSkin;
+import com.sun.javafx.scene.control.skin.TableViewSkinBase;
 
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -48,6 +49,7 @@ import javafx.collections.WeakListChangeListener;
 import java.util.Collections;
 
 import java.util.List;
+import java.util.Map;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.property.ReadOnlyObjectProperty;
@@ -419,7 +421,17 @@ public class TableColumn<S,T> extends TableColumnBase<S,T> implements EventTarge
      */
     private final ObjectProperty<Callback<TableColumn<S,T>, TableCell<S,T>>> cellFactory =
         new SimpleObjectProperty<Callback<TableColumn<S,T>, TableCell<S,T>>>(
-            this, "cellFactory", (Callback<TableColumn<S,T>, TableCell<S,T>>) ((Callback) DEFAULT_CELL_FACTORY));
+            this, "cellFactory", (Callback<TableColumn<S,T>, TableCell<S,T>>) ((Callback) DEFAULT_CELL_FACTORY)) {
+                @Override protected void invalidated() {
+                    TableView table = getTableView();
+                    if (table == null) return;
+                    Map properties = table.getProperties();
+                    if (properties.containsKey(TableViewSkinBase.RECREATE)) {
+                        properties.remove(TableViewSkinBase.RECREATE);
+                    }
+                    properties.put(TableViewSkinBase.RECREATE, Boolean.TRUE);
+                }
+            };
 
     public final void setCellFactory(Callback<TableColumn<S,T>, TableCell<S,T>> value) {
         cellFactory.set(value);
@@ -602,7 +614,7 @@ public class TableColumn<S,T> extends TableColumnBase<S,T> implements EventTarge
 
                 
                 @Override
-                public List<StyleablePropertyMetaData> getStyleablePropertyMetaData() {
+                public List<CssMetaData> getCssMetaData() {
                     return Collections.EMPTY_LIST;
                 }                
 

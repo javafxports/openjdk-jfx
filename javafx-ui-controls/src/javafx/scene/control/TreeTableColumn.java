@@ -26,10 +26,12 @@ package javafx.scene.control;
 
 import com.sun.javafx.beans.annotations.NoBuilder;
 import com.sun.javafx.css.Styleable;
-import com.sun.javafx.css.StyleablePropertyMetaData;
+import com.sun.javafx.css.CssMetaData;
 import com.sun.javafx.event.EventHandlerManager;
+import com.sun.javafx.scene.control.skin.TableViewSkinBase;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.property.ObjectProperty;
@@ -417,7 +419,17 @@ public class TreeTableColumn<S,T> extends TableColumnBase<TreeItem<S>,T> impleme
      */
     private final ObjectProperty<Callback<TreeTableColumn<S,T>, TreeTableCell<S,T>>> cellFactory =
         new SimpleObjectProperty<Callback<TreeTableColumn<S,T>, TreeTableCell<S,T>>>(
-            this, "cellFactory", (Callback<TreeTableColumn<S,T>, TreeTableCell<S,T>>) ((Callback) DEFAULT_CELL_FACTORY));
+            this, "cellFactory", (Callback<TreeTableColumn<S,T>, TreeTableCell<S,T>>) ((Callback) DEFAULT_CELL_FACTORY)) {
+                @Override protected void invalidated() {
+                    TreeTableView table = getTreeTableView();
+                    if (table == null) return;
+                    Map properties = table.getProperties();
+                    if (properties.containsKey(TableViewSkinBase.RECREATE)) {
+                        properties.remove(TableViewSkinBase.RECREATE);
+                    }
+                    properties.put(TableViewSkinBase.RECREATE, Boolean.TRUE);
+                }
+            };
     public final void setCellFactory(Callback<TreeTableColumn<S,T>, TreeTableCell<S,T>> value) {
         cellFactory.set(value);
     }
@@ -594,7 +606,7 @@ public class TreeTableColumn<S,T> extends TableColumnBase<TreeItem<S>,T> impleme
                     return getTreeTableView() == null ? null : getTreeTableView().impl_getStyleable();
                 }
 
-                @Override public List<StyleablePropertyMetaData> getStyleablePropertyMetaData() {
+                @Override public List<CssMetaData> getCssMetaData() {
                     return Collections.EMPTY_LIST;
                 }                
 
