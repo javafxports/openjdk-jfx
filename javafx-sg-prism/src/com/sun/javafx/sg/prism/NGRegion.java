@@ -471,7 +471,7 @@ public class NGRegion extends NGGroup implements PGRegion {
                 final boolean cache = backgroundCanBeCached && g.getTransformNoClone().isTranslateOrIdentity();
                 RTTexture cached = cache ? CACHE.getImage(g.getAssociatedScreen(), textureWidth, textureHeight, background, shape) : null;
                 // If there is not a cached texture already, then we need to render everything
-                if (cached == null || cached.getNativeDestHandle() == 0L) {
+                if (cached == null) {
                     // We will here check to see if we CAN cache the region background. If not, then
                     // we will render as normal. If we can cache it, however, then we will setup a
                     // texture and swizzle rendering onto the RTTexture's graphics, and then at the
@@ -602,7 +602,6 @@ public class NGRegion extends NGGroup implements PGRegion {
                           textureHeight = roundUp(height) + roundUp(outsets.getTop()) + roundUp(outsets.getBottom());
 
                 // See if we have a cached representation for this region background already.
-                // TODO need to pass in something like GraphicsConfiguration (RT-26923)
                 // RT-25013: We need to make sure that we do not use a cached image in the case of a
                 // scaled region, or things won't look right (they'll looked scaled instead of vector-resized).
                 // RT_25049: Need to only use the cache for pixel aligned regions or the result
