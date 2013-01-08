@@ -32,48 +32,50 @@
 package modena;
 
 import javafx.application.Platform;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
-import javafx.scene.Group;
-import javafx.scene.GroupBuilder;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBuilder;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBoxBuilder;
+import javafx.scene.control.ColorPickerBuilder;
+import javafx.scene.control.ComboBoxBuilder;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
+import javafx.scene.control.LabelBuilder;
+import javafx.scene.control.MenuButtonBuilder;
 import javafx.scene.control.PasswordFieldBuilder;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.ProgressIndicatorBuilder;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.ScrollBar;
 import javafx.scene.control.ScrollBarBuilder;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.control.ScrollPaneBuilder;
-import javafx.scene.control.Separator;
 import javafx.scene.control.SeparatorBuilder;
 import javafx.scene.control.Slider;
-import javafx.scene.control.TextArea;
+import javafx.scene.control.SliderBuilder;
+import javafx.scene.control.SplitMenuButtonBuilder;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPaneBuilder;
 import javafx.scene.control.TextAreaBuilder;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFieldBuilder;
+import javafx.scene.control.TitledPaneBuilder;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleButtonBuilder;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.Tooltip;
+import javafx.scene.control.TooltipBuilder;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.HBoxBuilder;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.VBoxBuilder;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Line;
-import javafx.scene.shape.LineBuilder;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.shape.RectangleBuilder;
+import static modena.SamplePageHelpers.*;
 
 /**
  * Page showing every control in every state
@@ -124,19 +126,6 @@ public class SamplePage extends GridPane {
         setConstraints(sectionLabel, 0, rowIndex);
         setConstraints(hbox, 1, rowIndex++);
         getChildren().addAll(sectionLabel,hbox);
-    }
-    
-    private static ObservableList<String> sampleItems() {
-        return FXCollections.observableArrayList("Item A","Item B","Item C",
-                "Item D","Item E","Item F","Item G");
-    }
-    
-    private static Node scrollPaneContent() {
-        return GroupBuilder.create().children(
-                RectangleBuilder.create().width(200).height(200).fill(Color.PALETURQUOISE).build(),
-                LineBuilder.create().endX(200).endY(200).stroke(Color.DODGERBLUE).build(),
-                LineBuilder.create().startX(200).endX(0).endY(200).stroke(Color.DODGERBLUE).build()
-            ).build();
     }
     
     public SamplePage() {
@@ -265,28 +254,84 @@ public class SamplePage extends GridPane {
                 withState(new Hyperlink("F & Hover"), "focused, hover"),
                 withState(new Hyperlink("F & Armed"), "focused, armed"),
                 withState(new Hyperlink("Disabled"), "disabled"));
-        newSection("Slider:", 
-                new Slider(0,100,50),
-                withState(new Slider(0,100,50), null, ".thumb", "hover"),
-                withState(new Slider(0,100,50), null, ".thumb", "hover, pressed"),
-                withState(new Slider(0,100,50), "disabled"));
-        newSection("Slider Focused:", 
-                withState(new Slider(0,100,50), "focused"),
-                withState(new Slider(0,100,50), "focused", ".thumb", "hover"),
-                withState(new Slider(0,100,50), "focused", ".thumb", "hover, pressed"));
-        newDetailedSection(
-                new String[] {"Scrollbar - V: ", "normal", "small", "focused", ".thumb hover", ".thumb pressed"}, 
-                new ScrollBar(),
-                ScrollBarBuilder.create().minWidth(30).prefWidth(30).build(),
-                withState(new ScrollBar(), "horizontal, focused"),
-                withState(new ScrollBar(), "horizontal", ".thumb", "hover"),
-                withState(new ScrollBar(), "horizontal", ".thumb", "pressed")
+        newSection(      
+                "ChoiceBox:", 
+                ChoiceBoxBuilder.create(String.class).items(sampleItems()).value("Item A").build(),
+                withState(ChoiceBoxBuilder.create(String.class).items(sampleItems()).value("Item B").build(), "hover"),
+                withState(ChoiceBoxBuilder.create(String.class).items(sampleItems()).value("Item B").build(), "showing"),
+                withState(ChoiceBoxBuilder.create(String.class).items(sampleItems()).value("Item B").build(), "focused"),
+                withState(ChoiceBoxBuilder.create(String.class).items(sampleItems()).value("Item C").build(), "disabled")
+                );
+        newSection(      
+                "ComboBox:", 
+                ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item A").build(),
+                withState(ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item B").build(), "hover"),
+                withState(ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item B").build(), "showing"),
+                withState(ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item B").build(), "focused"),
+                withState(ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item C").build(), "disabled")
+                );
+        newSection(      
+                "ComboBox\nEditable:", 
+                ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item A").editable(true).build(),
+                withState(ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item B").editable(true).build(), "hover"),
+                withState(ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item B").editable(true).build(), "showing"),
+                withState(ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item B").editable(true).build(), "focused"),
+                withState(ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item C").editable(true).build(), "disabled")
+                );
+        newSection(      
+                "Color Picker:", 
+                ColorPickerBuilder.create().value(Color.DODGERBLUE).build(),
+                withState(ColorPickerBuilder.create().value(Color.DODGERBLUE).build(), "hover"),
+                withState(ColorPickerBuilder.create().value(Color.DODGERBLUE).build(), "showing"),
+                withState(ColorPickerBuilder.create().value(Color.DODGERBLUE).build(), "focused"),
+                withState(ColorPickerBuilder.create().value(Color.DODGERBLUE).build(), "disabled")
+                );
+        newSection(      
+                "MenuButton:", 
+                MenuButtonBuilder.create().items(createMenuItems(20)).text("normal").build(),
+                withState(MenuButtonBuilder.create().items(createMenuItems(20)).text("hover").build(), "hover"),
+                withState(MenuButtonBuilder.create().items(createMenuItems(20)).text("armed").build(), "armed"),
+                withState(MenuButtonBuilder.create().items(createMenuItems(20)).text("focused").build(), "focused"),
+                withState(MenuButtonBuilder.create().items(createMenuItems(20)).text("disabled").build(), "disabled")
+                );
+        newSection(      
+                "SplitMenuButton:", 
+                SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("normal").build(),
+                withState(SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("hover").build(), "hover"),
+                withState(SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("armed").build(), "armed"),
+                withState(SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("focused").build(), "focused"),
+                withState(SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("disabled").build(), "disabled")
                 );
         newDetailedSection(
-                new String[] {"Scrollbar - V: ", "normal", "small", "focused", ".thumb hover", ".thumb pressed"}, 
+                new String[]{"Slider - H: ", "normal", "hover", "pressed", "disabled", "tickmarks"},
+                withState(SliderBuilder.create().maxWidth(90).min(0).max(100).value(50).build(), null),
+                withState(SliderBuilder.create().maxWidth(90).min(0).max(100).value(50).build(), null, ".thumb", "hover"),
+                withState(SliderBuilder.create().maxWidth(90).min(0).max(100).value(50).build(), null, ".thumb", "hover, pressed"),
+                withState(SliderBuilder.create().maxWidth(90).min(0).max(100).value(50).build(), "disabled"),
+                SliderBuilder.create().min(0).max(100).value(50).showTickMarks(true).showTickLabels(true).build());
+        newDetailedSection(
+                new String[]{"Slider - H - Focused: ", "normal", "hover", "pressed"},
+                withState(new Slider(0, 100, 50), "focused"),
+                withState(new Slider(0, 100, 50), "focused", ".thumb", "hover"),
+                withState(new Slider(0, 100, 50), "focused", ".thumb", "hover, pressed"));
+        newSection("Slider - V:",
+                SliderBuilder.create().min(0).max(100).value(50).orientation(Orientation.VERTICAL).build(),
+                withState(SliderBuilder.create().min(0).max(100).value(50).orientation(Orientation.VERTICAL).build(), null, ".thumb", "hover"),
+                withState(SliderBuilder.create().min(0).max(100).value(50).orientation(Orientation.VERTICAL).build(), null, ".thumb", "hover, pressed"),
+                withState(SliderBuilder.create().min(0).max(100).value(50).orientation(Orientation.VERTICAL).build(), "disabled"),
+                SliderBuilder.create().min(0).max(100).value(50).showTickMarks(true).showTickLabels(true).orientation(Orientation.VERTICAL).build());
+        newDetailedSection(
+                new String[] {"Scrollbar - H: ", "normal", "small", "big thumb"}, 
+                new ScrollBar(),
+                ScrollBarBuilder.create().minWidth(30).prefWidth(30).build(),
+                ScrollBarBuilder.create().visibleAmount(60).max(100).build()
+                );
+        newDetailedSection(
+                new String[] {"Scrollbar - V: ", "normal", "small", "btn hover", "btn pressed", ".thumb hover", ".thumb pressed"}, 
                 withState(ScrollBarBuilder.create().orientation(Orientation.VERTICAL).build(), "vertical"),
                 withState(ScrollBarBuilder.create().orientation(Orientation.VERTICAL).minHeight(30).prefHeight(30).build(), "vertical"),
-                withState(ScrollBarBuilder.create().orientation(Orientation.VERTICAL).build(), "vertical, focused"),
+                withState(ScrollBarBuilder.create().orientation(Orientation.VERTICAL).build(), "vertical", ".decrement-button", "hover"),
+                withState(ScrollBarBuilder.create().orientation(Orientation.VERTICAL).build(), "vertical", ".decrement-button", "pressed"),
                 withState(ScrollBarBuilder.create().orientation(Orientation.VERTICAL).build(), "vertical", ".thumb", "hover"),
                 withState(ScrollBarBuilder.create().orientation(Orientation.VERTICAL).build(), "vertical", ".thumb", "pressed")
                 );
@@ -308,12 +353,18 @@ public class SamplePage extends GridPane {
                 new ProgressBar(-1)
                 );
         newDetailedSection(
-                new String[] {"ProgressIndicator: ", "normal 0%", "normal 60%", "normal 100%", "disabled", "indeterminate"}, 
+                new String[] {"ProgressIndicator: ", "normal 0%", "normal 60%", "normal 100%", "disabled"}, 
                 new ProgressIndicator(0),
                 new ProgressIndicator(0.6),
                 new ProgressIndicator(1),
-                withState(new ProgressIndicator(0.5), "disabled"),
-                new ProgressIndicator(-1)
+                withState(new ProgressIndicator(0.5), "disabled")
+                );
+        newDetailedSection(
+                new String[] {"ProgressIndicator\nIndeterminate: ", "normal", "small", "large", "disabled"}, 
+                ProgressIndicatorBuilder.create().progress(-1).maxWidth(USE_PREF_SIZE).maxHeight(USE_PREF_SIZE).build(),
+                ProgressIndicatorBuilder.create().progress(-1).prefWidth(30).prefHeight(30).build(),
+                ProgressIndicatorBuilder.create().progress(-1).prefWidth(60).prefHeight(60).build(),
+                ProgressIndicatorBuilder.create().progress(-1).maxWidth(USE_PREF_SIZE).maxHeight(USE_PREF_SIZE).disable(true).build()
                 );
         newSection(      
                 "TextField:", 
@@ -333,25 +384,89 @@ public class SamplePage extends GridPane {
                 "TextArea:", 
                 TextAreaBuilder.create().text("TextArea").prefColumnCount(10).prefRowCount(2).build(),
                 TextAreaBuilder.create().text("Many Lines of\nText.\n#3\n#4\n#5\n#6\n#7\n#8\n#9\n#10").prefColumnCount(10).prefRowCount(3).build(),
+                TextAreaBuilder.create().text("Many Lines of\nText.\n#3\n#4\n#5\n#6\n#7\n#8\n#9\n#10").prefColumnCount(6).prefRowCount(3).build(),
                 TextAreaBuilder.create().promptText("Prompt Text").prefColumnCount(10).prefRowCount(2).build(),
-                withState(TextAreaBuilder.create().text("Focused").prefColumnCount(10).prefRowCount(2).build(), "focused"),
-                withState(TextAreaBuilder.create().text("Disabled").prefColumnCount(10).prefRowCount(2).build(), "disabled")
+                withState(TextAreaBuilder.create().text("Focused").prefColumnCount(7).prefRowCount(2).build(), "focused"),
+                withState(TextAreaBuilder.create().text("Disabled").prefColumnCount(8).prefRowCount(2).build(), "disabled")
+                );
+        newDetailedSection(
+                new String[] {"ToolBar (H):", "normal", "overflow", "disabled"}, 
+                createToolBar(false,false),
+                createToolBar(false,true),
+                withState(createToolBar(false,false), "disabled")
+                );
+        newDetailedSection(
+                new String[] {"ToolBar (V):", "normal", "overflow", "disabled"}, 
+                createToolBar(true,false),
+                createToolBar(true,true),
+                withState(createToolBar(true,false), "disabled")
                 );
         newSection(      
-                "TextArea:", 
-                TextAreaBuilder.create().text("TextArea").prefColumnCount(10).prefRowCount(2).build(),
-                TextAreaBuilder.create().text("Many Lines of\nText.\n#3\n#4\n#5\n#6\n#7\n#8\n#9\n#10").prefColumnCount(10).prefRowCount(3).build(),
-                TextAreaBuilder.create().promptText("Prompt Text").prefColumnCount(10).prefRowCount(2).build(),
-                withState(TextAreaBuilder.create().text("Focused").prefColumnCount(10).prefRowCount(2).build(), "focused"),
-                withState(TextAreaBuilder.create().text("Disabled").prefColumnCount(10).prefRowCount(2).build(), "disabled")
+                "Tabs Floating:", 
+                createTabPane(3, 250,null,true),
+                withState(createTabPane(5, 200,"Tab Disabled &\nMany Tabs", true), null, ".tab", "disabled"),
+                withState(createTabPane(5, 200,"Disabled", true), "disabled")
                 );
-        newSection(      
-                "ChoiceBox:", 
-                ChoiceBoxBuilder.create(String.class).items(sampleItems()).value("Item A").build(),
-                withState(ChoiceBoxBuilder.create(String.class).items(sampleItems()).value("Item B").build(), "hover"),
-                withState(ChoiceBoxBuilder.create(String.class).items(sampleItems()).value("Item B").build(), "showing"),
-                withState(ChoiceBoxBuilder.create(String.class).items(sampleItems()).value("Item B").build(), "focused"),
-                withState(ChoiceBoxBuilder.create(String.class).items(sampleItems()).value("Item C").build(), "disabled")
+        newDetailedSection(
+                new String[] {"TitledPane:", "normal", "focused", "disabled"}, 
+                TitledPaneBuilder.create().text("Title").content(new Label("Content\nLine2.")).build(),
+                withState(TitledPaneBuilder.create().text("Title").content(new Label("Content\nLine2.")).build(), "focused"),
+                withState(TitledPaneBuilder.create().text("Title").content(new Label("Content\nLine2.")).build(), "disabled")
+                );
+        newDetailedSection(
+                new String[] {"Accordian:", "normal", "hover", "focused", "disabled"}, 
+                createAccordion(),
+                withState(createAccordion(), null, ".titled-pane", "hover"),
+                withState(createAccordion(), null, ".titled-pane", "focused"),
+                withState(createAccordion(), "disabled")
+                );
+        newDetailedSection(
+                new String[] {"SplitPane (H):", "simple", "many", "complex"}, 
+                createSplitPane(2,false,null),
+                createSplitPane(4,false,null),
+                createSplitPane(2,false,createSplitPane(2,true,null))
+                );
+        newDetailedSection(
+                new String[] {"SplitPane (V):", "simple", "many", "complex"}, 
+                createSplitPane(2,true,null),
+                createSplitPane(4,true,null),
+                createSplitPane(2,true,createSplitPane(2,false,null))
+                );
+        newDetailedSection(
+                new String[] {"Pagination:", "simple", "infinate"}, 
+                createPagination(5, false, true),
+                createPagination(Integer.MAX_VALUE, false, true)
+                );
+        newDetailedSection(
+                new String[] {"Pagination\nBullet Style:", "simple", "infinate"}, 
+                createPagination(5, true, true),
+                createPagination(Integer.MAX_VALUE, true, true)
+                );
+        newSection(
+                "Pagination\nNo Arrows:", 
+                createPagination(Integer.MAX_VALUE, false, false)
+                );
+        newDetailedSection(
+                new String[] {"ListView\n2 items\nsingle selection:", "normal", "focused", "disabled"}, 
+                createListView(3, false, false),
+                withState(createListView(3, false, false), "focused"),
+                createListView(3, false, true)
+                );
+        newDetailedSection(
+                new String[] {"ListView\n10,000 items\nmultiple selection:","normal", "focused", "disabled"}, 
+                createListView(10000, true, false),
+                withState(createListView(10000, true, false), "focused"),
+                createListView(10000, true, true)
+                );
+        newDetailedSection(
+                new String[] {"ToolTip:","inline","inline + graphic", "popup"}, 
+                LabelBuilder.create().text("This is a simple Tooltip.").styleClass("tooltip").build(),
+                LabelBuilder.create().text("This is a simple Tooltip\nwith graphic.").graphic(createGraphic()).styleClass("tooltip").build(),
+                VBoxBuilder.create().fillWidth(true).spacing(4).children(
+                    ButtonBuilder.create().text("Hover over me").tooltip(new Tooltip("This is a simple Tooltip.")).build(),
+                    ButtonBuilder.create().text("me too").tooltip(new Tooltip("This is a simple Tooltip\nwith more than one line.")).build(),
+                    ButtonBuilder.create().text("or me").tooltip(TooltipBuilder.create().text("This is a simple Tooltip\nwith graphic.").graphic(createGraphic()).build()).build()
+                ).build()
                 );
     }
 }

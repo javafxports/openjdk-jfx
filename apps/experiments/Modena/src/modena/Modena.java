@@ -31,22 +31,33 @@
  */
 package modena;
 
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.ScrollPaneBuilder;
 import javafx.scene.control.Separator;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabBuilder;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleButtonBuilder;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBoxBuilder;
+import javafx.scene.layout.Pane;
+import javafx.scene.transform.Scale;
+import javafx.scene.transform.Transform;
 import javafx.stage.Stage;
 
 public class Modena extends Application {
@@ -58,7 +69,7 @@ public class Modena extends Application {
     
     @Override public void start(Stage stage) throws Exception {
         // build UI
-        rebuildUI(true, false);
+        rebuildUI(true, false,0);
         // show UI
         Scene scene = new Scene(root, 1024, 768);
         scene.getStylesheets().add(
@@ -67,113 +78,131 @@ public class Modena extends Application {
         stage.show();
     }
     
-    private void rebuildUI(boolean modena, boolean retina) {
-        // load theme
-        if (modena) {
-            setUserAgentStylesheet(
-                    getClass().getResource("Modena.css").toExternalForm());
-        } else {
-            setUserAgentStylesheet(null);
-        }
-        if (root == null) {
-            root = new BorderPane();
-        } else {
-            // clear out old UI
-            root.setTop(null);
-            root.setCenter(null);
-        }
-        // Create Toolbar
-        final Group contentGroup = new Group();
-        final ScrollPane contentScrollPane = new ScrollPane();
-        contentScrollPane.getStyleClass().add("edge-to-edge");
-        final ToggleButton modenaButton;;
-        final ToggleButton retinaButton = ToggleButtonBuilder.create()
-            .text("Retina @2x")
-            .selected(retina)
-            .onAction(new EventHandler<ActionEvent>(){
-                @Override public void handle(ActionEvent event) {
-                    ToggleButton btn = (ToggleButton)event.getSource();
-                    Node content = contentGroup.getChildren().get(0);
-                    if (btn.isSelected()) {
-                        content.setScaleX(2);
-                        content.setScaleY(2);
-                    } else {
-                        content.setScaleX(1);
-                        content.setScaleY(1);
-                    }
-                }
-            })
-            .build();
-        ToggleGroup themesToggleGroup = new ToggleGroup();
-        ToggleGroup colorToggleGroup = new ToggleGroup();
-        ToolBar toolBar = new ToolBar(
-            HBoxBuilder.create()
-                .children(
-                    modenaButton = ToggleButtonBuilder.create()
-                        .text("Modena")
-                        .toggleGroup(themesToggleGroup)
-                        .selected(modena)
-                        .onAction(new EventHandler<ActionEvent>(){
-                            @Override public void handle(ActionEvent event) { 
-                                rebuildUI(true,retinaButton.isSelected());
-                            }
-                        })
-                        .styleClass("left-pill")
-                        .build(),
-                    ToggleButtonBuilder.create()
-                        .text("Caspian")
-                        .toggleGroup(themesToggleGroup)
-                        .selected(!modena)
-                        .onAction(new EventHandler<ActionEvent>(){
-                            @Override public void handle(ActionEvent event) { 
-                                rebuildUI(false,retinaButton.isSelected());
-                            }
-                        })
-                        .styleClass("right-pill")
-                        .build()
-                )
-                .build(),
-            new Separator(),
-            retinaButton,
-            new Separator(),
-            new Label("Base Color:"),
-            HBoxBuilder.create()
-                .spacing(3)
-                .children(
-                    createColorButton(null, colorToggleGroup, modena),
-                    createColorButton("#f3622d", colorToggleGroup, modena),
-                    createColorButton("#fba71b", colorToggleGroup, modena),
-                    createColorButton("#57b757", colorToggleGroup, modena),
-                    createColorButton("#41a9c9", colorToggleGroup, modena),
-                    createColorButton("#888", colorToggleGroup, modena),
-                    createColorButton("red", colorToggleGroup, modena),
-                    createColorButton("orange", colorToggleGroup, modena),
-                    createColorButton("yellow", colorToggleGroup, modena),
-                    createColorButton("green", colorToggleGroup, modena),
-                    createColorButton("cyan", colorToggleGroup, modena),
-                    createColorButton("blue", colorToggleGroup, modena),
-                    createColorButton("purple", colorToggleGroup, modena),
-                    createColorButton("magenta", colorToggleGroup, modena),
-                    createColorButton("black", colorToggleGroup, modena)
-                )
-                .build()
-        );
-        root.setTop(toolBar);
-        contentScrollPane.setContent(contentGroup);
-        root.setCenter(contentScrollPane);
-        // create sample page
-        contentGroup.getChildren().setAll(new SamplePage());
-        // move foucus out of the way
-        Platform.runLater(new Runnable() {
-            @Override public void run() {
-                modenaButton.requestFocus();
+    private void rebuildUI(boolean modena, boolean retina, int selectedTab) {
+        try {
+            // load theme
+            if (modena) {
+                setUserAgentStylesheet(
+                        getClass().getResource("Modena.css").toExternalForm());
+            } else {
+                setUserAgentStylesheet(null);
             }
-        });
-        // apply retina scale
-        if (retina) {
-            Node content = contentGroup.getChildren().get(0);
-            content.setScaleX(2);
-            content.setScaleY(2);
+            if (root == null) {
+                root = new BorderPane();
+            } else {
+                // clear out old UI
+                root.setTop(null);
+                root.setCenter(null);
+            }
+            // Create Content Area
+            final TabPane contentTabs = new TabPane();
+            contentTabs.getTabs().addAll(
+                TabBuilder.create().text("All Controls").content(
+                    ScrollPaneBuilder.create().content(
+                        new SamplePage()
+                    ).build()
+                ).build(),
+                TabBuilder.create().text("UI Mosaic").content(
+                    ScrollPaneBuilder.create().content(
+                        (Node)FXMLLoader.load(Modena.class.getResource("ui-mosaic.fxml"))
+                    ).build()
+                ).build()
+            );
+            contentTabs.getSelectionModel().select(selectedTab);
+            // Create Toolbar
+            final ToggleButton modenaButton;;
+            final ToggleButton retinaButton = ToggleButtonBuilder.create()
+                .text("Retina @2x")
+                .selected(retina)
+                .onAction(new EventHandler<ActionEvent>(){
+                    @Override public void handle(ActionEvent event) {
+                        ToggleButton btn = (ToggleButton)event.getSource();
+                        if (btn.isSelected()) {
+                            contentTabs.getTransforms().setAll(new Scale(2,2));
+                        } else {
+                            contentTabs.getTransforms().setAll(new Scale(1,1));
+                        }
+                        contentTabs.requestLayout();
+                    }
+                })
+                .build();
+            ToggleGroup themesToggleGroup = new ToggleGroup();
+            ToggleGroup colorToggleGroup = new ToggleGroup();
+            ToolBar toolBar = new ToolBar(
+                HBoxBuilder.create()
+                    .children(
+                        modenaButton = ToggleButtonBuilder.create()
+                            .text("Modena")
+                            .toggleGroup(themesToggleGroup)
+                            .selected(modena)
+                            .onAction(new EventHandler<ActionEvent>(){
+                                @Override public void handle(ActionEvent event) { 
+                                    rebuildUI(true,retinaButton.isSelected(), contentTabs.getSelectionModel().getSelectedIndex());
+                                }
+                            })
+                            .styleClass("left-pill")
+                            .build(),
+                        ToggleButtonBuilder.create()
+                            .text("Caspian")
+                            .toggleGroup(themesToggleGroup)
+                            .selected(!modena)
+                            .onAction(new EventHandler<ActionEvent>(){
+                                @Override public void handle(ActionEvent event) { 
+                                    rebuildUI(false,retinaButton.isSelected(), contentTabs.getSelectionModel().getSelectedIndex());
+                                }
+                            })
+                            .styleClass("right-pill")
+                            .build()
+                    )
+                    .build(),
+                new Separator(),
+                retinaButton,
+                new Separator(),
+                new Label("Base Color:"),
+                HBoxBuilder.create()
+                    .spacing(3)
+                    .children(
+                        createColorButton(null, colorToggleGroup, modena),
+                        createColorButton("#f3622d", colorToggleGroup, modena),
+                        createColorButton("#fba71b", colorToggleGroup, modena),
+                        createColorButton("#57b757", colorToggleGroup, modena),
+                        createColorButton("#41a9c9", colorToggleGroup, modena),
+                        createColorButton("#888", colorToggleGroup, modena),
+                        createColorButton("red", colorToggleGroup, modena),
+                        createColorButton("orange", colorToggleGroup, modena),
+                        createColorButton("yellow", colorToggleGroup, modena),
+                        createColorButton("green", colorToggleGroup, modena),
+                        createColorButton("cyan", colorToggleGroup, modena),
+                        createColorButton("blue", colorToggleGroup, modena),
+                        createColorButton("purple", colorToggleGroup, modena),
+                        createColorButton("magenta", colorToggleGroup, modena),
+                        createColorButton("black", colorToggleGroup, modena)
+                    )
+                    .build()
+            );
+            // Create content group used for scaleing @2x
+            final Pane contentGroup = new Pane() {
+                @Override protected void layoutChildren() {
+                    double scale = contentTabs.getTransforms().isEmpty() ? 1 : ((Scale)contentTabs.getTransforms().get(0)).getX();
+                    contentTabs.resizeRelocate(0,0,getWidth()/scale, getHeight()/scale);
+                }
+            };
+            contentGroup.getChildren().add(contentTabs);
+            // populate root
+            root.setTop(toolBar);
+            root.setCenter(contentGroup);
+            // move foucus out of the way
+            Platform.runLater(new Runnable() {
+                @Override public void run() {
+                    modenaButton.requestFocus();
+                }
+            });
+            // apply retina scale
+            if (retina) {
+                contentTabs.getTransforms().setAll(new Scale(2,2));
+            }
+        } catch (IOException ex) {
+            Logger.getLogger(Modena.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     
