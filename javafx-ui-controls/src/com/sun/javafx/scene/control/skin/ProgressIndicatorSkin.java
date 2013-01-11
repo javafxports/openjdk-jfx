@@ -56,17 +56,20 @@ import javafx.scene.shape.Circle;
 import javafx.scene.text.Text;
 import javafx.scene.transform.Scale;
 import javafx.util.Duration;
-import com.sun.javafx.css.CssMetaData;
-import com.sun.javafx.css.Origin;
-import com.sun.javafx.css.StyleableBooleanProperty;
-import com.sun.javafx.css.StyleableIntegerProperty;
-import com.sun.javafx.css.StyleableObjectProperty;
+import javafx.css.CssMetaData;
+import javafx.css.StyleOrigin;
+import javafx.css.StyleableObjectProperty;
+import javafx.css.StyleableProperty;
+import javafx.css.StyleableBooleanProperty;
+import javafx.css.StyleableIntegerProperty;
+import javafx.css.StyleableObjectProperty;
 import com.sun.javafx.css.converters.BooleanConverter;
 import com.sun.javafx.css.converters.PaintConverter;
 import com.sun.javafx.css.converters.SizeConverter;
 import com.sun.javafx.scene.control.behavior.ProgressIndicatorBehavior;
 import com.sun.javafx.scene.control.skin.resources.ControlResources;
 import javafx.geometry.Insets;
+import javafx.css.StyleableProperty;
 
 public class ProgressIndicatorSkin extends BehaviorSkinBase<ProgressIndicator, ProgressIndicatorBehavior<ProgressIndicator>> {
 
@@ -670,16 +673,16 @@ public class ProgressIndicatorSkin extends BehaviorSkinBase<ProgressIndicator, P
             }
 
             @Override
-            public WritableValue<Paint> getWritableValue(ProgressIndicator n) {
+            public StyleableProperty<Paint> getStyleableProperty(ProgressIndicator n) {
                 final ProgressIndicatorSkin skin = (ProgressIndicatorSkin) n.getSkin();
-                return skin.progressColor;
+                return (StyleableProperty)skin.progressColor;
             }
         };
         private static final CssMetaData<ProgressIndicator,Number> INDETERMINATE_SEGMENT_COUNT =
             new CssMetaData<ProgressIndicator,Number>("-fx-indeterminate-segment-count",
                                                      SizeConverter.getInstance(), 8) {
 
-            @Override public void set(ProgressIndicator node, Number value, Origin origin) {
+            @Override public void set(ProgressIndicator node, Number value, StyleOrigin origin) {
                 super.set(node, value.intValue(), origin);
             }
 
@@ -689,9 +692,9 @@ public class ProgressIndicatorSkin extends BehaviorSkinBase<ProgressIndicator, P
                         !skin.indeterminateSegmentCount.isBound();
             }
 
-            @Override public WritableValue<Number> getWritableValue(ProgressIndicator n) {
+            @Override public StyleableProperty<Number> getStyleableProperty(ProgressIndicator n) {
                 final ProgressIndicatorSkin skin = (ProgressIndicatorSkin) n.getSkin();
-                return skin.indeterminateSegmentCount;
+                return (StyleableProperty)skin.indeterminateSegmentCount;
             }
         };
         private static final CssMetaData<ProgressIndicator,Boolean> LEGEND_VISIBLE =
@@ -703,9 +706,9 @@ public class ProgressIndicatorSkin extends BehaviorSkinBase<ProgressIndicator, P
                     return skin.spinEnabled == null || !skin.spinEnabled.isBound();
                 }
 
-                @Override public WritableValue<Boolean> getWritableValue(ProgressIndicator node) {
+                @Override public StyleableProperty<Boolean> getStyleableProperty(ProgressIndicator node) {
                     final ProgressIndicatorSkin skin = (ProgressIndicatorSkin) node.getSkin();
-                    return skin.spinEnabled;
+                    return (StyleableProperty)skin.spinEnabled;
                 }
             };
 
