@@ -27,24 +27,25 @@ package javafx.scene.control;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ObjectPropertyBase;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.value.WritableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.geometry.Side;
 
-import com.sun.javafx.css.StyleableDoubleProperty;
-import com.sun.javafx.css.CssMetaData;
-import com.sun.javafx.css.PseudoClass;
+import javafx.css.StyleableDoubleProperty;
+import javafx.css.CssMetaData;
+import javafx.css.PseudoClass;
 import com.sun.javafx.css.converters.SizeConverter;
 import com.sun.javafx.scene.control.skin.TabPaneSkin;
 import javafx.beans.DefaultProperty;
+import javafx.css.StyleableProperty;
 
 /**
  * <p>A control that allows switching between a group of {@link Tab Tabs}.  Only one tab
@@ -117,6 +118,14 @@ public class TabPane extends Control {
                 }
             }
         });
+        
+        // initialize pseudo-class state
+        Side edge = getSide();
+        pseudoClassStateChanged(TOP_PSEUDOCLASS_STATE, (edge == Side.TOP));
+        pseudoClassStateChanged(RIGHT_PSEUDOCLASS_STATE, (edge == Side.RIGHT));
+        pseudoClassStateChanged(BOTTOM_PSEUDOCLASS_STATE, (edge == Side.BOTTOM));
+        pseudoClassStateChanged(LEFT_PSEUDOCLASS_STATE, (edge == Side.LEFT));
+        
     }
 
     private ObservableList<Tab> tabs = FXCollections.observableArrayList();
@@ -183,15 +192,13 @@ public class TabPane extends Control {
             side = new ObjectPropertyBase<Side>(Side.TOP) {
                 private Side oldSide;
                 @Override protected void invalidated() {
-                    if (oldSide != null) {
-                        pseudoClassStateChanged(oldSide);
-                    }
-
+                    
                     oldSide = get();
 
-                    if (get() != null) {
-                        pseudoClassStateChanged(get());
-                    }
+                    pseudoClassStateChanged(TOP_PSEUDOCLASS_STATE, (oldSide == Side.TOP || oldSide == null));
+                    pseudoClassStateChanged(RIGHT_PSEUDOCLASS_STATE, (oldSide == Side.RIGHT));
+                    pseudoClassStateChanged(BOTTOM_PSEUDOCLASS_STATE, (oldSide == Side.BOTTOM));
+                    pseudoClassStateChanged(LEFT_PSEUDOCLASS_STATE, (oldSide == Side.LEFT));
                 }
 
                 @Override
@@ -504,8 +511,8 @@ public class TabPane extends Control {
             }
 
             @Override
-            public WritableValue<Number> getWritableValue(TabPane n) {
-                return n.tabMinWidthProperty();
+            public StyleableProperty<Number> getStyleableProperty(TabPane n) {
+                return (StyleableProperty)n.tabMinWidthProperty();
             }
         };
 
@@ -519,8 +526,8 @@ public class TabPane extends Control {
             }
 
             @Override
-            public WritableValue<Number> getWritableValue(TabPane n) {
-                return n.tabMaxWidthProperty();
+            public StyleableProperty<Number> getStyleableProperty(TabPane n) {
+                return (StyleableProperty)n.tabMaxWidthProperty();
             }
         };
 
@@ -534,8 +541,8 @@ public class TabPane extends Control {
             }
 
             @Override
-            public WritableValue<Number> getWritableValue(TabPane n) {
-                return n.tabMinHeightProperty();
+            public StyleableProperty<Number> getStyleableProperty(TabPane n) {
+                return (StyleableProperty)n.tabMinHeightProperty();
             }
         };
 
@@ -549,8 +556,8 @@ public class TabPane extends Control {
             }
 
             @Override
-            public WritableValue<Number> getWritableValue(TabPane n) {
-                return n.tabMaxHeightProperty();
+            public StyleableProperty<Number> getStyleableProperty(TabPane n) {
+                return (StyleableProperty)n.tabMaxHeightProperty();
             }
         };
 
@@ -580,54 +587,15 @@ public class TabPane extends Control {
      * {@inheritDoc}
      */
     @Override
-    public List<CssMetaData> getCssMetaData() {
+    public List<CssMetaData> getControlCssMetaData() {
         return getClassCssMetaData();
     }
 
-    private static final PseudoClass.State TOP_PSEUDOCLASS_STATE = PseudoClass.getState("top");
-    private static final PseudoClass.State BOTTOM_PSEUDOCLASS_STATE = PseudoClass.getState("bottom");
-    private static final PseudoClass.State LEFT_PSEUDOCLASS_STATE = PseudoClass.getState("left");
-    private static final PseudoClass.State RIGHT_PSEUDOCLASS_STATE = PseudoClass.getState("right");
+    private static final PseudoClass TOP_PSEUDOCLASS_STATE = PseudoClass.getPseudoClass("top");
+    private static final PseudoClass BOTTOM_PSEUDOCLASS_STATE = PseudoClass.getPseudoClass("bottom");
+    private static final PseudoClass LEFT_PSEUDOCLASS_STATE = PseudoClass.getPseudoClass("left");
+    private static final PseudoClass RIGHT_PSEUDOCLASS_STATE = PseudoClass.getPseudoClass("right");
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override public PseudoClass.States getPseudoClassStates() {
-        PseudoClass.States states = super.getPseudoClassStates();
-        switch(getSide()) {
-            case TOP:
-                states.addState(TOP_PSEUDOCLASS_STATE);
-                break;
-            case RIGHT:
-                states.addState(RIGHT_PSEUDOCLASS_STATE);
-                break;
-            case BOTTOM:
-                states.addState(BOTTOM_PSEUDOCLASS_STATE);
-                break;
-            case LEFT:
-                states.addState(LEFT_PSEUDOCLASS_STATE);
-                break;
-        }
-        return states;
-    }
-
-    private void pseudoClassStateChanged(Side side) {
-        PseudoClass.State state = null;
-        switch(getSide()) {
-            case TOP:
-                pseudoClassStateChanged(TOP_PSEUDOCLASS_STATE);
-                break;
-            case RIGHT:
-                pseudoClassStateChanged(RIGHT_PSEUDOCLASS_STATE);
-                break;
-            case BOTTOM:
-                pseudoClassStateChanged(BOTTOM_PSEUDOCLASS_STATE);
-                break;
-            case LEFT:
-                pseudoClassStateChanged(LEFT_PSEUDOCLASS_STATE);
-                break;
-        }
-    }    
     
     static class TabPaneSelectionModel extends SingleSelectionModel<Tab> {
         private final TabPane tabPane;

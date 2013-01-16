@@ -24,7 +24,8 @@
  */
 package javafx.scene.control;
 
-import com.sun.javafx.css.PseudoClass;
+import java.util.Set;
+import javafx.css.PseudoClass;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.WeakInvalidationListener;
@@ -35,6 +36,7 @@ import javafx.scene.Node;
 import com.sun.javafx.scene.control.skin.TreeCellSkin;
 import javafx.collections.WeakListChangeListener;
 import java.lang.ref.WeakReference;
+import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.value.ChangeListener;
@@ -169,8 +171,30 @@ public class TreeCell<T> extends IndexedCell<T> {
      **************************************************************************/
     
     // --- TreeItem
-    private ReadOnlyObjectWrapper<TreeItem<T>> treeItem = new ReadOnlyObjectWrapper<TreeItem<T>>(this, "treeItem");
-    private void setTreeItem(TreeItem<T> value) { treeItem.set(value); }
+    private ReadOnlyObjectWrapper<TreeItem<T>> treeItem = 
+        new ReadOnlyObjectWrapper<TreeItem<T>>(this, "treeItem") {
+
+            TreeItem<T> oldValue = null;
+            
+            @Override protected void invalidated() {
+                
+                if (oldValue != null) {
+                    oldValue.expandedProperty().removeListener(treeItemExpandedInvalidationListener);
+                }
+                
+                oldValue = get(); 
+                
+                if (oldValue != null) {
+                    oldValue.expandedProperty().addListener(treeItemExpandedInvalidationListener);
+                    // fake an invalidation to ensure updated pseudo-class state
+                    treeItemExpandedInvalidationListener.invalidated(oldValue.expandedProperty());            
+                }
+                
+            }
+    };
+    private void setTreeItem(TreeItem<T> value) {
+        treeItem.set(value); 
+    }
     
     /**
      * Returns the TreeItem currently set in this TreeCell.
@@ -183,6 +207,19 @@ public class TreeCell<T> extends IndexedCell<T> {
      */
     public final ReadOnlyObjectProperty<TreeItem<T>> treeItemProperty() { return treeItem.getReadOnlyProperty(); }
 
+
+    /* proxy pseudo-class state change from treeItem's expandedProperty */
+    private final InvalidationListener treeItemExpandedInvalidationListener = 
+        new InvalidationListener() {
+
+        @Override
+        public void invalidated(Observable o) {
+            boolean isExpanded = ((BooleanProperty)o).get();
+            pseudoClassStateChanged(EXPANDED_PSEUDOCLASS_STATE,   isExpanded);
+            pseudoClassStateChanged(COLLAPSED_PSEUDOCLASS_STATE, !isExpanded);
+        }
+    };
+    
     
     
     // --- Disclosure Node
@@ -391,15 +428,21 @@ public class TreeCell<T> extends IndexedCell<T> {
      *                                                                         *
      **************************************************************************/
     
+    private int index = -1;
+    private int oldIndex = -1;
+    private TreeItem<T> treeItemRef;
+    
     /** {@inheritDoc} */
     @Override void indexChanged() {
         super.indexChanged();
+        index = getIndex();
         
         // when the cell index changes, this may result in the cell
         // changing state to be selected and/or focused.
         updateItem();
         updateSelection();
         updateFocus();
+        oldIndex = index;
     }
     
     private void updateItem() {
@@ -407,23 +450,21 @@ public class TreeCell<T> extends IndexedCell<T> {
         if (tv == null) return;
         
         // Compute whether the index for this cell is for a real item
-        boolean valid = getIndex() >=0 && getIndex() < tv.getExpandedItemCount();
+        boolean valid = index >=0 && index < tv.getExpandedItemCount();
 
         // Cause the cell to update itself
         if (valid) {
             // update the TreeCell state.
             // get the new treeItem that is about to go in to the TreeCell
-            TreeItem<T> _treeItem = tv.getTreeItem(getIndex());
+            treeItemRef = oldIndex != index ? tv.getTreeItem(index) : treeItemRef;
         
             // For the sake of RT-14279, it is important that the order of these
             // method calls is as shown below. If the order is switched, it is
             // likely that events will be fired where the item is null, even
             // though calling cell.getTreeItem().getValue() returns the value
             // as expected
-            if (_treeItem == null || ! _treeItem.equals(getTreeItem())) {
-                updateTreeItem(_treeItem);
-                updateItem(_treeItem == null ? null : _treeItem.getValue(), false);
-            }
+            updateTreeItem(treeItemRef);
+            updateItem(treeItemRef == null ? null : treeItemRef.getValue(), false);
         } else {
             updateTreeItem(null);
             updateItem(null, true);
@@ -432,20 +473,20 @@ public class TreeCell<T> extends IndexedCell<T> {
 
     private void updateSelection() {
         if (isEmpty()) return;
-        if (getIndex() == -1 || getTreeView() == null) return;
+        if (index == -1 || getTreeView() == null) return;
         if (getTreeView().getSelectionModel() == null) return;
         
-        boolean isSelected = getTreeView().getSelectionModel().isSelected(getIndex());
+        boolean isSelected = getTreeView().getSelectionModel().isSelected(index);
         if (isSelected() == isSelected) return;
         
         updateSelected(isSelected);
     }
 
     private void updateFocus() {
-        if (getIndex() == -1 || getTreeView() == null) return;
+        if (index == -1 || getTreeView() == null) return;
         if (getTreeView().getFocusModel() == null) return;
         
-        setFocused(getTreeView().getFocusModel().isFocused(getIndex()));
+        setFocused(getTreeView().getFocusModel().isFocused(index));
     }
 
     private boolean updateEditingIndex = true;
@@ -529,18 +570,7 @@ public class TreeCell<T> extends IndexedCell<T> {
 
     private static final String DEFAULT_STYLE_CLASS = "tree-cell";
 
-    private static final PseudoClass.State EXPANDED_PSEUDOCLASS_STATE = PseudoClass.getState("expanded");
-    private static final PseudoClass.State COLLAPSED_PSEUDOCLASS_STATE = PseudoClass.getState("collapsed");
+    private static final PseudoClass EXPANDED_PSEUDOCLASS_STATE = PseudoClass.getPseudoClass("expanded");
+    private static final PseudoClass COLLAPSED_PSEUDOCLASS_STATE = PseudoClass.getPseudoClass("collapsed");
 
-   /**
-     * {@inheritDoc}
-     */
-    @Override public PseudoClass.States getPseudoClassStates() {
-        PseudoClass.States states = super.getPseudoClassStates();
-        if (getTreeItem() != null && ! getTreeItem().isLeaf()) {
-            if (getTreeItem().isExpanded()) states.addState(EXPANDED_PSEUDOCLASS_STATE);
-            else states.addState(COLLAPSED_PSEUDOCLASS_STATE);
-        }
-        return states;
-    }
 }

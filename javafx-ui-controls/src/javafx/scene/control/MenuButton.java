@@ -25,7 +25,8 @@
 
 package javafx.scene.control;
 
-import com.sun.javafx.css.PseudoClass;
+import java.util.Set;
+import javafx.css.PseudoClass;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ObjectPropertyBase;
 import javafx.collections.FXCollections;
@@ -141,7 +142,7 @@ public class MenuButton extends ButtonBase {
     // --- Showing
     private ReadOnlyBooleanWrapper showing = new ReadOnlyBooleanWrapper(this, "showing", false) {
         @Override protected void invalidated() {
-            pseudoClassStateChanged(PSEUDO_CLASS_SHOWING);
+            pseudoClassStateChanged(PSEUDO_CLASS_SHOWING, get());
             super.invalidated();
         }
     };
@@ -179,7 +180,9 @@ public class MenuButton extends ButtonBase {
         if (popupSide == null) {
             popupSide = new ObjectPropertyBase<Side>(Side.BOTTOM) {
                 @Override protected void invalidated() {
-                    pseudoClassStateChanged(PSEUDO_CLASS_OPENVERTICALLY);
+                    final Side side = get();
+                    final boolean active = (side == Side.TOP) || (side == Side.BOTTOM);
+                    pseudoClassStateChanged(PSEUDO_CLASS_OPENVERTICALLY, active);
                 }
 
                 @Override
@@ -247,22 +250,9 @@ public class MenuButton extends ButtonBase {
      **************************************************************************/
 
     private static final String DEFAULT_STYLE_CLASS = "menu-button";
-    private static final PseudoClass.State PSEUDO_CLASS_OPENVERTICALLY = 
-            PseudoClass.getState("openvertically");
-    private static final PseudoClass.State PSEUDO_CLASS_SHOWING = 
-            PseudoClass.getState("showing");
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override public PseudoClass.States getPseudoClassStates() {
-        PseudoClass.States states = super.getPseudoClassStates();
-        if (getPopupSide() == Side.TOP || getPopupSide() == Side.BOTTOM)
-            states.addState(PSEUDO_CLASS_OPENVERTICALLY);
-        if (isShowing()) {
-            states.addState(PSEUDO_CLASS_SHOWING);
-        }
-        return states;
-    }
+    private static final PseudoClass PSEUDO_CLASS_OPENVERTICALLY = 
+            PseudoClass.getPseudoClass("openvertically");
+    private static final PseudoClass PSEUDO_CLASS_SHOWING = 
+            PseudoClass.getPseudoClass("showing");
 
 }

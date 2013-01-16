@@ -32,6 +32,52 @@
 
 /*******************************************************************************
  *                                                                             *
+ * THEMEING INSTRUCTIONS                                                       *
+ *                                                                             *
+ *******************************************************************************
+
+TODO: Explain here how themeing works:
+
+     * -fx-text-base-color for text on top of -fx-base, -fx-color, and -fx-body-color
+     * -fx-text-background-color for text on top of -fx-background
+     * -fx-text-inner-color for text on top of -fx-control-inner-color
+     * -fx-selection-bar-text for text on top of -fx-selection-bar
+
+RESIZING FOR DIFFERNT SCEEN DPI
+-------------------------------
+
+When the screen DPI changes Windows will use a differnt font size be default. 
+The default is 12px and the can change to 15px or 18px depending on user 
+preference or screen DPI. On Mac the default is 13px and embbeded will depend 
+on hardware. To make UI controls scale and be the right proportions of each of 
+these font sizes we base the padding (which controls size of control) on the 
+font size. This is done using the CSS measument unit of a "em" where 
+(1em = font size). The default sizes are based on Windows default of 12px, as
+a quick reference here are common px sizes in em units on windows.
+
+Windows 12px -> em units    -> Mac 13px      | 
+----------------------------------------
+     1px     -> 0.083333em  -> 1.08px ~ 2px
+     2px     -> 0.166667em  -> 2.16px ~ 3px
+     3px  = 0.25em
+     4px  = 0.333333em
+     5px  = 0.416667em
+     6px  = 0.5em
+     7px  = 0.583333em
+     8px  = 0.666667em
+     9px  = 0.75em
+    10px  = 0.833333em
+    11px  = 0.916667em
+    12px  = 1em
+
+IMPORTANT: Not all sizes are scaled with em units only padding. All borders and 
+background insets are still in pixels. Also any padding where it has to match up
+is being used to size a border should also be in pixels.
+
+ ******************************************************************************/
+
+/*******************************************************************************
+ *                                                                             *
  * CSS Styles for core infrastructure bits.  The .root section provides the    *
  * overall default colors used by the rest of the sections.                    *
  *                                                                             *
@@ -79,11 +125,11 @@
     -fx-light-text-color: white;
 
     /* A bright blue for highlighting/accenting objects.  For example: selected
-     * text; selected items in menus, lists, trees, and tables; progress bars;
-     * default buttons.
-     */
-    /*-fx-accent: #4fb6d6;*/
+     * text; selected items in menus, lists, trees, and tables; progress bars */
     -fx-accent: #0096C9;
+    
+    /* Default buttons color, this is similar to accent but more subtle */
+    -fx-default-button: #4fb6d6;
 
     /* A bright blue for the focus indicator of objects. Typically used as the
      * first color in -fx-background-color for the "focused" pseudo-class. Also
@@ -103,6 +149,16 @@
     /* The opacity level to use for the "disabled" pseudoclass.
      */
     -fx-disabled-opacity: 0.4;
+    
+    /* Chart Color Palette */
+    CHART_COLOR_1: #f3622d;
+    CHART_COLOR_2: #fba71b;
+    CHART_COLOR_3: #57b757;
+    CHART_COLOR_4: #41a9c9;
+    CHART_COLOR_5: #4258c9;
+    CHART_COLOR_6: #9a42c8;
+    CHART_COLOR_7: #c84164;
+    CHART_COLOR_8: #888888;
 
     /***************************************************************************
      *                                                                         *
@@ -127,12 +183,6 @@
      */
     -fx-pressed-base: derive(-fx-base,-6%);
 
-    /* Used to specify the body color for focused objects.  By default, it's
-     * the same as -fx-base (i.e., the body color doesn't change when a control
-     * gets focus).
-     */
-    -fx-focused-base: -fx-base;
-
     /* The color to use for -fx-text-fill when text is to be painted on top of
      * a background filled with the -fx-background color.
      */
@@ -142,17 +192,7 @@
         -fx-dark-text-color  46%,
         -fx-dark-text-color  59%,
         -fx-mid-text-color   60%
-     );
-
-    /* The default color for all text.  Sections should change the -fx-text-fill
-     * property if change the background color to something else.  See also:
-     *
-     * -fx-text-base-color for text on top of -fx-base, -fx-color, and -fx-body-color
-     * -fx-text-background-color for text on top of -fx-background
-     * -fx-text-inner-color for text on top of -fx-control-inner-color
-     * -fx-selection-bar-text for text on top of -fx-selection-bar
-     */
-    -fx-text-fill: -fx-text-background-color;
+    );
 
     /* A little darker than -fx-color and used to draw boxes around objects such
      * as progress bars, scroll bars, scroll panes, trees, tables, and lists.
@@ -171,6 +211,19 @@
         black 10%,
         derive(-fx-background, -15%) 30%
     );
+     
+    /* Lighter than -fx-background and used to provide a small highlight when
+     * needed ontop of -fx-background. This is never a shadow in Modena but
+     * keep -fx-shadow-highlight-color name to be compatable with Caspian.
+     */
+    -fx-shadow-highlight-color: ladder(
+        -fx-background,
+        rgba(255,255,255,0.2) 0%,
+        rgba(255,255,255,0.2) 20%,
+        rgba(255,255,255,0.2) 70%,
+        rgba(255,255,255,1) 90%,
+        rgba(255,255,255,1) 100%
+      );
     
     /* A gradient that goes from a little darker than -fx-color on the top to
      * even more darker than -fx-color on the bottom.  Typically is the second
@@ -185,11 +238,10 @@
      * -fx-background-color list as a thin highlight inside the outer border.
      * Insets are typically 1.
      */
-    -fx-inner-border: linear-gradient(to bottom, 
-        derive(-fx-color,75%), 
-        derive(-fx-color,2%));
+    -fx-inner-border: linear-gradient(to bottom, derive(-fx-color,75%), derive(-fx-color,2%));
 
-    -fx-inner-border-horizontal: linear-gradient(
+    -fx-inner-border-horizontal: linear-gradient(to right, derive(-fx-color,75%), derive(-fx-color,2%));
+/*    -fx-inner-border-horizontal: linear-gradient(
         to right,
         ladder(-fx-color, 
                derive(-fx-color,80%) 60%, 
@@ -197,7 +249,7 @@
         ladder(-fx-color, 
                derive(-fx-color,20%) 10%, 
                derive(-fx-color,-10%) 80%) 100%
-    );
+    );*/
 
     -fx-inner-border-bottomup: linear-gradient(
         to top,
@@ -228,7 +280,7 @@
         -fx-dark-text-color  59%,
         -fx-mid-text-color   60%
     );
-
+    
     /* The color to use as -fx-text-fill when painting text on top of
      * backgrounds filled with -fx-control-inner-background.
      */
@@ -278,12 +330,6 @@
         -fx-mid-text-color   51%
     );
 
-    /* The default border color for a tab.
-     *
-     * TODO: should this be -fx-box-border or derived from some other color?
-     */
-    -fx-tab-border-color: -fx-box-border;
-
     /* These are needed for Popup */
     -fx-background-color: inherit;
     -fx-background-radius: inherit;
@@ -298,7 +344,6 @@
     /* The colors to use in Pagination */
     -fx-page-bullet-border: #acacac;    
     -fx-page-indicator-hover-border: #accee5;
-    
 
     /***************************************************************************
      *                                                                         *
@@ -324,13 +369,14 @@
 .radio-button > .radio,
 .check-box > .box,
 .menu-button,
-.split-menu-button > .arrow-button,
 .choice-box,
-.combo-box-base {
+.color-picker.split-button > .color-picker-label,
+.combo-box-base,
+.combo-box-base > .arrow-button {
     -fx-background-color: -fx-outer-border, -fx-inner-border, -fx-body-color; 
     -fx-background-insets: 0, 1, 2;
     -fx-background-radius: 5, 4, 3;
-    -fx-padding: 0.333333em 1em 0.416667em 1em;
+    -fx-padding: 0.333333em 0.666667em 0.416667em 0.666667em; /* 4 8 5 8 */
     -fx-text-fill: -fx-text-base-color;
 }
 .button:hover,
@@ -345,7 +391,10 @@
 .scroll-bar > .increment-button:hover, 
 .scroll-bar > .decrement-button:hover,
 .choice-box:hover,
-.combo-box-base:hover{
+.color-picker.split-button > .arrow-button:hover,
+.color-picker.split-button > .color-picker-label:hover,
+.combo-box-base:hover,
+.tab-pane > .tab-header-area > .control-buttons-tab > .container > .tab-down-button:hover {
     -fx-color: -fx-hover-base;
 }
 .button:armed,
@@ -355,12 +404,14 @@
 .menu-button:armed,
 .split-menu-button:armed > .label,
 .split-menu-button > .arrow-button:pressed,
+.split-menu-button:showing > .arrow-button,
 .slider .thumb:pressed,
 .scroll-bar > .thumb:pressed,
 .scroll-bar > .increment-button:pressed, 
 .scroll-bar > .decrement-button:pressed,
 .choice-box:showing,
-.combo-box-base:showing {
+.combo-box-base:showing,
+.tab-pane > .tab-header-area > .control-buttons-tab > .container > .tab-down-button:pressed {
     -fx-color: -fx-pressed-base;
 }
 .button:focused,
@@ -369,8 +420,9 @@
 .check-box:focused > .box,
 .menu-button:focused,
 .choice-box:focused,
-.combo-box-base:focused {
-    /*-fx-color: -fx-focused-base; TODO do we want this? */
+.color-picker.split-button:focused > .color-picker-label,
+.combo-box-base:focused,
+.slider:focused .thumb {
     -fx-background-color: -fx-faint-focus-color, -fx-focus-color, -fx-inner-border, -fx-body-color; 
     -fx-background-insets: -2, -0.3, 1, 2;
     -fx-background-radius: 7, 6, 4, 3;
@@ -395,7 +447,9 @@
 .list-view:disabled,
 .tree-view:disabled,
 .table-view:disabled,
-.tree-table-view:disabled {
+.tree-table-view:disabled,
+.tab-pane:disabled,
+.tab-pane > .tab-header-area > .headers-region > .tab:disabled {
     -fx-opacity: -fx-disabled-opacity;
 }
 
@@ -414,7 +468,8 @@
 /* ====   MARKS   =========================================================== */
 
 .radio-button:selected > .radio > .dot,
-.check-box:selected > .box > .mark {
+.check-box:selected > .box > .mark,
+.check-box:indeterminate  > .box > .mark {
     -fx-background-color: -fx-mark-highlight-color, -fx-mark-color !important;
     -fx-background-insets: 0 0 -1 0, 0;
 }
@@ -425,13 +480,37 @@
 .split-menu-button > .arrow-button > .arrow {
     -fx-background-color: -fx-mark-highlight-color, -fx-mark-color;
     -fx-background-insets: 0 0 -1 0, 0;
-    /*-fx-padding: 0.25em;  3 */
+    -fx-padding: 0.25em;
     -fx-shape: "M 0 -3.5 v 7 l 4 -3.5 z";
 }
+.choice-box > .open-button > .arrow,
 .menu-button:openvertically > .arrow-button > .arrow,
-.split-menu-button:openvertically > .arrow-button > .arrow {
+.split-menu-button:openvertically > .arrow-button > .arrow,
+.combo-box-base > .arrow-button > .arrow,
+.web-view .form-select-button .arrow,
+.tab-pane > .tab-header-area > .control-buttons-tab > .container > .tab-down-button > .arrow  {
+    -fx-background-color: -fx-mark-highlight-color, -fx-mark-color;
+    -fx-background-insets: 0 0 -1 0, 0;
     -fx-padding: 0.166667em 0.333333em 0.166667em 0.333333em; /* 2 4 2 4 */
     -fx-shape: "M 0 0 h 7 l -3.5 4 z";
+}
+
+/* ====   CHOICE BOX LIKE THINGS   ========================================== */
+
+.choice-box,
+.menu-button,
+.combo-box-base {
+    -fx-padding: 0;
+}
+.choice-box > .label,
+.menu-button > .label,
+.color-picker > .label {
+    -fx-padding: 0.333333em 0.666667em 0.416667em 0.666667em; /* 4 8 5 8 */
+    -fx-text-fill: -fx-text-base-color;
+}
+.choice-box > .open-button,
+.menu-button > .arrow-button {
+    -fx-padding: 0.5em 0.833333em 0.5em 0.0em; /* 6 10 6 0 */
 }
 
 /* ====   BOX LIKE THINGS   ================================================= */
@@ -441,7 +520,8 @@
 .list-view,
 .tree-view,
 .table-view, 
-.tree-table-view {
+.tree-table-view,
+.html-editor {
     -fx-background-color: -fx-box-border, -fx-control-inner-background;
     -fx-background-insets: 0, 1;
     -fx-padding: 1;
@@ -450,9 +530,19 @@
 .split-pane:focused,
 .list-view:focused,
 .tree-view:focused,
-.tree-table-view:focused {
-    -fx-background-color: -fx-faint-focus-color, -fx-focus-color, -fx-background; 
+.tree-table-view:focused,
+.html-editor:focused {
+    -fx-background-color: -fx-faint-focus-color, -fx-focus-color, -fx-control-inner-background; 
     -fx-background-insets: -2, -0.3, 1;
+}
+/* ones with grey -fx-background not lighter -fx-control-inner-background */
+.scroll-pane,
+.split-pane {
+    -fx-background-color: -fx-box-border, -fx-background;
+}
+.scroll-pane:focused,
+.split-pane:focused {
+    -fx-background-color: -fx-faint-focus-color, -fx-focus-color, -fx-background; 
 }
 
 /*******************************************************************************
@@ -467,14 +557,21 @@
 
 /*******************************************************************************
  *                                                                             *
- * Button & ToogleButton                                                       *
+ * Button & ToggleButton                                                       *
  *                                                                             *
  ******************************************************************************/
 
 /* ====   DEFAULT   ========================================================= */
 
 .button:default {
-    -fx-base: -fx-accent;
+    -fx-base: -fx-default-button;
+}
+
+/* ====   WEB BUTTONS   ===================================================== */
+
+.web-view .form-select-button {
+    -fx-background-radius: 2, 2, 1, 0;
+    -fx-background-insets: 2 2 1 2, 2, 3, 4;
 }
 
 /* ====   PILL BUTTONS   ==================================================== */
@@ -512,22 +609,23 @@
 /* ====   SELECTED TOGGLE   ================================================= */
 
 .toggle-button:selected {
-    -fx-background-color: 
-        linear-gradient(to bottom, derive(-fx-color,-65.1%) 0%, derive(-fx-color,-50.2%) 90%, derive(-fx-color,-45.1%) 100%), 
-        linear-gradient(to bottom, derive(-fx-color,-52.8%) 0%, derive(-fx-color,-40.8%) 90%, derive(-fx-color,-35.7%) 100%),
-        linear-gradient(to bottom, derive(-fx-color,-44.3%) 0%, derive(-fx-color,-41.7%) 2% ,derive(-fx-color,-33.6%) 98%, derive(-fx-color,-35.7%) 100%); 
-    /* TODO: -fx-text-fill should be derived */
-    -fx-text-fill: -fx-light-text-color;
+        -fx-background-color: 
+            linear-gradient(to bottom, derive(-fx-outer-border, -20%), -fx-outer-border),
+            linear-gradient(to bottom, 
+                    derive(-fx-text-box-border, -10%) 0%, 
+                    derive(-fx-text-box-border, -2%) 20%,
+                    derive(-fx-text-box-border, 5%) 50%);
+    -fx-background-insets: 0, 1;
 }
-
 .toggle-button:selected:focused {
     -fx-background-color: 
         -fx-faint-focus-color, -fx-focus-color, 
-        linear-gradient(to bottom, derive(-fx-color,-52.8%) 0%, derive(-fx-color,-40.8%) 90%, derive(-fx-color,-35.7%) 100%),
-        linear-gradient(to bottom, derive(-fx-color,-44.3%) 0%, derive(-fx-color,-41.7%) 2% ,derive(-fx-color,-33.6%) 98%, derive(-fx-color,-35.7%) 100%); 
-}
-.toggle-button:selected > .text {
-    -fx-effect: dropshadow(one-pass-box,derive(-fx-color,-90%),1,0,0,1);
+            linear-gradient(to bottom, 
+                    derive(-fx-text-box-border, -10%) 0%, 
+                    derive(-fx-text-box-border, -2%) 20%,
+                    derive(-fx-text-box-border, 5%) 50%);
+    -fx-background-insets: -2, -0.3, 1;
+    -fx-background-radius: 7, 6, 4;
 }
 
 /*******************************************************************************
@@ -540,14 +638,15 @@
     -fx-label-padding: 0.0em 0.0em 0.0em 0.416667em; /* 0 0 0 5 */
     -fx-text-fill: -fx-text-background-color;
 }
-.radio-button > .radio  {
+.radio-button > .radio,
+.radio-button:focused > .radio  {
    -fx-background-radius: 1.0em; /* large value to make sure this remains circular */
    -fx-padding: 0.333333em; /* 4 -- padding from outside edge to the inner black dot */
 }
 .radio-button > .radio > .dot {
    -fx-background-color: transparent;
    -fx-background-radius: 1.0em; /* large value to make sure this remains circular */
-   -fx-padding: 0.25em; /* 3 -- radius of the inner black dot when selected */
+   -fx-padding: 0.333333em; /* 4 -- radius of the inner black dot when selected */
 }
 
 /*******************************************************************************
@@ -562,23 +661,30 @@
 }
 .check-box > .box {
     -fx-background-radius: 3, 2, 1;
-    -fx-padding: -2 0 3 3;
+    -fx-padding: 0.666667em; /* 16x16 = 8+8 */
 }
 .check-box:focused > .box {
-    -fx-background-radius: 3.4, 3, 2, 1;
+    -fx-background-radius: 5, 3, 2, 1;
 }
-.check-box > .box > .mark {
+.check-box:selected > .box {
+    /* Carefully picked numbers to remain square as scalling */
+/**/    -fx-padding: -0.208333em 0 0.208333em 0.23em; /* -2.5 0 2.5 2.76 */
+/**/    -fx-padding: -0.208333em 0.083333em 0.208333em 0.23em; /* -1.5 0 2.5 2.76 */
+    -fx-padding: 0.166667em 0.166667em 0.25em 0.25em; /* 2 2 3 3 */
+}
+.check-box:selected > .box > .mark {
     -fx-background-color: transparent;
-    -fx-padding: 8 7 8 7; /* 4 -- this is half the size of the mark */
+/**/    -fx-padding: 0.666667em 0.583333em 0.666667em 0.5em; /* 7 7 6 5 */
+    -fx-padding: 0.416667em 0.416667em 0.5em 0.5em; /* 5 5 6 6 */
     -fx-shape: "M-0.25,6.083c0.843-0.758,4.583,4.833,5.75,4.833S14.5-1.5,15.917-0.917c1.292,0.532-8.75,17.083-10.5,17.083C3,16.167-1.083,6.833-0.25,6.083z";
 }
 .check-box:indeterminate > .box {
-    -fx-padding: 7 3 7 3;
+    -fx-padding: 0; 
 }
 .check-box:indeterminate  > .box > .mark {
-    -fx-background-color: -fx-mark-highlight-color, -fx-mark-color;
-    -fx-shape: "M0,0H8V2H0Z";
-    -fx-padding: 2 6 1 5;
+    -fx-shape: "M0,0H10V2H0Z";
+    -fx-scale-shape: false;
+    -fx-padding: 0.666667em; /* 16x16 = 8+8 */
 }
 
 /*******************************************************************************
@@ -600,7 +706,7 @@
 }
 .hyperlink:focused {
     -fx-border-color: -fx-focus-color;
-    -fx-border-style: dotted;
+    -fx-border-style: segments(0.166667em, 0.166667em);
     -fx-border-width: 1px;
 }
 .hyperlink:hover {
@@ -608,25 +714,6 @@
 }
 .hyperlink:show-mnemonics > .mnemonic-underline {
     -fx-stroke: -fx-text-fill;
-} 
-
-/*******************************************************************************
- *                                                                             *
- * MenuButton                                                                  *
- *                                                                             *
- ******************************************************************************/
-
-.menu-button {
-    -fx-padding: 0;
-}
-.menu-button > .label {
-    /* The MenuButton skin uses an inner Label part */
-    -fx-padding: 0.166667em 1.5em 0.25em 0.833333em; /* 2 18 3 10 */
-}
-.menu-button > .arrow-button {
-    -fx-background-insets: 0;
-    -fx-background-radius: 0;
-    -fx-padding: 0.5em 0.416667em 0.5em 0.0em; /* 6 5 6 0 */
 }
 
 /*******************************************************************************
@@ -634,84 +721,62 @@
  * SplitMenuButton                                                             *
  *                                                                             *
  ******************************************************************************/
+
 .split-menu-button {
-    -fx-padding: 0.0em; /* 0 */
-    -fx-text-fill: -fx-text-base-color;
+    -fx-background-color: -fx-outer-border; 
+    -fx-background-insets: 0;
+    -fx-background-radius: 5;
+    -fx-padding: 0;
 }
 .split-menu-button:focused {
-    -fx-background-color: -fx-focus-color;
-    -fx-background-insets: -2;
-    -fx-background-radius: 7;
+    -fx-background-color: -fx-faint-focus-color, -fx-focus-color; 
+    -fx-background-insets: -2, -0.3;
+    -fx-background-radius: 7, 6;
 }
-/* The SplitMenuButton skin uses an inner Label part */
 .split-menu-button > .label {
-    -fx-background-color: -fx-outer-border, -fx-inner-border, -fx-body-color; 
-    -fx-background-insets: 0, 1 0 1 1, 2 1 2 2;
-    -fx-background-radius: 5 0 0 5, 4 0 0 4, 3 0 0 3;
-    -fx-padding: 0.166667em 1.5em 0.25em 0.833333em; /* 2 18 3 10 */
+    -fx-text-fill: -fx-text-base-color;
+    -fx-background-color: -fx-inner-border, -fx-body-color; 
+    -fx-background-insets: 1 0 1 1, 2 1 2 2;
+    -fx-background-radius: 4 0 0 4, 3 0 0 3;
+    -fx-padding: 0.333333em 0.667em 0.416667em 0.667em; /* 4 8 5 8 */
 }
-
 .split-menu-button > .arrow-button {
-    -fx-background-radius: 0 5 5 0, 0 4 4 0, 0 3 3 0;
-    -fx-padding: 0.5em 0.416667em 0.5em 0.416667em; /* 6 5 6 5 */
+    -fx-background-color: -fx-inner-border, -fx-body-color; 
+    -fx-background-insets: 1, 2;
+    -fx-background-radius: 4, 3;
+    -fx-background-radius: 0 4 4 0, 0 3 3 0;
+    -fx-padding: 0.5em 0.833333em 0.5em 0.833333em; /* 6 10 6 10 */
 }
 
-.split-menu-button > .arrow-button > .arrow {
-    -fx-background-color: -fx-mark-highlight-color, -fx-mark-color;
-    -fx-background-insets: 1 0 -1 0, 0;
-    -fx-padding: 0.25em;
-    -fx-shape: "M 0 -3.5 v 7 l 4 -3.5 z";
-}
-.split-menu-button:openvertically > .arrow-button > .arrow {
-    -fx-padding: 0.166667em 0.333333em 0.166667em 0.333333em;
-    -fx-shape: "M 0 0 h 7 l -3.5 4 z";
-}
-
-/* ====   TOOLBAR   ========================================================= */
-
+/*******************************************************************************
+ *                                                                             *
+ * ToolBar                                                                     *
+ *                                                                             *
+ ******************************************************************************/
 .tool-bar:vertical {
     -fx-background: derive(-fx-base,-20%);
     -fx-background-color:
         linear-gradient(to right, derive(-fx-base,0%) 0%, derive(-fx-base,10%) 50%, derive(-fx-base,0%) 100%);
     -fx-background-insets: 0;
-    -fx-background-radius: 0 ;
-    -fx-padding: 0.833em 0.416667em 0.833em 0.416667em; /* 10 5 10 5 */
+    -fx-padding: 0.5em 0.416667em 0.5em 0.416667em; /* 6 5 6 5 */
     -fx-spacing: 0.333em; /* 4 */
     -fx-alignment: TOP_LEFT;
 }
-.tool-bar:horizontal {
+.tool-bar {
     -fx-background-color:
-        linear-gradient(to bottom, derive(-fx-base,75%) 0%, derive(-fx-base,-26.0%) 90%),
+        linear-gradient(to bottom, derive(-fx-base,75%) 0%, -fx-outer-border 90%),
         linear-gradient(to bottom, derive(-fx-base,46.9%) 2%, derive(-fx-base,-2.1%) 95%);
-    -fx-background-insets: 0 0 0 0, 1 0 0 0;
-    -fx-background-radius: 0, 0 ;
-    -fx-padding: 0.416667em 0.833em 0.416667em 0.833em; /* 5 10 5 10 */
+    -fx-background-insets: 0 0 0 0, 1 0 1 0;
+    -fx-padding: 0.416667em 0.5em 0.416667em 0.5em; /* 5 6  5 6 */
     -fx-spacing: 0.333em; /* 4 */
     -fx-alignment: CENTER_LEFT;
 }
-.tool-bar:horizontal > .container > .separator {
+.tool-bar > .container > .separator {
     -fx-orientation: vertical;
 }
 .tool-bar:vertical > .container > .separator {
     -fx-orientation: horizontal;    
 }
-/*
-.tool-bar .separator:vertical .line {
-    -fx-border-style: solid;
-    -fx-background-color: null;
-    -fx-border-color:  transparent derive(-fx-base,-35%) transparent transparent;
-}
-
-.tool-bar .separator:horizontal .line {
-    -fx-border-style: solid;
-    -fx-background-color: null;
-    -fx-border-color:  transparent transparent derive(-fx-base,-35%) transparent;
-}
-
-.tool-bar:vertical .separator {
-    -fx-orientation: horizontal;    
-    -fx-padding: 0.0em 0.0835em 0.0em 0.0835em;  0 1 0 1 
-}*/
 
 /*******************************************************************************
  *                                                                             *
@@ -720,35 +785,47 @@
  ******************************************************************************/
 
 .slider .thumb {
-    -fx-background-color:
-        derive(-fx-color,-36%),
-        derive(-fx-color,73%),
-        linear-gradient(to bottom, derive(-fx-color,-19%),derive(-fx-color,61%));
+    -fx-background-color: 
+        linear-gradient(to bottom, derive(-fx-text-box-border, -20%), derive(-fx-text-box-border, -30%)),
+        -fx-inner-border,
+        -fx-body-color;
     -fx-background-insets: 0, 1, 2;
     -fx-background-radius: 1.0em; /* makes sure this remains circular */
-    -fx-padding: 0.583333em; /* 7 */
+    -fx-padding: 0.583333em;  /* 7 */
+    -fx-effect: dropshadow(two-pass-box , rgba(0, 0, 0, 0.1), 5, 0.0 , 0, 2);
 }
-
 .slider:focused .thumb {
-    -fx-color: -fx-focused-base;
-    -fx-background-color:
-        -fx-focus-color,
-        derive(-fx-color,-36%),
-        derive(-fx-color,73%),
-        linear-gradient(to bottom, derive(-fx-color,-19%),derive(-fx-color,61%));
-    -fx-background-insets: -1.4, 0, 1, 2;
     -fx-background-radius: 1.0em; /* makes sure this remains circular */
 }
-.slider .track, .slider:vertical .track {
-    -fx-background-color:  derive(-fx-box-border, 20%), derive(-fx-background, -5%), -fx-background;
-    -fx-background-insets: 0, 1, 2 1 1 1;
-    -fx-background-radius: 2.5, 1.5, 1.5;
-    -fx-padding: 2;
+.slider .track {
+      -fx-background-color: 
+          -fx-shadow-highlight-color,
+          linear-gradient(to bottom, derive(-fx-text-box-border, -10%), -fx-text-box-border),
+          linear-gradient(to bottom, 
+            derive(-fx-control-inner-background, -9%),
+            derive(-fx-control-inner-background, 0%),
+            derive(-fx-control-inner-background, -5%),
+            derive(-fx-control-inner-background, -12%)
+          );
+    -fx-background-insets: 0 0 -1 0, 0, 1;
+    -fx-background-radius: 5, 4, 3;
+    -fx-padding: 0.25em; /* 3 */
+}
+.slider:vertical .track {
+    -fx-background-color: 
+          -fx-shadow-highlight-color,
+          -fx-text-box-border,
+          linear-gradient(to right, 
+            derive(-fx-control-inner-background, -9%),
+            -fx-control-inner-background,
+            derive(-fx-control-inner-background, -9%)
+          );
 }
 .slider .axis {
-    -fx-tick-mark-stroke: ladder(-fx-background, derive(-fx-background,30%) 40%, derive(-fx-background,-30%) 41%);
-    -fx-tick-label-font: 0.833333em System; 
-    -fx-tick-label-fill: -fx-text-background-color;
+    -fx-tick-label-fill: derive(-fx-text-background-color, 30%);
+    -fx-tick-length: 5px;
+    -fx-minor-tick-length: 3px;
+    -fx-border-color: null;
 }
 
 /*******************************************************************************
@@ -860,19 +937,16 @@
  *                                                                             *
  ******************************************************************************/
 
-.separator .line {
-    -fx-border-style: segments(0.166667em, 0.166667em);
-    -fx-border-width: 0.083333em; /* 1 */
-}
 .separator:horizontal .line {
-    -fx-background-color: null;
-    -fx-padding: 0.083333em 0.0em 0.0em 0.0em; /* 1 0 0 0 */
-    -fx-border-color: derive(-fx-background,-20%) transparent transparent transparent;
+    -fx-border-color: -fx-text-box-border transparent transparent transparent,
+        -fx-shadow-highlight-color transparent transparent transparent;
+    -fx-border-insets: 0, 1 0 0 0;
 }
 .separator:vertical .line {
-    -fx-background-color: null;
-    -fx-padding: 0.0em 0.083333em 0.0em 0.0em; /* 0 1 0 0 */
-    -fx-border-color:  transparent derive(-fx-background,-20%) transparent transparent;
+    -fx-border-color: transparent transparent transparent -fx-shadow-highlight-color,
+        transparent transparent transparent -fx-text-box-border;
+    -fx-border-width: 3, 1;
+    -fx-border-insets: 0, 0 0 0 1;
 }
 
 /*******************************************************************************
@@ -887,21 +961,65 @@
     -fx-indeterminate-bar-flip: true;
     -fx-indeterminate-bar-animation-time: 2;
 }
-.progress-bar > .bar {
+/*.progress-bar > .bar {
     -fx-background-color: -fx-box-border,-fx-accent;
-    -fx-background-insets: 0, 1;
-    -fx-background-radius: 0.416667em, 0.416667em;
-    -fx-padding: 0.416667em; /* 5 */
+    -fx-background-insets: 2, 3;
+    -fx-background-radius: 0.25em, 0.166667em;  3 , 2 
+    -fx-padding: 0.416667em;  5 
+}*/
+/*.progress-bar > .bar {
+    -fx-background-color: -fx-accent;
+    -fx-background-insets: 3 3 4 3;
+    -fx-background-radius: 0.167em;  2 
+    -fx-padding: 0.416667em;  5 
+}*/
+.progress-bar > .bar {
+    /*-fx-background-color: -fx-accent;*/
+    -fx-background-color: linear-gradient(to bottom, 
+            derive(-fx-accent, -7%),
+            derive(-fx-accent, 0%),
+            derive(-fx-accent, -3%),
+            derive(-fx-accent, -9%)
+          );
+    -fx-background-insets: 3 3 4 3;
+    -fx-background-radius: 0.25em; /* 3px */
+    -fx-padding: 1em; /* 12 */
 }
 .progress-bar:indeterminate > .bar {
     -fx-background-color: linear-gradient(to left, transparent, -fx-accent);
 }
+/*.progress-bar > .track {
+    -fx-background-color: 
+          linear-gradient(to bottom, derive(-fx-text-box-border, -10%), -fx-text-box-border),
+        linear-gradient(from 0px 0px to 0px 5px, derive(-fx-control-inner-background, -9%), -fx-control-inner-background);
+    -fx-background-insets: 0, 1;
+    -fx-background-radius: 0.416667em, 0.416667em;  5 
+}*/
+/*.progress-bar > .track {
+      -fx-background-color: 
+          -fx-shadow-highlight-color,
+          linear-gradient(to bottom, derive(-fx-text-box-border, -10%), -fx-text-box-border),
+          linear-gradient(to bottom, 
+            derive(-fx-control-inner-background, -9%),
+            derive(-fx-control-inner-background, 0%),
+            derive(-fx-control-inner-background, -5%),
+            derive(-fx-control-inner-background, -12%)
+          );
+    -fx-background-insets: 0, 0 0 1 0, 1 1 2 1;
+    -fx-background-radius: 0.417em, 0.333em, 0.25em;   5, 4, 3 
+}*/
 .progress-bar > .track {
-     -fx-background-color:
-        -fx-box-border,
-        linear-gradient(to bottom, derive(-fx-color,-15%), derive(-fx-color,2.2%) 20%, derive(-fx-color,60%));
-    -fx-background-insets:  0, 1;
-    -fx-background-radius: 0.416667em, 0.416667em;
+      -fx-background-color: 
+          -fx-shadow-highlight-color,
+          linear-gradient(to bottom, derive(-fx-text-box-border, -10%), -fx-text-box-border),
+          linear-gradient(to bottom, 
+            derive(-fx-control-inner-background, -7%),
+            derive(-fx-control-inner-background, 0%),
+            derive(-fx-control-inner-background, -3%),
+            derive(-fx-control-inner-background, -9%)
+          );
+    -fx-background-insets: 0, 0 0 1 0, 1 1 2 1;
+    -fx-background-radius: 0.417em, 0.333em, 0.25em;  /* 5, 4, 3 */
 }
 
 /*******************************************************************************
@@ -914,13 +1032,15 @@
     -fx-spin-enabled: true;
 }
 .progress-indicator > .determinate-indicator > .indicator {
-    -fx-background-color: -fx-box-border, derive( -fx-background, -10%);
-    -fx-background-insets: 0, 1;
+    -fx-background-color: -fx-box-border,
+        radial-gradient(center 50% 50%, radius 50%, -fx-control-inner-background 70%, derive(-fx-control-inner-background, -9%) 100%), 
+        -fx-control-inner-background;
+    -fx-background-insets: 0, 1, 5 2 1 2;
     -fx-padding: 1;
 }
 .progress-indicator > .determinate-indicator > .progress {
     -fx-background-color: -fx-accent;
-    -fx-background-insets: 0;
+    -fx-background-insets: 2;
     -fx-padding: 1em; /* 9 */
 }
 /* TODO: scaling the shape seems to make it disappear */
@@ -989,28 +1109,21 @@
     -fx-highlight-fill: derive(-fx-control-inner-background,-20%);
     -fx-highlight-text-fill: -fx-text-inner-color;
     -fx-prompt-text-fill: derive(-fx-control-inner-background,-30%);
-    -fx-background-color: -fx-text-box-border, -fx-control-inner-background;
+    -fx-background-color: linear-gradient(to bottom, derive(-fx-text-box-border, -10%), -fx-text-box-border),
+        linear-gradient(from 0px 0px to 0px 5px, derive(-fx-control-inner-background, -9%), -fx-control-inner-background);
     -fx-background-insets: 0, 1;
-    -fx-background-radius: 2, 2;
+    -fx-background-radius: 4, 3;
     -fx-cursor: text;
+    -fx-padding: 0.416667em 0.583em 0.416667em 0.583em; /* 5 7 5 7 */
 }
 .text-input:focused {
     -fx-highlight-fill: -fx-accent;
     -fx-highlight-text-fill: white;
-    -fx-background-color: -fx-faint-focus-color, -fx-focus-color, -fx-control-inner-background; 
+    -fx-background-color: -fx-faint-focus-color, -fx-focus-color, 
+        linear-gradient(from 0px 0px to 0px 5px, derive(-fx-control-inner-background, -9%), -fx-control-inner-background); 
     -fx-background-insets: -2, -0.3, 1;
     -fx-background-radius: 6, 3.4, 2, 2;
     -fx-prompt-text-fill: transparent;
-}
-
-/*******************************************************************************
- *                                                                             *
- * TextField                                                                   *
- *                                                                             *
- ******************************************************************************/
-
-.text-field {
-    -fx-padding: 3 5 3 5;
 }
 
 /*******************************************************************************
@@ -1022,13 +1135,27 @@
 .text-area {
     -fx-padding: 0;
     -fx-cursor: default;
+    -fx-background-color: linear-gradient(to bottom, derive(-fx-text-box-border, -10%), -fx-text-box-border),
+        derive(-fx-base,-1%);
 }
 .text-area > .scroll-pane {
-    -fx-background-color: transparent;
+    -fx-background-color: null;
+}
+.text-area > .scroll-pane > .scroll-bar:horizontal {
+    -fx-background-radius: 0 0 3 3;
+}
+.text-area > .scroll-pane > .scroll-bar:vertical {
+    -fx-background-radius: 0 3 3 0;
+}
+.text-area > .scroll-pane > .corner {
+    -fx-background-radius: 0 0 3 0;
 }
 .text-area .content {
-    -fx-padding: 3 5 3 5; 
+    -fx-padding: 0.333em 0.583em 0.333em 0.583em; /* 4 7 4 7 */
     -fx-cursor: text;
+    -fx-background-color: 
+        linear-gradient(from 0px 0px to 0px 4px, derive(-fx-control-inner-background, -8%), -fx-control-inner-background);
+    -fx-background-radius: 3;
 }
 
 /*******************************************************************************
@@ -1114,10 +1241,6 @@
  *                                                                             *
  ******************************************************************************/
 
-/* Corresponding hex values for the color derivations used below are: *
- * derive(-fx-base,-30%); #929292                                     *
- * derive(-fx-base,-50%); #686868                                     *
- * derive(-fx-base,-70%); #3e3e3e                                     */
 .menu-bar {
     -fx-padding: 0.0em 0.666667em 0.0em 0.666667em; /* 0 8 0 8 */
     -fx-spacing: 0.166667em; /* 2 */
@@ -1130,11 +1253,11 @@
 .menu-bar > .container > .menu-button {
     -fx-background-radius: 0;
     -fx-background-color: transparent;
-    -fx-background-insets: 0; 
+    -fx-background-insets: 0;
 }
 /* Change padding of menu buttons when in menu bar */
 .menu-bar > .container > .menu-button > .label {
-    -fx-padding: 0.333em 0.5em 0.333em 0.5em; /* 4 6 4 6*/
+    -fx-padding: 0;
 }
 .menu-bar > .container > .menu-button:hover, .menu-bar > .container > .menu-button:focused, .menu-bar > .container > .menu-button:showing {
     -fx-background: -fx-accent;
@@ -1222,45 +1345,14 @@
  *                                                                             *
  ******************************************************************************/
 
-.choice-box {
-    -fx-padding: 0.0em 0.5em 0.0em 0.0em; /* 0 6 0 0 */
-    -fx-alignment: CENTER;
-    -fx-content-display: LEFT;
-}
-.choice-box > .label {
-    -fx-padding: 0.166667em 0.333333em 0.25em 0.5em; /* 2 4 3 6 */
-    -fx-text-fill: -fx-text-base-color;
-}
-
-.choice-box > .open-button {
-    -fx-background-color: null;
-    -fx-padding: 0.083333em 0.0em 0.0em 0.666667em; /* 1 0 0 8 */
-}
-.choice-box > .open-button > .arrow {
+/*.choice-box > .open-button > .arrow {
     -fx-background-color: -fx-mark-highlight-color, -fx-mark-color;
     -fx-background-insets: 1 0 -1 0, 0;
-    /* padding determines the size of the arrow;
-       this should match the design size in the SVG */
-    -fx-padding: 0.166667em 0.333333em 0.166667em 0.333333em; /* 2 3.5 2 3.5 */
+    -fx-padding: 0.166667em 0.333333em 0.166667em 0.333333em;  2 3.5 2 3.5 
     -fx-shape: "M 0 0 h 7 l -3.5 4 z";
-}
+}*/
 .choice-box > .context-menu {
     -fx-background-radius: 6, 5, 4;
-}
-
-/*.choice-box > .context-menu > .menu-item {
-    -fx-accelerator-gutter: 0;
-}*/
-
-/* TODO: need to use the ID here.  For some reason, the other form does not
- * work.  This might be related to popup issues.
- */
-/*.choice-box > * > .menu-item-radio {*/
-#choice-box-menu-item > * > .menu-item-radio {
-    /* When we show RadioMenuItems in ChoiceBox, we replace the radio shape with
-       a check mark, which looks much better */
-    -fx-shape: "M0,5H2L4,8L8,0H10L5,10H3Z";
-    -fx-scale-shape: false;
 }
 
 /*******************************************************************************
@@ -1270,95 +1362,78 @@
  ******************************************************************************/
 
 .tab-pane {
-    /* -fx-tab-min-width: 4.583em;  55 */
-    /* -fx-tab-max-width: 4.583em; 55 */
-    -fx-tab-min-height: 2em; /* 24 */
-    -fx-tab-max-height: 2em; /* 24 */
-}
-.tab-pane:disabled {
-    -fx-opacity: -fx-disabled-opacity;
+    -fx-tab-min-height: 1.8333em; /* 22 */
+    -fx-tab-max-height: 1.8333em; /* 22 */
 }
 .tab-pane > .tab-header-area > .headers-region > .tab > .tab-container > .tab-label {
-    -fx-background-color: transparent;    
     -fx-alignment: CENTER;
     -fx-text-fill: -fx-text-base-color;
 }
-/*
-.tab *.tab-label Text {
-    -fx-effect: dropshadow(two-pass-box , rgba(255, 255, 255, 0.4), 1, 0.0 , 0, 1);
-}*/
-.tab-pane > .tab-content-area {
-    -fx-background-color: -fx-control-inner-background;
-    -fx-padding: 0.0em; /* 0 */
-}
 .tab-pane > .tab-header-area > .headers-region > .tab {
-    /* This is how it is done in Button, but the -1 inset caused a white line  */
-    /* to appear beneath the tab, which looks bad, so it's taken out below.    */
-    -fx-background-insets: 0, 1, 2;
+    -fx-background-insets: 0 1 1 0, 1 2 1 1, 2 3 1 2;
     -fx-background-radius: 5 5 0 0, 4 4 0 0, 3 3 0 0;
     -fx-padding: 0.083333em 0.5em 0.083333em 0.5em; /* 1 6 1 6 */
-/*    -fx-text-fill: -fx-text-base-color;*/
 }
 .tab-pane > .tab-header-area > .headers-region > .tab:top {
-    -fx-background-color: -fx-tab-border-color, -fx-inner-border, -fx-body-color;
+    -fx-background-color: -fx-outer-border, -fx-inner-border, -fx-body-color;
 }
 .tab-pane > .tab-header-area > .headers-region > .tab:right {
-    -fx-background-color: -fx-tab-border-color, -fx-inner-border-bottomup, -fx-body-color-bottomup;
+    -fx-background-color: -fx-outer-border, -fx-inner-border-bottomup, -fx-body-color-bottomup;
 }
 .tab-pane > .tab-header-area > .headers-region > .tab:bottom {
-    -fx-background-color: -fx-tab-border-color, -fx-inner-border-bottomup, -fx-body-color-bottomup;
+    -fx-background-color: -fx-outer-border, -fx-inner-border-bottomup, -fx-body-color-bottomup;
 }
 .tab-pane > .tab-header-area > .headers-region > .tab:left {
-    -fx-background-color: -fx-tab-border-color, -fx-inner-border, -fx-body-color;
+    -fx-background-color: -fx-outer-border, -fx-inner-border, -fx-body-color;
 }
 .tab-pane > .tab-header-area > .headers-region > .tab:hover {
     -fx-color: -fx-hover-base;
 }
 .tab-pane > .tab-header-area > .headers-region > .tab:selected {
-/*    -fx-background-color: white;*/
-
-/*    -fx-background-color: -fx-tab-border-color, -fx-inner-border, -fx-body-color;
-    -fx-background-radius: 5 5 0 0, 4 4 0 0, 3 3 0 0;
-    -fx-background-insets: 0, 1 1 0 1, 2 2 0 2;*/
-    -fx-background-color: -fx-tab-border-color, -fx-background;
-    -fx-background-insets: 0, 1 1 0 1;
-    -fx-background-radius: 5 5 0 0, 4 4 0 0;
+    -fx-background-color: -fx-outer-border, -fx-inner-border, -fx-background;
+    -fx-background-insets: 0 1 1 0, 1 2 0 1, 2 3 0 2;
 }
-.tab-pane > .tab-header-area > .headers-region > .tab:disabled {
-    -fx-opacity: -fx-disabled-opacity;
+.tab-pane:focused > .tab-header-area > .headers-region > .tab:selected .focus-indicator {
+    -fx-border-style: segments(0.166667em, 0.166667em);
+    -fx-border-width: 1;
+    -fx-border-color: -fx-focus-color;
 }
 .tab-pane > .tab-header-area > .headers-region > .tab:disabled:hover {
     -fx-color: -fx-base;
     -fx-opacity: -fx-disabled-opacity;
 }
 .tab-pane > .tab-header-area > .tab-header-background {
-    -fx-background-color: -fx-outer-border, -fx-inner-border, derive(-fx-color, -20%);
-    -fx-effect: innershadow(two-pass-box , rgba(0,0,0,0.6) , 4, 0.0 , 0 , 0);
+    /* TODO should not be using text-box-border I tink? */
+    -fx-background-color:  
+        -fx-outer-border,
+        -fx-text-box-border, 
+        linear-gradient(from 0px 0px to 0px 5px, -fx-text-box-border, derive(-fx-text-box-border, 30%));
 }
-/*.tab-pane *.tab-header-area {*/
-    /* I would like to use -fx-tab-border-color here, but for some reason it */
-    /* just isn't the correct color, even though it works in :top above */
-/*    -fx-background-color: -fx-tab-border-color, lightgray;*/
-/*}*/
+.tab-pane:top > .tab-header-area > .tab-header-background {
+    -fx-background-insets: 0, 0 0 1 0, 1;
+}
+.tab-pane:bottom > .tab-header-area > .tab-header-background {
+    -fx-background-insets: 0, 1 0 0 0, 1;
+}
+.tab-pane:left > .tab-header-area > .tab-header-background {
+    -fx-background-insets: 0, 0 1 0 0, 1;
+}
+.tab-pane:right > .tab-header-area > .tab-header-background {
+    -fx-background-insets: 0, 0 0 0 1, 1;
+}
 .tab-pane:top > .tab-header-area {
-    -fx-background-insets: 0, 0 0 1 0;
-    -fx-padding: 0.416667em 0.166667em 0.0em 0.833em; /* 5 2 0 10 */
+    -fx-padding: 0.416667em 0.166667em 0.0em 0.416667em; /* 5 2 0 5 */
+    -fx-padding: 0.416667em 5 0.0em 0.416667em; /* 5 2 0 5 */
 }
 .tab-pane:bottom > .tab-header-area {
-    -fx-background-insets: 0, 1 0 0 0;
-    -fx-padding: 0 0.166667em 0.416667em 0.833em; /* 0 2 5 0 */
+    -fx-padding: 0 0.166667em 0.416667em 0.416667em; /* 0 2 5 5 */
 }
 .tab-pane:left > .tab-header-area {
-    -fx-background-insets: 0, 0 1 0 0;
-    -fx-padding: 0.833em 0.0em 0.166667em 0.416667em; /* 10 0 2 5 */
+    -fx-padding: 0.416667em 0.0em 0.166667em 0.416667em; /* 5 0 2 5 */
 }
 .tab-pane:right > .tab-header-area {
-    -fx-background-insets: 0, 0 0 0 1;
-    -fx-padding: 0.833em 0.416667em 0.166667em 0.0em; /* 10 5 2 0 */
+    -fx-padding: 0.416667em 0.416667em 0.166667em 0.0em; /* 5 5 2 0 */
 }
-/*.tab-pane > .tab-header-area > .headers-region {
-    -fx-effect: dropshadow(two-pass-box , rgba(0,0,0,0.6) , 4, 0.0 , 0, 0);
-}*/
 /* TODO: scaling the shape seems to make it way too large */
 .tab-pane > .tab-header-area > .headers-region > .tab > .tab-container > .tab-close-button {
     -fx-background-color: -fx-mark-color;
@@ -1370,25 +1445,15 @@
     -fx-background-color: derive(-fx-mark-color, -30%);
 }
 /* CONTROL BUTTONS */
-.tab-pane > .tab-header-area > .control-buttons-tab {
-    -fx-background-color: -fx-tab-border-color, -fx-inner-border, -fx-body-color;
-    -fx-background-insets: 0, 1, 2;
-    -fx-background-radius: 5 5 0 0, 4 4 0 0, 3 3 0 0;
-    -fx-padding: 0.083333em 0.25em 0.083333em 0.25em; /* 1 3 1 3 */
+.tab-pane > .tab-header-area > .control-buttons-tab > .container {
+    -fx-padding: 3 0 0 0; 
 }
 .tab-pane > .tab-header-area > .control-buttons-tab > .container > .tab-down-button {
-    -fx-background-color: transparent;
-    -fx-padding: 0.0em 0.416667em 0.0em 0.416667em; /* 0 5 0 5 */
-}
-.tab-pane > .tab-header-area > .control-buttons-tab > .container > .tab-down-button:hover {
-    -fx-background-color: -fx-body-color;
-    -fx-color: -fx-hover-base;
-}
-.tab-pane > .tab-header-area > .control-buttons-tab > .container > .tab-down-button .arrow {
-    -fx-background-color: -fx-mark-highlight-color, -fx-mark-color;
-    -fx-background-insets: 1 0 -1 0, 0;
-    -fx-padding: 0.238083em 0.416667em 0.238083em 0.416667em; /* 2.857 5 2.857 5 */
-    -fx-shape: "M 0 0 H 7 L 3.5 4 z";
+    -fx-background-color: -fx-outer-border, -fx-inner-border, -fx-body-color;
+    -fx-background-insets: -1 0 5 0, 0 1 6 1, 1 2 7 2;
+    -fx-padding: 4 4 9 4; /* TODO convert to ems */
+    /*-fx-padding: 0.416667em 0.416667em 0.833333em 0.416667em;*/ 
+    -fx-background-radius: 10;
 }
 /* FLOATING TABS CUSTOMISATION */
 .tab-pane.floating > .tab-header-area > .tab-header-background {
@@ -1398,27 +1463,11 @@
     -fx-background-color: null;
 }
 .tab-pane.floating > .tab-content-area {
-    -fx-background-color: -fx-tab-border-color, -fx-control-inner-background;
+    -fx-background-color: -fx-outer-border, -fx-background;
     -fx-background-insets: 0, 1;
-    -fx-background-radius: 5, 4;
+    -fx-background-radius: 3, 2;
     -fx-padding: 2;
 }
-.tab-pane.floating > .tab-header-area > .headers-region > .tab {
-    -fx-background-color: -fx-tab-border-color, -fx-inner-border, -fx-body-color;
-    -fx-background-insets: 0, 1, 2;
-    -fx-background-radius: 5 5 0 0, 4 4 0 0, 3 3 0 0;
-}
-.tab-pane.floating  > .tab-header-area > .headers-region > .tab:selected {
-    -fx-background-color: -fx-tab-border-color, -fx-control-inner-background;
-    -fx-background-insets: 0 0 -1 0, 1 1 -1 1;
-    -fx-background-radius: 5 5 0 0, 4 4 0 0;
-}
-/*.tab-pane:floating *.control-buttons-tab {
-    -fx-padding: 0.083333em 0.25em 0.083333em 0.25em;
-    -fx-background-color: -fx-tab-border-color, -fx-inner-border, -fx-body-color;
-    -fx-background-radius: 5 5 0 0, 4 4 0 0, 3 3 0 0;
-    -fx-background-insets: 0, 1 1 0 1, 2 2 0 2;
-}*/
 
 /*******************************************************************************
  *                                                                             *
@@ -1426,42 +1475,20 @@
  *                                                                             *
  ******************************************************************************/
 
-/* ------- MAIN BUTTON ------- */
-.combo-box-base  {
-    -fx-padding: 0;
+/* Customie the ListCell that appears in the ComboBox button itself */
+.combo-box > .list-cell {
+    -fx-background: transparent;
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-base-color;
+    -fx-padding: 0.333333em 0.666667em 0.416667em 0.666667em; /* 4 8 5 8 */
 }
-/* ------- OPEN BUTTON ------- */
-.combo-box-base > .arrow-button {
-    -fx-background-color: -fx-outer-border, -fx-inner-border, -fx-body-color;
-    -fx-background-insets: 0, 1, 2;
+.combo-box-base > .arrow-button  {
     -fx-background-radius: 0 5 5 0, 0 4 4 0, 0 3 3 0;
-    -fx-padding: 0.5em 0.416667em 0.5em 0.416667em; /* 6 5 6 5  */
+    -fx-padding: 0.5em 0.833333em 0.5em 0.833333em; /* 6 10 6 10 */
+    -fx-background-insets: 1 1 1 0, 1, 2;
 }
 .combo-box-base:focused > .arrow-button {
     -fx-background-color: -fx-focus-color, -fx-inner-border, -fx-body-color; 
-}
-/*    -fx-background-color: null;
-    -fx-background-insets: 0, 1, 2;
-    -fx-background-radius: 0 5 5 0, 0 4 4 0, 0 3 3 0;
-    -fx-padding: 0.5em 0.416667em 0.5em 0.416667em;  6 5 6 5 
-}*/
-/*.combo-box-base.split-button .arrow-button {
-    -fx-background-color: -fx-outer-border, -fx-inner-border, -fx-body-color;
-    -fx-background-insets: 0, 1, 2;
-    -fx-background-radius: 0 5 5 0, 0 4 4 0, 0 3 3 0;
-    -fx-padding: 0.5em 0.416667em 0.5em 0.416667em;  6 5 6 5 
-}*/
-/* ------- ARROW* ------- */
-.combo-box-base > .arrow-button > .arrow,
-.web-view .form-select-button .arrow {
-    -fx-background-insets: 1 0 -1 0, 0;
-    -fx-background-color: -fx-mark-highlight-color, -fx-mark-color;
-    -fx-padding: 0.166667em 0.333333em 0.166667em 0.333333em; /* 2 4 2 4 */
-    -fx-shape: "M 0 0 h 7 l -3.5 4 z";
-}
-.web-view .form-select-button {
-    -fx-background-radius: 2, 2, 1, 0;
-    -fx-background-insets: 2 2 1 2, 2, 3, 4;
 }
 
 /*******************************************************************************
@@ -1475,48 +1502,26 @@
  ******************************************************************************/
 
 .combo-box-base:editable > .text-field {
-    -fx-padding: 3 5 2 5;
     -fx-background-radius: 3 4 4 3, 2 3 3 2;
+}
+.combo-box-base:editable:focused > .text-field {
+    -fx-background-color: -fx-focus-color, -fx-control-inner-background;
     -fx-background-insets: 0, 1;
-    -fx-vpos: CENTER;
-    -fx-content-display: LEFT;
+    -fx-background-radius: 3 4 4 3, 2 3 3 2;
 }
-.combo-box-base:editable > .text-field:focused {
-/*    -fx-background-color: -fx-faint-focus-color, -fx-focus-color, -fx-control-inner-background; 
-    -fx-background-insets: -2, -0.3, 1;
-    -fx-background-radius: 6, 3.4, 2, 2;*/
-    -fx-background-color: -fx-focus-color, -fx-control-inner-background; 
-    -fx-background-insets: -0.3, 1;
-    -fx-background-radius: 3.4, 2, 2;
-}
-.combo-box-base:editable:focused  > .text-field {
-    -fx-background-color: -fx-focus-color, -fx-control-inner-background; 
-    -fx-background-insets: -0.3, 1;
-    -fx-background-radius: 3.4, 2, 2;
-}
-.combo-box-base:editable:focused {
-    -fx-background-color: -fx-faint-focus-color, -fx-focus-color, -fx-inner-border, -fx-body-color; 
-    -fx-background-insets: -2, -0.3, 1, 2;
-    -fx-background-radius: 7, 6, 4, 3;
+.combo-box-base:editable > .text-field:focused  {
+    -fx-background-radius: 7, 3 4 4 3, 2 3 3 2;
 }
 
 /* -------------- STYLES FOR THE DEFAULT LISTVIEW-BASED COMBOBOX ------------- */
 
-/* Customie the ListCell that appears in the ComboBox button itself */
-.combo-box > .list-cell {
-    -fx-background: transparent;
-    -fx-background-color: transparent;
-    -fx-text-fill: -fx-text-base-color;
-    -fx-padding: 3 0 2 7;
-    -fx-cell-size: 1.7500em; /* 21 */
-}
 .combo-box-popup > .list-view {
     -fx-background-color: -fx-box-border, -fx-control-inner-background;
     -fx-background-insets: 0, 1;
     -fx-effect: dropshadow( three-pass-box , rgba(0,0,0,0.6) , 8, 0.0 , 0 , 0 );
 }
 .combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell {
-    -fx-padding: 4 0 4 5;   
+    -fx-padding: 4 0 4 5;
     /* No alternate highlighting */
     -fx-background-color: -fx-control-inner-background;
 }
@@ -1623,40 +1628,18 @@
  *                                                                             *
  ******************************************************************************/
 
-.split-pane > * > * > .table-view { -fx-padding: 0px; }
-.split-pane > * > * > .list-view { -fx-padding: 0px; }
-.split-pane > * > * > .tree-view { -fx-padding: 0px; }
-.split-pane > * > * > .scroll-pane { -fx-padding: 0px; }
-.split-pane > * > * > .split-pane {
-    -fx-background-insets: 0, 0;
-    -fx-padding: 0;
- }
 .split-pane > .split-pane-divider {
-    -fx-padding: 0 2 0 2; /* 0 3 0 3 */
+    -fx-padding: 0 0.25em 0 0.25em; /* 0 3 0 3 */
 }
 /* horizontal the two nodes are placed to the left/right of each other. */
 .split-pane:horizontal > .split-pane-divider {
-   -fx-border-color: transparent -fx-box-border transparent #BBBBBB;
-   -fx-background-color: transparent, -fx-inner-border-horizontal;
+   -fx-background-color: -fx-box-border, -fx-inner-border-horizontal;
    -fx-background-insets: 0, 0 1 0 1;
 }
 /* vertical the two nodes are placed on top of each other. */
 .split-pane:vertical > .split-pane-divider {
-   -fx-border-color:  #BBBBBB transparent -fx-box-border transparent;
-   -fx-background-color: transparent, -fx-inner-border;
+   -fx-background-color: -fx-box-border, -fx-inner-border;
    -fx-background-insets: 0, 1 0 1 0;
-}
-.split-pane > .split-pane-divider > .horizontal-grabber {
-    -fx-padding: 5 1 5 1;
-    -fx-background-color: #FFFFFF, -fx-box-border;
-    -fx-background-insets: 1 0 -1 0, 0;
-    -fx-shape: "M0 0 L0 0 L2 0 L2 2 L0 2 Z M0 4 L0 4 L2 4 L2 6 L0 6 Z M0 8 L0 8 L2 8 L2 10 L0 10 Z";
-}
-.split-pane > .split-pane-divider > .vertical-grabber {
-    -fx-padding: 1 5 1 5;
-    -fx-background-color: #FFFFFF, -fx-box-border;
-    -fx-background-insets: 1 0 -1 0, 0;
-    -fx-shape: "M0 0 L0 0 L2 0 L2 2 L0 2 Z M4 0 L4 0 L4 2 L6 2 L6 0 Z M8 0 L8 0 L8 2 L10 2 L10 0 Z";
 }
 
 /*******************************************************************************
@@ -1667,32 +1650,19 @@
 
 .color-picker > .arrow-button {
     -fx-background-color: null;
-    -fx-background-insets: 0, 1, 2;
-    -fx-background-radius: 0 5 5 0, 0 4 4 0, 0 3 3 0;
-    -fx-padding: 0.5em 0.416667em 0.5em 0.416667em; /* 6 5 6 5 */
+    -fx-padding: 0.5em 0.833333em 0.5em 0; /* 6 10 6 0 */
 }
-.color-picker > .color-picker-label > .text {
-    -fx-padding: 0.0em 0.833333em 0.0em 0.0em;  /* 0 10 0 0 */
-}
-.color-picker > .split-button > .arrow-button {
-    -fx-background-color: -fx-outer-border, -fx-inner-border, -fx-body-color;
-    -fx-background-insets: 0, 1, 2;
-    -fx-background-radius: 0 5 5 0, 0 4 4 0, 0 3 3 0;
-    -fx-padding: 0.5em 0.416667em 0.5em 0.416667em; /* 6 5 6 5 */
-}
-.color-picker > .split-button > .arrow-button:hover {
-    -fx-color: -fx-hover-base;
-}
-.color-picker > .split-button > .color-picker-label:hover {
-     -fx-color: -fx-hover-base;
-}
-.color-picker > .color-picker-label > .picker-color {
-    -fx-padding: 4;
+.color-picker.split-button {
     -fx-background-color: null;
 }
-.color-picker > .color-picker-label > .picker-color > .picker-color-rect {
-    -fx-stroke: -fx-pressed-base;
+.color-picker.split-button > .arrow-button {
+    -fx-background-color: -fx-outer-border, -fx-inner-border, -fx-body-color; 
+    -fx-padding: 0.5em 0.833333em 0.5em 0.833333em; /* 6 10 6 10 */
 }
+.color-picker > .color-picker-label > .picker-color > .picker-color-rect {
+    -fx-stroke: -fx-box-border;
+}
+
 .color-palette {
      -fx-background-color:
         derive(-fx-color,-40%),
@@ -1771,7 +1741,6 @@
         linear-gradient( to bottom, derive(-fx-color,-60%) 0%, derive(-fx-color,-35%) 50%, derive(-fx-color,-30%) 98%, derive(-fx-color,-50%) 100% ),    
         linear-gradient( to right, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0) 10%, rgba(0,0,0,0) 90%, rgba(0,0,0,0.3) 100% );
     -fx-background-insets: 0, 1, 1;
-    /* TODO: -fx-text-fill should be derived */
     -fx-text-fill: -fx-light-text-color;
 }
 .custom-color-dialog .controls-pane #toggle-button-left {
@@ -2020,7 +1989,7 @@
 }
 .list-cell {
     -fx-background-color: -fx-control-inner-background;
-    -fx-padding: 0.25em; /* 3 */
+    -fx-padding: 0.25em 0.583em 0.25em 0.583em; /* 3 7 3 7 */
     -fx-text-fill: -fx-text-inner-color;
     -fx-opacity: 1;
 }
@@ -2381,10 +2350,14 @@
 /* This is the area behind the column headers. An ideal place to specify background
    and border colors for the whole area (not individual column-header's). */
 .table-view .column-header-background,
-.tree-table-view .column-header-background {
+.tree-table-view > .column-header-background {
     -fx-background-color: -fx-body-color;
     -fx-padding: 0;
 }
+/*.tree-table-view > .column-header-background {
+    -fx-background-color: -fx-body-color;
+    -fx-padding: 0;
+}*/
 /* The column header row is made up of a number of column-header, one for each
    TableColumn, and a 'filler' area that extends from the right-most column
    to the edge of the tableview, or up to the 'column control' button. */
@@ -2504,7 +2477,10 @@
     -fx-border-color: -fx-outer-border;
     -fx-border-radius: 3;
 }
-
+.table-view:focused > .virtual-flow > .clipped-container > .sheet > .table-row-cell:filled:selected > .check-box-table-cell > .check-box > .box,
+.tree-table-view:focused > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled:selected > .check-box-table-cell > .check-box > .box {
+    -fx-border-color: derive(-fx-accent,20%);
+}
 /*******************************************************************************
  *                                                                             *
  * TreeTableView                                                               *
@@ -2593,8 +2569,9 @@
     -fx-background-color: rgba(30,30,30,0.8);
     -fx-background-radius: 6px;
     -fx-background-insets: 0;
-    -fx-padding: 0.666667em; /* 8 */
+    -fx-padding: 0.667em 0.75em 0.667em 0.75em; /* 10px */
     -fx-effect: dropshadow( three-pass-box , rgba(0,0,0,0.5) , 10, 0.0 , 0 , 0 );
+    -fx-font-size: 0.85em;
 }
 
 /*******************************************************************************
@@ -2613,7 +2590,8 @@
     -fx-font-size: 1.4em;
 }
 .chart-legend {
-   -fx-background-color:  #cccccc, #eeeeee;
+   -fx-background-color: linear-gradient(to bottom, derive(-fx-background, -10%), derive(-fx-background, -5%)),
+        linear-gradient(from 0px 0px to 0px 5px, derive(-fx-background, -5%), derive(-fx-background, 20%));
    -fx-background-insets: 0,1;
    -fx-background-radius: 6,5;
    -fx-padding: 6px;
@@ -2626,32 +2604,26 @@
  ******************************************************************************/
 
 .axis {
-    -fx-tick-label-font: 0.833333em System; /* 10 pix */
-    -fx-tick-label-fill: -fx-text-background-color;
+    AXIS_COLOR: derive(-fx-background,-20%);
+    -fx-tick-label-font-size: 0.833333em; /* 10px */
+    -fx-tick-label-fill: derive(-fx-text-background-color, 30%);
 }
 .axis:top {
-    -fx-border-color: transparent transparent #666666 transparent;
+    -fx-border-color: transparent transparent AXIS_COLOR transparent;
 }
 .axis:right {
-    -fx-border-color: transparent transparent transparent #666666;
+    -fx-border-color: transparent transparent transparent AXIS_COLOR;
 }
 .axis:bottom {
-    -fx-border-color: #666666 transparent transparent transparent;
+    -fx-border-color: AXIS_COLOR transparent transparent transparent;
 }
 .axis:left {
-    -fx-border-color: transparent #666666 transparent transparent;
+    -fx-border-color: transparent AXIS_COLOR transparent transparent;
 }
-.axis-tick-mark {
-    -fx-fill: null;
-    -fx-stroke: #666666;
-}
+.axis-tick-mark,
 .axis-minor-tick-mark {
     -fx-fill: null;
-    -fx-stroke: #AAAAAA;
-}
-
-.axis .text {
-  -fx-font-smoothing-type: lcd;
+    -fx-stroke: AXIS_COLOR;
 }
 
 /*******************************************************************************
@@ -2660,30 +2632,24 @@
  *                                                                             *
  ******************************************************************************/
 
-.chart-plot-background {
-    -fx-background-color: #f5f5f5;
-}
 .chart-vertical-grid-lines {
-    -fx-stroke: #dddddd;
+    -fx-stroke: derive(-fx-background,-10%);
+    -fx-stroke-dash-array: 0.25em, 0.25em;
 }
 .chart-horizontal-grid-lines {
-    -fx-stroke: #dddddd;
+    -fx-stroke: derive(-fx-background,-10%);
 }
 .chart-alternative-column-fill {
-    -fx-fill: #eeeeee;
-    -fx-stroke: transparent;
-    -fx-stroke-width: 0;
+    -fx-fill: null;
+    -fx-stroke: null;
 }
 .chart-alternative-row-fill {
-    -fx-fill: #eeeeee;
-    -fx-stroke: transparent;
-    -fx-stroke-width: 0;
+    -fx-fill: null;
+    -fx-stroke: null;
 }
-.chart-vertical-zero-line {
-    -fx-stroke: #999999;
-}
+.chart-vertical-zero-line,
 .chart-horizontal-zero-line {
-    -fx-stroke: #999999;
+    -fx-stroke: derive(-fx-text-background-color, 40%);
 }
 
 /*******************************************************************************
@@ -2693,45 +2659,45 @@
  ******************************************************************************/
 
 .chart-symbol { /* solid circle */
-    -fx-background-color: #f9d900;
+    -fx-background-color: CHART_COLOR_1;
     -fx-background-radius: 5px;
     -fx-padding: 5px;
 }
 .default-color1.chart-symbol { /* solid square */
-    -fx-background-color: #a9e200;
+    -fx-background-color: CHART_COLOR_2;
     -fx-background-radius: 0;
 }
 .default-color2.chart-symbol { /* solid diamond */
-    -fx-background-color: #22bad9;
+    -fx-background-color: CHART_COLOR_3;
     -fx-background-radius: 0;
     -fx-padding: 7px 5px 7px 5px;
     -fx-shape: "M5,0 L10,9 L5,18 L0,9 Z";
 }
 .default-color3.chart-symbol { /* cross */
-    -fx-background-color: #0181e2;
+    -fx-background-color: CHART_COLOR_4;
     -fx-background-radius: 0;
     -fx-background-insets: 0;
     -fx-shape: "M2,0 L5,4 L8,0 L10,0 L10,2 L6,5 L10,8 L10,10 L8,10 L5,6 L2,10 L0,10 L0,8 L4,5 L0,2 L0,0 Z";
 }
 .default-color4.chart-symbol { /* solid triangle */
-    -fx-background-color: #2f357f;
+    -fx-background-color: CHART_COLOR_5;
     -fx-background-radius: 0;
     -fx-background-insets: 0;
     -fx-shape: "M5,0 L10,8 L0,8 Z";
 }
 .default-color5.chart-symbol { /* hollow circle */
-    -fx-background-color: #860061, white;
+    -fx-background-color: CHART_COLOR_6, white;
     -fx-background-insets: 0, 2;
     -fx-background-radius: 5px;
     -fx-padding: 5px;
 }
 .default-color6.chart-symbol { /* hollow square */
-    -fx-background-color: #c62b00, white;
+    -fx-background-color: CHART_COLOR_7, white;
     -fx-background-insets: 0, 2;
     -fx-background-radius: 0;
 }
 .default-color7.chart-symbol { /* hollow diamond */
-    -fx-background-color: #ff5700, white;
+    -fx-background-color: CHART_COLOR_8, white;
     -fx-background-radius: 0;
     -fx-background-insets: 0, 2.5;
     -fx-padding: 7px 5px 7px 5px;
@@ -2752,25 +2718,25 @@
 }
 .chart-series-line {
     -fx-stroke: #f9d900;
-    -fx-stroke-width: 4px;
-    -fx-effect: dropshadow( two-pass-box , rgba(0,0,0,0.3) , 8, 0.0 , 0 , 3 );
+    -fx-stroke-width: 3px;
+    /*-fx-effect: dropshadow( two-pass-box , rgba(0,0,0,0.3) , 8, 0.0 , 0 , 3 );*/
 }
-.default-color0.chart-line-symbol { -fx-background-color: #f9d900, white; }
-.default-color1.chart-line-symbol { -fx-background-color: #a9e200, white; }
-.default-color2.chart-line-symbol { -fx-background-color: #22bad9, white; }
-.default-color3.chart-line-symbol { -fx-background-color: #0181e2, white; }
-.default-color4.chart-line-symbol { -fx-background-color: #2f357f, white; }
-.default-color5.chart-line-symbol { -fx-background-color: #860061, white; }
-.default-color6.chart-line-symbol { -fx-background-color: #c62b00, white; }
-.default-color7.chart-line-symbol { -fx-background-color: #ff5700, white; }
-.default-color0.chart-series-line { -fx-stroke: #f9d900; }
-.default-color1.chart-series-line { -fx-stroke: #a9e200; }
-.default-color2.chart-series-line { -fx-stroke: #22bad9; }
-.default-color3.chart-series-line { -fx-stroke: #0181e2; }
-.default-color4.chart-series-line { -fx-stroke: #2f357f; }
-.default-color5.chart-series-line { -fx-stroke: #860061; }
-.default-color6.chart-series-line { -fx-stroke: #c62b00; }
-.default-color7.chart-series-line { -fx-stroke: #ff5700; }
+.default-color0.chart-line-symbol { -fx-background-color: CHART_COLOR_1, white; }
+.default-color1.chart-line-symbol { -fx-background-color: CHART_COLOR_2, white; }
+.default-color2.chart-line-symbol { -fx-background-color: CHART_COLOR_3, white; }
+.default-color3.chart-line-symbol { -fx-background-color: CHART_COLOR_4, white; }
+.default-color4.chart-line-symbol { -fx-background-color: CHART_COLOR_5, white; }
+.default-color5.chart-line-symbol { -fx-background-color: CHART_COLOR_6, white; }
+.default-color6.chart-line-symbol { -fx-background-color: CHART_COLOR_7, white; }
+.default-color7.chart-line-symbol { -fx-background-color: CHART_COLOR_8, white; }
+.default-color0.chart-series-line { -fx-stroke: CHART_COLOR_1; }
+.default-color1.chart-series-line { -fx-stroke: CHART_COLOR_2; }
+.default-color2.chart-series-line { -fx-stroke: CHART_COLOR_3; }
+.default-color3.chart-series-line { -fx-stroke: CHART_COLOR_4; }
+.default-color4.chart-series-line { -fx-stroke: CHART_COLOR_5; }
+.default-color5.chart-series-line { -fx-stroke: CHART_COLOR_6; }
+.default-color6.chart-series-line { -fx-stroke: CHART_COLOR_7; }
+.default-color7.chart-series-line { -fx-stroke: CHART_COLOR_8; }
 
 /*******************************************************************************
  *                                                                             *
@@ -2784,38 +2750,38 @@
     -fx-background-radius: 4px; /* makes sure this remains circular */
     -fx-padding: 3px;
 }
-.default-color0.chart-area-symbol { -fx-background-color: #f9d900, white; }
-.default-color1.chart-area-symbol { -fx-background-color: #a9e200, white; }
-.default-color2.chart-area-symbol { -fx-background-color: #22bad9, white; }
-.default-color3.chart-area-symbol { -fx-background-color: #0181e2, white; }
-.default-color4.chart-area-symbol { -fx-background-color: #2f357f, white; }
-.default-color5.chart-area-symbol { -fx-background-color: #860061, white; }
-.default-color6.chart-area-symbol { -fx-background-color: #c62b00, white; }
-.default-color7.chart-area-symbol { -fx-background-color: #ff5700, white; }
+.default-color0.chart-area-symbol { -fx-background-color: CHART_COLOR_1, white; }
+.default-color1.chart-area-symbol { -fx-background-color: CHART_COLOR_2, white; }
+.default-color2.chart-area-symbol { -fx-background-color: CHART_COLOR_3, white; }
+.default-color3.chart-area-symbol { -fx-background-color: CHART_COLOR_4, white; }
+.default-color4.chart-area-symbol { -fx-background-color: CHART_COLOR_5, white; }
+.default-color5.chart-area-symbol { -fx-background-color: CHART_COLOR_6, white; }
+.default-color6.chart-area-symbol { -fx-background-color: CHART_COLOR_7, white; }
+.default-color7.chart-area-symbol { -fx-background-color: CHART_COLOR_8, white; }
 .chart-series-area-line {
     -fx-stroke: #f9d900;
     -fx-stroke-width: 1px;
 }
-.default-color0.chart-series-area-line { -fx-stroke: #c2a902; }
-.default-color1.chart-series-area-line { -fx-stroke: #88b501; }
-.default-color2.chart-series-area-line { -fx-stroke: #22bad9; }
-.default-color3.chart-series-area-line { -fx-stroke: #0181e2; }
-.default-color4.chart-series-area-line { -fx-stroke: #2f357f; }
-.default-color5.chart-series-area-line { -fx-stroke: #860061; }
-.default-color6.chart-series-area-line { -fx-stroke: #c62b00; }
-.default-color7.chart-series-area-line { -fx-stroke: #ff5700; }
+.default-color0.chart-series-area-line { -fx-stroke: CHART_COLOR_1; }
+.default-color1.chart-series-area-line { -fx-stroke: CHART_COLOR_2; }
+.default-color2.chart-series-area-line { -fx-stroke: CHART_COLOR_3; }
+.default-color3.chart-series-area-line { -fx-stroke: CHART_COLOR_4; }
+.default-color4.chart-series-area-line { -fx-stroke: CHART_COLOR_5; }
+.default-color5.chart-series-area-line { -fx-stroke: CHART_COLOR_6; }
+.default-color6.chart-series-area-line { -fx-stroke: CHART_COLOR_7; }
+.default-color7.chart-series-area-line { -fx-stroke: CHART_COLOR_8; }
 .chart-series-area-fill {
     -fx-stroke: null;
     -fx-fill: #f9d90044;
 }
-.default-color0.chart-series-area-fill { -fx-fill: #f9d90044; }
-.default-color1.chart-series-area-fill { -fx-fill: #a9e20044; }
-.default-color2.chart-series-area-fill { -fx-fill: #22bad944; }
-.default-color3.chart-series-area-fill { -fx-fill: #0181e244; }
-.default-color4.chart-series-area-fill { -fx-fill: #2f357f44; }
-.default-color5.chart-series-area-fill { -fx-fill: #86006144; }
-.default-color6.chart-series-area-fill { -fx-fill: #c62b0044; }
-.default-color7.chart-series-area-fill { -fx-fill: #ff570044; }
+.default-color0.chart-series-area-fill { -fx-fill: CHART_COLOR_1; -fx-opacity: 0.2; }
+.default-color1.chart-series-area-fill { -fx-fill: CHART_COLOR_2; -fx-opacity: 0.2; }
+.default-color2.chart-series-area-fill { -fx-fill: CHART_COLOR_3; -fx-opacity: 0.2; }
+.default-color3.chart-series-area-fill { -fx-fill: CHART_COLOR_4; -fx-opacity: 0.2; }
+.default-color4.chart-series-area-fill { -fx-fill: CHART_COLOR_5; -fx-opacity: 0.2; }
+.default-color5.chart-series-area-fill { -fx-fill: CHART_COLOR_6; -fx-opacity: 0.2; }
+.default-color6.chart-series-area-fill { -fx-fill: CHART_COLOR_7; -fx-opacity: 0.2; }
+.default-color7.chart-series-area-fill { -fx-fill: CHART_COLOR_8; -fx-opacity: 0.2; }
 .area-legend-symbol {
     -fx-padding: 6px;
     -fx-background-radius: 6px; /* makes sure this remains circular */
@@ -2836,14 +2802,14 @@
     -fx-bubble-fill: #f9d900;
     -fx-background-color: radial-gradient(center 50% 50%, radius 80%, derive(-fx-bubble-fill,20%), derive(-fx-bubble-fill,-30%));
 }
-.default-color0.chart-bubble { -fx-bubble-fill: #f9d900aa; }
-.default-color1.chart-bubble { -fx-bubble-fill: #a9e200aa; }
-.default-color2.chart-bubble { -fx-bubble-fill: #22bad9aa; }
-.default-color3.chart-bubble { -fx-bubble-fill: #0181e2aa; }
-.default-color4.chart-bubble { -fx-bubble-fill: #2f357faa; }
-.default-color5.chart-bubble { -fx-bubble-fill: #860061aa; }
-.default-color6.chart-bubble { -fx-bubble-fill: #c62b00aa; }
-.default-color7.chart-bubble { -fx-bubble-fill: #ff5700aa; }
+.default-color0.chart-bubble { -fx-bubble-fill: CHART_COLOR_1; -fx-opacity: 0.7; }
+.default-color1.chart-bubble { -fx-bubble-fill: CHART_COLOR_2; -fx-opacity: 0.7; }
+.default-color2.chart-bubble { -fx-bubble-fill: CHART_COLOR_3; -fx-opacity: 0.7; }
+.default-color3.chart-bubble { -fx-bubble-fill: CHART_COLOR_4; -fx-opacity: 0.7; }
+.default-color4.chart-bubble { -fx-bubble-fill: CHART_COLOR_5; -fx-opacity: 0.7; }
+.default-color5.chart-bubble { -fx-bubble-fill: CHART_COLOR_6; -fx-opacity: 0.7; }
+.default-color6.chart-bubble { -fx-bubble-fill: CHART_COLOR_7; -fx-opacity: 0.7; }
+.default-color7.chart-bubble { -fx-bubble-fill: CHART_COLOR_8; -fx-opacity: 0.7; }
 
 /*******************************************************************************
  *                                                                             *
@@ -2852,41 +2818,52 @@
  ******************************************************************************/
 
 /* TODO flip gradient vertical for negative bars */
+/*.chart-bar {
+    -fx-bar-fill: #22bad9;
+    -fx-background-color:   derive(-fx-bar-fill,-30%),
+                            linear-gradient(to bottom, derive(-fx-bar-fill,40%), derive(-fx-bar-fill,10%)),
+                            linear-gradient(to bottom, derive(-fx-bar-fill,10%) ,derive(-fx-bar-fill,-6%));
+    -fx-background-insets: 0,1 1 0 1,2 2 1 2;
+}
+.chart-bar.negative {
+    -fx-background-color:   derive(-fx-bar-fill,-30%),
+                            linear-gradient(to top, derive(-fx-bar-fill,40%), derive(-fx-bar-fill,10%)),
+                            linear-gradient(to top, derive(-fx-bar-fill,10%) ,derive(-fx-bar-fill,-6%));
+    -fx-background-insets: 1 0 0 0,1,2;
+}*/
 .chart-bar {
     -fx-bar-fill: #22bad9;
-    -fx-background-color: linear-gradient(derive(-fx-bar-fill,-30%), derive(-fx-bar-fill,-40%)),
-                          linear-gradient(derive(-fx-bar-fill,80%), derive(-fx-bar-fill, 0%)),
-                          linear-gradient(derive(-fx-bar-fill,30%), derive(-fx-bar-fill,-10%));
-    -fx-background-insets: 0,1,2;
-    -fx-background-radius: 5 5 0 0, 4 4 0 0, 3 3 0 0;
+    -fx-background-color:   linear-gradient(to right, 
+                                derive(-fx-bar-fill, -7%),
+                                derive(-fx-bar-fill, 0%),
+                                derive(-fx-bar-fill, -3%),
+                                derive(-fx-bar-fill, -9%)
+                              );
+    -fx-background-insets: 0;
 }
-
-.negative.chart-bar {
-   -fx-background-color: linear-gradient(to top, derive(-fx-bar-fill,-30%), derive(-fx-bar-fill,-40%)),
-                          linear-gradient(to top, derive(-fx-bar-fill, 80%), derive(-fx-bar-fill,0%)),
-                          linear-gradient(to top, derive(-fx-bar-fill,30%), derive(-fx-bar-fill,-10%));
-   -fx-background-radius: 0 0 5 5, 0 0 4 4, 0 0 3 3;
+.chart-bar.negative {
+    -fx-background-insets: 1 0 0 0;
 }
-.bar-chart:horizontal .chart-bar, .stacked-bar-chart:horizontal .chart-bar {
-    -fx-background-color: linear-gradient(to left, derive(-fx-bar-fill,-30%), derive(-fx-bar-fill,-40%)),
-                          linear-gradient(to left, derive(-fx-bar-fill,80%), derive(-fx-bar-fill, 0%)),
-                          linear-gradient(to left, derive(-fx-bar-fill,30%), derive(-fx-bar-fill,-10%));
-    -fx-background-radius: 0 5 5 0, 0 4 4 0, 0 3 3 0;
+.bar-chart:horizontal .chart-bar {
+    -fx-background-insets: 0 0 0 1;
 }
-.bar-chart:horizontal .negative.chart-bar, .stacked-bar-chart:horizontal .negative.chart-bar {
-    -fx-background-color: linear-gradient(to right, derive(-fx-bar-fill,-30%), derive(-fx-bar-fill,-40%)),
-                          linear-gradient(to right, derive(-fx-bar-fill, 80%), derive(-fx-bar-fill, 0%)),
-                          linear-gradient(to right, derive(-fx-bar-fill,30%), derive(-fx-bar-fill,-10%));
-    -fx-background-radius: 5 0 0 5, 4 0 0 4, 3 0 0 3;
+.bar-chart:horizontal .chart-bar, 
+.stacked-bar-chart:horizontal .chart-bar {
+    -fx-background-color:   linear-gradient(to bottom, 
+                                derive(-fx-bar-fill, -7%),
+                                derive(-fx-bar-fill, 0%),
+                                derive(-fx-bar-fill, -3%),
+                                derive(-fx-bar-fill, -9%)
+                              );
 }
-.default-color0.chart-bar { -fx-bar-fill: #f9d900; }
-.default-color1.chart-bar { -fx-bar-fill: #a9e200; }
-.default-color2.chart-bar { -fx-bar-fill: #22bad9; }
-.default-color3.chart-bar { -fx-bar-fill: #0181e2; }
-.default-color4.chart-bar { -fx-bar-fill: #2f357f; }
-.default-color5.chart-bar { -fx-bar-fill: #860061; }
-.default-color6.chart-bar { -fx-bar-fill: #c62b00; }
-.default-color7.chart-bar { -fx-bar-fill: #ff5700; }
+.default-color0.chart-bar { -fx-bar-fill: CHART_COLOR_1; }
+.default-color1.chart-bar { -fx-bar-fill: CHART_COLOR_2; }
+.default-color2.chart-bar { -fx-bar-fill: CHART_COLOR_3; }
+.default-color3.chart-bar { -fx-bar-fill: CHART_COLOR_4; }
+.default-color4.chart-bar { -fx-bar-fill: CHART_COLOR_5; }
+.default-color5.chart-bar { -fx-bar-fill: CHART_COLOR_6; }
+.default-color6.chart-bar { -fx-bar-fill: CHART_COLOR_7; }
+.default-color7.chart-bar { -fx-bar-fill: CHART_COLOR_8; }
 .bar-legend-symbol {
     -fx-padding: 8px;
 }
@@ -2899,25 +2876,24 @@
 
 .chart-pie {
     -fx-pie-color: #2f357f;
-    -fx-background-color: radial-gradient(radius 100%, derive(-fx-pie-color,55%), derive(-fx-pie-color,-20%));
-    -fx-background-insets: 0;
-    -fx-border-color: derive(-fx-pie-color,-30%);
+    -fx-background-color: radial-gradient(radius 100%, derive(-fx-pie-color,20%), derive(-fx-pie-color,-10%));
+    -fx-background-insets: 1;
+    -fx-border-color: -fx-background;
 }
 .chart-pie-label {
     -fx-padding: 3px;
 }
 .chart-pie-label-line {
-    -fx-stroke: #aaaaaa;
-    -fx-fill: #aaaaaa;
+    -fx-stroke: derive(-fx-background,-20%);
 }
-.default-color0.chart-pie { -fx-pie-color: #f9d900; }
-.default-color1.chart-pie { -fx-pie-color: #a9e200; }
-.default-color2.chart-pie { -fx-pie-color: #22bad9; }
-.default-color3.chart-pie { -fx-pie-color: #0181e2; }
-.default-color4.chart-pie { -fx-pie-color: #2f357f; }
-.default-color5.chart-pie { -fx-pie-color: #860061; }
-.default-color6.chart-pie { -fx-pie-color: #c62b00; }
-.default-color7.chart-pie { -fx-pie-color: #ff5700; }
+.default-color0.chart-pie { -fx-pie-color: CHART_COLOR_1; }
+.default-color1.chart-pie { -fx-pie-color: CHART_COLOR_2; }
+.default-color2.chart-pie { -fx-pie-color: CHART_COLOR_3; }
+.default-color3.chart-pie { -fx-pie-color: CHART_COLOR_4; }
+.default-color4.chart-pie { -fx-pie-color: CHART_COLOR_5; }
+.default-color5.chart-pie { -fx-pie-color: CHART_COLOR_6; }
+.default-color6.chart-pie { -fx-pie-color: CHART_COLOR_7; }
+.default-color7.chart-pie { -fx-pie-color: CHART_COLOR_8; }
 .negative.chart-pie {
     -fx-pie-color: transparent;
     -fx-background-color: white;
@@ -2927,3 +2903,72 @@
     -fx-padding: 8px;
     -fx-border-color: null;
 }
+
+/*******************************************************************************
+ *                                                                             *
+ * Combinations                                                                *
+ *                                                                             *
+ * This section is for special handling of when one control is nested inside   *
+ * another control. There are many cases where we would end up with ugly       *
+ * double borders that are fixed here.                                         *
+ *                                                                             *
+ ******************************************************************************/
+
+.split-pane > * > .table-view { -fx-padding: 0px; }
+.split-pane > * > .list-view { -fx-padding: 0px; }
+.split-pane > * > .tree-view { -fx-padding: 0px; }
+.split-pane > * > .scroll-pane { -fx-padding: 0px; }
+.split-pane > * > .split-pane {
+    -fx-background-insets: 0, 0;
+    -fx-padding: 0;
+ }
+ 
+ /* ############################################################################
+    # Workaround for RT-27627                                                  #
+    ############################################################################ */
+ 
+.choice-box > .open-button > .arrow { doh: true; }
+.split-menu-button:openvertically > .arrow-button > .arrow { doh: true; }
+.tab-pane > .tab-header-area > .control-buttons-tab > .container > .tab-down-button > .arrow { doh: true; }
+.tree-table-view { doh: true; }
+.tree-table-view:focused { doh: true; }
+.tree-table-view > .virtual-flow > .scroll-bar:vertical { doh: true; }
+.tree-table-view > .virtual-flow > .scroll-bar:horizontal { doh: true; }
+.tree-table-view > .virtual-flow > .corner { doh: true; }
+.tree-table-row-cell:focused { doh: true; }
+.tree-table-view:focused > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled:focused:selected { doh: true; }
+.tree-table-view:focused > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled:selected > .tree-table-cell { doh: true; }
+.tree-table-view:focused > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled:selected { doh: true; }
+.tree-table-view:row-selection:focused > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled:focused:selected:hover{ doh: true; }
+.tree-table-row-cell:filled:selected:focused { doh: true; }
+.tree-table-row-cell:filled:selected { doh: true; }
+.tree-table-row-cell:selected:disabled { doh: true; }
+.tree-table-view:row-selection > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled:hover { doh: true; }
+.tree-table-view:row-selection > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled:focused:hover { doh: true; }
+.tree-table-view:constrained-resize > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell > .tree-table-cell:last-visible { doh: true; }
+.tree-table-view:constrained-resize > .column-header:last-visible { doh: true; }
+.tree-table-view:constrained-resize .filler { doh: true; }
+.tree-table-view:focused > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell > .tree-table-cell:focused { doh: true; }
+.tree-table-view:focused > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled .tree-table-cell:focused:selected { doh: true; }
+.tree-table-view:focused > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled > .tree-table-cell:selected { doh: true; }
+.tree-table-view:cell-selection > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled > .tree-table-cell:hover:selected { doh: true; }
+.tree-table-view:focused > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled > .tree-table-cell:focused:selected:hover{ doh: true; }
+.tree-table-row-cell:filled > .tree-table-cell:selected:focused { doh: true; }
+.tree-table-row-cell:filled > .tree-table-cell:selected { doh: true; }
+.tree-table-cell:selected:disabled { doh: true; }
+.tree-table-view:cell-selection > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled > .tree-table-cell:hover { doh: true; }
+.tree-table-view:cell-selection > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled > .tree-table-cell:focused:hover { doh: true; }
+.tree-table-view .column-resize-line { doh: true; }
+.tree-table-view > .column-header-background { doh: true; }
+.tree-table-view .column-header { doh: true; }
+.tree-table-view .filler { doh: true; }
+.tree-table-view .column-header .sort-order{ doh: true; }
+.tree-table-view > .column-header-background > .show-hide-columns-button{ doh: true; }
+.tree-table-view .show-hide-column-image { doh: true; }
+.tree-table-view .column-drag-header { doh: true; }
+.tree-table-view .column-overlay { doh: true; }
+.tree-table-view /*> column-header-background > nested-column-header >*/ .arrow { doh: true; }
+.tree-table-view .empty-table { doh: true; }
+.axis-minor-tick-mark { doh: true; }
+.chart-horizontal-zero-line { doh: true; }
+.stacked-bar-chart:horizontal .chart-bar { doh: true; }

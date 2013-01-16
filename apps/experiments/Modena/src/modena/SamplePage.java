@@ -35,19 +35,23 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.geometry.Side;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBuilder;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.CheckBoxBuilder;
 import javafx.scene.control.ChoiceBoxBuilder;
+import javafx.scene.control.ColorPicker;
 import javafx.scene.control.ColorPickerBuilder;
 import javafx.scene.control.ComboBoxBuilder;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.LabelBuilder;
+import javafx.scene.control.ListViewBuilder;
 import javafx.scene.control.MenuButtonBuilder;
 import javafx.scene.control.PasswordFieldBuilder;
-import javafx.scene.control.ProgressBar;
+import javafx.scene.control.ProgressBarBuilder;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ProgressIndicatorBuilder;
 import javafx.scene.control.RadioButton;
@@ -58,6 +62,7 @@ import javafx.scene.control.SeparatorBuilder;
 import javafx.scene.control.Slider;
 import javafx.scene.control.SliderBuilder;
 import javafx.scene.control.SplitMenuButtonBuilder;
+import javafx.scene.control.TableViewBuilder;
 import javafx.scene.control.TextAreaBuilder;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFieldBuilder;
@@ -67,16 +72,21 @@ import javafx.scene.control.ToggleButtonBuilder;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.TooltipBuilder;
+import javafx.scene.control.TreeTableViewBuilder;
+import javafx.scene.control.TreeViewBuilder;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.HBoxBuilder;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.VBoxBuilder;
 import javafx.scene.paint.Color;
+import javafx.scene.web.HTMLEditor;
+import javafx.scene.web.HTMLEditorBuilder;
 import static modena.SamplePageHelpers.*;
 import static modena.SamplePageTableHelper.*;
 import static modena.SamplePageTreeHelper.*;
 import static modena.SamplePageTreeTableHelper.*;
+import static modena.SamplePageChartHelper.*;
 
 /**
  * Page showing every control in every state
@@ -131,8 +141,8 @@ public class SamplePage extends GridPane {
     
     public SamplePage() {
         setVgap(25);
-        setHgap(25);
-        setPadding(new Insets(20));
+        setHgap(15);
+        setPadding(new Insets(15));
         newSection("Button:", 
                 new Button("Button"),
                 withState(new Button("Hover"), "hover"),
@@ -152,7 +162,6 @@ public class SamplePage extends GridPane {
         newSection("Nice Colors:", 
                 ButtonBuilder.create().text("Button").style("-fx-base: #f3622d;").build(),
                 ButtonBuilder.create().text("Button").style("-fx-base: #fba71b;").build(),
-                ButtonBuilder.create().text("Button").style("-fx-base: #57b757;").build(),
                 ButtonBuilder.create().text("Button").style("-fx-base: #57b757;").build(),
                 ButtonBuilder.create().text("Button").style("-fx-base: #41a9c9;").build(),
                 ButtonBuilder.create().text("Button").style("-fx-base: #888;").build());
@@ -221,8 +230,8 @@ public class SamplePage extends GridPane {
                 withState(new CheckBox("Focused & Hover"), "selected, focused, hover"),
                 withState(new CheckBox("Focused & Armed"), "selected, focused, armed"),
                 withState(new CheckBox("Disabled"), "selected, disabled"));
-        newSection("CheckBox Indeterminate:", 
-                withState(new CheckBox("CheckBox"), "indeterminate, selected"),
+        newSection("CheckBox\nIndeterminate:", 
+                CheckBoxBuilder.create().text("CheckBox").selected(true).indeterminate(true).allowIndeterminate(true).build(),
                 withState(new CheckBox("Hover"), "indeterminate, selected, hover"),
                 withState(new CheckBox("Armed"), "indeterminate, selected, armed"),
                 withState(new CheckBox("Focused"), "indeterminate, selected, focused"),
@@ -237,7 +246,7 @@ public class SamplePage extends GridPane {
                 withState(new RadioButton("Focused & Hover"), "focused, hover"),
                 withState(new RadioButton("Focused & Armed"), "focused, armed"),
                 withState(new RadioButton("Disabled"), "disabled"));
-        newSection("RadioButton Selected:", 
+        newSection("RadioButton\nSelected:", 
                 withState(new RadioButton("RadioButton"), "selected"),
                 withState(new RadioButton("Hover"), "selected, hover"),
                 withState(new RadioButton("Armed"), "selected, armed"),
@@ -277,18 +286,28 @@ public class SamplePage extends GridPane {
                 withState(ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item B").editable(true).build(), "hover"),
                 withState(ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item B").editable(true).build(), "showing"),
                 withState(ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item B").editable(true).build(), "focused"),
+                withState(ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item B").editable(true).build(), null,".text-field", "focused"),
                 withState(ComboBoxBuilder.create(String.class).items(sampleItems()).value("Item C").editable(true).build(), "disabled")
                 );
         newSection(      
                 "Color Picker:", 
-                ColorPickerBuilder.create().value(Color.DODGERBLUE).build(),
-                withState(ColorPickerBuilder.create().value(Color.DODGERBLUE).build(), "hover"),
-                withState(ColorPickerBuilder.create().value(Color.DODGERBLUE).build(), "showing"),
-                withState(ColorPickerBuilder.create().value(Color.DODGERBLUE).build(), "focused"),
-                withState(ColorPickerBuilder.create().value(Color.DODGERBLUE).build(), "disabled")
+                ColorPickerBuilder.create().value(Color.RED).build(),
+                withState(ColorPickerBuilder.create().value(Color.RED).build(), "hover"),
+                withState(ColorPickerBuilder.create().value(Color.RED).build(), "showing"),
+                withState(ColorPickerBuilder.create().value(Color.RED).build(), "focused"),
+                withState(ColorPickerBuilder.create().value(Color.RED).build(), "disabled")
+                );
+        newSection(      
+                "Color Picker\n Split Button:", 
+                ColorPickerBuilder.create().value(Color.RED).styleClass(ColorPicker.STYLE_CLASS_SPLIT_BUTTON).build(),
+                withState(ColorPickerBuilder.create().value(Color.RED).styleClass(ColorPicker.STYLE_CLASS_SPLIT_BUTTON).build(), "hover"),
+                withState(ColorPickerBuilder.create().value(Color.RED).styleClass(ColorPicker.STYLE_CLASS_SPLIT_BUTTON).build(), "showing"),
+                withState(ColorPickerBuilder.create().value(Color.RED).styleClass(ColorPicker.STYLE_CLASS_SPLIT_BUTTON).build(), "focused"),
+                withState(ColorPickerBuilder.create().value(Color.RED).styleClass(ColorPicker.STYLE_CLASS_SPLIT_BUTTON).build(), "disabled")
                 );
         newSection(      
                 "MenuButton:", 
+                MenuButtonBuilder.create().items(createMenuItems(20)).text("right").popupSide(Side.RIGHT).build(),
                 MenuButtonBuilder.create().items(createMenuItems(20)).text("normal").build(),
                 withState(MenuButtonBuilder.create().items(createMenuItems(20)).text("hover").build(), "hover"),
                 withState(MenuButtonBuilder.create().items(createMenuItems(20)).text("armed").build(), "armed"),
@@ -297,21 +316,27 @@ public class SamplePage extends GridPane {
                 );
         newSection(      
                 "SplitMenuButton:", 
+                SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("right").popupSide(Side.RIGHT).build(),
                 SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("normal").build(),
-                withState(SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("hover").build(), "hover"),
-                withState(SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("armed").build(), "armed"),
+                withState(SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("hover").build(),null,".label", "hover"),
+                withState(SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("armed").build(),null,".label", "armed")
+                );
+        newSection(      
+                "SplitMenuButton\nMore:", 
+                withState(SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("arrow hover").build(),null,".arrow-button", "hover"),
+                withState(SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("showing").build(), "showing"),
                 withState(SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("focused").build(), "focused"),
                 withState(SplitMenuButtonBuilder.create().items(createMenuItems(20)).text("disabled").build(), "disabled")
                 );
         newDetailedSection(
-                new String[]{"Slider - H: ", "normal", "hover", "pressed", "disabled", "tickmarks"},
+                new String[]{"Slider (H):", "normal", "hover", "pressed", "disabled", "tickmarks"},
                 withState(SliderBuilder.create().maxWidth(90).min(0).max(100).value(50).build(), null),
                 withState(SliderBuilder.create().maxWidth(90).min(0).max(100).value(50).build(), null, ".thumb", "hover"),
                 withState(SliderBuilder.create().maxWidth(90).min(0).max(100).value(50).build(), null, ".thumb", "hover, pressed"),
                 withState(SliderBuilder.create().maxWidth(90).min(0).max(100).value(50).build(), "disabled"),
                 SliderBuilder.create().min(0).max(100).value(50).showTickMarks(true).showTickLabels(true).build());
         newDetailedSection(
-                new String[]{"Slider - H - Focused: ", "normal", "hover", "pressed"},
+                new String[]{"Slider (H) Focused:", "normal", "hover", "pressed"},
                 withState(new Slider(0, 100, 50), "focused"),
                 withState(new Slider(0, 100, 50), "focused", ".thumb", "hover"),
                 withState(new Slider(0, 100, 50), "focused", ".thumb", "hover, pressed"));
@@ -337,10 +362,11 @@ public class SamplePage extends GridPane {
                 withState(ScrollBarBuilder.create().orientation(Orientation.VERTICAL).build(), "vertical", ".thumb", "pressed")
                 );
         newDetailedSection(
-                new String[] {"ScrollPane: ", "normal", "small", "focused"}, 
+                new String[] {"ScrollPane: ", "normal", "small", "focused", "empty"}, 
                 ScrollPaneBuilder.create().content(scrollPaneContent()).build(),
                 ScrollPaneBuilder.create().content(scrollPaneContent()).minWidth(40).prefWidth(40).minHeight(40).prefHeight(40).build(),
-                withState(ScrollPaneBuilder.create().content(scrollPaneContent()).build(), "focused")
+                withState(ScrollPaneBuilder.create().content(scrollPaneContent()).build(), "focused"),
+                ScrollPaneBuilder.create().build()
                 ); 
         newDetailedSection(
                 new String[] {"Separator: ", "horizontal", "vertical"}, 
@@ -349,9 +375,9 @@ public class SamplePage extends GridPane {
                 );
         newDetailedSection(
                 new String[] {"ProgressBar: ", "normal", "disabled", "indeterminate"}, 
-                new ProgressBar(0.6),
-                withState(new ProgressBar(), "disabled"),
-                new ProgressBar(-1)
+                ProgressBarBuilder.create().progress(0.6).prefWidth(200).build(),
+                withState(ProgressBarBuilder.create().progress(0.2).prefWidth(200).build(), "disabled"),
+                ProgressBarBuilder.create().progress(-1).prefWidth(200).build()
                 );
         newDetailedSection(
                 new String[] {"ProgressIndicator: ", "normal 0%", "normal 60%", "normal 100%", "disabled"}, 
@@ -390,29 +416,73 @@ public class SamplePage extends GridPane {
                 withState(TextAreaBuilder.create().text("Focused").prefColumnCount(7).prefRowCount(2).build(), "focused"),
                 withState(TextAreaBuilder.create().text("Disabled").prefColumnCount(8).prefRowCount(2).build(), "disabled")
                 );
+        newSection(      
+                "HTMLEditor:", 
+                HTMLEditorBuilder.create().htmlText("Hello <b>Bold</b> Text").prefWidth(650).prefHeight(120).build()
+                );
+        newSection(      
+                "HTMLEditor\nFocused:", 
+                withState(HTMLEditorBuilder.create().htmlText("<i>Focused</i>").prefWidth(650).prefHeight(120).build(), "focused")
+                );
         newDetailedSection(
                 new String[] {"ToolBar (H):", "normal", "overflow", "disabled"}, 
-                createToolBar(false,false),
-                createToolBar(false,true),
-                withState(createToolBar(false,false), "disabled")
+                createToolBar(false,false,false),
+                createToolBar(false,true,false),
+                createToolBar(false,false,true)
                 );
         newDetailedSection(
                 new String[] {"ToolBar (V):", "normal", "overflow", "disabled"}, 
-                createToolBar(true,false),
-                createToolBar(true,true),
-                withState(createToolBar(true,false), "disabled")
+                createToolBar(true,false,false),
+                createToolBar(true,true,false),
+                createToolBar(true,false,true)
                 );
         newSection(      
-                "Tabs:", 
-                createTabPane(3, 250,null,false),
-                withState(createTabPane(5, 200,"Tab Disabled &\nMany Tabs", false), null, ".tab", "disabled"),
-                withState(createTabPane(5, 200,"Disabled", false), "disabled")
+                "Tabs\n(Top):", 
+                wrapBdr(createTabPane(4, 250,null,false, false, Side.TOP)),
+                wrapBdr(withState(createTabPane(5, 200,"Tab Disabled &\nMany Tabs", false, true, Side.TOP), null, ".tab", "disabled")),
+                wrapBdr(withState(createTabPane(5, 200,"Disabled", false, false, Side.TOP), "disabled"))
                 );
         newSection(      
-                "Tabs Floating:", 
-                createTabPane(3, 250,null,true),
-                withState(createTabPane(5, 200,"Tab Disabled &\nMany Tabs", true), null, ".tab", "disabled"),
-                withState(createTabPane(5, 200,"Disabled", true), "disabled")
+                "Tabs Floating\n(Top):", 
+                createTabPane(4, 250,null,true, false, Side.TOP),
+                withState(createTabPane(5, 200,"Tab Disabled &\nMany Tabs", true, true, Side.TOP), null, ".tab", "disabled"),
+                withState(createTabPane(5, 200,"Disabled", true, false, Side.TOP), "disabled")
+                );
+        newSection(      
+                "Tabs\n(Bottom):", 
+                wrapBdr(createTabPane(4, 250,null,false, false, Side.BOTTOM)),
+                wrapBdr(withState(createTabPane(5, 200,"Tab Disabled &\nMany Tabs", false, true, Side.BOTTOM), null, ".tab", "disabled")),
+                wrapBdr(withState(createTabPane(5, 200,"Disabled", false, false, Side.BOTTOM), "disabled"))
+                );
+        newSection(      
+                "Tabs Floating\n(Bottom):", 
+                createTabPane(4, 250,null,true, false, Side.BOTTOM),
+                withState(createTabPane(5, 200,"Tab Disabled &\nMany Tabs", true, true, Side.BOTTOM), null, ".tab", "disabled"),
+                withState(createTabPane(5, 200,"Disabled", true, false, Side.BOTTOM), "disabled")
+                );
+        newSection(      
+                "Tabs\n(Left):", 
+                wrapBdr(createTabPane(4, 250,null,false, false, Side.LEFT)),
+                wrapBdr(withState(createTabPane(5, 200,"Tab Disabled &\nMany Tabs", false, true, Side.LEFT), null, ".tab", "disabled")),
+                wrapBdr(withState(createTabPane(5, 200,"Disabled", false, false, Side.LEFT), "disabled"))
+                );
+        newSection(      
+                "Tabs Floating\n(Left):", 
+                createTabPane(4, 250,null,true, false, Side.LEFT),
+                withState(createTabPane(5, 200,"Tab Disabled &\nMany Tabs", true, true, Side.LEFT), null, ".tab", "disabled"),
+                withState(createTabPane(5, 200,"Disabled", true, false, Side.LEFT), "disabled")
+                );
+        newSection(      
+                "Tabs\n(Right):", 
+                wrapBdr(createTabPane(4, 250,null,false, false, Side.RIGHT)),
+                wrapBdr(withState(createTabPane(5, 200,"Tab Disabled &\nMany Tabs", false, true, Side.RIGHT), null, ".tab", "disabled")),
+                wrapBdr(withState(createTabPane(5, 200,"Disabled", false, false, Side.RIGHT), "disabled"))
+                );
+        newSection(      
+                "Tabs Floating\n(Right):", 
+                createTabPane(4, 250,null,true, false, Side.RIGHT),
+                withState(createTabPane(5, 200,"Tab Disabled &\nMany Tabs", true, true, Side.RIGHT), null, ".tab", "disabled"),
+                withState(createTabPane(5, 200,"Disabled", true, false, Side.RIGHT), "disabled")
                 );
         newDetailedSection(
                 new String[] {"TitledPane:", "normal", "focused", "disabled"}, 
@@ -481,6 +551,13 @@ public class SamplePage extends GridPane {
                 withState(createTreeTableView(200), "focused")
                 );
         newDetailedSection(
+                new String[] {"Empty:", "ListView", "TableView", "TreeView", "TreeTableView"},
+                ListViewBuilder.create(String.class).prefWidth(150).prefHeight(100).build(),
+                TableViewBuilder.create().prefWidth(150).prefHeight(100).build(),
+                TreeViewBuilder.create().prefWidth(150).prefHeight(100).build(),
+                TreeTableViewBuilder.create().prefWidth(150).prefHeight(100).build()
+                );
+        newDetailedSection(
                 new String[] {"ToolTip:","inline","inline + graphic", "popup"}, 
                 LabelBuilder.create().text("This is a simple Tooltip.").styleClass("tooltip").build(),
                 LabelBuilder.create().text("This is a simple Tooltip\nwith graphic.").graphic(createGraphic()).styleClass("tooltip").build(),
@@ -489,6 +566,54 @@ public class SamplePage extends GridPane {
                     ButtonBuilder.create().text("me too").tooltip(new Tooltip("This is a simple Tooltip\nwith more than one line.")).build(),
                     ButtonBuilder.create().text("or me").tooltip(TooltipBuilder.create().text("This is a simple Tooltip\nwith graphic.").graphic(createGraphic()).build()).build()
                 ).build()
+                );
+        newSection(
+                "AreaChart:", 
+                createAreaChart(false)
+                );
+        newSection(
+                "StackedAreaChart:", 
+                createAreaChart(true)
+                );
+        newSection(
+                "BarChart\nSimple:", 
+                createBarChart(false,true)
+                );
+        newSection(
+                "BarChart:", 
+                createBarChart(false, false)
+                );
+        newSection(
+                "BarChart\n(H, Simple):", 
+                createBarChart(true, true)
+                );
+        newSection(
+                "BarChart\n(H):", 
+                createBarChart(true, false)
+                );
+        newSection(
+                "StackedBarChart\nSimple:", 
+                createStackedBarChart(false,true)
+                );
+        newSection(
+                "StackedBarChart\n(H, Simple):", 
+                createStackedBarChart(true, true)
+                );
+        newSection(
+                "BubbleChart:", 
+                createBubbleChart()
+                );
+        newSection(
+                "LineChart:", 
+                createLineChart()
+                );
+        newSection(
+                "PieChar:", 
+                createPieChart()
+                );
+        newSection(
+                "ScatterChart:", 
+                createScatterChart()
                 );
     }
 }

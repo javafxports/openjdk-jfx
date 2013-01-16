@@ -33,6 +33,8 @@ import java.util.Arrays;
 import java.util.List;
 import javafx.collections.ListChangeListener.Change;
 import javafx.collections.ObservableList;
+import javafx.css.StyleOrigin;
+import javafx.css.PseudoClass;
 
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -86,7 +88,7 @@ final public class Rule {
         this.stylesheet = stylesheet;
     }
 
-    public Origin getOrigin() {
+    public StyleOrigin getOrigin() {
         return stylesheet != null ? stylesheet.getOrigin() : null;
     }
 
@@ -123,7 +125,7 @@ final public class Rule {
         return matches;
     }
 
-    List<Match> matches(Scene scene) {
+    final List<Match> matches(Scene scene) {
         List<Match> matches = new ArrayList<Match>();
         for (int i = 0; i < selectors.size(); i++) {
             Selector sel = selectors.get(i);
@@ -135,12 +137,16 @@ final public class Rule {
         return matches;
     }
 
-    boolean applies(Node node, PseudoClass.States[] pseudoclassBits) {
+    // Return mask of selectors that match
+    long applies(Node node, long[][] pseudoclassBits) {
+        long mask = 0;
         for (int i = 0; i < selectors.size(); i++) {
             Selector sel = selectors.get(i);
-            if (sel.applies(node, pseudoclassBits, 0)) return true;
+            if (sel.applies(node, pseudoclassBits, 0)) {                
+                mask |= 1l << i;
+            }
         }
-        return false;
+        return mask;
     }
 
     /** Converts this object to a string. */

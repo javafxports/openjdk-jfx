@@ -24,6 +24,7 @@
  */
 package javafx.scene.control;
 
+import java.util.Set;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.BooleanPropertyBase;
 import javafx.event.ActionEvent;
@@ -31,7 +32,7 @@ import javafx.scene.Node;
 
 import com.sun.javafx.scene.control.accessible.AccessibleButton;
 import com.sun.javafx.accessible.providers.AccessibleProvider;
-import com.sun.javafx.css.PseudoClass;
+import javafx.css.PseudoClass;
 import com.sun.javafx.scene.control.skin.ButtonSkin;
 
 /**
@@ -119,7 +120,7 @@ public class Button extends ButtonBase {
         if (defaultButton == null) {
             defaultButton = new BooleanPropertyBase(false) {
                 @Override protected void invalidated() {
-                    pseudoClassStateChanged(PSEUDO_CLASS_DEFAULT);
+                    pseudoClassStateChanged(PSEUDO_CLASS_DEFAULT, get());
                 }
 
                 @Override
@@ -153,7 +154,7 @@ public class Button extends ButtonBase {
         if (cancelButton == null) {
             cancelButton = new BooleanPropertyBase(false) {
                 @Override protected void invalidated() {
-                    pseudoClassStateChanged(PSEUDO_CLASS_CANCEL);
+                    pseudoClassStateChanged(PSEUDO_CLASS_CANCEL, get());
                 }
 
                 @Override
@@ -201,20 +202,10 @@ public class Button extends ButtonBase {
      */
     private static final String DEFAULT_STYLE_CLASS = "button";
 
-    private static final PseudoClass.State PSEUDO_CLASS_DEFAULT
-            = PseudoClass.getState("default");
-    private static final PseudoClass.State PSEUDO_CLASS_CANCEL
-            = PseudoClass.getState("cancel");
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override public PseudoClass.States getPseudoClassStates() {
-        PseudoClass.States states = super.getPseudoClassStates();
-        if (isDefaultButton()) states.addState(PSEUDO_CLASS_DEFAULT);
-        if (isCancelButton()) states.addState(PSEUDO_CLASS_CANCEL);
-        return states;
-    }
+    private static final PseudoClass PSEUDO_CLASS_DEFAULT
+            = PseudoClass.getPseudoClass("default");
+    private static final PseudoClass PSEUDO_CLASS_CANCEL
+            = PseudoClass.getPseudoClass("cancel");
     
     private AccessibleButton accButton ;
     /**
