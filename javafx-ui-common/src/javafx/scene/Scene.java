@@ -87,8 +87,8 @@ import com.sun.javafx.beans.annotations.Default;
 import com.sun.javafx.beans.event.AbstractNotifyListener;
 import com.sun.javafx.collections.TrackableObservableList;
 import com.sun.javafx.css.StyleManager;
-import com.sun.javafx.css.StyleableObjectProperty;
-import com.sun.javafx.css.CssMetaData;
+import javafx.css.StyleableObjectProperty;
+import javafx.css.CssMetaData;
 import com.sun.javafx.cursor.CursorFrame;
 import com.sun.javafx.event.EventQueue;
 import com.sun.javafx.geom.PickRay;
@@ -97,7 +97,7 @@ import com.sun.javafx.geom.transform.BaseTransform;
 import sun.util.logging.PlatformLogger;
 import com.sun.javafx.perf.PerformanceTracker;
 import com.sun.javafx.robot.impl.FXRobotHelper;
-import com.sun.javafx.scene.CSSFlags;
+import com.sun.javafx.scene.CssFlags;
 import com.sun.javafx.scene.SceneEventDispatcher;
 import com.sun.javafx.scene.input.InputEventUtils;
 import com.sun.javafx.scene.traversal.Direction;
@@ -443,7 +443,7 @@ public class Scene implements EventTarget {
         // check code was commented out and not removed. 
         //
 //        if (sceneRoot.impl_isDirty(com.sun.javafx.scene.DirtyBits.NODE_CSS)) {
-        if (sceneRoot.cssFlag != CSSFlags.CLEAN) {
+        if (sceneRoot.cssFlag != CssFlags.CLEAN) {
             // The dirty bit isn't checked but we must ensure it is cleared.
             // The cssFlag is set to clean in either Node.processCSS or 
             // Node.impl_processCSS(boolean)
@@ -2025,7 +2025,7 @@ public class Scene implements EventTarget {
      */
     boolean isQuiescent() {
         return !isFocusDirty()
-               && (getRoot().cssFlag == CSSFlags.CLEAN)
+               && (getRoot().cssFlag == CssFlags.CLEAN)
                && dirtyLayoutRoots.isEmpty();
     }
 

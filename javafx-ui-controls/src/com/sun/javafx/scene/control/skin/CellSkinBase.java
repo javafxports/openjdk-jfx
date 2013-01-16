@@ -31,13 +31,14 @@ import java.util.List;
 
 import javafx.scene.control.Cell;
 
-import com.sun.javafx.css.StyleableDoubleProperty;
-import com.sun.javafx.css.CssMetaData;
+import javafx.css.StyleableDoubleProperty;
+import javafx.css.CssMetaData;
+import javafx.css.StyleOrigin;
 import com.sun.javafx.css.converters.SizeConverter;
 import com.sun.javafx.scene.control.behavior.CellBehaviorBase;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ReadOnlyDoubleProperty;
-import javafx.beans.value.WritableValue;
+import javafx.css.StyleableProperty;
 import javafx.scene.control.SkinBase;
 
 
@@ -125,10 +126,10 @@ public class CellSkinBase<C extends Cell, B extends CellBehaviorBase<C>> extends
                  SizeConverter.getInstance(), DEFAULT_CELL_SIZE) {
 
             @Override
-            public void set(Cell node, Number value) {
+            public void set(Cell node, Number value, StyleOrigin origin) {
                 double size = value == null ? DEFAULT_CELL_SIZE : ((Number)value).doubleValue();
                 // guard against a 0 or negative size
-                super.set(node, size <= 0 ? DEFAULT_CELL_SIZE : size);
+                super.set(node, size <= 0 ? DEFAULT_CELL_SIZE : size, origin);
             }
 
             @Override
@@ -138,9 +139,9 @@ public class CellSkinBase<C extends Cell, B extends CellBehaviorBase<C>> extends
             }
 
             @Override
-            public WritableValue<Number> getWritableValue(Cell n) {
+            public StyleableProperty<Number> getStyleableProperty(Cell n) {
                 final CellSkinBase skin = (CellSkinBase) n.getSkin();
-                return skin.cellSizePropertyImpl();
+                return (StyleableProperty)skin.cellSizePropertyImpl();
             }
         };
 

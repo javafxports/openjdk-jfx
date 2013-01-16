@@ -47,7 +47,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.WeakHashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -66,6 +65,8 @@ import javafx.stage.Window;
 import com.sun.javafx.css.StyleHelper.StyleCacheBucket;
 import com.sun.javafx.css.StyleHelper.StyleCacheKey;
 import com.sun.javafx.css.parser.CSSParser;
+import javafx.css.CssMetaData;
+import javafx.css.StyleOrigin;
 import sun.util.logging.PlatformLogger;
 
 /**
@@ -129,6 +130,59 @@ final public class StyleManager {
         return styleManagerRef != null ? styleManagerRef.get() : null;
     }
     
+    /**
+     * @return  The Styles that match this CSS property for the given Node. The 
+     * list is sorted by descending specificity. 
+     */
+    public static List<Style> getMatchingStyles(CssMetaData cssMetaData, Node node) {
+        if (node != null && cssMetaData != null) {
+            return getMatchingStyles(cssMetaData, node.impl_getStyleable());
+        }
+        return Collections.EMPTY_LIST;        
+    }
+
+    /**
+     * @return  The Styles that match this CSS property for the given Styleable. The 
+     * list is sorted by descending specificity. 
+     */
+    public static List<Style> getMatchingStyles(CssMetaData cssMetaData, Styleable styleable) {
+        if (styleable != null && cssMetaData != null) {
+            StyleHelper helper = styleable.getNode() != null 
+                    ? styleable.getNode().impl_getStyleHelper()
+                    : null;
+            return (helper != null) 
+                ? helper.getMatchingStyles(styleable, cssMetaData) 
+                : Collections.EMPTY_LIST; 
+        }
+        return Collections.EMPTY_LIST;
+    }    
+ 
+    /**
+     * 
+     * @param node
+     * @return 
+     */
+    // TODO: is this used anywhere?
+    public static List<CssMetaData> getStyleables(final Styleable styleable) {
+        
+        return styleable != null 
+            ? styleable.getCssMetaData() 
+            : Collections.EMPTY_LIST;
+    }
+
+    /**
+     * 
+     * @param node
+     * @return 
+     */
+    // TODO: is this used anywhere?
+    public static List<CssMetaData> getStyleables(final Node node) {
+        
+        return node != null 
+            ? node.getCssMetaData() 
+            : Collections.EMPTY_LIST;
+    }
+         
     public StyleManager(Scene scene) {
 
         if (scene == null) {
@@ -611,12 +665,12 @@ final public class StyleManager {
         for (int n=keyList.size()-1; 0<=n; --n) {
 
             final Reference<Key> ref = keyList.get(n);
-            final Key key = ref.get();
-            if (key == null) {
+            final Key rkey = ref.get();
+            if (rkey == null) {
                 continue;
             }
 
-            final Cache cache = cacheMap.remove(key);
+            final Cache cache = cacheMap.remove(rkey);
         }
     }
     
@@ -953,7 +1007,7 @@ final public class StyleManager {
         stylesheetContainerMap.put(fname, container);
         
         if (ua_stylesheet != null) {
-            ua_stylesheet.setOrigin(Origin.USER_AGENT);
+            ua_stylesheet.setOrigin(StyleOrigin.USER_AGENT);
             userAgentStylesheetsChanged();
         }
 
@@ -1007,7 +1061,7 @@ final public class StyleManager {
         stylesheetContainerMap.put(fname, container);
         
         if (ua_stylesheet != null) {
-            ua_stylesheet.setOrigin(Origin.USER_AGENT);
+            ua_stylesheet.setOrigin(StyleOrigin.USER_AGENT);
             userAgentStylesheetsChanged();
         }
 
@@ -1049,7 +1103,7 @@ final public class StyleManager {
         StylesheetContainer container = new StylesheetContainer(fname, stylesheet);
         stylesheetContainerMap.put(fname, container);
 
-        stylesheet.setOrigin(Origin.USER_AGENT);
+        stylesheet.setOrigin(StyleOrigin.USER_AGENT);
         userAgentStylesheetsChanged();
     }
 
@@ -1173,7 +1227,7 @@ final public class StyleManager {
     /**
      * Finds matching styles for this Node.
      */
-    StyleMap findMatchingStyles(Node node, PseudoClass.States[] pseudoclassBits) {
+    StyleMap findMatchingStyles(Node node, long[][] pseudoclassBits) {
 
         final int[] indicesOfParentsWithStylesheets =
                 getIndicesOfParentsWithStylesheets(
@@ -1366,7 +1420,7 @@ final public class StyleManager {
             this.cache = new HashMap<Long, StyleMap>();
         }
 
-        private StyleMap getStyleMap(StyleManager owner, Node node, PseudoClass.States[] pseudoclassBits) {
+        private StyleMap getStyleMap(StyleManager owner, Node node, long[][] pseudoclassBits) {
             
             if (rules == null || rules.isEmpty()) {                
                 return StyleMap.EMPTY_MAP;
@@ -1472,7 +1526,7 @@ final public class StyleManager {
 
                         final CascadingStyle s = new CascadingStyle(
                             new Style(match.selector, decl),
-                            match.pseudoclasses,
+                            match.pseudoClasses,
                             match.specificity,
                             // ordinal increments at declaration level since
                             // there may be more than one declaration for the

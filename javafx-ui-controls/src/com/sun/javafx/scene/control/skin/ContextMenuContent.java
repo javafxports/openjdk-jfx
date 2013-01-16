@@ -32,6 +32,7 @@ package com.sun.javafx.scene.control.skin;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import javafx.animation.Animation.Status;
 import javafx.animation.KeyFrame;
@@ -68,8 +69,8 @@ import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
-import com.sun.javafx.css.CssMetaData;
-import com.sun.javafx.css.PseudoClass;
+import javafx.css.CssMetaData;
+import javafx.css.PseudoClass;
 import java.util.Iterator;
 import javafx.geometry.NodeOrientation;
 import javafx.stage.Window;
@@ -1077,13 +1078,13 @@ public class ContextMenuContent extends Region {
             
             // listen to changes in the state of certain MenuItem types
             if (item instanceof Menu) {
-                listen(((Menu)item).showingProperty(), PSEUDO_CLASS_SELECTED);
+                listen(((Menu)item).showingProperty(), SELECTED_PSEUDOCLASS_STATE);
             } else if (item instanceof RadioMenuItem) {
-                listen(((RadioMenuItem)item).selectedProperty(), PSEUDO_CLASS_CHECKED);
+                listen(((RadioMenuItem)item).selectedProperty(), CHECKED_PSEUDOCLASS_STATE);
             } else if (item instanceof CheckMenuItem) {
-                listen(((CheckMenuItem)item).selectedProperty(), PSEUDO_CLASS_CHECKED);
+                listen(((CheckMenuItem)item).selectedProperty(), CHECKED_PSEUDOCLASS_STATE);
             }
-            listen(item.disableProperty(), PSEUDO_CLASS_DISABLED);
+            listen(item.disableProperty(), DISABLED_PSEUDOCLASS_STATE);
             // Add the menu item to properties map of this node. Used by QA for testing
             // This allows associating this container with corresponding MenuItem.
             getProperties().put(MenuItem.class, item);
@@ -1326,22 +1327,6 @@ public class ContextMenuContent extends Region {
                 }
             }
         }
-
-        @Override
-        public PseudoClass.States getPseudoClassStates() {
-            PseudoClass.States states = super.getPseudoClassStates();
-            if (item instanceof Menu && item.equals(openSubmenu) && submenu.isShowing()) {
-                states.addState(SELECTED_PSEUDOCLASS_STATE);
-            } else if (item instanceof RadioMenuItem && ((RadioMenuItem)item).isSelected()) {
-                states.addState(CHECKED_PSEUDOCLASS_STATE);
-            } else if (item instanceof CheckMenuItem && ((CheckMenuItem)item).isSelected()) {
-                states.addState(CHECKED_PSEUDOCLASS_STATE);
-            }
-            if (item.isDisable()) states.addState(DISABLED_PSEUDOCLASS_STATE);
-            return states;
-        }
-
-
         
         @Override protected double computePrefHeight(double width) {
             double prefHeight = 0;
@@ -1367,11 +1352,11 @@ public class ContextMenuContent extends Region {
                     maxLabelWidth + maxRightWidth + getInsets().getRight());
         }
 
-        private void listen(ObservableBooleanValue property, final String pseudoClass) {
+        private void listen(ObservableBooleanValue property, final PseudoClass pseudoClass) {
             property.addListener(new InvalidationListener() {
                 @Override public void invalidated(Observable valueModel) {
-                    PseudoClass.State state = PseudoClass.getState(pseudoClass);
-                    pseudoClassStateChanged(state);
+                    boolean active = ((ObservableBooleanValue)valueModel).get();
+                    pseudoClassStateChanged(pseudoClass, active);
                 }
             });
         }
@@ -1393,27 +1378,15 @@ public class ContextMenuContent extends Region {
             return null;
         }
 
-        /** Pseudoclass indicating this Menu is selected. */
-        private static final String PSEUDO_CLASS_SELECTED = "selected";
-        private static final String PSEUDO_CLASS_DISABLED = "disabled";
-        
-        /** 
-         * Pseudoclass indicating that a RadioMenuItem or CheckMenuItem is 
-         * is 'checked'. Despite the 'checked' term sounding a little odd in the
-         * RadioMenuItem context, this is apparently the w3c standard:
-         * http://www.w3.org/TR/css3-selectors/#UIstates
-         */
-        private static final String PSEUDO_CLASS_CHECKED = "checked";
-
     }
 
 
-    private static final PseudoClass.State SELECTED_PSEUDOCLASS_STATE =
-            PseudoClass.getState("selected");
-    private static final PseudoClass.State DISABLED_PSEUDOCLASS_STATE =
-            PseudoClass.getState("disabled");
-    private static final PseudoClass.State CHECKED_PSEUDOCLASS_STATE =
-            PseudoClass.getState("checked");
+    private static final PseudoClass SELECTED_PSEUDOCLASS_STATE =
+            PseudoClass.getPseudoClass("selected");
+    private static final PseudoClass DISABLED_PSEUDOCLASS_STATE =
+            PseudoClass.getPseudoClass("disabled");
+    private static final PseudoClass CHECKED_PSEUDOCLASS_STATE =
+            PseudoClass.getPseudoClass("checked");
 
     private class MenuLabel extends Label {
 

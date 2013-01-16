@@ -24,15 +24,14 @@
  */
 package javafx.scene.control;
 
-import com.sun.javafx.css.CssMetaData;
-import com.sun.javafx.css.PseudoClass;
+import javafx.css.CssMetaData;
+import javafx.css.PseudoClass;
 import com.sun.javafx.scene.control.MultiplePropertyChangeListenerHandler;
 import java.util.Collections;
 import java.util.List;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
-import javafx.event.EventType;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.VPos;
@@ -396,13 +395,6 @@ public abstract class SkinBase<C extends Control> implements Skin<C> {
       *                                                                        *
      **************************************************************************/
 
-    /**
-     * {@inheritDoc}
-     */
-    @Deprecated public PseudoClass.States getPseudoClassStates() {
-        return null; 
-    }
-
     private static class StyleableProperties {
 
         private static final List<CssMetaData> STYLEABLES;
@@ -429,6 +421,13 @@ public abstract class SkinBase<C extends Control> implements Skin<C> {
         return getClassCssMetaData();
     }
     
+    /** @see Node#pseudoClassStateChanged */
+    public final void pseudoClassStateChanged(PseudoClass pseudoClass, boolean active) {
+        Control ctl = (Control)getSkinnable();
+        if (ctl != null) {
+            ctl.pseudoClassStateChanged(pseudoClass, active);
+        }
+    }
     
     
     /***************************************************************************

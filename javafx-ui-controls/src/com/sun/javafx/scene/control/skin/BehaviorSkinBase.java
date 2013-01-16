@@ -24,10 +24,10 @@
  */
 package com.sun.javafx.scene.control.skin;
 
-import com.sun.javafx.css.PseudoClass;
 import com.sun.javafx.scene.control.MultiplePropertyChangeListenerHandler;
 import com.sun.javafx.scene.control.behavior.BehaviorBase;
 import javafx.beans.value.ObservableValue;
+
 import javafx.event.EventHandler;
 import javafx.event.EventType;
 import javafx.scene.control.Control;
@@ -192,20 +192,5 @@ public abstract class BehaviorSkinBase<C extends Control, BB extends BehaviorBas
     protected void handleControlPropertyChanged(String propertyReference) {
         // no-op
     }
-    
-    
-    
-    /***************************************************************************
-     *                                                                         *
-     * Specialization of CSS handling code                                     *
-     *                                                                         *
-     **************************************************************************/
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override public PseudoClass.States getPseudoClassStates() {
-        // check if behaviour can be null...
-        return getBehavior().getPseudoClassStates(); 
-    }    
 }
