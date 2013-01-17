@@ -28,20 +28,21 @@ package javafx.scene.control;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleDoubleProperty;
-import javafx.beans.value.WritableValue;
 import javafx.geometry.Orientation;
 
 import com.sun.javafx.Utils;
-import com.sun.javafx.css.CssMetaData;
-import com.sun.javafx.css.PseudoClass;
-import com.sun.javafx.css.StyleableDoubleProperty;
-import com.sun.javafx.css.StyleableObjectProperty;
+import javafx.css.CssMetaData;
+import javafx.css.PseudoClass;
+import javafx.css.StyleableDoubleProperty;
+import javafx.css.StyleableObjectProperty;
 import com.sun.javafx.css.converters.EnumConverter;
 import com.sun.javafx.css.converters.SizeConverter;
 import com.sun.javafx.scene.control.skin.ScrollBarSkin;
+import javafx.css.StyleableProperty;
 
 
 /**
@@ -85,8 +86,12 @@ public class ScrollBar extends Control {
         // makes it look to css like the user set the value and css will not 
         // override. Initializing focusTraversable by calling set on the 
         // CssMetaData ensures that css will be able to override the value.
-        final CssMetaData prop = CssMetaData.getCssMetaData(focusTraversableProperty());
-        prop.set(this, Boolean.FALSE);            
+        final CssMetaData prop = ((StyleableProperty)focusTraversableProperty()).getCssMetaData();
+        prop.set(this, Boolean.FALSE, null);
+        
+        // set pseudo-class state to horizontal
+        pseudoClassStateChanged(HORIZONTAL_PSEUDOCLASS_STATE, true);
+        
     }
     /***************************************************************************
      *                                                                         *
@@ -167,8 +172,9 @@ public class ScrollBar extends Control {
         if (orientation == null) {
             orientation = new StyleableObjectProperty<Orientation>(Orientation.HORIZONTAL) {
                 @Override protected void invalidated() {
-                    pseudoClassStateChanged(VERTICAL_PSEUDOCLASS_STATE);
-                    pseudoClassStateChanged(HORIZONTAL_PSEUDOCLASS_STATE);
+                    final boolean vertical = (get() == Orientation.VERTICAL);
+                    pseudoClassStateChanged(VERTICAL_PSEUDOCLASS_STATE,    vertical);
+                    pseudoClassStateChanged(HORIZONTAL_PSEUDOCLASS_STATE, !vertical);
                 }
 
                 @Override 
@@ -376,8 +382,8 @@ public class ScrollBar extends Control {
             }
 
             @Override
-            public WritableValue<Orientation> getWritableValue(ScrollBar n) {
-                return n.orientationProperty();
+            public StyleableProperty<Orientation> getStyleableProperty(ScrollBar n) {
+                return (StyleableProperty)n.orientationProperty();
             }
         };
         
@@ -391,8 +397,8 @@ public class ScrollBar extends Control {
             }
 
             @Override
-            public WritableValue<Number> getWritableValue(ScrollBar n) {
-                return n.unitIncrementProperty();
+            public StyleableProperty<Number> getStyleableProperty(ScrollBar n) {
+                return (StyleableProperty)n.unitIncrementProperty();
             }
                     
         };
@@ -407,8 +413,8 @@ public class ScrollBar extends Control {
             }
 
             @Override
-            public WritableValue<Number> getWritableValue(ScrollBar n) {
-                return n.blockIncrementProperty();
+            public StyleableProperty<Number> getStyleableProperty(ScrollBar n) {
+                return (StyleableProperty)n.blockIncrementProperty();
             }
                     
         };
@@ -438,31 +444,21 @@ public class ScrollBar extends Control {
      * {@inheritDoc}
      */
     @Override
-    public List<CssMetaData> getCssMetaData() {
+    public List<CssMetaData> getControlCssMetaData() {
         return getClassCssMetaData();
     }
 
     /**
      * Pseud-class indicating this is a vertical ScrollBar.
      */
-    private static final PseudoClass.State VERTICAL_PSEUDOCLASS_STATE =
-            PseudoClass.getState("vertical");
+    private static final PseudoClass VERTICAL_PSEUDOCLASS_STATE =
+            PseudoClass.getPseudoClass("vertical");
 
     /**
      * Pseudo-class indicating this is a horizontal ScrollBar.
      */
-    private static final PseudoClass.State HORIZONTAL_PSEUDOCLASS_STATE =
-            PseudoClass.getState("horizontal");
-    
-    /**
-     * {@inheritDoc}
-     */
-    @Override public PseudoClass.States getPseudoClassStates() {
-        PseudoClass.States states = super.getPseudoClassStates();
-        if (getOrientation() == Orientation.VERTICAL) states.addState(VERTICAL_PSEUDOCLASS_STATE);
-        else states.addState(HORIZONTAL_PSEUDOCLASS_STATE);
-        return states;
-    }
+    private static final PseudoClass HORIZONTAL_PSEUDOCLASS_STATE =
+            PseudoClass.getPseudoClass("horizontal");
     
     /**
       * Most Controls return true for focusTraversable, so Control overrides

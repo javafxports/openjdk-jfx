@@ -25,13 +25,15 @@
 
 package javafx.scene.control;
 
-import com.sun.javafx.css.CssMetaData;
-import com.sun.javafx.css.PseudoClass;
+import java.util.Set;
+import javafx.css.CssMetaData;
+import javafx.css.PseudoClass;
 import com.sun.javafx.scene.control.skin.ProgressIndicatorSkin;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.DoublePropertyBase;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
+import javafx.css.StyleableProperty;
 
 
 /**
@@ -90,10 +92,15 @@ public class ProgressIndicator extends Control {
         // makes it look to css like the user set the value and css will not 
         // override. Initializing focusTraversable by calling set on the 
         // CssMetaData ensures that css will be able to override the value.
-        final CssMetaData prop = CssMetaData.getCssMetaData(focusTraversableProperty());
-        prop.set(this, Boolean.FALSE);            
+        final CssMetaData prop = ((StyleableProperty)focusTraversableProperty()).getCssMetaData();
+        prop.set(this, Boolean.FALSE, null); 
         setProgress(progress);
         getStyleClass().setAll(DEFAULT_STYLE_CLASS);
+        
+        // need to initialize pseudo-class state
+        final int c = Double.compare(INDETERMINATE_PROGRESS, progress);
+        pseudoClassStateChanged(PSEUDO_CLASS_INDETERMINATE, c == 0);
+        pseudoClassStateChanged(PSEUDO_CLASS_DETERMINATE,   c != 0);
     }
     /***************************************************************************
      *                                                                         *
@@ -123,8 +130,9 @@ public class ProgressIndicator extends Control {
         if (indeterminate == null) {
             indeterminate = new ReadOnlyBooleanWrapper(true) {
                 @Override protected void invalidated() {
-                    pseudoClassStateChanged(PSEUDO_CLASS_INDETERMINATE);
-                    pseudoClassStateChanged(PSEUDO_CLASS_DETERMINATE);
+                    final boolean active = get();
+                    pseudoClassStateChanged(PSEUDO_CLASS_INDETERMINATE, active);
+                    pseudoClassStateChanged(PSEUDO_CLASS_DETERMINATE,  !active);
                 }
 
                 @Override
@@ -205,26 +213,15 @@ public class ProgressIndicator extends Control {
      * Pseudoclass indicating this is a determinate (i.e., progress can be
      * determined) progress indicator.
      */
-    private static final PseudoClass.State PSEUDO_CLASS_DETERMINATE =
-            PseudoClass.getState("determinate");
+    private static final PseudoClass PSEUDO_CLASS_DETERMINATE =
+            PseudoClass.getPseudoClass("determinate");
 
     /**
      * Pseudoclass indicating this is an indeterminate (i.e., progress cannot
      * be determined) progress indicator.
      */
-    private static final PseudoClass.State PSEUDO_CLASS_INDETERMINATE =
-            PseudoClass.getState("indeterminate");
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override public PseudoClass.States getPseudoClassStates() {
-        PseudoClass.States states = super.getPseudoClassStates();
-        if (isIndeterminate()) states.addState(PSEUDO_CLASS_INDETERMINATE);
-        else states.addState(PSEUDO_CLASS_DETERMINATE);
-        return states;
-    }
-    
+    private static final PseudoClass PSEUDO_CLASS_INDETERMINATE =
+            PseudoClass.getPseudoClass("indeterminate");
     
     /**
       * Most Controls return true for focusTraversable, so Control overrides

@@ -26,7 +26,7 @@ package javafx.scene.control;
 
 import com.sun.javafx.collections.MappingChange;
 import com.sun.javafx.collections.annotations.ReturnsUnmodifiableCollection;
-import com.sun.javafx.css.PseudoClass;
+import javafx.css.PseudoClass;
 import com.sun.javafx.scene.control.ReadOnlyUnbackedObservableList;
 import com.sun.javafx.scene.control.TableColumnComparator;
 import com.sun.javafx.scene.control.skin.TableViewSkinBase;
@@ -36,6 +36,7 @@ import com.sun.javafx.scene.control.skin.VirtualContainerBase;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import javafx.beans.DefaultProperty;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
@@ -752,11 +753,41 @@ public class TreeTableView<S> extends Control {
      */
     public final ObjectProperty<TreeTableViewSelectionModel<S>> selectionModelProperty() {
         if (selectionModel == null) {
-            selectionModel = new SimpleObjectProperty<TreeTableViewSelectionModel<S>>(this, "selectionModel");
+            selectionModel = new SimpleObjectProperty<TreeTableViewSelectionModel<S>>(this, "selectionModel") {
+                
+                TreeTableViewSelectionModel<S> oldValue = null;
+                
+                @Override protected void invalidated() {
+                    // need to listen to the cellSelectionEnabledProperty
+                    // in order to set pseudo-class state                    
+                    if (oldValue != null) {
+                        oldValue.cellSelectionEnabledProperty().removeListener(cellSelectionModelInvalidationListener);
+                    }
+                    
+                    oldValue = get();
+                    
+                    if (oldValue != null) {
+                        oldValue.cellSelectionEnabledProperty().addListener(cellSelectionModelInvalidationListener);
+                        // fake invalidation to ensure updated pseudo-class states
+                        cellSelectionModelInvalidationListener.invalidated(oldValue.cellSelectionEnabledProperty());            
+                    }
+                }
+            };
         }
         return selectionModel;
     }
     
+    /* proxy pseudo-class state change from selectionModel's cellSelectionEnabledProperty */
+    private final InvalidationListener cellSelectionModelInvalidationListener = 
+        new InvalidationListener() {
+
+        @Override
+        public void invalidated(Observable o) {
+            boolean isCellSelection = ((BooleanProperty)o).get();
+            pseudoClassStateChanged(PSEUDO_CLASS_CELL_SELECTION,  isCellSelection);
+            pseudoClassStateChanged(PSEUDO_CLASS_ROW_SELECTION,  !isCellSelection);
+        }
+    };
     
     // --- Focus Model
     private ObjectProperty<TreeTableViewFocusModel<S>> focusModel;
@@ -1053,12 +1084,12 @@ public class TreeTableView<S> extends Control {
                         refresh();
                 
                         if (oldPolicy != null) {
-                            PseudoClass.State state = PseudoClass.getState(oldPolicy.toString());
-                            pseudoClassStateChanged(state);
+                            PseudoClass state = PseudoClass.getPseudoClass(oldPolicy.toString());
+                            pseudoClassStateChanged(state, false);
                         }
                         if (get() != null) {
-                            PseudoClass.State state = PseudoClass.getState(get().toString());
-                            pseudoClassStateChanged(state);
+                            PseudoClass state = PseudoClass.getPseudoClass(get().toString());
+                            pseudoClassStateChanged(state, true);
                         }
                         oldPolicy = get();
                     }
@@ -1443,22 +1474,11 @@ public class TreeTableView<S> extends Control {
     private static final String DEFAULT_STYLE_CLASS = "tree-table-view";
     private static final String CELL_SPAN_TABLE_VIEW_STYLE_CLASS = "cell-span-tree-table-view";
     
-    private static final PseudoClass.State PSEUDO_CLASS_CELL_SELECTION = 
-            PseudoClass.getState("cell-selection");
-    private static final PseudoClass.State PSEUDO_CLASS_ROW_SELECTION = 
-            PseudoClass.getState("row-selection");
+    private static final PseudoClass PSEUDO_CLASS_CELL_SELECTION = 
+            PseudoClass.getPseudoClass("cell-selection");
+    private static final PseudoClass PSEUDO_CLASS_ROW_SELECTION = 
+            PseudoClass.getPseudoClass("row-selection");
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override public PseudoClass.States getPseudoClassStates() {
-        PseudoClass.States states = super.getPseudoClassStates();
-        if (getSelectionModel() != null) {
-            if (getSelectionModel().isCellSelectionEnabled()) states.addState(PSEUDO_CLASS_CELL_SELECTION);
-            else states.addState(PSEUDO_CLASS_ROW_SELECTION);
-        }
-        return states;
-    }
 
     /** {@inheritDoc} */
     @Override protected Skin<?> createDefaultSkin() {
@@ -1603,8 +1623,6 @@ public class TreeTableView<S> extends Control {
                 @Override public void invalidated(Observable o) {
                     isCellSelectionEnabled();
                     clearSelection();
-                    treeTableView.pseudoClassStateChanged(TreeTableView.PSEUDO_CLASS_CELL_SELECTION);
-                    treeTableView.pseudoClassStateChanged(TreeTableView.PSEUDO_CLASS_ROW_SELECTION);
                 }
             });
         }

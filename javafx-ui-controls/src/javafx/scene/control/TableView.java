@@ -30,6 +30,7 @@ import com.sun.javafx.collections.NonIterableChange;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
@@ -51,7 +52,7 @@ import javafx.scene.layout.GridPane;
 import javafx.util.Callback;
 
 import com.sun.javafx.collections.annotations.ReturnsUnmodifiableCollection;
-import com.sun.javafx.css.PseudoClass;
+import javafx.css.PseudoClass;
 import com.sun.javafx.scene.control.ReadOnlyUnbackedObservableList;
 import com.sun.javafx.scene.control.TableColumnComparator;
 import javafx.collections.WeakListChangeListener;
@@ -596,12 +597,12 @@ public class TableView<S> extends Control {
                         refresh();
                 
                         if (oldPolicy != null) {
-                            PseudoClass.State state = PseudoClass.getState(oldPolicy.toString());
-                            pseudoClassStateChanged(state);
+                            PseudoClass state = PseudoClass.getPseudoClass(oldPolicy.toString());
+                            pseudoClassStateChanged(state, false);
                         }
                         if (get() != null) {
-                            PseudoClass.State state = PseudoClass.getState(get().toString());
-                            pseudoClassStateChanged(state);
+                            PseudoClass state = PseudoClass.getPseudoClass(get().toString());
+                            pseudoClassStateChanged(state, true);
                         }
                         oldPolicy = get();
                     }
@@ -669,7 +670,26 @@ public class TableView<S> extends Control {
 
     // --- Selection Model
     private ObjectProperty<TableViewSelectionModel<S>> selectionModel 
-            = new SimpleObjectProperty<TableViewSelectionModel<S>>(this, "selectionModel");
+            = new SimpleObjectProperty<TableViewSelectionModel<S>>(this, "selectionModel") {
+
+        TableViewSelectionModel<S> oldValue = null;
+        
+        @Override protected void invalidated() {
+            
+            if (oldValue != null) {
+                oldValue.cellSelectionEnabledProperty().removeListener(cellSelectionModelInvalidationListener);
+            }
+            
+            oldValue = get();
+            
+            if (oldValue != null) {
+                oldValue.cellSelectionEnabledProperty().addListener(cellSelectionModelInvalidationListener);
+                // fake an invalidation to ensure updated pseudo-class state
+                cellSelectionModelInvalidationListener.invalidated(oldValue.cellSelectionEnabledProperty());
+            } 
+        }
+      
+    };
     /**
      * The SelectionModel provides the API through which it is possible
      * to select single or multiple items within a TableView, as  well as inspect
@@ -687,6 +707,17 @@ public class TableView<S> extends Control {
         return selectionModel.get();
     }
 
+    /* proxy pseudo-class state change from selectionModel's cellSelectionEnabledProperty */
+    private final InvalidationListener cellSelectionModelInvalidationListener = 
+        new InvalidationListener() {
+
+        @Override
+        public void invalidated(Observable o) {
+            final boolean isCellSelection = ((BooleanProperty)o).get();
+            pseudoClassStateChanged(PSEUDO_CLASS_CELL_SELECTION,  isCellSelection);
+            pseudoClassStateChanged(PSEUDO_CLASS_ROW_SELECTION,  !isCellSelection);
+        }
+    };
     
     // --- Focus Model
     private ObjectProperty<TableViewFocusModel<S>> focusModel;
@@ -1013,22 +1044,10 @@ public class TableView<S> extends Control {
     private static final String DEFAULT_STYLE_CLASS = "table-view";
     private static final String CELL_SPAN_TABLE_VIEW_STYLE_CLASS = "cell-span-table-view";
     
-    private static final PseudoClass.State PSEUDO_CLASS_CELL_SELECTION = 
-            PseudoClass.getState("cell-selection");
-    private static final PseudoClass.State PSEUDO_CLASS_ROW_SELECTION = 
-            PseudoClass.getState("row-selection");
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override public PseudoClass.States getPseudoClassStates() {
-        PseudoClass.States states = super.getPseudoClassStates();
-        if (getSelectionModel() != null) {
-            if (getSelectionModel().isCellSelectionEnabled()) states.addState(PSEUDO_CLASS_CELL_SELECTION);
-            else states.addState(PSEUDO_CLASS_ROW_SELECTION);
-        }
-        return states;
-    }
+    private static final PseudoClass PSEUDO_CLASS_CELL_SELECTION = 
+            PseudoClass.getPseudoClass("cell-selection");
+    private static final PseudoClass PSEUDO_CLASS_ROW_SELECTION = 
+            PseudoClass.getPseudoClass("row-selection");
 
 
     /***************************************************************************
@@ -1148,8 +1167,6 @@ public class TableView<S> extends Control {
                 @Override public void invalidated(Observable o) {
                     isCellSelectionEnabled();
                     clearSelection();
-                    tableView.pseudoClassStateChanged(TableView.PSEUDO_CLASS_CELL_SELECTION);
-                    tableView.pseudoClassStateChanged(TableView.PSEUDO_CLASS_ROW_SELECTION);
                 }
             });
             
@@ -2091,4 +2108,5 @@ public class TableView<S> extends Control {
             return tableView.getVisibleLeafColumn(newColumnIndex);
         }
     }
+
 }

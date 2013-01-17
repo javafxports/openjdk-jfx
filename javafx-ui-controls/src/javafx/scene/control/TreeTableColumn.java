@@ -24,6 +24,7 @@
  */
 package javafx.scene.control;
 
+import javafx.css.CssMetaData;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -45,10 +46,8 @@ import javafx.event.EventTarget;
 import javafx.event.EventType;
 import javafx.scene.Node;
 import javafx.util.Callback;
-import com.sun.javafx.css.CssMetaData;
 import com.sun.javafx.css.Styleable;
 import com.sun.javafx.scene.control.skin.TableViewSkinBase;
-
 /**
  * A {@link TreeTableView} is made up of a number of TreeTableColumn instances. Each
  * TreeTableColumn in a tree table is responsible for displaying (and editing) the contents
@@ -421,10 +420,10 @@ public class TreeTableColumn<S,T> extends TableColumnBase<TreeItem<S>,T> impleme
                     TreeTableView table = getTreeTableView();
                     if (table == null) return;
                     Map properties = table.getProperties();
-                    if (properties.containsKey(TableViewSkinBase.RECREATE)) {
-                        properties.remove(TableViewSkinBase.RECREATE);
+                    if (properties.containsKey(TableViewSkinBase.REBUILD)) {
+                        properties.remove(TableViewSkinBase.REBUILD);
                     }
-                    properties.put(TableViewSkinBase.RECREATE, Boolean.TRUE);
+                    properties.put(TableViewSkinBase.REBUILD, Boolean.TRUE);
                 }
             };
     public final void setCellFactory(Callback<TreeTableColumn<S,T>, TreeTableCell<S,T>> value) {

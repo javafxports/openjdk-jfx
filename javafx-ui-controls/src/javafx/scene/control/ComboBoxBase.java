@@ -25,7 +25,8 @@
 
 package javafx.scene.control;
 
-import com.sun.javafx.css.PseudoClass;
+import java.util.Set;
+import javafx.css.PseudoClass;
 import javafx.beans.property.*;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
@@ -163,7 +164,7 @@ public abstract class ComboBoxBase<T> extends Control {
     public final boolean isEditable() { return editableProperty().get(); }
     private BooleanProperty editable = new SimpleBooleanProperty(this, "editable", false) {
         @Override protected void invalidated() {
-            pseudoClassStateChanged(PSEUDO_CLASS_EDITABLE);
+            pseudoClassStateChanged(PSEUDO_CLASS_EDITABLE, get());
         }
     };
     
@@ -188,7 +189,7 @@ public abstract class ComboBoxBase<T> extends Control {
         if (showing == null) {
             showing = new ReadOnlyBooleanWrapper(false) {
                 @Override protected void invalidated() {
-                    pseudoClassStateChanged(PSEUDO_CLASS_SHOWING);
+                    pseudoClassStateChanged(PSEUDO_CLASS_SHOWING, get());
                 }
 
                 @Override
@@ -242,7 +243,7 @@ public abstract class ComboBoxBase<T> extends Control {
     public final boolean isArmed() { return armedProperty().get(); }
     private BooleanProperty armed = new SimpleBooleanProperty(this, "armed", false) {
         @Override protected void invalidated() {
-            pseudoClassStateChanged(PSEUDO_CLASS_ARMED);
+            pseudoClassStateChanged(PSEUDO_CLASS_ARMED, get());
         }
     };
     
@@ -431,21 +432,11 @@ public abstract class ComboBoxBase<T> extends Control {
 
     private static final String DEFAULT_STYLE_CLASS = "combo-box-base";
     
-    private static final PseudoClass.State PSEUDO_CLASS_EDITABLE =
-            PseudoClass.getState("editable");
-    private static final PseudoClass.State PSEUDO_CLASS_SHOWING =
-            PseudoClass.getState("showing");
-    private static final PseudoClass.State PSEUDO_CLASS_ARMED =
-            PseudoClass.getState("armed");
+    private static final PseudoClass PSEUDO_CLASS_EDITABLE =
+            PseudoClass.getPseudoClass("editable");
+    private static final PseudoClass PSEUDO_CLASS_SHOWING =
+            PseudoClass.getPseudoClass("showing");
+    private static final PseudoClass PSEUDO_CLASS_ARMED =
+            PseudoClass.getPseudoClass("armed");
     
-    /**
-     * {@inheritDoc}
-     */
-    @Override public PseudoClass.States getPseudoClassStates() {
-        PseudoClass.States states = super.getPseudoClassStates();
-        if (isEditable()) states.addState(PSEUDO_CLASS_EDITABLE);
-        if (isShowing()) states.addState(PSEUDO_CLASS_SHOWING);
-        if (isArmed()) states.addState(PSEUDO_CLASS_ARMED);
-        return states;
-    }
 }
