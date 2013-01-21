@@ -45,9 +45,9 @@
 package com.sun.javafx.scene.control.skin;
 
 import com.sun.javafx.PlatformUtil;
-import com.sun.javafx.css.StyleableBooleanProperty;
-import com.sun.javafx.css.StyleableObjectProperty;
-import com.sun.javafx.css.CssMetaData;
+import javafx.css.StyleableBooleanProperty;
+import javafx.css.StyleableObjectProperty;
+import javafx.css.CssMetaData;
 import com.sun.javafx.css.converters.BooleanConverter;
 import com.sun.javafx.css.converters.EnumConverter;
 import com.sun.javafx.scene.control.behavior.PaginationBehavior;
@@ -62,9 +62,9 @@ import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
-import javafx.beans.value.WritableValue;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ListChangeListener.Change;
+import javafx.css.StyleableProperty;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.HPos;
@@ -1259,9 +1259,9 @@ public class PaginationSkin extends BehaviorSkinBase<Pagination, PaginationBehav
             }
 
             @Override
-            public WritableValue<Boolean> getWritableValue(Pagination n) {
+            public StyleableProperty<Boolean> getStyleableProperty(Pagination n) {
                 final PaginationSkin skin = (PaginationSkin) n.getSkin();
-                return skin.arrowsVisibleProperty();
+                return (StyleableProperty)skin.arrowsVisibleProperty();
             }
         };
 
@@ -1276,9 +1276,9 @@ public class PaginationSkin extends BehaviorSkinBase<Pagination, PaginationBehav
             }
 
             @Override
-            public WritableValue<Boolean> getWritableValue(Pagination n) {
+            public StyleableProperty<Boolean> getStyleableProperty(Pagination n) {
                 final PaginationSkin skin = (PaginationSkin) n.getSkin();
-                return skin.pageInformationVisibleProperty();
+                return (StyleableProperty)skin.pageInformationVisibleProperty();
             }
         };
 
@@ -1293,9 +1293,9 @@ public class PaginationSkin extends BehaviorSkinBase<Pagination, PaginationBehav
             }
 
             @Override
-            public WritableValue<Side> getWritableValue(Pagination n) {
+            public StyleableProperty<Side> getStyleableProperty(Pagination n) {
                 final PaginationSkin skin = (PaginationSkin) n.getSkin();
-                return skin.pageInformationAlignmentProperty();
+                return (StyleableProperty)skin.pageInformationAlignmentProperty();
             }
         };
 
@@ -1310,9 +1310,9 @@ public class PaginationSkin extends BehaviorSkinBase<Pagination, PaginationBehav
             }
 
             @Override
-            public WritableValue<Boolean> getWritableValue(Pagination n) {
+            public StyleableProperty<Boolean> getStyleableProperty(Pagination n) {
                 final PaginationSkin skin = (PaginationSkin) n.getSkin();
-                return skin.tooltipVisibleProperty();
+                return (StyleableProperty)skin.tooltipVisibleProperty();
             }
         };
 

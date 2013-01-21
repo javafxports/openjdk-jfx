@@ -26,6 +26,7 @@
 package javafx.scene.control;
 
 import java.text.BreakIterator;
+import java.util.Set;
 import javafx.beans.DefaultProperty;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
@@ -48,7 +49,7 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import com.sun.javafx.Utils;
 import com.sun.javafx.binding.ExpressionHelper;
-import com.sun.javafx.css.PseudoClass;
+import javafx.css.PseudoClass;
 
 /**
  * Abstract base class for text input controls.
@@ -200,7 +201,7 @@ public abstract class TextInputControl extends Control {
      */
     private BooleanProperty editable = new SimpleBooleanProperty(this, "editable", true) {
         @Override protected void invalidated() {
-            pseudoClassStateChanged(PSEUDO_CLASS_READONLY);
+            pseudoClassStateChanged(PSEUDO_CLASS_READONLY, get());
         }
     };
     public final boolean isEditable() { return editable.getValue(); }
@@ -1043,17 +1044,7 @@ public abstract class TextInputControl extends Control {
      **************************************************************************/
 
 
-    private static final PseudoClass.State PSEUDO_CLASS_READONLY
-            = PseudoClass.getState("readonly");
+    private static final PseudoClass PSEUDO_CLASS_READONLY
+            = PseudoClass.getPseudoClass("readonly");
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override public PseudoClass.States getPseudoClassStates() {
-        PseudoClass.States states = super.getPseudoClassStates();
-
-        if (!isEditable()) states.addState(PSEUDO_CLASS_READONLY);
-
-        return states;
-    }
 }

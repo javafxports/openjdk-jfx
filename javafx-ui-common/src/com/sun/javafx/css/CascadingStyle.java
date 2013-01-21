@@ -27,11 +27,11 @@ package com.sun.javafx.css;
 
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
+import javafx.css.StyleOrigin;
 
 
-/** A marriage of pseudoclasses (potentially empty) to property and value */
+/** A marriage of pseudo-classes (potentially empty) to property and value */
 class CascadingStyle implements Comparable {
 
     /** */
@@ -41,7 +41,7 @@ class CascadingStyle implements Comparable {
     }
     
     /** State variables, like &quot;hover&quot; or &quot;pressed&quot; */
-    private PseudoClass.States pseudoclasses;
+    private long[] pseudoClasses;
 
     /* specificity of the rule that matched */
     private final int specificity;
@@ -58,10 +58,10 @@ class CascadingStyle implements Comparable {
     // internal to Style
     static private Set<String> strSet = new HashSet<String>();
 
-    CascadingStyle(final Style style, PseudoClass.States pseudoclasses, 
+    CascadingStyle(final Style style, long[] pseudoClasses, 
             final int specificity, final int ordinal) {
         this.style = style;
-        this.pseudoclasses = pseudoclasses;
+        this.pseudoClasses = pseudoClasses;
         this.specificity = specificity;
         this.ordinal = ordinal;
         this.skinProp = "-fx-skin".equals(style.getDeclaration().getProperty());
@@ -83,7 +83,7 @@ class CascadingStyle implements Comparable {
     }
     
     // Wrapper to make StyleHelper's life a little easier
-    Origin getOrigin() {
+    StyleOrigin getOrigin() {
         return getRule().getOrigin();
     }
     
@@ -112,8 +112,8 @@ class CascadingStyle implements Comparable {
             return false;
         }
         
-        // is [foo bar] a subset of [foo bar bang]?
-        return pseudoclasses.isSubsetOf(other.pseudoclasses);
+        // does [foo bar bang] contain all of [foo bar]?
+        return Arrays.equals(pseudoClasses, other.pseudoClasses);
 
     }
 
@@ -126,7 +126,7 @@ class CascadingStyle implements Comparable {
         int hash = 7;
         final String property = getProperty();
         hash = 47 * hash + (property != null ? property.hashCode() : 0);
-        hash = 47 * hash + (pseudoclasses != null ? pseudoclasses.hashCode() : 0);
+        hash = 47 * hash + (pseudoClasses != null ? pseudoClasses.hashCode() : 0);
         return hash;
     }
 
@@ -147,12 +147,12 @@ class CascadingStyle implements Comparable {
         final Declaration decl = style.getDeclaration();
         final boolean important = decl != null ? decl.isImportant() : false;
         final Rule rule = decl != null ? decl.getRule() : null;
-        final Origin source = rule != null ? rule.getOrigin() : null;
+        final StyleOrigin source = rule != null ? rule.getOrigin() : null;
         
         final Declaration otherDecl = other.style.getDeclaration();
         final boolean otherImportant = otherDecl != null ? otherDecl.isImportant() : false;
         final Rule otherRule = otherDecl != null ? otherDecl.getRule() : null;
-        final Origin otherSource = rule != null ? otherRule.getOrigin() : null;
+        final StyleOrigin otherSource = rule != null ? otherRule.getOrigin() : null;
         
         int c = 0;
         if (this.skinProp && !other.skinProp) {

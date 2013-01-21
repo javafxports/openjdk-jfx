@@ -47,6 +47,7 @@ import static javafx.scene.input.KeyCode.UP;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import javafx.event.EventType;
 import javafx.geometry.NodeOrientation;
@@ -60,7 +61,7 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 
 import com.sun.javafx.PlatformUtil;
-import com.sun.javafx.css.PseudoClass;
+import javafx.css.PseudoClass;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.beans.value.WeakChangeListener;
@@ -866,24 +867,6 @@ public class ListViewBehavior<T> extends BehaviorBase<ListView<T>> {
         @Override public boolean getVertical(Control control) {
             return ((ListView)control).getOrientation() == Orientation.VERTICAL;
         }
-    }
-
-
-    private static final PseudoClass.State INTERNAL_PSEUDOCLASS_STATE = 
-            PseudoClass.getState("internal-focus");
-    private static final PseudoClass.State EXTERNAL_PSEUDOCLASS_STATE = 
-            PseudoClass.getState("external-focus");
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override public PseudoClass.States getPseudoClassStates() {
-        PseudoClass.States states = super.getPseudoClassStates();
-        if (tlFocus != null) {
-            if (tlFocus.isExternalFocus()) states.addState(EXTERNAL_PSEUDOCLASS_STATE);
-            else states.addState(INTERNAL_PSEUDOCLASS_STATE);
-        }
-        return states;
     }
 
 }

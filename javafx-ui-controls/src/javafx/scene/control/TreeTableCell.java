@@ -24,7 +24,7 @@
  */
 package javafx.scene.control;
 
-import com.sun.javafx.css.PseudoClass;
+import javafx.css.PseudoClass;;
 import com.sun.javafx.scene.control.skin.TreeTableCellSkin;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
@@ -369,13 +369,10 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
         
         // update the pseudo class state regarding whether this is the last
         // visible cell (i.e. the right-most). 
-        boolean old = isLastVisibleColumn;
         isLastVisibleColumn = getTableColumn() != null &&
                 columnIndex != -1 && 
                 columnIndex == tv.getVisibleLeafColumns().size() - 1;
-        if (old != isLastVisibleColumn) {
-            pseudoClassStateChanged(PSEUDO_CLASS_LAST_VISIBLE);
-        }
+        pseudoClassStateChanged(PSEUDO_CLASS_LAST_VISIBLE, isLastVisibleColumn);
     }
 
     private void updateSelection() {
@@ -561,8 +558,8 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
      **************************************************************************/
 
     private static final String DEFAULT_STYLE_CLASS = "tree-table-cell";
-    private static final PseudoClass.State PSEUDO_CLASS_LAST_VISIBLE = 
-            PseudoClass.getState("last-visible");
+    private static final PseudoClass PSEUDO_CLASS_LAST_VISIBLE = 
+            PseudoClass.getPseudoClass("last-visible");
 
     /** {@inheritDoc} */
     @Override protected Skin<?> createDefaultSkin() {

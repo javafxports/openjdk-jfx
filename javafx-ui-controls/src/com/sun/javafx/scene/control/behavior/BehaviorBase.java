@@ -25,7 +25,7 @@
 
 package com.sun.javafx.scene.control.behavior;
 
-import com.sun.javafx.css.PseudoClass;
+import javafx.css.PseudoClass;
 import javafx.event.EventHandler;
 import javafx.geometry.NodeOrientation;
 import javafx.scene.Node;
@@ -35,6 +35,7 @@ import javafx.scene.input.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import com.sun.javafx.scene.traversal.Direction;
 
@@ -322,9 +323,12 @@ public class BehaviorBase<C extends Control> {
     }
 
     /**
-     * @see Node#getPseudoClassStates() }
+     * @see Node#pseudoClassStateChanged()
      */
-    public PseudoClass.States getPseudoClassStates() {
-        return null;
+    public final void pseudoClassStateChanged(PseudoClass pseudoClass, boolean active) {
+        Control ctl = getControl();
+        if (ctl != null) {
+            ctl.pseudoClassStateChanged(pseudoClass, active);
+        }
     }
 }

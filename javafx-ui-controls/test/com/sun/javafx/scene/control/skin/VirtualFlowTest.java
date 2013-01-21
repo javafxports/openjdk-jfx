@@ -23,7 +23,7 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.sun.javafx.scene.CSSFlags;
+import com.sun.javafx.scene.CssFlags;
 import com.sun.javafx.scene.control.skin.VirtualFlow.ArrayLinkedList;
 import java.util.List;
 import javafx.util.Callback;
@@ -42,7 +42,7 @@ public class VirtualFlowTest {
     // The VirtualFlow we are going to test. By default, there are 100 cells
     // and each cell is 100 wide and 25 tall, except for the 30th cell, which
     // is 200 wide and 100 tall.
-    private VirtualFlow flow;
+    private VirtualFlow<IndexedCell> flow;
 //    private Scene scene;
 
     @Before public void setUp() {
@@ -104,7 +104,7 @@ public class VirtualFlowTest {
     /**
      * Asserts that only the minimal number of cells are used.
      */
-    public void assertMinimalNumberOfCellsAreUsed(VirtualFlow flow) {
+    public <T extends IndexedCell> void assertMinimalNumberOfCellsAreUsed(VirtualFlow<T> flow) {
         pulse();
         IndexedCell firstCell = flow.cells.getFirst();
         IndexedCell lastCell = flow.cells.getLast();
@@ -757,7 +757,7 @@ public class VirtualFlowTest {
 //        pulse();
 //        for (int i = 0; i < flow.cells.size(); i++) {
 //            IndexedCell cell = flow.cells.get(i);
-//            assertEquals(CSSFlags.CLEAN, cell.impl_getCSSFlags());
+//            assertEquals(CssFlags.CLEAN, cell.impl_getCSSFlags());
 //        }
 //    }
 

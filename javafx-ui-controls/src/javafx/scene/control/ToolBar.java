@@ -28,21 +28,21 @@ package javafx.scene.control;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import javafx.beans.DefaultProperty;
 import javafx.beans.property.ObjectProperty;
-import javafx.beans.value.WritableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Orientation;
 import javafx.scene.Node;
 
-import com.sun.javafx.css.StyleManager;
-import com.sun.javafx.css.StyleableObjectProperty;
-import com.sun.javafx.css.CssMetaData;
-import com.sun.javafx.css.PseudoClass;
+import javafx.css.StyleableObjectProperty;
+import javafx.css.CssMetaData;
+import javafx.css.PseudoClass;
 import com.sun.javafx.css.converters.EnumConverter;
 import com.sun.javafx.scene.control.skin.ToolBarSkin;
+import javafx.css.StyleableProperty;
 
 /**
  * <p>
@@ -112,8 +112,12 @@ public class ToolBar extends Control {
         // makes it look to css like the user set the value and css will not 
         // override. Initializing focusTraversable by calling set on the 
         // CssMetaData ensures that css will be able to override the value.
-        final CssMetaData prop = CssMetaData.getCssMetaData(focusTraversableProperty());
-        prop.set(this, Boolean.FALSE);            
+        final CssMetaData prop = ((StyleableProperty)focusTraversableProperty()).getCssMetaData();
+        prop.set(this, Boolean.FALSE, null);
+        
+        // initialize css pseudo-class state
+        pseudoClassStateChanged(HORIZONTAL_PSEUDOCLASS_STATE, true);
+        
     }
 
     /***************************************************************************
@@ -148,8 +152,9 @@ public class ToolBar extends Control {
         if (orientation == null) {
             orientation = new StyleableObjectProperty<Orientation>(Orientation.HORIZONTAL) {
                 @Override public void invalidated() {
-                    pseudoClassStateChanged(VERTICAL_PSEUDOCLASS_STATE);
-                    pseudoClassStateChanged(HORIZONTAL_PSEUDOCLASS_STATE);
+                    final boolean isVertical = (get() == Orientation.VERTICAL);
+                    pseudoClassStateChanged(VERTICAL_PSEUDOCLASS_STATE,    isVertical);
+                    pseudoClassStateChanged(HORIZONTAL_PSEUDOCLASS_STATE, !isVertical);
                 }
 
                 @Override
@@ -210,8 +215,8 @@ public class ToolBar extends Control {
             }
 
             @Override
-            public WritableValue<Orientation> getWritableValue(ToolBar n) {
-                return n.orientationProperty();
+            public StyleableProperty<Orientation> getStyleableProperty(ToolBar n) {
+                return (StyleableProperty)n.orientationProperty();
             }
         };
 
@@ -238,24 +243,13 @@ public class ToolBar extends Control {
      * {@inheritDoc}
      */
     @Override
-    public List<CssMetaData> getCssMetaData() {
+    public List<CssMetaData> getControlCssMetaData() {
         return getClassCssMetaData();
     }
 
-    private static final PseudoClass.State VERTICAL_PSEUDOCLASS_STATE = PseudoClass.getState("vertical");
-    private static final PseudoClass.State HORIZONTAL_PSEUDOCLASS_STATE = PseudoClass.getState("horizontal");
+    private static final PseudoClass VERTICAL_PSEUDOCLASS_STATE = PseudoClass.getPseudoClass("vertical");
+    private static final PseudoClass HORIZONTAL_PSEUDOCLASS_STATE = PseudoClass.getPseudoClass("horizontal");
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override public PseudoClass.States getPseudoClassStates() {
-        PseudoClass.States states = super.getPseudoClassStates();
-        if (getOrientation() == Orientation.VERTICAL) states.addState(VERTICAL_PSEUDOCLASS_STATE);
-        else states.addState(HORIZONTAL_PSEUDOCLASS_STATE);
-        return states;
-    }
-
-    
     /**
       * Most Controls return true for focusTraversable, so Control overrides
       * this method to return true, but ToolBar returns false for

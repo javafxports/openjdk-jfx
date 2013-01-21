@@ -36,7 +36,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringBufferInputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
@@ -56,8 +55,12 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.control.ButtonBuilder;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ColorPicker;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.RadioMenuItemBuilder;
 import javafx.scene.control.ScrollPaneBuilder;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TabBuilder;
@@ -85,7 +88,16 @@ public class Modena extends Application {
     private BorderPane root;
     private SamplePage samplePage;
     private Node mosaic;
+    private Node heightTest;
     private Stage mainStage;
+    private Color backgroundColor;
+    private Color baseColor;
+    private Color accentColor;
+    private String fontName = null;
+    private int fontSize = 13;
+    private String cssOverride = "";
+    private ToggleButton modenaButton,retinaButton;
+    private TabPane contentTabs;
     
     @Override public void start(Stage stage) throws Exception {
         mainStage = stage;
@@ -115,7 +127,7 @@ public class Modena extends Application {
                 root.setCenter(null);
             }
             // Create Content Area
-            final TabPane contentTabs = new TabPane();
+            contentTabs = new TabPane();
             contentTabs.getTabs().addAll(
                 TabBuilder.create().text("All Controls").content(
                     ScrollPaneBuilder.create().content(
@@ -126,17 +138,33 @@ public class Modena extends Application {
                     ScrollPaneBuilder.create().content(
                         mosaic = (Node)FXMLLoader.load(Modena.class.getResource("ui-mosaic.fxml"))
                     ).build()
+                ).build(),
+                TabBuilder.create().text("Alignment Test").content(
+                    ScrollPaneBuilder.create().content(
+                        heightTest = (Node)FXMLLoader.load(Modena.class.getResource("SameHeightTest.fxml"))
+                    ).build()
                 ).build()
             );
             contentTabs.getSelectionModel().select(selectedTab);
+            // height test set selection for 
+            Platform.runLater(new Runnable() {
+                @Override public void run() {
+                    for (Node n: heightTest.lookupAll(".choice-box")) {
+                        ((ChoiceBox)n).getSelectionModel().selectFirst();
+                    }
+                    for (Node n: heightTest.lookupAll(".combo-box")) {
+                        ((ComboBox)n).getSelectionModel().selectFirst();
+                    }
+                }
+            });
             // set white background for caspian
             if (!modena) {
                 samplePage.setStyle("-fx-background-color: white;");
                 mosaic.setStyle("-fx-background-color: white;");
+                heightTest.setStyle("-fx-background-color: white;");
             }
             // Create Toolbar
-            final ToggleButton modenaButton;;
-            final ToggleButton retinaButton = ToggleButtonBuilder.create()
+            retinaButton = ToggleButtonBuilder.create()
                 .text("Retina @2x")
                 .selected(retina)
                 .onAction(new EventHandler<ActionEvent>(){
@@ -152,7 +180,6 @@ public class Modena extends Application {
                 })
                 .build();
             ToggleGroup themesToggleGroup = new ToggleGroup();
-            ToggleGroup colorToggleGroup = new ToggleGroup();
             ToolBar toolBar = new ToolBar(
                 HBoxBuilder.create()
                     .children(
@@ -183,8 +210,13 @@ public class Modena extends Application {
                 new Separator(),
                 retinaButton,
                 new Separator(),
+                createFontMenu(),
+                new Separator(),
                 new Label("Base:"),
                 createBaseColorPicker(),
+                new Separator(),
+                new Label("Background:"),
+                createBackgroundColorPicker(),
                 new Separator(),
                 new Label("Accent:"),
                 createAccentColorPicker(),
@@ -217,6 +249,48 @@ public class Modena extends Application {
         }
     }
     
+    private MenuButton createFontMenu() {
+        MenuButton mb = new MenuButton("Font Sizes");
+        ToggleGroup tg = new ToggleGroup();
+        mb.getItems().addAll(
+            RadioMenuItemBuilder.create().text("System Default").onAction(new EventHandler<ActionEvent>(){
+                @Override public void handle(ActionEvent event) {
+                    fontName = null;
+                    updateCSSOverrides();
+                }
+            }).style("-fx-font: 13px System;").toggleGroup(tg).selected(true).build(),
+            RadioMenuItemBuilder.create().text("Mac (13px)").onAction(new EventHandler<ActionEvent>(){
+                @Override public void handle(ActionEvent event) {
+                    fontName = "Lucida Grande";
+                    fontSize = 13;
+                    updateCSSOverrides();
+                }
+            }).style("-fx-font: 13px \"Lucida Grande\";").toggleGroup(tg).build(),
+            RadioMenuItemBuilder.create().text("Windows 100% (12px)").onAction(new EventHandler<ActionEvent>(){
+                @Override public void handle(ActionEvent event) {
+                    fontName = "Segoe UI";
+                    fontSize = 12;
+                    updateCSSOverrides();
+                }
+            }).style("-fx-font: 12px \"Segoe UI\";").toggleGroup(tg).build(),
+            RadioMenuItemBuilder.create().text("Windows 125% (15px)").onAction(new EventHandler<ActionEvent>(){
+                @Override public void handle(ActionEvent event) {
+                    fontName = "Segoe UI";
+                    fontSize = 15;
+                    updateCSSOverrides();
+                }
+            }).style("-fx-font: 15px \"Segoe UI\";").toggleGroup(tg).build(),
+            RadioMenuItemBuilder.create().text("Windows 150% (18px)").onAction(new EventHandler<ActionEvent>(){
+                @Override public void handle(ActionEvent event) {
+                    fontName = "Segoe UI";
+                    fontSize = 18;
+                    updateCSSOverrides();
+                }
+            }).style("-fx-font: 18px \"Segoe UI\";").toggleGroup(tg).build()
+        );
+        return mb;
+    }
+    
     private ColorPicker createBaseColorPicker() {
         ColorPicker colorPicker = new ColorPicker(Color.TRANSPARENT);
         colorPicker.getCustomColors().addAll(
@@ -242,6 +316,38 @@ public class Modena extends Application {
                     baseColor = null;
                 } else {
                     baseColor = c;
+                }
+                updateCSSOverrides();
+            }
+        });
+        return colorPicker;
+    }
+    
+    private ColorPicker createBackgroundColorPicker() {
+        ColorPicker colorPicker = new ColorPicker(Color.TRANSPARENT);
+        colorPicker.getCustomColors().addAll(
+                Color.TRANSPARENT,
+                Color.web("#f3622d"),
+                Color.web("#fba71b"),
+                Color.web("#57b757"),
+                Color.web("#41a9c9"),
+                Color.web("#888"),
+                Color.RED,
+                Color.ORANGE,
+                Color.YELLOW,
+                Color.GREEN,
+                Color.CYAN,
+                Color.BLUE,
+                Color.PURPLE,
+                Color.MAGENTA,
+                Color.BLACK
+        );
+        colorPicker.valueProperty().addListener(new ChangeListener<Color>() {
+            @Override public void changed(ObservableValue<? extends Color> observable, Color oldValue, Color c) {
+                if (c == null) {
+                    backgroundColor = null;
+                } else {
+                    backgroundColor = c;
                 }
                 updateCSSOverrides();
             }
@@ -283,14 +389,11 @@ public class Modena extends Application {
         return colorPicker;
     }
     
-    private Color baseColor;
-    private Color accentColor;
-    private String cssOverride = "";
-    
     private void updateCSSOverrides() {
         cssOverride = ".root {\n";
         System.out.println("baseColor = "+baseColor);
         System.out.println("accentColor = " + accentColor);
+        System.out.println("backgroundColor = " + backgroundColor);
         if (baseColor != null && baseColor != Color.TRANSPARENT) {
             final String color = String.format((Locale) null, "#%02x%02x%02x", 
                     Math.round(baseColor.getRed() * 255), 
@@ -298,12 +401,22 @@ public class Modena extends Application {
                     Math.round(baseColor.getBlue() * 255));
             cssOverride += "    -fx-base:"+color+";\n";
         }
+        if (backgroundColor != null && backgroundColor != Color.TRANSPARENT) {
+            final String color = String.format((Locale) null, "#%02x%02x%02x", 
+                    Math.round(backgroundColor.getRed() * 255), 
+                    Math.round(backgroundColor.getGreen() * 255), 
+                    Math.round(backgroundColor.getBlue() * 255));
+            cssOverride += "    -fx-background:"+color+";\n";
+        }
         if (accentColor != null && accentColor != Color.TRANSPARENT) {
             final String color = String.format((Locale) null, "#%02x%02x%02x", 
                     Math.round(accentColor.getRed() * 255), 
                     Math.round(accentColor.getGreen() * 255), 
                     Math.round(accentColor.getBlue() * 255));
             cssOverride += "    -fx-accent:"+color+";\n";
+        }
+        if (fontName != null) {
+            cssOverride += "    -fx-font:"+fontSize+"px \""+fontName+"\";\n";
         }
         cssOverride += "}\n";
         System.out.println("cssOverride = " + cssOverride);

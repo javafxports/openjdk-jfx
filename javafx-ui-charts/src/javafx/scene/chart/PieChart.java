@@ -24,13 +24,15 @@
  */
 package javafx.scene.chart;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
+import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.DoublePropertyBase;
@@ -42,7 +44,6 @@ import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.property.StringPropertyBase;
-import javafx.beans.value.WritableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
@@ -51,21 +52,25 @@ import javafx.event.EventHandler;
 import javafx.geometry.Side;
 import javafx.scene.Node;
 import javafx.scene.layout.Region;
-import javafx.scene.shape.*;
+import javafx.scene.shape.Arc;
+import javafx.scene.shape.ArcTo;
+import javafx.scene.shape.ArcType;
+import javafx.scene.shape.ClosePath;
+import javafx.scene.shape.LineTo;
+import javafx.scene.shape.MoveTo;
+import javafx.scene.shape.Path;
 import javafx.scene.text.Text;
 import javafx.scene.transform.Scale;
 import javafx.util.Duration;
-
 import com.sun.javafx.charts.Legend;
 import com.sun.javafx.charts.Legend.LegendItem;
 import com.sun.javafx.collections.NonIterableChange;
-import com.sun.javafx.css.StyleableBooleanProperty;
-import com.sun.javafx.css.StyleableDoubleProperty;
-import com.sun.javafx.css.CssMetaData;
+import javafx.css.StyleableBooleanProperty;
+import javafx.css.StyleableDoubleProperty;
+import javafx.css.CssMetaData;
 import com.sun.javafx.css.converters.BooleanConverter;
 import com.sun.javafx.css.converters.SizeConverter;
-import java.util.ArrayList;
-import javafx.animation.*;
+import javafx.css.StyleableProperty;
 
 /**
  * Displays a PieChart. The chart content is populated by pie slices based on
@@ -309,6 +314,12 @@ public class PieChart extends Chart {
     }
 
     // -------------- METHODS --------------------------------------------------
+
+    @Override public void requestLayout() {
+        super.requestLayout();
+        // RT-22986 PieChart legend resize issue
+        if (legend != null) legend.requestLayout();
+    }
     
     private void dataNameChanged(Data item) {
         item.textNode.setText(item.getName());
@@ -334,7 +345,7 @@ public class PieChart extends Chart {
         // check if symbol has already been created
         if (arcRegion == null) {
             arcRegion = new Region();
-            arcRegion.setPickOnBounds(false); 
+            arcRegion.setPickOnBounds(false);
             item.setNode(arcRegion);
         }
         // Note: not sure if we want to add or check, ie be more careful and efficient here
@@ -601,6 +612,7 @@ public class PieChart extends Chart {
                         arcRegion.setShape(arc);
                         arcRegion.setScaleShape(false);
                         arcRegion.setCenterShape(false);
+                        arcRegion.setCacheShape(false);
                     }
                 }
                 double size = (isClockwise()) ? (-scale * Math.abs(item.getCurrentPieValue())) : (scale * Math.abs(item.getCurrentPieValue()));
@@ -874,8 +886,8 @@ public class PieChart extends Chart {
             }
 
             @Override
-            public WritableValue<Boolean> getWritableValue(PieChart node) {
-                return node.clockwiseProperty();
+            public StyleableProperty<Boolean> getStyleableProperty(PieChart node) {
+                return (StyleableProperty)node.clockwiseProperty();
             }
         };
          
@@ -889,8 +901,8 @@ public class PieChart extends Chart {
             }
 
             @Override
-            public WritableValue<Boolean> getWritableValue(PieChart node) {
-                return node.labelsVisibleProperty();
+            public StyleableProperty<Boolean> getStyleableProperty(PieChart node) {
+                return (StyleableProperty)node.labelsVisibleProperty();
             }
         };
          
@@ -904,8 +916,8 @@ public class PieChart extends Chart {
             }
 
             @Override
-            public WritableValue<Number> getWritableValue(PieChart node) {
-                return node.labelLineLengthProperty();
+            public StyleableProperty<Number> getStyleableProperty(PieChart node) {
+                return (StyleableProperty)node.labelLineLengthProperty();
             }
         };
          
@@ -919,8 +931,8 @@ public class PieChart extends Chart {
             }
 
             @Override
-            public WritableValue<Number> getWritableValue(PieChart node) {
-                return node.startAngleProperty();
+            public StyleableProperty<Number> getStyleableProperty(PieChart node) {
+                return (StyleableProperty)node.startAngleProperty();
             }
         };
 

@@ -26,6 +26,7 @@
 package com.sun.javafx.scene.control.behavior;
 
 import java.util.List;
+import java.util.Set;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.beans.value.ChangeListener;
@@ -54,7 +55,7 @@ import com.sun.javafx.scene.control.skin.TextFieldSkin;
 import com.sun.javafx.scene.text.HitInfo;
 
 import static com.sun.javafx.PlatformUtil.*;
-import com.sun.javafx.css.PseudoClass;
+import javafx.css.PseudoClass;
 
 /**
  * Text field behavior.
@@ -399,23 +400,6 @@ public class TextFieldBehavior extends TextInputControlBehavior<TextField> {
         PASSWORD_FIELD,
         EDITABLE_COMBO,
         TEXT_AREA;
-    }
-
-    private static final PseudoClass.State INTERNAL_PSEUDOCLASS_STATE = 
-            PseudoClass.getState("internal-focus");
-    private static final PseudoClass.State EXTERNAL_PSEUDOCLASS_STATE = 
-            PseudoClass.getState("external-focus");
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override public PseudoClass.States getPseudoClassStates() {
-        PseudoClass.States states = super.getPseudoClassStates();
-        if (tlFocus != null) {
-            if (tlFocus.isExternalFocus()) states.addState(EXTERNAL_PSEUDOCLASS_STATE);
-            else states.addState(INTERNAL_PSEUDOCLASS_STATE);
-        }
-        return states;
     }
 
 }

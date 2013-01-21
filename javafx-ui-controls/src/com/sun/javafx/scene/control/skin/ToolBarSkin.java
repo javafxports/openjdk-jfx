@@ -33,7 +33,6 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
-import javafx.beans.value.WritableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
@@ -61,9 +60,10 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
-import com.sun.javafx.css.StyleableDoubleProperty;
-import com.sun.javafx.css.StyleableObjectProperty;
-import com.sun.javafx.css.CssMetaData;
+import javafx.css.StyleableDoubleProperty;
+import javafx.css.StyleableObjectProperty;
+import javafx.css.StyleableProperty;
+import javafx.css.CssMetaData;
 import com.sun.javafx.css.converters.EnumConverter;
 import com.sun.javafx.css.converters.SizeConverter;
 import com.sun.javafx.scene.control.behavior.ToolBarBehavior;
@@ -654,9 +654,9 @@ public class ToolBarSkin extends BehaviorSkinBase<ToolBar, ToolBarBehavior> impl
             }
 
             @Override
-            public WritableValue<Number> getWritableValue(ToolBar n) {
+            public StyleableProperty<Number> getStyleableProperty(ToolBar n) {
                 final ToolBarSkin skin = (ToolBarSkin) n.getSkin();
-                return skin.spacingProperty();
+                return (StyleableProperty)skin.spacingProperty();
             }
         };
          
@@ -671,9 +671,9 @@ public class ToolBarSkin extends BehaviorSkinBase<ToolBar, ToolBarBehavior> impl
             }
 
             @Override
-            public WritableValue<Pos> getWritableValue(ToolBar n) {
+            public StyleableProperty<Pos> getStyleableProperty(ToolBar n) {
                 final ToolBarSkin skin = (ToolBarSkin) n.getSkin();
-                return skin.boxAlignmentProperty();
+                return (StyleableProperty)skin.boxAlignmentProperty();
             }
         };
 
