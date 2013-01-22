@@ -31,6 +31,8 @@
  */
 package modena;
 
+import java.util.HashMap;
+import java.util.Map;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
@@ -94,6 +96,8 @@ import static modena.SamplePageChartHelper.*;
 public class SamplePage extends GridPane {
     private int rowIndex = 0;
     
+    private Map<String, Node> content = new HashMap<>();
+    
     private Node withState(Node node, String state) {
         node.getProperties().put("javafx.scene.Node.pseudoClassOverride", state);
         return node;
@@ -103,6 +107,7 @@ public class SamplePage extends GridPane {
         if (state!=null) node.getProperties().put("javafx.scene.Node.pseudoClassOverride", state);
         Platform.runLater(new Runnable() {
             @Override public void run() {
+                // TODO: node.lookup(subNodeStyleClass) is null if stage is not shown
                 if (node != null) node.lookup(subNodeStyleClass).getProperties().put("javafx.scene.Node.pseudoClassOverride", subNodeState);
             }
         });
@@ -118,6 +123,7 @@ public class SamplePage extends GridPane {
         setConstraints(sectionLabel, 0, rowIndex);
         setConstraints(box, 1, rowIndex++);
         getChildren().addAll(sectionLabel,box);
+        content.put(name, box);
     }
     
     private void newDetailedSection(String[] labels, Node ...children) {
@@ -137,6 +143,11 @@ public class SamplePage extends GridPane {
         setConstraints(sectionLabel, 0, rowIndex);
         setConstraints(hbox, 1, rowIndex++);
         getChildren().addAll(sectionLabel,hbox);
+        content.put(labels[0], hbox);
+    }
+
+    public Map<String, Node> getContent() {
+        return content;
     }
     
     public SamplePage() {
@@ -485,14 +496,15 @@ public class SamplePage extends GridPane {
                 withState(createTabPane(5, 200,"Disabled", true, false, Side.RIGHT), "disabled")
                 );
         newDetailedSection(
-                new String[] {"TitledPane:", "normal", "not collapsible", "focused", "disabled"}, 
+                new String[] {"TitledPane:", "normal", "not collapsible", "hover", "focused", "disabled"}, 
                 TitledPaneBuilder.create().text("Title").content(new Label("Content\nLine2.")).build(),
                 TitledPaneBuilder.create().text("Not Collapsible").content(new Label("Content\nLine2.")).collapsible(false).build(),
+                withState(TitledPaneBuilder.create().text("Title").content(new Label("Content\nLine2.")).build(), "hover"),
                 withState(TitledPaneBuilder.create().text("Title").content(new Label("Content\nLine2.")).build(), "focused"),
                 withState(TitledPaneBuilder.create().text("Title").content(new Label("Content\nLine2.")).build(), "disabled")
                 );
         newDetailedSection(
-                new String[] {"Accordian:", "normal", "hover", "focused", "disabled"}, 
+                new String[] {"Accordion:", "normal", "hover", "focused", "disabled"}, 
                 createAccordion(),
                 withState(createAccordion(), null, ".titled-pane", "hover"),
                 withState(createAccordion(), null, ".titled-pane", "focused"),

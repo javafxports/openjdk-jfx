@@ -335,7 +335,7 @@ public class MenuBarSkin extends BehaviorSkinBase<MenuBar, BehaviorBase<MenuBar>
         } else {
            acceleratorKeyCombo = KeyCombination.keyCombination("F10");
         }
-        getSkinnable().getParent().getScene().getAccelerators().put(acceleratorKeyCombo, firstMenuRunnable);
+        getSkinnable().getScene().getAccelerators().put(acceleratorKeyCombo, firstMenuRunnable);
         engine = new TraversalEngine(getSkinnable(), false) {
             @Override public void trav(Node node, Direction dir) {
                 direction = dir;
