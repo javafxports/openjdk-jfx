@@ -1000,7 +1000,7 @@ public class Region extends Parent {
     private BooleanProperty scaleShape = null;
     public final void setScaleShape(boolean value) { scaleShapeProperty().set(value); }
     public final boolean isScaleShape() { return scaleShape == null ? true : scaleShape.get(); }
-    private BooleanProperty scaleShapeProperty() {
+    public final BooleanProperty scaleShapeProperty() {
         if (scaleShape == null) {
             scaleShape = new StyleableBooleanProperty(true) {
                 @Override public Object getBean() { return Region.this; }
@@ -1027,9 +1027,9 @@ public class Region extends Parent {
      * @css position-shape      true | false
      */
     private BooleanProperty centerShape = null;
-    public final void setCenterShape(boolean value) { positionShapeProperty().set(value); }
+    public final void setCenterShape(boolean value) { centerShapeProperty().set(value); }
     public final boolean isCenterShape() { return centerShape == null ? true : centerShape.get(); }
-    private BooleanProperty positionShapeProperty() {
+    public final BooleanProperty centerShapeProperty() {
         if (centerShape == null) {
             centerShape = new StyleableBooleanProperty(true) {
                 @Override public Object getBean() { return Region.this; }
@@ -1057,7 +1057,7 @@ public class Region extends Parent {
     private BooleanProperty cacheShape = null;
     public final void setCacheShape(boolean value) { cacheShapeProperty().set(value); }
     public final boolean isCacheShape() { return cacheShape == null ? true : cacheShape.get(); }
-    private BooleanProperty cacheShapeProperty() {
+    public final BooleanProperty cacheShapeProperty() {
         if (cacheShape == null) {
             cacheShape = new StyleableBooleanProperty(true) {
                 @Override public Object getBean() { return Region.this; }
@@ -2403,7 +2403,7 @@ public class Region extends Parent {
             }
 
             @Override public StyleableProperty<Boolean> getStyleableProperty(Region node) {
-                return (StyleableProperty)node.positionShapeProperty();
+                return (StyleableProperty)node.centerShapeProperty();
             }
         };
 
