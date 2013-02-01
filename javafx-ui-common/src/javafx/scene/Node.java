@@ -49,6 +49,7 @@ import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanPropertyBase;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
 import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectPropertyBase;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -133,6 +134,7 @@ import com.sun.javafx.jmx.MXNodeAlgorithm;
 import com.sun.javafx.jmx.MXNodeAlgorithmContext;
 import sun.util.logging.PlatformLogger;
 import com.sun.javafx.perf.PerformanceTracker;
+import com.sun.javafx.print.NodeAccess;
 import com.sun.javafx.scene.BoundsAccessor;
 import com.sun.javafx.scene.CssFlags;
 import com.sun.javafx.scene.DirtyBits;
@@ -704,7 +706,7 @@ public abstract class Node implements EventTarget {
                     updateTreeVisible();
                     oldParent = newParent;
                     invalidateLocalToSceneTransform();
-                    parentEffectiveOrientationChanged();
+                    parentResolvedOrientationInvalidated();
                 }
 
                 @Override
@@ -774,7 +776,7 @@ public abstract class Node implements EventTarget {
             }
             if (getParent() == null) {
                 // if we are the root we need to handle scene change
-                parentEffectiveOrientationChanged();
+                parentResolvedOrientationInvalidated();
             }
 
             oldScene = _scene;
@@ -2177,7 +2179,7 @@ public abstract class Node implements EventTarget {
     public PGNode impl_getPGNode() {
         if (Utils.assertionEnabled()) {
             // Assertion checking code
-            if (!Scene.isPGAccessAllowed()) {
+            if (getScene() != null && !Scene.isPGAccessAllowed()) {
                 java.lang.System.err.println();
                 java.lang.System.err.println("*** unexpected PG access");
                 java.lang.Thread.dumpStack();
@@ -5190,11 +5192,19 @@ public abstract class Node implements EventTarget {
      *                       Component Orientation Properties                  *
      *                                                                         *
      **************************************************************************/
-    
-    private ObjectProperty<NodeOrientation> nodeOrientation;
 
-    private NodeOrientation effectiveNodeOrientation;
-    private NodeOrientation automaticNodeOrientation;
+    private ObjectProperty<NodeOrientation> nodeOrientation;
+    private EffectiveOrientationProperty effectiveNodeOrientationProperty;
+
+    private static final byte EFFECTIVE_ORIENTATION_LTR = 0;
+    private static final byte EFFECTIVE_ORIENTATION_RTL = 1;
+    private static final byte EFFECTIVE_ORIENTATION_MASK = 1;
+    private static final byte AUTOMATIC_ORIENTATION_LTR = 0;
+    private static final byte AUTOMATIC_ORIENTATION_RTL = 2;
+    private static final byte AUTOMATIC_ORIENTATION_MASK = 2;
+
+    private byte resolvedNodeOrientation =
+            EFFECTIVE_ORIENTATION_LTR | AUTOMATIC_ORIENTATION_LTR;
 
     public final void setNodeOrientation(NodeOrientation orientation) {
         nodeOrientationProperty().set(orientation);
@@ -5220,7 +5230,7 @@ public abstract class Node implements EventTarget {
             nodeOrientation = new StyleableObjectProperty<NodeOrientation>(NodeOrientation.INHERIT) {
                 @Override
                 protected void invalidated() {
-                    nodeEffectiveOrientationChanged();
+                    nodeResolvedOrientationInvalidated();
                 }
                 
                 @Override
@@ -5244,26 +5254,32 @@ public abstract class Node implements EventTarget {
         return nodeOrientation;
     }
 
+    public final NodeOrientation getEffectiveNodeOrientation() {
+        return (getEffectiveOrientation(resolvedNodeOrientation)
+                    == EFFECTIVE_ORIENTATION_LTR)
+                       ? NodeOrientation.LEFT_TO_RIGHT
+                       : NodeOrientation.RIGHT_TO_LEFT;
+    }
+
     /**
-     * Returns the NodeOrientation that is used to draw the node.
-     * <p>
      * The effective orientation of a node resolves the inheritance of
      * node orientation, returning either left-to-right or right-to-left.
-     * </p>
      */
-    public final NodeOrientation getEffectiveNodeOrientation() {
-        if (effectiveNodeOrientation == null) {
-            effectiveNodeOrientation = calcEffectiveNodeOrientation();
+    public final ReadOnlyObjectProperty<NodeOrientation>
+            effectiveNodeOrientationProperty() {
+        if (effectiveNodeOrientationProperty == null) {
+            effectiveNodeOrientationProperty =
+                    new EffectiveOrientationProperty();
         }
 
-        return effectiveNodeOrientation;
+        return effectiveNodeOrientationProperty;
     }
 
     /**
      * Determines whether a node should be mirrored when node orientation
      * is right-to-left.
      * <p>
-     * When a node is mirrored, the origin is automtically moved to the
+     * When a node is mirrored, the origin is automatically moved to the
      * top right corner causing the node to layout children and draw from
      * right to left using a mirroring transformation.  Some nodes may wish
      * to draw from right to left without using a transformation.  These
@@ -5275,87 +5291,142 @@ public abstract class Node implements EventTarget {
         return true;
     }
 
-    NodeOrientation getAutomaticNodeOrientation() {
-        if (automaticNodeOrientation == null) {
-            automaticNodeOrientation = calcAutomaticNodeOrientation();
-        }
-
-        return automaticNodeOrientation;
-    }
-
-    final void parentEffectiveOrientationChanged() {
+    final void parentResolvedOrientationInvalidated() {
         if (getNodeOrientation() == NodeOrientation.INHERIT) {
-            nodeEffectiveOrientationChanged();
+            nodeResolvedOrientationInvalidated();
         } else {
             // mirroring changed
             impl_transformsChanged();
         }
     }
 
-    void nodeEffectiveOrientationChanged() {
-        effectiveNodeOrientation = null;
-        automaticNodeOrientation = null;
+    final void nodeResolvedOrientationInvalidated() {
+        final byte oldResolvedNodeOrientation =
+                resolvedNodeOrientation;
+
+        resolvedNodeOrientation =
+                (byte) (calcEffectiveNodeOrientation()
+                            | calcAutomaticNodeOrientation());
+
+        if ((effectiveNodeOrientationProperty != null)
+                && (getEffectiveOrientation(resolvedNodeOrientation)
+                        != getEffectiveOrientation(
+                               oldResolvedNodeOrientation))) {
+            effectiveNodeOrientationProperty.invalidate();
+        }
+
         // mirroring changed
         impl_transformsChanged();
+
+        if (resolvedNodeOrientation != oldResolvedNodeOrientation) {
+            nodeResolvedOrientationChanged();
+        }
     }
 
-    private NodeOrientation calcEffectiveNodeOrientation() {
+    void nodeResolvedOrientationChanged() {
+        // overriden in Parent
+    }
+
+    private byte calcEffectiveNodeOrientation() {
         final NodeOrientation nodeOrientationValue = getNodeOrientation();
         if (nodeOrientationValue != NodeOrientation.INHERIT) {
-            return nodeOrientationValue;
+            return (nodeOrientationValue == NodeOrientation.LEFT_TO_RIGHT)
+                       ? EFFECTIVE_ORIENTATION_LTR
+                       : EFFECTIVE_ORIENTATION_RTL;
         }
 
         final Node parentValue = getParent();
         if (parentValue != null) {
-            return parentValue.getEffectiveNodeOrientation();
+            return getEffectiveOrientation(parentValue.resolvedNodeOrientation);
         }
 
         final Scene sceneValue = getScene();
         if (sceneValue != null) {
-            return sceneValue.getEffectiveNodeOrientation();
+            return (sceneValue.getEffectiveNodeOrientation()
+                        == NodeOrientation.LEFT_TO_RIGHT)
+                           ? EFFECTIVE_ORIENTATION_LTR
+                           : EFFECTIVE_ORIENTATION_RTL;
         }
 
-        return NodeOrientation.LEFT_TO_RIGHT;
+        return EFFECTIVE_ORIENTATION_LTR;
     }
 
-    private NodeOrientation calcAutomaticNodeOrientation() {
+    private byte calcAutomaticNodeOrientation() {
         if (!isAutomaticallyMirrored()) {
-            return NodeOrientation.LEFT_TO_RIGHT;
+            return AUTOMATIC_ORIENTATION_LTR;
         }
 
         final NodeOrientation nodeOrientationValue = getNodeOrientation();
         if (nodeOrientationValue != NodeOrientation.INHERIT) {
-            return nodeOrientationValue;
+            return (nodeOrientationValue == NodeOrientation.LEFT_TO_RIGHT)
+                       ? AUTOMATIC_ORIENTATION_LTR
+                       : AUTOMATIC_ORIENTATION_RTL;
         }
 
         final Node parentValue = getParent();
         if (parentValue != null) {
             // automatic node orientation is inherited
-            return parentValue.getAutomaticNodeOrientation();
+            return getAutomaticOrientation(parentValue.resolvedNodeOrientation);
         }
 
         final Scene sceneValue = getScene();
         if (sceneValue != null) {
-            return sceneValue.getEffectiveNodeOrientation();
+            return (sceneValue.getEffectiveNodeOrientation()
+                        == NodeOrientation.LEFT_TO_RIGHT)
+                           ? AUTOMATIC_ORIENTATION_LTR
+                           : AUTOMATIC_ORIENTATION_RTL;
         }
 
-        return NodeOrientation.LEFT_TO_RIGHT;
+        return AUTOMATIC_ORIENTATION_LTR;
     }
 
     // Return true if the node needs to be mirrored.
     // A node has mirroring if the orientation differs from the parent
     // package private for testing
-    boolean hasMirroring() {
-        final Parent parentValue = getParent();
+    final boolean hasMirroring() {
+        final Node parentValue = getParent();
 
-        final NodeOrientation thisOrientation =
-                getAutomaticNodeOrientation();
-        final NodeOrientation parentOrientation =
+        final byte thisOrientation =
+                getAutomaticOrientation(resolvedNodeOrientation);
+        final byte parentOrientation =
                 (parentValue != null)
-                    ? parentValue.getAutomaticNodeOrientation()
-                    : NodeOrientation.LEFT_TO_RIGHT;
+                    ? getAutomaticOrientation(
+                          parentValue.resolvedNodeOrientation)
+                    : AUTOMATIC_ORIENTATION_LTR;
 
         return thisOrientation != parentOrientation;
+    }
+
+    private static byte getEffectiveOrientation(
+            final byte resolvedNodeOrientation) {
+        return (byte) (resolvedNodeOrientation & EFFECTIVE_ORIENTATION_MASK);
+    }
+
+    private static byte getAutomaticOrientation(
+            final byte resolvedNodeOrientation) {
+        return (byte) (resolvedNodeOrientation & AUTOMATIC_ORIENTATION_MASK);
+    }
+
+    private final class EffectiveOrientationProperty
+            extends ReadOnlyObjectPropertyBase<NodeOrientation> {
+        @Override
+        public NodeOrientation get() {
+            return getEffectiveNodeOrientation();
+        }
+
+        @Override
+        public Object getBean() {
+            return Node.this;
+        }
+
+        @Override
+        public String getName() {
+            return "effectiveNodeOrientation";
+        }
+
+        public void invalidate() {
+            fireValueChangedEvent();
+        }
     }
 
     /***************************************************************************
@@ -7385,7 +7456,7 @@ public abstract class Node implements EventTarget {
                 }
 
                 @Override
-                public List<CssMetaData> getCssMetaData() {
+                public List<CssMetaData<? extends Node, ?>> getCssMetaData() {
                     return Node.this.getCssMetaData();
                 }                
                 
@@ -7435,7 +7506,7 @@ public abstract class Node implements EventTarget {
 
                 @Override
                 public StyleableProperty<Cursor> getStyleableProperty(Node node) {
-                    return (StyleableProperty)node.cursorProperty();
+                    return (StyleableProperty<Cursor>)node.cursorProperty();
                 }
                 
                 @Override
@@ -7456,7 +7527,7 @@ public abstract class Node implements EventTarget {
 
                 @Override
                 public StyleableProperty<Effect> getStyleableProperty(Node node) {
-                    return (StyleableProperty)node.effectProperty();
+                    return (StyleableProperty<Effect>)node.effectProperty();
                 }
             };
         private static final CssMetaData<Node,Boolean> FOCUS_TRAVERSABLE =
@@ -7470,7 +7541,7 @@ public abstract class Node implements EventTarget {
 
                 @Override
                 public StyleableProperty<Boolean> getStyleableProperty(Node node) {
-                    return (StyleableProperty)node.focusTraversableProperty();
+                    return (StyleableProperty<Boolean>)node.focusTraversableProperty();
                 }
 
                 @Override
@@ -7492,7 +7563,7 @@ public abstract class Node implements EventTarget {
 
                 @Override
                 public StyleableProperty<Number> getStyleableProperty(Node node) {
-                    return (StyleableProperty)node.opacityProperty();
+                    return (StyleableProperty<Number>)node.opacityProperty();
                 }
             };
         private static final CssMetaData<Node,BlendMode> BLEND_MODE =
@@ -7505,7 +7576,7 @@ public abstract class Node implements EventTarget {
 
                 @Override
                 public StyleableProperty<BlendMode> getStyleableProperty(Node node) {
-                    return (StyleableProperty)node.blendModeProperty();
+                    return (StyleableProperty<BlendMode>)node.blendModeProperty();
                 }
             };
         private static final CssMetaData<Node,Number> ROTATE =
@@ -7521,7 +7592,7 @@ public abstract class Node implements EventTarget {
 
                 @Override
                 public StyleableProperty<Number> getStyleableProperty(Node node) {
-                    return (StyleableProperty)node.rotateProperty();
+                    return (StyleableProperty<Number>)node.rotateProperty();
                 }
             };
         private static final CssMetaData<Node,Number> SCALE_X =
@@ -7537,7 +7608,7 @@ public abstract class Node implements EventTarget {
 
                 @Override
                 public StyleableProperty<Number> getStyleableProperty(Node node) {
-                    return (StyleableProperty)node.scaleXProperty();
+                    return (StyleableProperty<Number>)node.scaleXProperty();
                 }
             };
         private static final CssMetaData<Node,Number> SCALE_Y =
@@ -7553,7 +7624,7 @@ public abstract class Node implements EventTarget {
 
                 @Override
                 public StyleableProperty<Number> getStyleableProperty(Node node) {
-                    return (StyleableProperty)node.scaleYProperty();
+                    return (StyleableProperty<Number>)node.scaleYProperty();
                 }
             };
         private static final CssMetaData<Node,Number> SCALE_Z =
@@ -7569,7 +7640,7 @@ public abstract class Node implements EventTarget {
 
                 @Override
                 public StyleableProperty<Number> getStyleableProperty(Node node) {
-                    return (StyleableProperty)node.scaleZProperty();
+                    return (StyleableProperty<Number>)node.scaleZProperty();
                 }
             };
         private static final CssMetaData<Node,Number> TRANSLATE_X =
@@ -7585,7 +7656,7 @@ public abstract class Node implements EventTarget {
 
                 @Override
                 public StyleableProperty<Number> getStyleableProperty(Node node) {
-                    return (StyleableProperty)node.translateXProperty();
+                    return (StyleableProperty<Number>)node.translateXProperty();
                 }
             };
         private static final CssMetaData<Node,Number> TRANSLATE_Y =
@@ -7601,7 +7672,7 @@ public abstract class Node implements EventTarget {
 
                 @Override
                 public StyleableProperty<Number> getStyleableProperty(Node node) {
-                    return (StyleableProperty)node.translateYProperty();
+                    return (StyleableProperty<Number>)node.translateYProperty();
                 }
             };
         private static final CssMetaData<Node,Number> TRANSLATE_Z =
@@ -7617,7 +7688,7 @@ public abstract class Node implements EventTarget {
 
                 @Override
                 public StyleableProperty<Number> getStyleableProperty(Node node) {
-                    return (StyleableProperty)node.translateZProperty();
+                    return (StyleableProperty<Number>)node.translateZProperty();
                 }
             };
         private static final CssMetaData<Node,Boolean> VISIBILITY =
@@ -7641,29 +7712,29 @@ public abstract class Node implements EventTarget {
 
                 @Override
                 public StyleableProperty<Boolean> getStyleableProperty(Node node) {
-                    return (StyleableProperty)node.visibleProperty();
+                    return (StyleableProperty<Boolean>)node.visibleProperty();
                 }
             };
 
-         private static final List<CssMetaData> STYLEABLES;
+         private static final List<CssMetaData<? extends Node, ?>> STYLEABLES;
 
          static {
 
-             final List<CssMetaData> styleables = new ArrayList<CssMetaData>();
-             Collections.addAll(styleables, 
-                 CURSOR,
-                 EFFECT,
-                 FOCUS_TRAVERSABLE,
-                 OPACITY,
-                 BLEND_MODE,
-                 ROTATE,
-                 SCALE_X,
-                 SCALE_Y,
-                 SCALE_Z,
-                 TRANSLATE_X,
-                 TRANSLATE_Y,
-                 TRANSLATE_Z,
-                 VISIBILITY);
+             final List<CssMetaData<? extends Node, ?>> styleables = 
+                     new ArrayList<CssMetaData<? extends Node, ?>>();
+             styleables.add(CURSOR); 
+             styleables.add(EFFECT);
+             styleables.add(FOCUS_TRAVERSABLE);
+             styleables.add(OPACITY);
+             styleables.add(BLEND_MODE);
+             styleables.add(ROTATE);
+             styleables.add(SCALE_X);
+             styleables.add(SCALE_Y);
+             styleables.add(SCALE_Z);
+             styleables.add(TRANSLATE_X);
+             styleables.add(TRANSLATE_Y);
+             styleables.add(TRANSLATE_Z);
+             styleables.add(VISIBILITY);
              STYLEABLES = Collections.unmodifiableList(styleables);
 
          }
@@ -7673,7 +7744,7 @@ public abstract class Node implements EventTarget {
      * @return The CssMetaData associated with this class, which may include the
      * CssMetaData of its super classes.
      */
-    public static List<CssMetaData> getClassCssMetaData() {
+    public static List<CssMetaData<? extends Node, ?>> getClassCssMetaData() {
         //
         // Super-lazy instantiation pattern from Bill Pugh. StyleableProperties 
         // is referenced no earlier (and therefore loaded no earlier by the 
@@ -7687,10 +7758,12 @@ public abstract class Node implements EventTarget {
     /**
      * This method should delegate to {@link Node#getClassCssMetaData()} so that
      * a Node's CssMetaData can be accessed without the need for reflection.
+     *
      * @return The CssMetaData associated with this node, which may include the
      * CssMetaData of its super classes.
      */
-    public List<CssMetaData> getCssMetaData() {
+    
+    public List<CssMetaData<? extends Node, ?>> getCssMetaData() {
         return getClassCssMetaData();
     }
      
@@ -7700,7 +7773,7 @@ public abstract class Node implements EventTarget {
       * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
       */
      @Deprecated // SB-dependency: RT-21096 has been filed to track this
-     public final ObservableMap<StyleableProperty, List<Style>> impl_getStyleMap() {
+     public final ObservableMap<StyleableProperty<?>, List<Style>> impl_getStyleMap() {
          return impl_getStyleable().getStyleMap();
      }
 
@@ -7710,7 +7783,7 @@ public abstract class Node implements EventTarget {
       * @deprecated This is an experimental API that is not intended for general use and is subject to change in future versions
       */
      @Deprecated // SB-dependency: RT-21096 has been filed to track this
-     public final void impl_setStyleMap(ObservableMap<StyleableProperty, List<Style>> styleMap) {
+     public final void impl_setStyleMap(ObservableMap<StyleableProperty<?>, List<Style>> styleMap) {
          impl_getStyleable().setStyleMap(styleMap);
      }
           
@@ -7833,12 +7906,12 @@ public abstract class Node implements EventTarget {
         // a parent or from the scene. This has to be done before calling 
         // impl_reapplyCSS.
         //
-        final List<CssMetaData> styleables = getCssMetaData();
-        final int nStyleables = styleables != null ? styleables.size() : 0;
+        final List<CssMetaData<? extends Node, ?>> metaDataList = getCssMetaData();
+        final int nStyleables = metaDataList != null ? metaDataList.size() : 0;
         for (int n=0; n<nStyleables; n++) {
-            final CssMetaData styleable = styleables.get(n);
-            if (styleable.isSettable(this) == false) continue;
-            final StyleableProperty styleableProperty = styleable.getStyleableProperty(this);
+            final CssMetaData metaData = metaDataList.get(n);
+            if (metaData.isSettable(this) == false) continue;
+            final StyleableProperty<?> styleableProperty = metaData.getStyleableProperty(this);
             if (styleableProperty != null) {
                 final StyleOrigin origin = styleableProperty.getStyleOrigin();
                 if (origin != null && origin != StyleOrigin.USER) {
@@ -7846,7 +7919,7 @@ public abstract class Node implements EventTarget {
                     // the StyleOrigin of the property is null. So, passing null 
                     // here makes the property look (to CSS) like it was
                     // initialized but never used.
-                    styleable.set(this, styleable.getInitialValue(this), null);
+                    metaData.set(this, metaData.getInitialValue(this), null);
                 }
             }
         }        
@@ -8145,5 +8218,19 @@ public abstract class Node implements EventTarget {
      */
     @Deprecated
     public abstract Object impl_processMXNode(MXNodeAlgorithm alg, MXNodeAlgorithmContext ctx);
+
+    /**
+     * This class is used by printing to get access to a private method.
+     */
+    private static class NodeAccessImpl extends NodeAccess {
+
+        public void layoutNodeForPrinting(Node node) {
+            node.doCSSLayoutSyncForSnapshot();
+        }
+    }
+
+    static {
+        NodeAccess.setNodeAccess(new NodeAccessImpl());
+    }
 }
 

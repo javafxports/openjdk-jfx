@@ -26,29 +26,26 @@
 
 package javafx.scene.layout;
 
-import javafx.css.StyleableBooleanProperty;
-import javafx.css.StyleableDoubleProperty;
-import javafx.css.StyleableObjectProperty;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.css.CssMetaData;
+import javafx.css.StyleableBooleanProperty;
+import javafx.css.StyleableDoubleProperty;
+import javafx.css.StyleableObjectProperty;
+import javafx.css.StyleableProperty;
+import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.geometry.VPos;
 import javafx.scene.Node;
-
-import javafx.css.CssMetaData;
 import com.sun.javafx.css.converters.BooleanConverter;
 import com.sun.javafx.css.converters.EnumConverter;
 import com.sun.javafx.css.converters.SizeConverter;
-import javafx.beans.value.WritableValue;
-import javafx.css.StyleableProperty;
-import javafx.geometry.HPos;
-import javafx.geometry.VPos;
 
 /**
  * VBox lays out its children in a single vertical column.
@@ -216,6 +213,26 @@ public class VBox extends Pane {
     public VBox(double spacing) {
         this();
         setSpacing(spacing);
+    }
+
+    /**
+     * Creates an VBox layout with spacing = 0.
+     * @param children The initial set of children for this pane.
+     */
+    public VBox(Node... children) {
+        super();
+        getChildren().addAll(children);
+    }
+
+    /**
+     * Creates an VBox layout with the specified spacing between children.
+     * @param spacing the amount of horizontal space between each child
+     * @param children The initial set of children for this pane.
+     */
+    public VBox(double spacing, Node... children) {
+        this();
+        setSpacing(spacing);
+        getChildren().addAll(children);
     }
 
     /**
@@ -532,7 +549,7 @@ public class VBox extends Pane {
 
             @Override
             public StyleableProperty<Pos> getStyleableProperty(VBox node) {
-                return (StyleableProperty)node.alignmentProperty();
+                return (StyleableProperty<Pos>)node.alignmentProperty();
             }
         };
          
@@ -547,7 +564,7 @@ public class VBox extends Pane {
 
             @Override
             public StyleableProperty<Boolean> getStyleableProperty(VBox node) {
-                return (StyleableProperty)node.fillWidthProperty();
+                return (StyleableProperty<Boolean>)node.fillWidthProperty();
             }
         };
          
@@ -562,19 +579,17 @@ public class VBox extends Pane {
 
             @Override
             public StyleableProperty<Number> getStyleableProperty(VBox node) {
-                return (StyleableProperty)node.spacingProperty();
+                return (StyleableProperty<Number>)node.spacingProperty();
             }
         };
 
-         private static final List<CssMetaData> STYLEABLES;
+         private static final List<CssMetaData<? extends Node, ?>> STYLEABLES;
          static {
-            final List<CssMetaData> styleables = 
-                new ArrayList<CssMetaData>(Region.getClassCssMetaData());
-            Collections.addAll(styleables,
-                ALIGNMENT,
-                FILL_WIDTH,
-                SPACING
-            );
+            final List<CssMetaData<? extends Node, ?>> styleables = 
+                new ArrayList<CssMetaData<? extends Node, ?>>(Region.getClassCssMetaData());
+            styleables.add(ALIGNMENT);
+            styleables.add(FILL_WIDTH);
+            styleables.add(SPACING);
             STYLEABLES = Collections.unmodifiableList(styleables);
          }
     }
@@ -583,15 +598,17 @@ public class VBox extends Pane {
      * @return The CssMetaData associated with this class, which may include the
      * CssMetaData of its super classes.
      */
-    public static List<CssMetaData> getClassCssMetaData() {
+    public static List<CssMetaData<? extends Node, ?>> getClassCssMetaData() {
         return StyleableProperties.STYLEABLES;
     }
 
     /**
      * {@inheritDoc}
+     *
      */
+    
     @Override
-    public List<CssMetaData> getCssMetaData() {
+    public List<CssMetaData<? extends Node, ?>> getCssMetaData() {
         return getClassCssMetaData();
     }
 

@@ -25,23 +25,25 @@
 
 package javafx.scene.layout;
 
-import javafx.css.*;
-import com.sun.javafx.css.converters.BooleanConverter;
-import com.sun.javafx.css.converters.EnumConverter;
-import com.sun.javafx.css.converters.SizeConverter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ObjectProperty;
-import javafx.beans.value.WritableValue;
+import javafx.css.CssMetaData;
+import javafx.css.StyleableBooleanProperty;
+import javafx.css.StyleableDoubleProperty;
+import javafx.css.StyleableObjectProperty;
+import javafx.css.StyleableProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
+import com.sun.javafx.css.converters.BooleanConverter;
+import com.sun.javafx.css.converters.EnumConverter;
+import com.sun.javafx.css.converters.SizeConverter;
 
 
 
@@ -220,6 +222,26 @@ public class HBox extends Pane {
     public HBox(double spacing) {
         this();
         setSpacing(spacing);
+    }
+
+    /**
+     * Creates an HBox layout with spacing = 0.
+     * @param children The initial set of children for this pane.
+     */
+    public HBox(Node... children) {
+        super();
+        getChildren().addAll(children);
+    }
+
+    /**
+     * Creates an HBox layout with the specified spacing between children.
+     * @param spacing the amount of horizontal space between each child
+     * @param children The initial set of children for this pane.
+     */
+    public HBox(double spacing, Node... children) {
+        this();
+        setSpacing(spacing);
+        getChildren().addAll(children);
     }
 
     /**
@@ -558,7 +580,7 @@ public class HBox extends Pane {
 
             @Override
             public StyleableProperty<Pos> getStyleableProperty(HBox node) {
-                return (StyleableProperty)node.alignmentProperty();
+                return (StyleableProperty<Pos>)node.alignmentProperty();
             }
                      
          };
@@ -575,7 +597,7 @@ public class HBox extends Pane {
 
             @Override
             public StyleableProperty<Boolean> getStyleableProperty(HBox node) {
-                return (StyleableProperty)node.fillHeightProperty();
+                return (StyleableProperty<Boolean>)node.fillHeightProperty();
             }
                      
          };
@@ -591,20 +613,18 @@ public class HBox extends Pane {
 
             @Override
             public StyleableProperty<Number> getStyleableProperty(HBox node) {
-                return (StyleableProperty)node.spacingProperty();
+                return (StyleableProperty<Number>)node.spacingProperty();
             }
                      
          };
 
-         private static final List<CssMetaData> STYLEABLES;
+         private static final List<CssMetaData<? extends Node, ?>> STYLEABLES;
          static {
-            final List<CssMetaData> styleables =
-                new ArrayList<CssMetaData>(Pane.getClassCssMetaData());
-            Collections.addAll(styleables,
-                FILL_HEIGHT,
-                ALIGNMENT,
-                SPACING
-            );
+            final List<CssMetaData<? extends Node, ?>> styleables =
+                new ArrayList<CssMetaData<? extends Node, ?>>(Pane.getClassCssMetaData());
+            styleables.add(FILL_HEIGHT);
+            styleables.add(ALIGNMENT);
+            styleables.add(SPACING);
             STYLEABLES = Collections.unmodifiableList(styleables);
          }
     }
@@ -613,15 +633,17 @@ public class HBox extends Pane {
      * @return The CssMetaData associated with this class, which may include the
      * CssMetaData of its super classes.
      */
-    public static List<CssMetaData> getClassCssMetaData() {
+    public static List<CssMetaData<? extends Node, ?>> getClassCssMetaData() {
         return StyleableProperties.STYLEABLES;
     }
 
     /**
      * {@inheritDoc}
+     *
      */
+    
     @Override
-    public List<CssMetaData> getCssMetaData() {
+    public List<CssMetaData<? extends Node, ?>> getCssMetaData() {
         return getClassCssMetaData();
     }
 

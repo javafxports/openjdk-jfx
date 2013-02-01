@@ -28,19 +28,16 @@ package javafx.scene.layout;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import javafx.beans.property.ObjectProperty;
-import javafx.beans.value.WritableValue;
+import javafx.css.CssMetaData;
+import javafx.css.StyleableObjectProperty;
+import javafx.css.StyleableProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
-
-import javafx.css.StyleableObjectProperty;
-import javafx.css.CssMetaData;
 import com.sun.javafx.css.converters.EnumConverter;
-import javafx.css.StyleableProperty;
 
 /**
  *
@@ -193,6 +190,15 @@ public class StackPane extends Pane {
      */
     public StackPane() {
         super();
+    }
+
+    /**
+     * Creates a StackPane layout with default CENTER alignment.
+     * @param children The initial set of children for this pane.
+     */
+    public StackPane(Node... children) {
+        super();
+        getChildren().addAll(children);
     }
 
     /**
@@ -360,17 +366,15 @@ public class StackPane extends Pane {
 
             @Override
             public StyleableProperty<Pos> getStyleableProperty(StackPane node) {
-                return (StyleableProperty)node.alignmentProperty();
+                return (StyleableProperty<Pos>)node.alignmentProperty();
             }
         };
 
-         private static final List<CssMetaData> STYLEABLES;
+         private static final List<CssMetaData<? extends Node, ?>> STYLEABLES;
          static {
-            final List<CssMetaData> styleables =
-                new ArrayList<CssMetaData>(Region.getClassCssMetaData());
-            Collections.addAll(styleables,
-                ALIGNMENT
-             );
+            final List<CssMetaData<? extends Node, ?>> styleables =
+                new ArrayList<CssMetaData<? extends Node, ?>>(Region.getClassCssMetaData());
+            styleables.add(ALIGNMENT);
             STYLEABLES = Collections.unmodifiableList(styleables);
          }
     }
@@ -379,15 +383,17 @@ public class StackPane extends Pane {
      * @return The CssMetaData associated with this class, which may include the
      * CssMetaData of its super classes.
      */
-    public static List<CssMetaData> getClassCssMetaData() {
+    public static List<CssMetaData<? extends Node, ?>> getClassCssMetaData() {
         return StyleableProperties.STYLEABLES;
     }
 
     /**
      * {@inheritDoc}
+     *
      */
+    
     @Override
-    public List<CssMetaData> getCssMetaData() {
+    public List<CssMetaData<? extends Node, ?>> getCssMetaData() {
         return getClassCssMetaData();
     }
 

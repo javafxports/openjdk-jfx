@@ -26,31 +26,26 @@
 
 package javafx.scene.layout;
 
-import static javafx.geometry.Orientation.HORIZONTAL;
-import static javafx.geometry.Orientation.VERTICAL;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.DoublePropertyBase;
 import javafx.beans.property.ObjectProperty;
-import javafx.beans.value.WritableValue;
+import javafx.css.CssMetaData;
+import javafx.css.StyleableDoubleProperty;
+import javafx.css.StyleableObjectProperty;
+import javafx.css.StyleableProperty;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
-
-import javafx.css.StyleableDoubleProperty;
-import javafx.css.StyleableObjectProperty;
-import javafx.css.CssMetaData;
 import com.sun.javafx.css.converters.EnumConverter;
 import com.sun.javafx.css.converters.SizeConverter;
-import javafx.beans.property.Property;
-import javafx.css.StyleableProperty;
+
+import static javafx.geometry.Orientation.*;
 
 /**
  * FlowPane lays out its children in a flow that wraps at the flowpane's boundary.
@@ -226,6 +221,54 @@ public class FlowPane extends Pane {
         setOrientation(orientation);
         setHgap(hgap);
         setVgap(vgap);
+    }
+
+    /**
+     * Creates a horizontal FlowPane layout with hgap/vgap = 0.
+     * @param children The initial set of children for this pane.
+     */
+    public FlowPane(Node... children) {
+        super();
+        getChildren().addAll(children);
+    }
+
+    /**
+     * Creates a FlowPane layout with the specified orientation and hgap/vgap = 0.
+     * @param orientation the direction the tiles should flow & wrap
+     * @param children The initial set of children for this pane.
+     */
+    public FlowPane(Orientation orientation, Node... children) {
+        this();
+        setOrientation(orientation);
+        getChildren().addAll(children);
+    }
+
+    /**
+     * Creates a horizontal FlowPane layout with the specified hgap/vgap.
+     * @param hgap the amount of horizontal space between each tile
+     * @param vgap the amount of vertical space between each tile
+     * @param children The initial set of children for this pane.
+     */
+    public FlowPane(double hgap, double vgap, Node... children) {
+        this();
+        setHgap(hgap);
+        setVgap(vgap);
+        getChildren().addAll(children);
+    }
+
+    /**
+     * Creates a FlowPane layout with the specified orientation and hgap/vgap.
+     * @param orientation the direction the tiles should flow & wrap
+     * @param hgap the amount of horizontal space between each tile
+     * @param vgap the amount of vertical space between each tile
+     * @param children The initial set of children for this pane.
+     */
+    public FlowPane(Orientation orientation, double hgap, double vgap, Node... children) {
+        this();
+        setOrientation(orientation);
+        setHgap(hgap);
+        setVgap(vgap);
+        getChildren().addAll(children);
     }
 
     /**
@@ -753,7 +796,7 @@ public class FlowPane extends Pane {
 
             @Override
             public StyleableProperty<Pos> getStyleableProperty(FlowPane node) {
-                return (StyleableProperty)node.alignmentProperty();
+                return (StyleableProperty<Pos>)node.alignmentProperty();
             }
                  
          };
@@ -769,7 +812,7 @@ public class FlowPane extends Pane {
 
             @Override
             public StyleableProperty<HPos> getStyleableProperty(FlowPane node) {
-                return (StyleableProperty)node.columnHalignmentProperty();
+                return (StyleableProperty<HPos>)node.columnHalignmentProperty();
             }
                      
          };
@@ -785,7 +828,7 @@ public class FlowPane extends Pane {
 
             @Override
             public StyleableProperty<Number> getStyleableProperty(FlowPane node) {
-                return (StyleableProperty)node.hgapProperty();
+                return (StyleableProperty<Number>)node.hgapProperty();
             }
                      
          };
@@ -801,7 +844,7 @@ public class FlowPane extends Pane {
 
             @Override
             public StyleableProperty<VPos> getStyleableProperty(FlowPane node) {
-                return (StyleableProperty)node.rowValignmentProperty();
+                return (StyleableProperty<VPos>)node.rowValignmentProperty();
             }
                      
          }; 
@@ -824,7 +867,7 @@ public class FlowPane extends Pane {
 
             @Override
             public StyleableProperty<Orientation> getStyleableProperty(FlowPane node) {
-                return (StyleableProperty)node.orientationProperty();
+                return (StyleableProperty<Orientation>)node.orientationProperty();
             }
                      
          };  
@@ -840,24 +883,23 @@ public class FlowPane extends Pane {
 
             @Override
             public StyleableProperty<Number> getStyleableProperty(FlowPane node) {
-                return (StyleableProperty)node.vgapProperty();
+                return (StyleableProperty<Number>)node.vgapProperty();
             }
                      
          }; 
 
-         private static final List<CssMetaData> STYLEABLES;
+         private static final List<CssMetaData<? extends Node, ?>> STYLEABLES;
          static {
 
-            final List<CssMetaData> styleables =
-                new ArrayList<CssMetaData>(Region.getClassCssMetaData());
-            Collections.addAll(styleables,
-                ALIGNMENT,
-                COLUMN_HALIGNMENT,
-                HGAP,
-                ROW_VALIGNMENT,
-                ORIENTATION,
-                VGAP
-            );
+            final List<CssMetaData<? extends Node, ?>> styleables =
+                new ArrayList<CssMetaData<? extends Node, ?>>(Region.getClassCssMetaData());
+            styleables.add(ALIGNMENT);
+            styleables.add(COLUMN_HALIGNMENT);
+            styleables.add(HGAP);
+            styleables.add(ROW_VALIGNMENT);
+            styleables.add(ORIENTATION);
+            styleables.add(VGAP);
+
             STYLEABLES = Collections.unmodifiableList(styleables);
          }
     }
@@ -867,15 +909,17 @@ public class FlowPane extends Pane {
      * @return The CssMetaData associated with this class, which may include the
      * CssMetaData of its super classes.
      */
-    public static List<CssMetaData> getClassCssMetaData() {
+    public static List<CssMetaData<? extends Node, ?>> getClassCssMetaData() {
         return StyleableProperties.STYLEABLES;
     }
 
     /**
      * {@inheritDoc}
+     *
      */
+    
     @Override
-    public List<CssMetaData> getCssMetaData() {
+    public List<CssMetaData<? extends Node, ?>> getCssMetaData() {
         return getClassCssMetaData();
     }
 

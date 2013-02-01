@@ -170,6 +170,11 @@ public class StubStage implements TKStage {
     }
 
     @Override
+    public void setMaximized(boolean maximized) {
+        notificationSender.changedMaximized(maximized);
+    }
+
+    @Override
     public void setResizable(boolean resizable) {
         notificationSender.changedResizable(resizable);
     }
@@ -392,6 +397,17 @@ public class StubStage implements TKStage {
                         }
                     });
         }
+
+        @Override
+        public void changedMaximized(final boolean maximized) {
+            process(new Notification() {
+                        @Override
+                        public void execute(final TKStageListener listener) {
+                            listener.changedMaximized(maximized);
+                        }
+                    });
+        }
+
 
         @Override
         public void changedResizable(final boolean resizable) {

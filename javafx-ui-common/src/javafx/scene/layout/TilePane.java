@@ -26,22 +26,19 @@
 
 package javafx.scene.layout;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyDoubleProperty;
+import javafx.beans.property.ReadOnlyDoubleWrapper;
 import javafx.css.CssMetaData;
 import javafx.css.StyleOrigin;
 import javafx.css.StyleableDoubleProperty;
 import javafx.css.StyleableIntegerProperty;
 import javafx.css.StyleableObjectProperty;
-import com.sun.javafx.css.converters.EnumConverter;
-import com.sun.javafx.css.converters.SizeConverter;
-import static javafx.geometry.Orientation.HORIZONTAL;
-import static javafx.geometry.Orientation.VERTICAL;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import javafx.beans.property.*;
-import javafx.beans.value.WritableValue;
 import javafx.css.StyleableProperty;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
@@ -49,6 +46,10 @@ import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
+import com.sun.javafx.css.converters.EnumConverter;
+import com.sun.javafx.css.converters.SizeConverter;
+
+import static javafx.geometry.Orientation.*;
 
 
 /**
@@ -176,7 +177,7 @@ import javafx.scene.Node;
  */
 public class TilePane extends Pane {
 
-   /********************************************************************
+    /********************************************************************
      *  BEGIN static methods
      ********************************************************************/
 
@@ -281,6 +282,57 @@ public class TilePane extends Pane {
         setOrientation(orientation);
         setHgap(hgap);
         setVgap(vgap);
+    }
+
+    /**
+     * Creates a horizontal TilePane layout with prefColumn = 5 and hgap/vgap = 0.
+     * @param children The initial set of children for this pane.
+     */
+    public TilePane(Node... children) {
+        super();
+        getChildren().addAll(children);
+    }
+
+    /**
+     * Creates a TilePane layout with the specified orientation,
+     * prefColumn/prefRows = 5 and hgap/vgap = 0.
+     * @param orientation the direction the tiles should flow & wrap
+     * @param children The initial set of children for this pane.
+     */
+    public TilePane(Orientation orientation, Node... children) {
+        super();
+        setOrientation(orientation);
+        getChildren().addAll(children);
+    }
+
+    /**
+     * Creates a horizontal TilePane layout with prefColumn = 5 and the specified
+     * hgap/vgap.
+     * @param hgap the amount of horizontal space between each tile
+     * @param vgap the amount of vertical space between each tile
+     * @param children The initial set of children for this pane.
+     */
+    public TilePane(double hgap, double vgap, Node... children) {
+        super();
+        setHgap(hgap);
+        setVgap(vgap);
+        getChildren().addAll(children);
+    }
+
+    /**
+     * Creates a TilePane layout with the specified orientation, hgap/vgap,
+     * and prefRows/prefColumns = 5.
+     * @param orientation the direction the tiles should flow & wrap
+     * @param hgap the amount of horizontal space between each tile
+     * @param vgap the amount of vertical space between each tile
+     * @param children The initial set of children for this pane.
+     */
+    public TilePane(Orientation orientation, double hgap, double vgap, Node... children) {
+        this();
+        setOrientation(orientation);
+        setHgap(hgap);
+        setVgap(vgap);
+        getChildren().addAll(children);
     }
 
     /**
@@ -917,7 +969,7 @@ public class TilePane extends Pane {
 
             @Override
             public StyleableProperty<Pos> getStyleableProperty(TilePane node) {
-                return (StyleableProperty)node.alignmentProperty();
+                return (StyleableProperty<Pos>)node.alignmentProperty();
             }
         };
          
@@ -937,7 +989,7 @@ public class TilePane extends Pane {
 
             @Override
             public StyleableProperty<Number> getStyleableProperty(TilePane node) {
-                return (StyleableProperty)node.prefColumnsProperty();
+                return (StyleableProperty<Number>)node.prefColumnsProperty();
             }
         };
                  
@@ -953,7 +1005,7 @@ public class TilePane extends Pane {
 
             @Override
             public StyleableProperty<Number> getStyleableProperty(TilePane node) {
-                return (StyleableProperty)node.hgapProperty();
+                return (StyleableProperty<Number>)node.hgapProperty();
             }
         };
          
@@ -973,7 +1025,7 @@ public class TilePane extends Pane {
 
             @Override
             public StyleableProperty<Number> getStyleableProperty(TilePane node) {
-                return (StyleableProperty)node.prefRowsProperty();
+                return (StyleableProperty<Number>)node.prefRowsProperty();
             }
         };
 
@@ -990,7 +1042,7 @@ public class TilePane extends Pane {
 
             @Override
             public StyleableProperty<Pos> getStyleableProperty(TilePane node) {
-                return (StyleableProperty)node.tileAlignmentProperty();
+                return (StyleableProperty<Pos>)node.tileAlignmentProperty();
             }
          };
          
@@ -1006,7 +1058,7 @@ public class TilePane extends Pane {
 
             @Override
             public StyleableProperty<Number> getStyleableProperty(TilePane node) {
-                return (StyleableProperty)node.prefTileWidthProperty();
+                return (StyleableProperty<Number>)node.prefTileWidthProperty();
             }
         };
 
@@ -1022,7 +1074,7 @@ public class TilePane extends Pane {
 
             @Override
             public StyleableProperty<Number> getStyleableProperty(TilePane node) {
-                return (StyleableProperty)node.prefTileHeightProperty();
+                return (StyleableProperty<Number>)node.prefTileHeightProperty();
             }
          };
 
@@ -1045,7 +1097,7 @@ public class TilePane extends Pane {
 
                 @Override
                 public StyleableProperty<Orientation> getStyleableProperty(TilePane node) {
-                    return (StyleableProperty)node.orientationProperty();
+                    return (StyleableProperty<Orientation>)node.orientationProperty();
                 }
          };
          
@@ -1061,25 +1113,23 @@ public class TilePane extends Pane {
 
             @Override
             public StyleableProperty<Number> getStyleableProperty(TilePane node) {
-                return (StyleableProperty)node.vgapProperty();
+                return (StyleableProperty<Number>)node.vgapProperty();
             }
         };
 
-         private static final List<CssMetaData> STYLEABLES;
+         private static final List<CssMetaData<? extends Node, ?>> STYLEABLES;
          static {
-            final List<CssMetaData> styleables = 
-                new ArrayList<CssMetaData>(Region.getClassCssMetaData());
-            Collections.addAll(styleables,
-                ALIGNMENT,
-                HGAP,
-                ORIENTATION,
-                PREF_COLUMNS,
-                PREF_ROWS,
-                PREF_TILE_WIDTH,
-                PREF_TILE_HEIGHT,
-                TILE_ALIGNMENT,
-                VGAP
-            );
+            final List<CssMetaData<? extends Node, ?>> styleables = 
+                new ArrayList<CssMetaData<? extends Node, ?>>(Region.getClassCssMetaData());
+            styleables.add(ALIGNMENT);
+            styleables.add(HGAP);
+            styleables.add(ORIENTATION);
+            styleables.add(PREF_COLUMNS);
+            styleables.add(PREF_ROWS);
+            styleables.add(PREF_TILE_WIDTH);
+            styleables.add(PREF_TILE_HEIGHT);
+            styleables.add(TILE_ALIGNMENT);
+            styleables.add(VGAP);
             STYLEABLES = Collections.unmodifiableList(styleables);
          }
     }
@@ -1088,15 +1138,17 @@ public class TilePane extends Pane {
      * @return The CssMetaData associated with this class, which may include the
      * CssMetaData of its super classes.
      */
-    public static List<CssMetaData> getClassCssMetaData() {
+    public static List<CssMetaData<? extends Node, ?>> getClassCssMetaData() {
         return StyleableProperties.STYLEABLES;
     }
 
     /**
      * {@inheritDoc}
+     *
      */
+    
     @Override
-    public List<CssMetaData> getCssMetaData() {
+    public List<CssMetaData<? extends Node, ?>> getCssMetaData() {
         return getClassCssMetaData();
     }
 
