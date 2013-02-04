@@ -24,7 +24,6 @@
  */
 package javafx.scene.control;
 
-import java.util.Set;
 import javafx.css.PseudoClass;
 import com.sun.javafx.scene.control.skin.TreeTableRowSkin;
 import java.lang.ref.WeakReference;
@@ -39,6 +38,8 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.ListChangeListener;
 import javafx.collections.WeakListChangeListener;
 import javafx.scene.Node;
+import javafx.scene.control.TreeTableView.TreeTableViewFocusModel;
+import javafx.scene.control.TreeTableView.TreeTableViewSelectionModel;
 
 /**
  * <p>TreeTableRow is an {@link javafx.scene.control.IndexedCell IndexedCell}, but
@@ -73,7 +74,6 @@ public class TreeTableRow<T> extends IndexedCell<T> {
      */
     public TreeTableRow() {
         getStyleClass().addAll(DEFAULT_STYLE_CLASS);
-        indexProperty().addListener(indexListener);
     }
 
 
@@ -84,21 +84,8 @@ public class TreeTableRow<T> extends IndexedCell<T> {
      *                                                                         *
      **************************************************************************/
     
-    private final InvalidationListener indexListener = new InvalidationListener() {
-        @Override public void invalidated(Observable valueModel) {
-            index = getIndex();
-        
-            // when the cell index changes, this may result in the cell
-            // changing state to be selected and/or focused.
-            updateItem();
-            updateSelection();
-            updateFocus();
-            oldIndex = index;
-        }
-    };
-    
-    private final ListChangeListener selectedListener = new ListChangeListener() {
-        @Override public void onChanged(ListChangeListener.Change c) {
+    private final ListChangeListener<Integer> selectedListener = new ListChangeListener<Integer>() {
+        @Override public void onChanged(ListChangeListener.Change<? extends Integer> c) {
             updateSelection();
         }
     };
@@ -119,14 +106,14 @@ public class TreeTableRow<T> extends IndexedCell<T> {
         @Override public void invalidated(Observable valueModel) {
             // necessary to update the disclosure node in the skin when the
             // leaf property changes
-            TreeItem treeItem = getTreeItem();
+            TreeItem<T> treeItem = getTreeItem();
             if (treeItem != null) {
                 requestLayout();
             }
         }
     };
     
-    private final WeakListChangeListener weakSelectedListener = new WeakListChangeListener(selectedListener);
+    private final WeakListChangeListener<Integer> weakSelectedListener = new WeakListChangeListener<Integer>(selectedListener);
     private final WeakInvalidationListener weakFocusedListener = new WeakInvalidationListener(focusedListener);
     private final WeakInvalidationListener weakEditingListener = new WeakInvalidationListener(editingListener);
     private final WeakInvalidationListener weakLeafListener = new WeakInvalidationListener(leafListener);
@@ -219,8 +206,8 @@ public class TreeTableRow<T> extends IndexedCell<T> {
     private ReadOnlyObjectWrapper<TreeTableView<T>> treeTableView = new ReadOnlyObjectWrapper<TreeTableView<T>>(this, "treeTableView") {
         private WeakReference<TreeTableView<T>> weakTreeTableViewRef;
         @Override protected void invalidated() {
-            MultipleSelectionModel sm;
-            FocusModel fm;
+            TreeTableViewSelectionModel<T> sm;
+            TreeTableViewFocusModel<T> fm;
             
             if (weakTreeTableViewRef != null) {
                 TreeTableView<T> oldTreeTableView = weakTreeTableViewRef.get();
@@ -281,11 +268,25 @@ public class TreeTableRow<T> extends IndexedCell<T> {
 
 
 
+
     /***************************************************************************
      *                                                                         *
      * Public API                                                              *
      *                                                                         *
      **************************************************************************/
+
+    
+    @Override void indexChanged() {
+        index = getIndex();
+
+        // when the cell index changes, this may result in the cell
+        // changing state to be selected and/or focused.
+        updateItem();
+        updateSelection();
+        updateFocus();
+//        oldIndex = index;
+    }
+    
 
     /** {@inheritDoc} */
     @Override public void startEdit() {
@@ -314,8 +315,8 @@ public class TreeTableRow<T> extends IndexedCell<T> {
      /** {@inheritDoc} */
     @Override public void commitEdit(T newValue) {
         if (! isEditing()) return;
-        final TreeItem treeItem = getTreeItem();
-        final TreeTableView treeTable = getTreeTableView();
+        final TreeItem<T> treeItem = getTreeItem();
+        final TreeTableView<T> treeTable = getTreeTableView();
         if (treeTable != null) {
             // Inform the TreeView of the edit being ready to be committed.
             treeTable.fireEvent(new TreeTableView.EditEvent<T>(treeTable,
@@ -347,7 +348,7 @@ public class TreeTableRow<T> extends IndexedCell<T> {
     @Override public void cancelEdit() {
         if (! isEditing()) return;
         
-        TreeTableView treeTable = getTreeTableView();
+        TreeTableView<T> treeTable = getTreeTableView();
         if (treeTable != null) {
             treeTable.fireEvent(new TreeTableView.EditEvent<T>(treeTable,
                     TreeTableView.<T>editCancelEvent(),
@@ -374,8 +375,6 @@ public class TreeTableRow<T> extends IndexedCell<T> {
      **************************************************************************/
     
     private int index = -1;
-    private int oldIndex = -1;
-    private TreeItem<T> treeItemRef;
     
     private void updateItem() {
         TreeTableView<T> tv = getTreeTableView();
@@ -388,15 +387,15 @@ public class TreeTableRow<T> extends IndexedCell<T> {
         if (valid) {
             // update the TreeCell state.
             // get the new treeItem that is about to go in to the TreeCell
-            treeItemRef = oldIndex != index ? tv.getTreeItem(index) : treeItemRef;
+            TreeItem<T> treeItem = tv.getTreeItem(index);
             
             // For the sake of RT-14279, it is important that the order of these
             // method calls is as shown below. If the order is switched, it is
             // likely that events will be fired where the item is null, even
             // though calling cell.getTreeItem().getValue() returns the value
             // as expected
-            updateTreeItem(treeItemRef);
-            updateItem(treeItemRef == null ? null : treeItemRef.getValue(), false);
+            updateTreeItem(treeItem);
+            updateItem(treeItem == null ? null : treeItem.getValue(), false);
         } else {
             updateTreeItem(null);
             updateItem(null, true);
@@ -424,7 +423,7 @@ public class TreeTableRow<T> extends IndexedCell<T> {
     private void updateEditing() {
         if (getIndex() == -1 || getTreeTableView() == null || getTreeItem() == null) return;
         
-        TreeItem editItem = getTreeTableView().getEditingItem();
+        TreeItem<T> editItem = getTreeTableView().getEditingItem();
         if (! isEditing() && getTreeItem().equals(editItem)) {
             startEdit();
         } else if (isEditing() && ! getTreeItem().equals(editItem)) {
@@ -463,7 +462,7 @@ public class TreeTableRow<T> extends IndexedCell<T> {
      *      for developers or designers to access this function directly.
      */
     public final void updateTreeItem(TreeItem<T> treeItem) {
-        TreeItem _treeItem = getTreeItem();
+        TreeItem<T> _treeItem = getTreeItem();
         if (_treeItem != null) {
             _treeItem.leafProperty().removeListener(weakLeafListener);
         }

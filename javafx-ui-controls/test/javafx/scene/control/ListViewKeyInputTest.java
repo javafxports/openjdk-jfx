@@ -3,7 +3,9 @@
  */
 package javafx.scene.control;
 
+import com.sun.javafx.Utils;
 import com.sun.javafx.scene.control.behavior.ListViewAnchorRetriever;
+import com.sun.javafx.tk.Toolkit;
 import static org.junit.Assert.*;
 
 import java.util.List;
@@ -211,7 +213,10 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(0);
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 1
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 2
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 2
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(), 
+                (Utils.isMac() ? KeyModifier.CTRL : null));  // select 2
+        
         assertTrue(isSelected(0, 2));
         assertTrue(isNotSelected(1));
         assertTrue(isAnchor(2));
@@ -222,7 +227,10 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(2);
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 1
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 0
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 0
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));  // select 0
+        
         assertTrue(isSelected(0, 2));
         assertTrue(isNotSelected(1));
         assertTrue(isAnchor(0));
@@ -265,11 +273,15 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(5);
         assertTrue(isSelected(5));
         assertTrue(fm.isFocused(5));
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());
+           
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));
+        
         assertTrue(isNotSelected(5));
         assertTrue(debug(), fm.isFocused(5));
         assertTrue(isAnchor(5));
-    } 
+    }
     
     
     
@@ -387,11 +399,15 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(0);
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 1
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 2
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 2
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(), 
+                (Utils.isMac() ? KeyModifier.CTRL : null));  // select 2
         
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 1
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 0
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // deselect 0
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));  // deselect 0
         assertTrue(isSelected(2));
         assertTrue(isNotSelected(0, 1));
         assertTrue(isAnchor(0));
@@ -402,11 +418,15 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(2);
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 1
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 0
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 0
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                Utils.isMac() ? KeyModifier.CTRL : null);  // select 0
         
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 1
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 2
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // deselect 2
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                Utils.isMac() ? KeyModifier.CTRL : null);  // deselect 2
         assertTrue(isSelected(0));
         assertTrue(isNotSelected(1, 2));
         assertTrue(isAnchor(2));
@@ -417,11 +437,15 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(0);
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 1
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 2
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 2
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                Utils.isMac() ? KeyModifier.CTRL : null);  // select 2
         
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 3
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 4
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 4
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                Utils.isMac() ? KeyModifier.CTRL : null);  // select 4
         assertTrue(isSelected(0, 2, 4));
         assertTrue(isNotSelected(1, 3, 5));
         assertTrue(isAnchor(4));
@@ -432,11 +456,15 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(4);
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 3
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 2
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 2
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                Utils.isMac() ? KeyModifier.CTRL : null);  // select 2
         
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 1
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 0
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 0
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                Utils.isMac() ? KeyModifier.CTRL : null);  // select 0
         assertTrue(isSelected(0, 2, 4));
         assertTrue(isNotSelected(1, 3));
         assertTrue(isAnchor(0));
@@ -469,7 +497,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(0);
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 1
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 2
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 2, keeping 0 selected
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));  // select 2, keeping 0 selected
         assertTrue(isSelected(0, 2));
         assertTrue(isNotSelected(1, 3));
         assertTrue(isAnchor(2));
@@ -487,7 +517,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(4);
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 3
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 2
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 2, keeping 4 selected
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));  // select 2, keeping 4 selected
         assertTrue(isSelected(2, 4));
         assertTrue(isNotSelected(0, 1, 3));
         assertTrue(isAnchor(2));
@@ -510,13 +542,13 @@ public class ListViewKeyInputTest {
     } 
     
     // test 36
-    @Test public void testCtrlUpTwiceThenShiftDown() {
+    @Test public void testCtrlUpThriceThenShiftDown() {
         sm.clearAndSelect(3);
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 2
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 1
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 0
-        keyboard.doKeyPress(KeyCode.DOWN, KeyModifier.SHIFT);  // select 1,2,3
-        assertTrue(isSelected(1, 2, 3));
+        keyboard.doDownArrowPress(KeyModifier.SHIFT);  // select 1,2,3
+        assertTrue(debug(), isSelected(1, 2, 3));
         assertTrue(isNotSelected(0));
     } 
     
@@ -546,7 +578,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(0);
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 1
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 2
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 0,2
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));  // select 0,2
         assertTrue(isSelected(0, 2));
         assertTrue(isNotSelected(1, 3));
         assertTrue(isAnchor(2));
@@ -564,7 +598,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(5);
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 4
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 3
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 3,5
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));  // select 3,5
         assertTrue(isSelected(3,5));
         assertTrue(isNotSelected(0,1,2,4));
         assertTrue(isAnchor(3));
@@ -583,7 +619,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(0);
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 1
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 2
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 0,2
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));  // select 0,2
         assertTrue(isSelected(0,2));
         assertTrue(isNotSelected(1,3,4));
         assertTrue(isAnchor(2));
@@ -602,7 +640,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(0);
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 1
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());    // move focus to 2
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 0,2
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));  // select 0,2
         assertTrue(isSelected(0,2));
         assertTrue(isNotSelected(1,3,4));
         assertTrue(isAnchor(2));
@@ -620,7 +660,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(5);
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 4
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 3
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 3,5
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));  // select 3,5
         assertTrue(isSelected(3,5));
         assertTrue(isNotSelected(1,2,4));
         assertTrue(isAnchor(3));
@@ -638,7 +680,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(5);
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 4
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());    // move focus to 3
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());  // select 3,5
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));  // select 3,5
         assertTrue(isSelected(3,5));
         assertTrue(isNotSelected(0,1,2,4));
         assertTrue(isAnchor(3));
@@ -704,7 +748,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(0);
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));
         assertTrue(isSelected(0,2));
         assertTrue(isAnchor(2));
         
@@ -733,7 +779,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(0);
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));
         assertTrue(isSelected(0,2));
         assertTrue(isAnchor(2));
         
@@ -748,7 +796,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(5);
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));
         assertTrue(isSelected(3,5));
         assertTrue(isAnchor(3));
         
@@ -763,7 +813,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(0);
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));
         assertTrue(isSelected(0,2));
         assertTrue(isAnchor(2));
         
@@ -784,7 +836,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(5);
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));
         assertTrue(isSelected(3,5));
         assertTrue(isAnchor(3));
         
@@ -807,7 +861,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(0);
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));
         assertTrue(isSelected(0,2));
         assertTrue(isAnchor(2));
         
@@ -821,7 +877,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(9);
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));
         assertTrue(isSelected(7,9));
         assertTrue(isAnchor(7));
         
@@ -847,7 +905,9 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(0);
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey());
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));
         assertTrue(isSelected(0,2));
         assertTrue(isAnchor(2));
         
@@ -863,7 +923,9 @@ public class ListViewKeyInputTest {
         assertTrue(isAnchor(2));
 
         keyboard.doUpArrowPress(KeyModifier.getShortcutKey());
-        keyboard.doKeyPress(KeyCode.SPACE,KeyModifier.getShortcutKey());
+        keyboard.doKeyPress(KeyCode.SPACE,
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null));
         assertTrue(isSelected(1,2,3,4));
         assertTrue(fm.isFocused(0));
         assertTrue(isAnchor(0));
@@ -905,10 +967,14 @@ public class ListViewKeyInputTest {
         sm.clearAndSelect(1);                          // select 1
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());   // shift focus to 2
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());   // shift focus to 3
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey()); // set anchor, and also select, 3
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null)); // set anchor, and also select, 3
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());   // shift focus to 4
         keyboard.doDownArrowPress(KeyModifier.getShortcutKey());   // shift focus to 5
-        keyboard.doKeyPress(KeyCode.SPACE, KeyModifier.getShortcutKey()); // set anchor, and also select, 5
+        keyboard.doKeyPress(KeyCode.SPACE, 
+                KeyModifier.getShortcutKey(),
+                (Utils.isMac() ? KeyModifier.CTRL : null)); // set anchor, and also select, 5
         
         assertTrue(isSelected(1, 3, 5));
         assertTrue(isNotSelected(0, 2, 4));
@@ -968,5 +1034,23 @@ public class ListViewKeyInputTest {
         keyboard.doKeyPress(KeyCode.HOME, KeyModifier.SHIFT, KeyModifier.getShortcutKey()); 
         assertTrue(debug(), fm.isFocused(0));
         assertTrue(isSelected(0,1,2,3,4,5));
+    }
+    
+    @Ignore("Bug not yet fixed")
+    @Test public void test_rt28065() {
+        sm.setSelectionMode(SelectionMode.MULTIPLE);
+        listView.getItems().setAll("Apple", "Orange", "Banana");
+        
+        listView.getSelectionModel().select(0);
+        assertEquals(0, listView.getSelectionModel().getSelectedIndex());
+        assertEquals("Apple", listView.getSelectionModel().getSelectedItem());
+        assertEquals(0, listView.getFocusModel().getFocusedIndex());
+        assertEquals("Apple", listView.getFocusModel().getFocusedItem());
+        
+        keyboard.doKeyPress(KeyCode.A, KeyModifier.getShortcutKey());
+        assertEquals(0, listView.getSelectionModel().getSelectedIndex());
+        assertEquals("Apple", listView.getSelectionModel().getSelectedItem());
+        assertEquals(0, listView.getFocusModel().getFocusedIndex());
+        assertEquals("Apple", listView.getFocusModel().getFocusedItem());
     }
 }

@@ -5620,6 +5620,7 @@ public class Scene implements EventTarget {
                 @Override
                 protected void invalidated() {
                     sceneEffectiveOrientationInvalidated();
+                    getRoot().impl_reapplyCSS();
                 }
 
                 @Override
