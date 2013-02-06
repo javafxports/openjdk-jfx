@@ -272,16 +272,18 @@ public class LineChart<X,Y> extends XYChart<X,Y> {
                 item.setYValue(series.getData().get(last).getYValue());
             } else {
                 // fade out symbol
-                symbol.setOpacity(0);
-                FadeTransition ft = new FadeTransition(Duration.millis(500),symbol);
-                ft.setToValue(0);
-                ft.setOnFinished(new EventHandler<ActionEvent>() {
-                    @Override public void handle(ActionEvent actionEvent) {
-                        getPlotChildren().remove(symbol);
-                        removeDataItemFromDisplay(series, item);
-                    }
-                });
-                ft.play();
+                if (symbol != null) {
+                    symbol.setOpacity(0);
+                    FadeTransition ft = new FadeTransition(Duration.millis(500),symbol);
+                    ft.setToValue(0);
+                    ft.setOnFinished(new EventHandler<ActionEvent>() {
+                        @Override public void handle(ActionEvent actionEvent) {
+                            getPlotChildren().remove(symbol);
+                            removeDataItemFromDisplay(series, item);
+                        }
+                    });
+                    ft.play();
+                }
             }
             if (animate) {
                 dataRemoveTimeline = createDataRemoveTimeline(item, symbol, series);
@@ -290,7 +292,7 @@ public class LineChart<X,Y> extends XYChart<X,Y> {
                 dataRemoveTimeline.play();
             }
         } else {
-            getPlotChildren().remove(symbol);
+            if (symbol != null) getPlotChildren().remove(symbol);
             removeDataItemFromDisplay(series, item);
         }
         //Note: better animation here, point should move from old position to new position at center point between prev and next symbols
@@ -307,11 +309,6 @@ public class LineChart<X,Y> extends XYChart<X,Y> {
             final Series<X,Y> s = getData().get(i);
             Node seriesNode = s.getNode();
             if(seriesNode != null) seriesNode.getStyleClass().setAll("chart-series-line", "series" + i, s.defaultColorStyleClass);
-            for (int j=0; j < s.getData().size(); j++) {
-                final Data item = s.getData().get(j);
-                final Node node = item.getNode();
-                if(node!=null) node.getStyleClass().addAll("chart-line-symbol", "series" + i, "data" + j, s.defaultColorStyleClass);
-            }
         }
     }
 
@@ -361,8 +358,21 @@ public class LineChart<X,Y> extends XYChart<X,Y> {
         }
         if (shouldAnimate()) animate(keyFrames.toArray(new KeyFrame[keyFrames.size()]));
     }
+    private void updateDefaultColorIndex(final Series<X,Y> series) {
+        int clearIndex = seriesColorMap.get(series);
+        colorBits.clear(clearIndex);
+        series.getNode().getStyleClass().remove(DEFAULT_COLOR+clearIndex);
+        for (int j=0; j < series.getData().size(); j++) {
+            final Node node = series.getData().get(j).getNode();
+            if(node!=null) {
+                node.getStyleClass().remove(DEFAULT_COLOR+clearIndex);
+            }
+        }
+        seriesColorMap.remove(series);
+    }
 
     @Override protected  void seriesRemoved(final Series<X,Y> series) {
+        updateDefaultColorIndex(series);
         // remove all symbol nodes
         seriesYMultiplierMap.remove(series);
         if (shouldAnimate()) {
@@ -436,7 +446,7 @@ public class LineChart<X,Y> extends XYChart<X,Y> {
                 item.getCurrentX())),
                 new KeyFrame(Duration.millis(500), new EventHandler<ActionEvent>() {
                     @Override public void handle(ActionEvent actionEvent) {
-                        getPlotChildren().remove(symbol);
+                        if (symbol != null) getPlotChildren().remove(symbol);
                         removeDataItemFromDisplay(series, item);
                     }
                 },
