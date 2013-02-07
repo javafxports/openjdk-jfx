@@ -58,10 +58,12 @@ import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
-
+import java.util.BitSet;
 import javafx.css.StyleableBooleanProperty;
 import javafx.css.CssMetaData;
 import com.sun.javafx.css.converters.BooleanConverter;
+import java.util.HashMap;
+import java.util.Map;
 import javafx.css.StyleableProperty;
 
 /**
@@ -73,7 +75,10 @@ public abstract class XYChart<X,Y> extends Chart {
 
     // -------------- PRIVATE FIELDS -----------------------------------------------------------------------------------
 
-    private int seriesDefaultColorIndex = 0;
+    // to indicate which colors are being used for the series
+    BitSet colorBits = new BitSet(8); 
+    static String DEFAULT_COLOR = "default-color";
+    Map<Series, Integer> seriesColorMap = new HashMap<Series, Integer>();
     private boolean rangeValid = false;
     private final Line verticalZeroLine = new Line();
     private final Line horizontalZeroLine = new Line();
@@ -97,7 +102,7 @@ public abstract class XYChart<X,Y> extends Chart {
                 for (Series<X,Y> series : c.getRemoved()) {
                     series.setChart(null);
                     seriesRemoved(series);
-                    seriesDefaultColorIndex --;
+//                    seriesDefaultColorIndex --;
                 }
                 for(int i=c.getFrom(); i<c.getTo() && !c.wasPermutated(); i++) {
                     final Series<X,Y> series = c.getList().get(i);
@@ -124,8 +129,10 @@ public abstract class XYChart<X,Y> extends Chart {
                         }
                     }
                     // update default color style class
-                    series.defaultColorStyleClass = "default-color"+(seriesDefaultColorIndex % 8);
-                    seriesDefaultColorIndex ++;
+                    int nextClearBit = colorBits.nextClearBit(0);
+                    colorBits.set(nextClearBit, true);
+                    series.defaultColorStyleClass = DEFAULT_COLOR+(nextClearBit%8);
+                    seriesColorMap.put(series, nextClearBit%8);
                     // inform sub-classes of series added
                     seriesAdded(series, i);
                 }
@@ -411,6 +418,17 @@ public abstract class XYChart<X,Y> extends Chart {
         if(xAxis.getSide() == null) xAxis.setSide(Side.BOTTOM);
         this.yAxis = yAxis;
         if(yAxis.getSide() == null) yAxis.setSide(Side.LEFT);
+        // RT-23123 autoranging leads to charts incorrect appearance.
+        xAxis.autoRangingProperty().addListener(new ChangeListener<Boolean>() {
+            public void changed(ObservableValue<? extends Boolean> ov, Boolean t, Boolean t1) {
+                updateAxisRange();
+            }
+        });
+        yAxis.autoRangingProperty().addListener(new ChangeListener<Boolean>() {
+            public void changed(ObservableValue<? extends Boolean> ov, Boolean t, Boolean t1) {
+                updateAxisRange();
+            }
+        });
         // add initial content to chart content
         getChartChildren().addAll(plotBackground,plotArea,xAxis,yAxis);
         // We don't want plotArea or plotContent to autoSize or do layout

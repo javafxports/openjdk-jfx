@@ -33,6 +33,8 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 
 import static javafx.scene.control.OverrunStyle.*;
+import javafx.application.Platform;
+import javafx.application.ConditionalFeature;
 import javafx.collections.ObservableList;
 import javafx.geometry.Bounds;
 import javafx.geometry.HPos;
@@ -856,24 +858,16 @@ public class Utils {
         }
     }
 
-
-    private static final boolean embeddedNonTouch;
-    static {
-        embeddedNonTouch = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
-            @Override public Boolean run() {
-                return Boolean.getBoolean("com.sun.javafx.isEmbeddedNonTouch");
-            }
-        });
-    }
-
-
     /*
-    ** Returns true if the platform is an embedded non-touch platform.
-    ** This platform supports 5-button navigation.
-    ** This is a temporary home.
+    ** Returns true if the platform is to use Two-Level-Focus.
+    ** This is in the Util class to ease any changes in
+    ** the criteria for enabling this feature.
+    ** 
+    ** TwoLevelFocus is needed on platforms that
+    ** only support 5-button navigation (arrow keys and Select/OK).
     **
     */
-    public static boolean isEmbeddedNonTouch() {
-        return embeddedNonTouch;
+    public static boolean isTwoLevelFocus() {
+        return Platform.isSupported(ConditionalFeature.TWO_LEVEL_FOCUS);
     }
 }

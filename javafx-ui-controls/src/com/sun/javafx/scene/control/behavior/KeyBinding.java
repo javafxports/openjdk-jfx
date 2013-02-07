@@ -25,9 +25,11 @@
 
 package com.sun.javafx.scene.control.behavior;
 
+import com.sun.javafx.Utils;
 import static com.sun.javafx.scene.control.behavior.OptionalBoolean.ANY;
 import static com.sun.javafx.scene.control.behavior.OptionalBoolean.FALSE;
 import static com.sun.javafx.scene.control.behavior.OptionalBoolean.TRUE;
+import com.sun.javafx.tk.Toolkit;
 import javafx.event.EventType;
 import javafx.scene.control.Control;
 import javafx.scene.input.KeyCode;
@@ -92,7 +94,7 @@ public class KeyBinding {
         alt = value;
         return this;
     }
-
+    
     public KeyBinding meta() {
         return meta(TRUE);
     }
@@ -100,6 +102,35 @@ public class KeyBinding {
     public KeyBinding meta(OptionalBoolean value) {
         meta = value;
         return this;
+    }
+    
+    public KeyBinding shortcut() {
+        if (Toolkit.getToolkit().getClass().getName().endsWith("StubToolkit")) {
+            // FIXME: We've hit the terrible StubToolkit (which only appears 
+            // during testing). We will dumb down what we do here
+            if (Utils.isMac()) {
+                return meta();
+            } else {
+                return ctrl();
+            }
+        } else {
+            switch (Toolkit.getToolkit().getPlatformShortcutKey()) {
+                case SHIFT:
+                    return shift();
+
+                case CONTROL:
+                    return ctrl();
+
+                case ALT:
+                    return alt();
+
+                case META:
+                    return meta();
+
+                default:
+                    return this;
+            }
+        }
     }
 
     public final KeyCode getCode() { return code; }
@@ -124,7 +155,8 @@ public class KeyBinding {
 
     @Override public String toString() {
         return "KeyBinding [code=" + code + ", shift=" + shift +
-                ", ctrl=" + ctrl + ", alt=" + alt + ", meta=" + meta +
-                ", type=" + eventType + ", action=" + action + "]";
+                ", ctrl=" + ctrl + ", alt=" + alt + 
+                ", meta=" + meta + ", type=" + eventType + 
+                ", action=" + action + "]";
     }
 }
