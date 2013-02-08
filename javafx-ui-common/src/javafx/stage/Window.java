@@ -420,7 +420,6 @@ public class Window implements EventTarget {
                     // window is already showing. For not yet shown windows, the update is
                     // performed in Window.visibleChanging()
                     if (isShowing()) {
-                        StyleManager.getStyleManager(newScene).updateStylesheets();
                         newScene.getRoot().impl_reapplyCSS();
                         getScene().impl_preferredSize();
 
@@ -815,7 +814,6 @@ public class Window implements EventTarget {
     @Deprecated
     protected void impl_visibleChanging(boolean visible) {
         if (visible && (getScene() != null)) {
-            StyleManager.getStyleManager(getScene()).updateStylesheets();
             getScene().getRoot().impl_reapplyCSS();
         }
     }

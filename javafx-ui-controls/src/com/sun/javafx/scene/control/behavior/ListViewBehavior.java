@@ -102,20 +102,16 @@ public class ListViewBehavior<T> extends BehaviorBase<ListView<T>> {
         LIST_VIEW_BINDINGS.add(new KeyBinding(F2, "Activate"));
         LIST_VIEW_BINDINGS.add(new KeyBinding(ESCAPE, "CancelEdit"));
 
+        LIST_VIEW_BINDINGS.add(new KeyBinding(A, "SelectAll").shortcut());
+        LIST_VIEW_BINDINGS.add(new KeyBinding(HOME, "FocusFirstRow").shortcut());
+        LIST_VIEW_BINDINGS.add(new KeyBinding(END, "FocusLastRow").shortcut());
+        LIST_VIEW_BINDINGS.add(new KeyBinding(PAGE_UP, "FocusPageUp").shortcut());
+        LIST_VIEW_BINDINGS.add(new KeyBinding(PAGE_DOWN, "FocusPageDown").shortcut());
+            
         if (PlatformUtil.isMac()) {
-            LIST_VIEW_BINDINGS.add(new KeyBinding(A, "SelectAll").meta());
-            LIST_VIEW_BINDINGS.add(new KeyBinding(HOME, "FocusFirstRow").meta());
-            LIST_VIEW_BINDINGS.add(new KeyBinding(END, "FocusLastRow").meta());
-            LIST_VIEW_BINDINGS.add(new KeyBinding(SPACE, "toggleFocusOwnerSelection").ctrl().meta());
-            LIST_VIEW_BINDINGS.add(new KeyBinding(PAGE_UP, "FocusPageUp").meta());
-            LIST_VIEW_BINDINGS.add(new KeyBinding(PAGE_DOWN, "FocusPageDown").meta());
+            LIST_VIEW_BINDINGS.add(new KeyBinding(SPACE, "toggleFocusOwnerSelection").ctrl().shortcut());
         } else {
-            LIST_VIEW_BINDINGS.add(new KeyBinding(A, "SelectAll").ctrl());
-            LIST_VIEW_BINDINGS.add(new KeyBinding(HOME, "FocusFirstRow").ctrl());
-            LIST_VIEW_BINDINGS.add(new KeyBinding(END, "FocusLastRow").ctrl());
             LIST_VIEW_BINDINGS.add(new KeyBinding(SPACE, "toggleFocusOwnerSelection").ctrl());
-            LIST_VIEW_BINDINGS.add(new KeyBinding(PAGE_UP, "FocusPageUp").ctrl());
-            LIST_VIEW_BINDINGS.add(new KeyBinding(PAGE_DOWN, "FocusPageDown").ctrl());
         }
 
 
@@ -130,27 +126,15 @@ public class ListViewBehavior<T> extends BehaviorBase<ListView<T>> {
         LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(DOWN, "AlsoSelectNextRow").vertical().shift());
         LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(KP_DOWN, "AlsoSelectNextRow").vertical().shift());
 
-        if (PlatformUtil.isMac()) {
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(UP, "FocusPreviousRow").vertical().meta());
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(DOWN, "FocusNextRow").vertical().meta());
-            
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(UP, "DiscontinuousSelectPreviousRow").vertical().meta().shift());
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(DOWN, "DiscontinuousSelectNextRow").vertical().meta().shift());
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(PAGE_UP, "DiscontinuousSelectPageUp").vertical().meta().shift());
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(PAGE_DOWN, "DiscontinuousSelectPageDown").vertical().meta().shift());
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(HOME, "DiscontinuousSelectAllToFirstRow").vertical().meta().shift());
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(END, "DiscontinuousSelectAllToLastRow").vertical().meta().shift());
-        } else {
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(UP, "FocusPreviousRow").vertical().ctrl());
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(DOWN, "FocusNextRow").vertical().ctrl());
-            
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(UP, "DiscontinuousSelectPreviousRow").vertical().ctrl().shift());
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(DOWN, "DiscontinuousSelectNextRow").vertical().ctrl().shift());
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(PAGE_UP, "DiscontinuousSelectPageUp").vertical().ctrl().shift());
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(PAGE_DOWN, "DiscontinuousSelectPageDown").vertical().ctrl().shift());
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(HOME, "DiscontinuousSelectAllToFirstRow").vertical().ctrl().shift());
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(END, "DiscontinuousSelectAllToLastRow").vertical().ctrl().shift());
-        }
+        LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(UP, "FocusPreviousRow").vertical().shortcut());
+        LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(DOWN, "FocusNextRow").vertical().shortcut());
+
+        LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(UP, "DiscontinuousSelectPreviousRow").vertical().shortcut().shift());
+        LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(DOWN, "DiscontinuousSelectNextRow").vertical().shortcut().shift());
+        LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(PAGE_UP, "DiscontinuousSelectPageUp").vertical().shortcut().shift());
+        LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(PAGE_DOWN, "DiscontinuousSelectPageDown").vertical().shortcut().shift());
+        LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(HOME, "DiscontinuousSelectAllToFirstRow").vertical().shortcut().shift());
+        LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(END, "DiscontinuousSelectAllToLastRow").vertical().shortcut().shift());
         // --- end of vertical
 
 
@@ -166,21 +150,11 @@ public class ListViewBehavior<T> extends BehaviorBase<ListView<T>> {
         LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(RIGHT, "AlsoSelectNextRow").shift());
         LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(KP_RIGHT, "AlsoSelectNextRow").shift());
 
-        if (PlatformUtil.isMac()) {
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(LEFT, "FocusPreviousRow").meta());
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(RIGHT, "FocusNextRow").meta());
-        } else {
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(LEFT, "FocusPreviousRow").ctrl());
-            LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(RIGHT, "FocusNextRow").ctrl());
-        }
+        LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(LEFT, "FocusPreviousRow").shortcut());
+        LIST_VIEW_BINDINGS.add(new ListViewKeyBinding(RIGHT, "FocusNextRow").shortcut());
         // --- end of horizontal
 
-
-        if (PlatformUtil.isMac()) {
-            LIST_VIEW_BINDINGS.add(new KeyBinding(BACK_SLASH, "ClearSelection").meta());
-        } else {
-            LIST_VIEW_BINDINGS.add(new KeyBinding(BACK_SLASH, "ClearSelection").ctrl());
-        }
+        LIST_VIEW_BINDINGS.add(new KeyBinding(BACK_SLASH, "ClearSelection").shortcut());
     }
     
     protected /*final*/ String matchActionForEvent(KeyEvent e) {
@@ -258,7 +232,7 @@ public class ListViewBehavior<T> extends BehaviorBase<ListView<T>> {
         // so that we know when they enter/leave multiple selection mode. This
         // changes what happens when certain key combinations are pressed.
         isShiftDown = e.getEventType() == KeyEvent.KEY_PRESSED && e.isShiftDown();
-        isCtrlDown = e.getEventType() == KeyEvent.KEY_PRESSED && e.isControlDown();
+        isShortcutDown = e.getEventType() == KeyEvent.KEY_PRESSED && e.isShortcutDown();
         
         super.callActionForEvent(e);
     }
@@ -268,7 +242,7 @@ public class ListViewBehavior<T> extends BehaviorBase<ListView<T>> {
      *************************************************************************/
     
     private boolean isShiftDown = false;
-    private boolean isCtrlDown = false;
+    private boolean isShortcutDown = false;
     
     private Callback<Integer, Integer> onScrollPageUp;
     private Callback<Integer, Integer> onScrollPageDown;
@@ -385,7 +359,7 @@ public class ListViewBehavior<T> extends BehaviorBase<ListView<T>> {
         ** only add this if we're on an embedded
         ** platform that supports 5-button navigation 
         */
-        if (Utils.isEmbeddedNonTouch()) {
+        if (Utils.isTwoLevelFocus()) {
             tlFocus = new TwoLevelFocusListBehavior(control); // needs to be last.
         }
     }
@@ -472,7 +446,7 @@ public class ListViewBehavior<T> extends BehaviorBase<ListView<T>> {
         
         fm.focusPrevious();
         
-        if (! isCtrlDown || getAnchor() == -1) {
+        if (! isShortcutDown || getAnchor() == -1) {
             setAnchor(fm.getFocusedIndex());
         }
         
@@ -488,7 +462,7 @@ public class ListViewBehavior<T> extends BehaviorBase<ListView<T>> {
         
         fm.focusNext();
         
-        if (! isCtrlDown || getAnchor() == -1) {
+        if (! isShortcutDown || getAnchor() == -1) {
             setAnchor(fm.getFocusedIndex());
         }
         

@@ -147,7 +147,7 @@ public class ContextMenuContent extends Region {
         ** only add this if we're on an embedded
         ** platform that supports 5-button navigation 
         */
-        if (Utils.isEmbeddedNonTouch()) {
+        if (Utils.isTwoLevelFocus()) {
             new TwoLevelFocusPopupBehavior(this);
         }
     }
@@ -796,7 +796,7 @@ public class ContextMenuContent extends Region {
                 final Menu menuItem = (Menu) item;
                 menuItem.showingProperty().addListener(new ChangeListener<Boolean>() {
                     @Override
-                    public void changed(ObservableValue observable, Boolean wasShowing, Boolean isShowing) {
+                    public void changed(ObservableValue<? extends Boolean> observable, Boolean wasShowing, Boolean isShowing) {
                         if (wasShowing && ! isShowing) {
                             // hide the submenu popup
                             hideSubmenu();
@@ -810,7 +810,7 @@ public class ContextMenuContent extends Region {
              // listen to menu items's visible property.
             item.visibleProperty().addListener(new ChangeListener<Boolean>() {
                 @Override
-                public void changed(ObservableValue observable, Boolean oldValue, Boolean newValue) {
+                public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) {
                     // re layout as item's visibility changed
                     requestLayout();
                 }
