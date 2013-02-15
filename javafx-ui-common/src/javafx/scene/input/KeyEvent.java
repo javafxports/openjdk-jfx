@@ -148,7 +148,9 @@ public final class KeyEvent extends InputEvent {
                                            middleButtonDown,
                                            secondaryButtonDown,
                                            false,
-                                           popupTrigger
+                                           popupTrigger,
+                                           false,
+                                           null
                                            );
             }
 
@@ -166,7 +168,7 @@ public final class KeyEvent extends InputEvent {
                         shiftDown, controlDown, altDown, metaDown, false, false,
                         scrollX, scrollY, 0, 0,
                         xTextUnits, xText, yTextUnits, yText,
-                        0);
+                        0, null);
             }
         };
         FXRobotHelper.setInputAccessor(a);
