@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 
 package javafx.scene;
 
+import com.sun.javafx.geom.PickRay;
 import com.sun.javafx.pgstub.StubGroup;
 import com.sun.javafx.pgstub.StubCircle;
 import static org.junit.Assert.assertEquals;
@@ -246,10 +247,10 @@ public class NodeTest {
         scene.getRoot().getChildren().add(rect);
 
         PickResultChooser res = new PickResultChooser();
-        rect.impl_pickNode(50, 50, res);
+        rect.impl_pickNode(new PickRay(50, 50), res);
         assertSame(rect, res.getIntersectedNode());
         res = new PickResultChooser();
-        rect.impl_pickNode(0, 0, res);
+        rect.impl_pickNode(new PickRay(0, 0), res);
         assertNull(res.getIntersectedNode());
     }
 
@@ -265,10 +266,10 @@ public class NodeTest {
         scene.getRoot().getChildren().add(rect);
 
         PickResultChooser res = new PickResultChooser();
-        rect.impl_pickNode(50, 50, res);
+        rect.impl_pickNode(new PickRay(50, 50), res);
         assertSame(rect, res.getIntersectedNode());
         res = new PickResultChooser();
-        rect.impl_pickNode(0, 0, res);
+        rect.impl_pickNode(new PickRay(0, 0), res);
         assertNull(res.getIntersectedNode());
     }
 

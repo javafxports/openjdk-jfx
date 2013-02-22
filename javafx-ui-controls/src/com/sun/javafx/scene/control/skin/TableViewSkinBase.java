@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.sun.javafx.scene.control.skin;
 
 import com.sun.javafx.scene.control.behavior.BehaviorBase;
@@ -236,6 +237,15 @@ public abstract class TableViewSkinBase<S, C extends Control, B extends Behavior
     
     private ListChangeListener rowCountListener = new ListChangeListener() {
         @Override public void onChanged(Change c) {
+            // RT-28397: Support for when an item is replaced with itself (but
+            // updated internal values that should be shown visually)
+            while (c.next()) {
+                if (c.wasReplaced()) {
+                    itemCount = 0;
+                    break;
+                }
+            }
+            
             rowCountDirty = true;
             getSkinnable().requestLayout();
         }
@@ -663,13 +673,16 @@ public abstract class TableViewSkinBase<S, C extends Control, B extends Behavior
         getSkinnable().requestLayout();
     }
 
+    private int itemCount = -1;
     protected boolean forceCellRecreate = false;
     
     @Override protected void updateRowCount() {
         updatePlaceholderRegionVisibility();
 
-        int oldCount = flow.getCellCount();
+        int oldCount = itemCount;
         int newCount = getItemCount();
+        
+        itemCount = newCount;
         
         // if this is not called even when the count is the same, we get a 
         // memory leak in VirtualFlow.sheet.children. This can probably be 

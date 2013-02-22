@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2013 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,26 @@
  * questions.
  */
 
-package com.sun.scenario.effect.impl.hw;
+package com.sun.javafx.scene;
 
-import com.sun.javafx.geom.Rectangle;
+import javafx.scene.Node;
 
-public interface Texture {
-    // NOTE: getPhysicalBounds() would be a more appropriate name
-    public Rectangle getNativeBounds();
-    public long getNativeSourceHandle();
+public abstract class NodeAccess {
+
+    private static NodeAccess access;
+
+    public static synchronized void setNodeAccess(NodeAccess acc) {
+        if (access == null) {
+            access = acc;
+        }
+    }
+
+    /**
+     * Return the accessor created by the Node class when its loaded.
+     */
+    public static synchronized NodeAccess getNodeAccess() {
+        return access;
+    }
+
+    public abstract void layoutNodeForPrinting(Node node);
 }
