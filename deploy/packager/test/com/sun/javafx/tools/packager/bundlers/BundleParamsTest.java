@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,8 +35,7 @@ public class BundleParamsTest extends TestCase {
     }
 
     public void testValidateRuntimeLocation() {
-        //File jh = new File(System.getProperty("java.home"));
-        File jh = new File("/Library/Java/JavaVirtualMachines/jdk1.7.0_07.jdk/Contents/Home/jre");
+        File jh = new File(System.getProperty("java.home"));
 
         assertNotNull("Expect java.home to be ok.",
                 BundleParams.validateRuntimeLocation(jh));

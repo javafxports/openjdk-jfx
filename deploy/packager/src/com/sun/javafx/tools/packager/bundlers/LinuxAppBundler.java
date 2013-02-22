@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,8 +71,8 @@ public class LinuxAppBundler extends Bundler {
         }
 
         //validate required inputs
-        testRuntime(p, "lib/ext/fxrt.jar");
-        testRuntime(p, "lib/rt.jar");
+        testRuntime(p, new String[] {"lib/ext/jfxrt.jar", "lib/jfxrt.jar"});
+        testRuntime(p, new String[] { "lib/rt.jar" });
 
         return true;
     }

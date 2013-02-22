@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -158,7 +158,10 @@ public abstract class ComboBoxBaseSkin<T> extends BehaviorSkinBase<ComboBoxBase<
     }
     
     @Override protected double computePrefWidth(double height) {
-        if (displayNode == null) updateDisplayArea();
+        if (displayNode == null) {
+            updateDisplayArea();
+        }
+        
         final Insets arrowButtonPadding = arrowButton.getInsets();
         final double arrowWidth = snapSize(arrow.prefWidth(-1));
         final double arrowButtonWidth = (isButton()) ? 0 : 

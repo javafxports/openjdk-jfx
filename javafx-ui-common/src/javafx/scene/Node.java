@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -136,7 +136,7 @@ import com.sun.javafx.jmx.MXNodeAlgorithm;
 import com.sun.javafx.jmx.MXNodeAlgorithmContext;
 import sun.util.logging.PlatformLogger;
 import com.sun.javafx.perf.PerformanceTracker;
-import com.sun.javafx.print.NodeAccess;
+import com.sun.javafx.scene.NodeAccess;
 import com.sun.javafx.scene.BoundsAccessor;
 import com.sun.javafx.scene.CssFlags;
 import com.sun.javafx.scene.DirtyBits;
@@ -4293,52 +4293,6 @@ public abstract class Node implements EventTarget, Styleable {
     }
 
     /**
-     * Finds a top-most child node that contains the given coordinates.
-     *
-     * Returns the picked node, null if no such node was found.
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
-     */
-    @Deprecated
-    public final void impl_pickNode(double parentX, double parentY, PickResultChooser result) {
-
-        // In some conditions we can omit picking this node or subgraph
-        if (!isVisible() || isDisable() || isMouseTransparent()) {
-            return;
-        }
-
-        final com.sun.javafx.geom.Point2D tempPt =
-                TempState.getInstance().point;
-
-        // convert to local coordinates
-        tempPt.setLocation((float)parentX, (float)parentY);
-        try {
-            parentToLocal(tempPt);
-        } catch (NoninvertibleTransformException e) {
-            return;
-        }
-
-        // Delegate to a function which can be overridden by subclasses which
-        // actually does the pick. The implementation is markedly different
-        // for leaf nodes vs. parent nodes vs. region nodes.
-        impl_pickNodeLocal(tempPt.x, tempPt.y, result);
-    }
-
-    /**
-     * Finds a top-most child node that contains the given local coordinates.
-     *
-     * Returns the picked node, null if no such node was found.
-     * @treatAsPrivate implementation detail
-     * @deprecated This is an internal API that is not intended for use and will be removed in the next version
-     */
-    @Deprecated
-    protected void impl_pickNodeLocal(double localX, double localY, PickResultChooser result) {
-        if (contains(localX, localY)) {
-            result.offer(this, Double.POSITIVE_INFINITY, new Point3D(localX, localY, 0));
-        }
-    }
-
-    /**
      * Finds a top-most child node that contains the given local coordinates.
      *
      * Returns the picked node, null if no such node was found.
@@ -4365,21 +4319,30 @@ public abstract class Node implements EventTarget, Styleable {
             return;
         }
 
-        final BaseTransform tempPickTx = TempState.getInstance().pickTx;
+        final Vec3d o = pickRay.getOriginNoClone();
+        final double ox = o.x;
+        final double oy = o.y;
+        final double oz = o.z;
+        final Vec3d d = pickRay.getDirectionNoClone();
+        final double dx = d.x;
+        final double dy = d.y;
+        final double dz = d.z;
 
-        getLocalToParentTransform(tempPickTx);
+        updateLocalToParentTransform();
         try {
-            tempPickTx.invert();
-        } catch (NoninvertibleTransformException e) {
-            throw new RuntimeException(e);
-        }
-        PickRay localPickRay = pickRay.copy();
-        localPickRay.transform(tempPickTx);
+            localToParentTx.inverseTransform(o, o);
+            localToParentTx.inverseDeltaTransform(d, d);
 
-        // Delegate to a function which can be overridden by subclasses which
-        // actually does the pick. The implementation is markedly different
-        // for leaf nodes vs. parent nodes vs. region nodes.
-        impl_pickNodeLocal(localPickRay, result);
+            // Delegate to a function which can be overridden by subclasses which
+            // actually does the pick. The implementation is markedly different
+            // for leaf nodes vs. parent nodes vs. region nodes.
+            impl_pickNodeLocal(pickRay, result);
+        } catch (NoninvertibleTransformException e) {
+            // in this case we just don't pick anything
+        }
+
+        pickRay.setOrigin(ox, oy, oz);
+        pickRay.setDirection(dx, dy, dz);
     }
 
     /**
@@ -4401,7 +4364,7 @@ public abstract class Node implements EventTarget, Styleable {
     @Deprecated
     protected final boolean impl_intersects(PickRay pickRay, PickResultChooser pickResult) {
         double boundsDistance = impl_intersectsBounds(pickRay);
-        if (boundsDistance >= 0.0) {
+        if (!Double.isNaN(boundsDistance)) {
             if (isPickOnBounds()) {
                 pickResult.offer(this, boundsDistance, PickResultChooser.computePoint(pickRay, boundsDistance));
                 return true;
@@ -4435,7 +4398,9 @@ public abstract class Node implements EventTarget, Styleable {
         double y = pickRay.getOriginNoClone().y + (pickRay.getDirectionNoClone().y * t);
 
         if (contains((float) x, (float) y)) {
-            pickResult.offer(this, t, PickResultChooser.computePoint(pickRay, t));
+            if (pickResult != null) {
+                pickResult.offer(this, t, PickResultChooser.computePoint(pickRay, t));
+            }
             return true;
         }
         return false;
@@ -4445,10 +4410,10 @@ public abstract class Node implements EventTarget, Styleable {
      * Computes the intersection of the pickRay with the bounds of this node.
      * The return value is the distance between the camera and the intersection
      * point, measured in pickRay direction magnitudes. If there is
-     * no intersection, it returns a negative value.
+     * no intersection, it returns NaN.
      *
      * @param pickRay The pick ray
-     * @return Distance of the intersection point, a negative number if there
+     * @return Distance of the intersection point, a NaN if there
      *         is no intersection
      * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
@@ -4457,16 +4422,12 @@ public abstract class Node implements EventTarget, Styleable {
     protected final double impl_intersectsBounds(PickRay pickRay) {
 
         final Vec3d dir = pickRay.getDirectionNoClone();
-        final double invDirX = dir.x == 0 ? Double.POSITIVE_INFINITY : (1.0 / dir.x);
-        final double invDirY = dir.y == 0 ? Double.POSITIVE_INFINITY : (1.0 / dir.y);
-        final double invDirZ = dir.z == 0 ? Double.POSITIVE_INFINITY : (1.0 / dir.z);
+        double tmin, tmax;
+
         final Vec3d origin = pickRay.getOriginNoClone();
         final double originX = origin.x;
         final double originY = origin.y;
         final double originZ = origin.z;
-        final boolean signX = invDirX < 0.0;
-        final boolean signY = invDirY < 0.0;
-        final boolean signZ = invDirZ < 0.0;
 
         final TempState tempState = TempState.getInstance();
         BaseBounds tempBounds = tempState.bounds;
@@ -4474,39 +4435,133 @@ public abstract class Node implements EventTarget, Styleable {
         tempBounds = getLocalBounds(tempBounds,
                                     BaseTransform.IDENTITY_TRANSFORM);
 
-        final double minX = tempBounds.getMinX();
-        final double minY = tempBounds.getMinY();
-        final double minZ = tempBounds.getMinZ();
-        final double maxX = tempBounds.getMaxX();
-        final double maxY = tempBounds.getMaxY();
-        final double maxZ = tempBounds.getMaxZ();
+        if (dir.x == 0.0 && dir.y == 0.0) {
+            // fast path for the usual 2D picking
 
-        double tmin = ((signX ? maxX : minX) - originX) * invDirX;
-        double tmax = ((signX ? minX : maxX) - originX) * invDirX;
-        final double tymin = ((signY ? maxY : minY) - originY) * invDirY;
-        final double tymax = ((signY ? minY : maxY) - originY) * invDirY;
+            if (dir.z == 0.0) {
+                return Double.NaN;
+            }
 
-        if ((tmin > tymax) || (tymin > tmax)) {
-            return -1.0;
-        }
-        if (tymin > tmin) {
-            tmin = tymin;
-        }
-        if (tymax < tmax) {
-            tmax = tymax;
+            if (originX < tempBounds.getMinX() ||
+                    originX > tempBounds.getMaxX() ||
+                    originY < tempBounds.getMinY() ||
+                    originY > tempBounds.getMaxY()) {
+                return Double.NaN;
+            }
+
+            final double invDirZ = 1.0 / dir.z;
+            final boolean signZ = invDirZ < 0.0;
+
+            final double minZ = tempBounds.getMinZ();
+            final double maxZ = tempBounds.getMaxZ();
+            tmin = ((signZ ? maxZ : minZ) - originZ) * invDirZ;
+            tmax = ((signZ ? minZ : maxZ) - originZ) * invDirZ;
+
+        } else {
+            
+            final double invDirX = dir.x == 0.0 ? Double.POSITIVE_INFINITY : (1.0 / dir.x);
+            final double invDirY = dir.y == 0.0 ? Double.POSITIVE_INFINITY : (1.0 / dir.y);
+            final double invDirZ = dir.z == 0.0 ? Double.POSITIVE_INFINITY : (1.0 / dir.z);
+            final boolean signX = invDirX < 0.0;
+            final boolean signY = invDirY < 0.0;
+            final boolean signZ = invDirZ < 0.0;
+            final double minX = tempBounds.getMinX();
+            final double minY = tempBounds.getMinY();
+            final double maxX = tempBounds.getMaxX();
+            final double maxY = tempBounds.getMaxY();
+
+            tmin = Double.NEGATIVE_INFINITY;
+            tmax = Double.POSITIVE_INFINITY;
+            if (Double.isInfinite(invDirX)) {
+                if (minX <= originX && maxX >= originX) {
+                    // move on, we are inside for the whole length
+                } else {
+                    return Double.NaN;
+                }
+            } else {
+                tmin = ((signX ? maxX : minX) - originX) * invDirX;
+                tmax = ((signX ? minX : maxX) - originX) * invDirX;
+            }
+
+            if (Double.isInfinite(invDirY)) {
+                if (minY <= originY && maxY >= originY) {
+                    // move on, we are inside for the whole length
+                } else {
+                    return Double.NaN;
+                }
+            } else {
+                final double tymin = ((signY ? maxY : minY) - originY) * invDirY;
+                final double tymax = ((signY ? minY : maxY) - originY) * invDirY;
+
+                if ((tmin > tymax) || (tymin > tmax)) {
+                    return Double.NaN;
+                }
+                if (tymin > tmin) {
+                    tmin = tymin;
+                }
+                if (tymax < tmax) {
+                    tmax = tymax;
+                }
+            }
+
+            final double minZ = tempBounds.getMinZ();
+            final double maxZ = tempBounds.getMaxZ();
+            if (Double.isInfinite(invDirZ)) {
+                if (minZ <= originZ && maxZ >= originZ) {
+                    // move on, we are inside for the whole length
+                } else {
+                    return Double.NaN;
+                }
+            } else {
+                final double tzmin = ((signZ ? maxZ : minZ) - originZ) * invDirZ;
+                final double tzmax = ((signZ ? minZ : maxZ) - originZ) * invDirZ;
+
+                if ((tmin > tzmax) || (tzmin > tmax)) {
+                    return Double.NaN;
+                }
+                if (tzmin > tmin) {
+                    tmin = tzmin;
+                }
+                if (tzmax < tmax) {
+                    tmax = tzmax;
+                }
+            }
         }
 
-        final double tzmin = ((signZ ? maxZ : minZ) - originZ) * invDirZ;
-        final double tzmax = ((signZ ? minZ : maxZ) - originZ) * invDirZ;
+        // For clip we use following semantics: pick the node normally
+        // if there is an intersection with the clip node. We don't consider
+        // clip node distance.
+        Node clip = getClip();
+        if (clip != null) {
+            final double dirX = dir.x;
+            final double dirY = dir.y;
+            final double dirZ = dir.z;
 
-        if ((tmin > tzmax) || (tzmin > tmax)) {
-            return -1;
+            clip.updateLocalToParentTransform();
+
+            boolean hitClip = true;
+            try {
+                clip.localToParentTx.inverseTransform(origin, origin);
+                clip.localToParentTx.inverseDeltaTransform(dir, dir);
+            } catch (NoninvertibleTransformException e) {
+                hitClip = false;
+            }
+            hitClip = hitClip && clip.impl_intersects(pickRay, null);
+            pickRay.setOrigin(originX, originY, originZ);
+            pickRay.setDirection(dirX, dirY, dirZ);
+
+            if (!hitClip) {
+                return Double.NaN;
+            }
         }
-        if (tzmin > tmin) {
-            tmin = tzmin;
+
+        if (Double.isInfinite(tmin) || Double.isNaN(tmin)) {
+            // We've got a nonsense pick ray or bounds.
+            return Double.NaN;
         }
-        if (tzmax < tmax) {
-            tmax = tzmax;
+
+        if (pickRay.isParallel()) {
+            return tmin;
         }
 
         if (tmin < 0.0) {
@@ -4514,7 +4569,7 @@ public abstract class Node implements EventTarget, Styleable {
                 // we are inside bounds
                 return 0.0;
             } else {
-                return -1.0;
+                return Double.NaN;
             }
         }
 
@@ -8201,7 +8256,28 @@ public abstract class Node implements EventTarget, Styleable {
         //
         final boolean flag = (reapply || cssFlag == CssFlags.REAPPLY);
         cssFlag = flag ? CssFlags.REAPPLY : CssFlags.UPDATE;
-        impl_processCSS();
+        
+        //
+        // RT-28394 - need to see if any ancestor has a flag other than clean
+        // If so, process css from the top-most css-dirty node
+        // 
+        Node topMost = this;
+        Node _parent = getParent();
+        while (_parent != null) {
+            if (_parent.cssFlag != CssFlags.CLEAN) {
+                topMost = _parent;
+            } 
+            _parent = _parent.getParent();
+        } 
+        
+        _parent = this;
+        while (_parent != topMost) {
+            if (_parent.cssFlag == CssFlags.CLEAN) {
+                _parent.cssFlag = CssFlags.DIRTY_BRANCH;                    
+            }
+            _parent = _parent.getParent();
+        }
+        topMost.processCSS();
     }
     
     /**
@@ -8214,7 +8290,7 @@ public abstract class Node implements EventTarget, Styleable {
      */
     @Deprecated // SB-dependency: RT-21206 has been filed to track this    
     protected void impl_processCSS() {
-        
+
         // Nothing to do...
         if (cssFlag == CssFlags.CLEAN) return;
 
@@ -8400,10 +8476,12 @@ public abstract class Node implements EventTarget, Styleable {
     public abstract Object impl_processMXNode(MXNodeAlgorithm alg, MXNodeAlgorithmContext ctx);
 
     /**
-     * This class is used by printing to get access to a private method.
+     * This class is used by classes in different packages to get access to
+     * private and package private methods.
      */
     private static class NodeAccessImpl extends NodeAccess {
 
+        @Override
         public void layoutNodeForPrinting(Node node) {
             node.doCSSLayoutSyncForSnapshot();
         }

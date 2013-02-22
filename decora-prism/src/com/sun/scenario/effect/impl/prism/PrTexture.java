@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2013 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,8 @@
 package com.sun.scenario.effect.impl.prism;
 
 import com.sun.javafx.geom.Rectangle;
-import com.sun.scenario.effect.impl.hw.Texture;
 
-public class PrTexture implements Texture {
+public class PrTexture {
 
     private final com.sun.prism.Texture tex;
     private final Rectangle bounds;
@@ -43,10 +42,6 @@ public class PrTexture implements Texture {
 
     public Rectangle getNativeBounds() {
         return bounds;
-    }
-
-    public long getNativeSourceHandle() {
-        return tex.getNativeSourceHandle();
     }
 
     public com.sun.prism.Texture getTextureObject() {

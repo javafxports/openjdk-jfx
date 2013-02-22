@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -349,10 +349,14 @@ public class BundleParams {
             return false;
         }
 
-        File jfxJar = new File(jdkRoot, "jre/lib/ext/fxrt.jar");
+        File jfxJar = new File(jdkRoot, "jre/lib/ext/jfxrt.jar");
         if (!jfxJar.exists()) {
-            Log.verbose("jfxrt.jar is not found at " + jfxJar.getAbsolutePath());
-            return false;
+            //Try again with new location
+            jfxJar = new File(jdkRoot, "jre/lib/jfxrt.jar");
+            if (!jfxJar.exists()) {
+                Log.verbose("jfxrt.jar is not found at " + jfxJar.getAbsolutePath());
+                return false;
+            }
         }
 
 

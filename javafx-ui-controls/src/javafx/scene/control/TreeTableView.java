@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package javafx.scene.control;
 
 import com.sun.javafx.collections.MappingChange;
@@ -592,6 +593,15 @@ public class TreeTableView<S> extends Control {
         }
     };
     
+    /* proxy pseudo-class state change from selectionModel's cellSelectionEnabledProperty */
+    private final InvalidationListener cellSelectionModelInvalidationListener = new InvalidationListener() {
+        @Override public void invalidated(Observable o) {
+            boolean isCellSelection = ((BooleanProperty)o).get();
+            pseudoClassStateChanged(PSEUDO_CLASS_CELL_SELECTION,  isCellSelection);
+            pseudoClassStateChanged(PSEUDO_CLASS_ROW_SELECTION,  !isCellSelection);
+        }
+    };
+    
     private WeakEventHandler weakRootEventListener;
     
     private final WeakInvalidationListener weakColumnVisibleObserver = 
@@ -605,6 +615,9 @@ public class TreeTableView<S> extends Control {
     
     private final WeakListChangeListener weakColumnsObserver = 
             new WeakListChangeListener(columnsObserver);
+    
+    private final WeakInvalidationListener weakCellSelectionModelInvalidationListener = 
+            new WeakInvalidationListener(cellSelectionModelInvalidationListener);
     
     /***************************************************************************
      *                                                                         *
@@ -763,15 +776,15 @@ public class TreeTableView<S> extends Control {
                     // need to listen to the cellSelectionEnabledProperty
                     // in order to set pseudo-class state                    
                     if (oldValue != null) {
-                        oldValue.cellSelectionEnabledProperty().removeListener(cellSelectionModelInvalidationListener);
+                        oldValue.cellSelectionEnabledProperty().removeListener(weakCellSelectionModelInvalidationListener);
                     }
                     
                     oldValue = get();
                     
                     if (oldValue != null) {
-                        oldValue.cellSelectionEnabledProperty().addListener(cellSelectionModelInvalidationListener);
+                        oldValue.cellSelectionEnabledProperty().addListener(weakCellSelectionModelInvalidationListener);
                         // fake invalidation to ensure updated pseudo-class states
-                        cellSelectionModelInvalidationListener.invalidated(oldValue.cellSelectionEnabledProperty());            
+                        weakCellSelectionModelInvalidationListener.invalidated(oldValue.cellSelectionEnabledProperty());            
                     }
                 }
             };
@@ -779,17 +792,6 @@ public class TreeTableView<S> extends Control {
         return selectionModel;
     }
     
-    /* proxy pseudo-class state change from selectionModel's cellSelectionEnabledProperty */
-    private final InvalidationListener cellSelectionModelInvalidationListener = 
-        new InvalidationListener() {
-
-        @Override
-        public void invalidated(Observable o) {
-            boolean isCellSelection = ((BooleanProperty)o).get();
-            pseudoClassStateChanged(PSEUDO_CLASS_CELL_SELECTION,  isCellSelection);
-            pseudoClassStateChanged(PSEUDO_CLASS_ROW_SELECTION,  !isCellSelection);
-        }
-    };
     
     // --- Focus Model
     private ObjectProperty<TreeTableViewFocusModel<S>> focusModel;

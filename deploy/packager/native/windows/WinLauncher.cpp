@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 
 //Define Windows compatibility requirements
 //XP or later
@@ -464,9 +463,7 @@ bool startJVM(TCHAR* basedir, TCHAR* appFolder, TCHAR* jar, int argCount, LPTSTR
             jobjectArray args = env->NewObjectArray(argCount - startArgIndex, stringClass, NULL);
             for(int i=startArgIndex; i<argCount; i++) {
                 size_t inLen = (size_t) wcslen(szArgList[i]);
-                //convert argument to ASCII string as this is what CreateJVM needs
-                wcstombs_s(&outlen, argvalueASCII, sizeof(argvalueASCII), szArgList[i], inLen + 1);
-                env->SetObjectArrayElement(args, i-startArgIndex, env->NewStringUTF(argvalueASCII));
+                env->SetObjectArrayElement(args, i-startArgIndex, env->NewString((jchar*)szArgList[i], inLen));
             }
             env->CallStaticVoidMethod(cls, mid, args);
         } else {

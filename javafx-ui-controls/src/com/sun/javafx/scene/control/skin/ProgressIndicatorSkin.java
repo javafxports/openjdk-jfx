@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.sun.javafx.scene.control.skin;
 
 import java.util.ArrayList;
@@ -637,7 +638,7 @@ public class ProgressIndicatorSkin extends BehaviorSkinBase<ProgressIndicator, P
         }
 
         @Override public CssMetaData<ProgressIndicator,Boolean> getCssMetaData() {
-            return StyleableProperties.LEGEND_VISIBLE;
+            return StyleableProperties.SPIN_ENABLED;
         }
 
         @Override public Object getBean() {
@@ -692,7 +693,7 @@ public class ProgressIndicatorSkin extends BehaviorSkinBase<ProgressIndicator, P
                 return (StyleableProperty<Number>)skin.indeterminateSegmentCount;
             }
         };
-        private static final CssMetaData<ProgressIndicator,Boolean> LEGEND_VISIBLE =
+        private static final CssMetaData<ProgressIndicator,Boolean> SPIN_ENABLED =
             new CssMetaData<ProgressIndicator,Boolean>("-fx-spin-enabled",
                                            BooleanConverter.getInstance(), Boolean.FALSE) {
 
@@ -713,7 +714,7 @@ public class ProgressIndicatorSkin extends BehaviorSkinBase<ProgressIndicator, P
                 new ArrayList<CssMetaData<? extends Styleable, ?>>(SkinBase.getClassCssMetaData());
             styleables.add(PROGRESS_COLOR);
             styleables.add(INDETERMINATE_SEGMENT_COUNT);
-            styleables.add(LEGEND_VISIBLE);
+            styleables.add(SPIN_ENABLED);
             STYLEABLES = Collections.unmodifiableList(styleables);
         }
     }

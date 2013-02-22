@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -552,5 +552,34 @@ public  class Rectangle extends Shape {
                 (float)getArcWidth(),
                 (float)getArcHeight());
         }
+    }
+
+    /**
+     * Returns a string representation of this {@code Rectangle} object.
+     * @return a string representation of this {@code Rectangle} object.
+     */
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("Rectangle[");
+
+        String id = getId();
+        if (id != null) {
+            sb.append("id=").append(id).append(", ");
+        }
+
+        sb.append("x=").append(getX());
+        sb.append(", y=").append(getY());
+        sb.append(", width=").append(getWidth());
+        sb.append(", height=").append(getHeight());
+
+        sb.append(", fill=").append(getFill());
+
+        Paint stroke = getStroke();
+        if (stroke != null) {
+            sb.append(", stroke=").append(stroke);
+            sb.append(", strokeWidth=").append(getStrokeWidth());
+        }
+
+        return sb.append("]").toString();
     }
 }

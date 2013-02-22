@@ -22,6 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package javafx.scene.shape;
 
 import com.sun.javafx.geom.BaseBounds;
@@ -920,7 +921,9 @@ public class TriangleMesh extends Mesh {
 
         final double t = f * e2.dotProduct(q);
 
-        if (t >= 0) {
+        final double minDistance = pickRay.isParallel()
+                ? Double.NEGATIVE_INFINITY : 0.0;
+        if (t >= minDistance) {
             if (cullFace != CullFace.NONE) {
                 final Point3D normal = e1.crossProduct(e2);
                 final double nangle = normal.angle(
@@ -932,8 +935,14 @@ public class TriangleMesh extends Mesh {
                 }
             }
 
-            if (!result.isCloser(t)) {
-                // it intersects, but we already have a better (closer) result
+            if (Double.isInfinite(t) || Double.isNaN(t)) {
+                // we've got a nonsense pick ray or triangle
+                return false;
+            }
+
+            if (result == null || !result.isCloser(t)) {
+                // it intersects, but we are not interested in the result
+                // or we already have a better (closer) result
                 // so we can omit the point and texture computation
                 return true;
             }
