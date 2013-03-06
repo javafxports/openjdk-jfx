@@ -639,18 +639,23 @@ class GlassViewEventHandler extends View.EventHandler {
                 return null;
             }
             switch (type) {
-                case ViewEvent.REPAINT:
+                case ViewEvent.REPAINT: {
                     Window w = view.getWindow();
                     if (w != null && w.getMinimumWidth() == view.getWidth() && !w.isVisible()) {
                         // RT-21057 - ignore initial minimum size setting if not visible
                         break;
                     }
-                    scene.entireSceneNeedsRepaint();
-                    if (PlatformUtil.isMac()) {
-                        collector.liveRepaintRenderJob(scene);
+                    if (QuantumToolkit.drawInPaint && w != null && w.isVisible()) {
+                        WindowStage stage = scene.getWindowStage();
+                        if (stage != null && !stage.isApplet()) {
+                            collector.liveRepaintRenderJob(scene);
+                        }
                     }
+                    scene.entireSceneNeedsRepaint();
                     break;
-                case ViewEvent.RESIZE:
+                }
+                case ViewEvent.RESIZE: {
+                    Window w = view.getWindow();
                     scene.sceneListener.changedSize(view.getWidth(), view.getHeight());
                     scene.entireSceneNeedsRepaint();
                     AbstractPainter.renderLock.lock();
@@ -659,7 +664,14 @@ class GlassViewEventHandler extends View.EventHandler {
                     } finally {
                         AbstractPainter.renderLock.unlock();
                     }
+                    if (QuantumToolkit.liveResize && w != null && w.isVisible()) {
+                        WindowStage stage = scene.getWindowStage();
+                        if (stage != null && !stage.isApplet()) {
+                            collector.liveRepaintRenderJob(scene);
+                        }
+                    }
                     break;
+                }
                 case ViewEvent.MOVE:
                     scene.sceneListener.changedLocation(view.getX(), view.getY());
                     break;
