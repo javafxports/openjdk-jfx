@@ -9,7 +9,7 @@
 <?import javafx.scene.paint.*?>
 <?import javafx.scene.text.*?>
 
-<AnchorPane id="AnchorPane" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="-1.0" prefWidth="-1.0" xmlns:fx="http://javafx.com/fxml">
+<AnchorPane id="AnchorPane" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="-1.0" prefWidth="-1.0" xmlns:fx="http://javafx.com/fxml" fx:controller="modena.SameHeightTestController">
   <children>
     <VBox id="VBox" alignment="TOP_LEFT" layoutX="15.0" layoutY="19.0" spacing="5.0">
       <children>
@@ -135,7 +135,7 @@
             <PasswordField prefWidth="100.0" promptText="Password" text="password" />
           </children>
           <padding>
-            <Insets bottom="1.0" top="1.0" />
+            <Insets />
           </padding>
         </HBox>
         <Label font="$x2" text="All of these controls should be text aligned" VBox.margin="$x1" />
@@ -147,7 +147,7 @@
                   <children>
                     <HBox alignment="TOP_LEFT" maxHeight="-Infinity" prefHeight="-1.0" prefWidth="-1.0" spacing="3.0" style="">
                       <children>
-                        <Button mnemonicParsing="false" prefWidth="100.0" text="Sample" />
+                        <Button fx:id="horizFirstButton" mnemonicParsing="false" prefWidth="100.0" text="Sample" />
                         <TextField prefWidth="80.0" promptText="Textfield" text="Sample" />
                         <PasswordField prefWidth="80.0" promptText="Sample" text="" />
                         <TextArea prefHeight="50.0" prefWidth="80.0" text="Sample" wrapText="true" />
@@ -200,7 +200,7 @@
                         <ColorPicker />
                       </children>
                     </HBox>
-                    <TextField maxWidth="100.0" prefWidth="100.0" text="Sample" />
+                    <TextField fx:id="vertFirstTextField" maxWidth="100.0" prefWidth="100.0" text="Sample" />
                     <PasswordField maxWidth="100.0" prefWidth="100.0" promptText="Sample" text="" />
                     <TextArea maxWidth="100.0" prefHeight="50.0" prefRowCount="10" prefWidth="100.0" text="Sample" wrapText="true" />
                     <TitledPane animated="false" collapsible="false" maxWidth="100.0" prefWidth="100.0" text="Sample">
@@ -264,12 +264,12 @@
                     </ListView>
                   </children>
                 </VBox>
-                <Region maxHeight="1.0" maxWidth="-1.0" opacity="0.4" prefHeight="-1.0" prefWidth="-1.0" style="-fx-background-color: red;" visible="true">
+                <Region fx:id="horizBaseLine" maxHeight="1.0" maxWidth="-1.0" opacity="0.4" prefHeight="-1.0" prefWidth="-1.0" style="-fx-background-color: red;" visible="true">
                   <StackPane.margin>
-                    <Insets top="18.0" />
+                    <Insets top="15.0" />
                   </StackPane.margin>
                 </Region>
-                <Region maxHeight="-1.0" maxWidth="1.0" opacity="0.4" prefHeight="-1.0" prefWidth="-1.0" style="-fx-background-color: red;" visible="true">
+                <Region fx:id="vertBaseLine" maxHeight="-1.0" maxWidth="1.0" opacity="0.4" prefHeight="-1.0" prefWidth="-1.0" style="-fx-background-color: red;" visible="true">
                   <StackPane.margin>
                     <Insets left="9.0" />
                   </StackPane.margin>
@@ -283,7 +283,7 @@
         </HBox>
       </children>
     </VBox>
-    <AnchorPane layoutX="284.0" layoutY="337.0" prefHeight="250.0" prefWidth="322.0" style="-fx-border-color: #cccccc;">
+    <AnchorPane fx:id="arrowButtonContainer" layoutX="284.0" layoutY="337.0" prefHeight="250.0" prefWidth="322.0" style="-fx-border-color: #cccccc;">
       <children>
         <VBox alignment="TOP_RIGHT" minHeight="-1.0" prefHeight="-1.0" prefWidth="216.0" spacing="10.0" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="10.0">
           <children>
@@ -340,7 +340,7 @@
             <HBox id="HBox" alignment="CENTER_RIGHT" spacing="10.0">
               <children>
                 <Label text="ComboBox (editable)" />
-                <ComboBox editable="true" prefWidth="150.0" promptText="Sample">
+                <ComboBox fx:id="editableCombo" editable="true" prefWidth="150.0" promptText="Sample">
                   <items>
                     <FXCollections fx:factory="observableArrayList">
                       <String fx:value="Item 1" />
@@ -365,8 +365,10 @@
             </HBox>
           </children>
         </VBox>
-        <Region layoutX="284.0" layoutY="0.0" maxHeight="-1.0" maxWidth="1.0" opacity="0.4" prefHeight="300.0" prefWidth="1.0" style="-fx-background-color: red;" visible="true" />
-        <Region layoutX="303.0" layoutY="0.0" maxHeight="-1.0" maxWidth="1.0" opacity="0.4" prefHeight="300.0" prefWidth="1.0" style="-fx-background-color: red;" visible="true" />
+        <Region fx:id="arrowButtonLeftLine" layoutX="284.0" layoutY="0.0" maxHeight="-1.0" maxWidth="1.0" opacity="0.4" prefHeight="300.0" prefWidth="1.0" style="-fx-border-color: transparent transparent transparent red;&#10;-fx-border-style: dashed; " visible="true" />
+        <Region id="arrowButtonLeftLine" fx:id="arrowButtonRightLine" layoutX="303.0" layoutY="0.0" maxHeight="-1.0" maxWidth="1.0" opacity="0.4" prefHeight="300.0" prefWidth="1.0" style="-fx-border-color: transparent transparent transparent red;&#10;-fx-border-style: dashed; " visible="true" />
+        <Region id="arrowButtonLeftLine" fx:id="arrowLeftLine" layoutX="294.0" layoutY="0.0" maxHeight="-1.0" maxWidth="1.0" minWidth="1.0" opacity="0.4" prefHeight="300.0" prefWidth="1.0" style="-fx-border-color: transparent transparent transparent rgba(0,0,255,0.5);&#10;-fx-border-style: dashed; " visible="true" />
+        <Region id="arrowButtonLeftLine" fx:id="arrowRightLine" layoutX="299.0" layoutY="0.0" maxHeight="-1.0" maxWidth="1.0" minWidth="1.0" opacity="0.4" prefHeight="300.0" prefWidth="1.0" style="-fx-border-color: transparent transparent transparent rgba(0,0,255,0.5);&#10;-fx-border-style: dashed; " visible="true" />
       </children>
     </AnchorPane>
   </children>
