@@ -59,23 +59,22 @@ public class CustomColorDialog extends StackPane {
     private static final int COLORBAR_GAP = 9;
     private static final int LABEL_GAP = 2;
     
-    final Stage dialog = new Stage();
-    ColorRectPane colorRectPane;
-    ControlsPane controlsPane;
-    
-    Circle colorRectIndicator;
-    Rectangle colorRect;
-    Rectangle colorRectOverlayOne;
-    Rectangle colorRectOverlayTwo;
-    Rectangle colorBar;
-    Rectangle colorBarIndicator;
-    
+    private final Stage dialog = new Stage();
+    private ColorRectPane colorRectPane;
+    private ControlsPane controlsPane;
+
+    private Circle colorRectIndicator;
+    private Rectangle colorRect;
+    private Rectangle colorRectOverlayOne;
+    private Rectangle colorRectOverlayTwo;
+    private Rectangle colorBar;
+    private Rectangle colorBarIndicator;
+
     private Color currentColor = Color.WHITE;
-    ObjectProperty<Color> customColorProperty = new SimpleObjectProperty<Color>(Color.TRANSPARENT);
-    boolean saveCustomColor = false;
-    boolean useCustomColor = false;
-    Button saveButton;
-    Button useButton;
+    private ObjectProperty<Color> customColorProperty = new SimpleObjectProperty<Color>(Color.TRANSPARENT);
+    private Runnable onSave;
+    private Runnable onUse;
+    private Runnable onCancel;
     
     private WebColorField webField = null;
     private Scene customScene;
@@ -111,6 +110,38 @@ public class CustomColorDialog extends StackPane {
     public void setCurrentColor(Color currentColor) {
         this.currentColor = currentColor;
         controlsPane.currentColorRect.setFill(currentColor);
+    }
+
+    ObjectProperty<Color> customColorProperty() {
+        return customColorProperty;
+    }
+
+    public Runnable getOnSave() {
+        return onSave;
+    }
+
+    public void setOnSave(Runnable onSave) {
+        this.onSave = onSave;
+    }
+
+    public Runnable getOnUse() {
+        return onUse;
+    }
+
+    public void setOnUse(Runnable onUse) {
+        this.onUse = onUse;
+    }
+
+    public Runnable getOnCancel() {
+        return onCancel;
+    }
+
+    public void setOnCancel(Runnable onCancel) {
+        this.onCancel = onCancel;
+    }
+
+    Stage getDialog() {
+        return dialog;
     }
     
     public void show(double x, double y) {
@@ -166,10 +197,10 @@ public class CustomColorDialog extends StackPane {
     
     /* ------------------------------------------------------------------------*/
     
-    class ColorRectPane extends StackPane {
+    private class ColorRectPane extends StackPane {
         
         private boolean changeIsLocal = false;
-        DoubleProperty hue = new SimpleDoubleProperty(-1) {
+        private DoubleProperty hue = new SimpleDoubleProperty(-1) {
             @Override protected void invalidated() {
                 if (!changeIsLocal) {
                     changeIsLocal = true;
@@ -178,7 +209,7 @@ public class CustomColorDialog extends StackPane {
                 }
             }
         };
-        DoubleProperty sat = new SimpleDoubleProperty(-1) {
+        private DoubleProperty sat = new SimpleDoubleProperty(-1) {
             @Override protected void invalidated() {
                 if (!changeIsLocal) {
                     changeIsLocal = true;
@@ -187,7 +218,7 @@ public class CustomColorDialog extends StackPane {
                 }
             }
         };
-        DoubleProperty bright = new SimpleDoubleProperty(-1) {
+        private DoubleProperty bright = new SimpleDoubleProperty(-1) {
             @Override protected void invalidated() {
                 if (!changeIsLocal) {
                     changeIsLocal = true;
@@ -197,11 +228,11 @@ public class CustomColorDialog extends StackPane {
             }
         };
         private ObjectProperty<Color> color = new SimpleObjectProperty<Color>(); 
-        public ObjectProperty<Color> colorProperty() { return color; }
+        private ObjectProperty<Color> colorProperty() { return color; }
         public Color getColor() { return color.get(); }
         public void setColor(Color newColor) { color.set(newColor); }
 
-        IntegerProperty red = new SimpleIntegerProperty(-1) {
+        private IntegerProperty red = new SimpleIntegerProperty(-1) {
             @Override protected void invalidated() {
                 if (!changeIsLocal) {
                     changeIsLocal = true;
@@ -211,7 +242,7 @@ public class CustomColorDialog extends StackPane {
             }
         };
         
-        IntegerProperty green = new SimpleIntegerProperty(-1) {
+        private IntegerProperty green = new SimpleIntegerProperty(-1) {
             @Override protected void invalidated() {
                 if (!changeIsLocal) {
                     changeIsLocal = true;
@@ -221,7 +252,7 @@ public class CustomColorDialog extends StackPane {
             }
         };
         
-        IntegerProperty blue = new SimpleIntegerProperty(-1) {
+        private IntegerProperty blue = new SimpleIntegerProperty(-1) {
             @Override protected void invalidated() {
                 if (!changeIsLocal) {
                     changeIsLocal = true;
@@ -231,7 +262,7 @@ public class CustomColorDialog extends StackPane {
             }
         };
         
-        DoubleProperty alpha = new SimpleDoubleProperty(100) {
+        private DoubleProperty alpha = new SimpleDoubleProperty(100) {
             @Override protected void invalidated() {
                 if (!changeIsLocal) {
                     changeIsLocal = true;
@@ -411,36 +442,36 @@ public class CustomColorDialog extends StackPane {
     
     /* ------------------------------------------------------------------------*/
     
-    enum ColorSettingsMode {
+    private enum ColorSettingsMode {
         HSB,
         RGB,
         WEB
     }
     
-    class ControlsPane extends StackPane {
+    private class ControlsPane extends StackPane {
         
-        Label currentColorLabel;
-        Label newColorLabel;
-        Rectangle currentColorRect;
-        Rectangle newColorRect;
-        StackPane currentTransparent; // for opacity
-        StackPane newTransparent; // for opacity
-        GridPane currentAndNewColor;
-        Rectangle currentNewColorBorder;
-        ToggleButton hsbButton;
-        ToggleButton rgbButton;
-        ToggleButton webButton;
-        HBox hBox;
-        GridPane hsbSettings;
-        GridPane rgbSettings;
-        GridPane webSettings;
+        private Label currentColorLabel;
+        private Label newColorLabel;
+        private Rectangle currentColorRect;
+        private Rectangle newColorRect;
+        private StackPane currentTransparent; // for opacity
+        private StackPane newTransparent; // for opacity
+        private GridPane currentAndNewColor;
+        private Rectangle currentNewColorBorder;
+        private ToggleButton hsbButton;
+        private ToggleButton rgbButton;
+        private ToggleButton webButton;
+        private HBox hBox;
+        private GridPane hsbSettings;
+        private GridPane rgbSettings;
+        private GridPane webSettings;
         
-        GridPane alphaSettings;
-        HBox buttonBox;
-        StackPane whiteBox;
-        ColorSettingsMode colorSettingsMode = ColorSettingsMode.HSB;
+        private GridPane alphaSettings;
+        private HBox buttonBox;
+        private StackPane whiteBox;
+        private ColorSettingsMode colorSettingsMode = ColorSettingsMode.HSB;
         
-        StackPane settingsPane = new StackPane();
+        private StackPane settingsPane = new StackPane();
         
         public ControlsPane() {
             getStyleClass().add("controls-pane");
@@ -573,10 +604,9 @@ public class CustomColorDialog extends StackPane {
             
             buttonBox = new HBox(4);
             
-            saveButton = new Button("Save");
+            Button saveButton = new Button("Save");
             saveButton.setOnAction(new EventHandler<ActionEvent>() {
                 @Override public void handle(ActionEvent t) {
-                    saveCustomColor = true;
                     if (colorSettingsMode == ColorSettingsMode.WEB) {
                         customColorProperty.set(webField.valueProperty().get());
                     } else {
@@ -584,20 +614,23 @@ public class CustomColorDialog extends StackPane {
                             colorRectPane.green.get(), colorRectPane.blue.get(), 
                             clamp(colorRectPane.alpha.get() / 100)));
                     }
+                    if (onSave != null) {
+                        onSave.run();
+                    }
                     dialog.hide();
-                    saveCustomColor = false;
                 }
             });
             
-            useButton = new Button("Use");
+            Button useButton = new Button("Use");
             useButton.setOnAction(new EventHandler<ActionEvent>() {
                 @Override public void handle(ActionEvent t) {
-                    useCustomColor = true;
                     customColorProperty.set(Color.rgb(colorRectPane.red.get(), 
                             colorRectPane.green.get(), colorRectPane.blue.get(), 
                             clamp(colorRectPane.alpha.get() / 100)));
+                    if (onUse != null) {
+                        onUse.run();
+                    }
                     dialog.hide();
-                    useCustomColor = false;
                 }
             });
             
@@ -605,6 +638,9 @@ public class CustomColorDialog extends StackPane {
             cancelButton.setOnAction(new EventHandler<ActionEvent>() {
                 @Override public void handle(ActionEvent e) {
                     customColorProperty.set(currentColor);
+                    if (onCancel != null) {
+                        onCancel.run();
+                    }
                     dialog.hide();
                 }
             });
@@ -866,11 +902,10 @@ public class CustomColorDialog extends StackPane {
             int h = (int)((y / 255.0) * 360);
             stops[y] = new Stop(offset, Color.hsb(h, 1.0, 1.0));
         }
-        return new LinearGradient(0f, 1f, 1f, 0f, true, CycleMethod.NO_CYCLE, stops);
+        return new LinearGradient(0f, 1f, 0f, 0f, true, CycleMethod.NO_CYCLE, stops);
     }
     
     private static int doubleToInt(double value) {
-        // RT-27731 regression : reverting back to this - even though findbugs may complain.
-        return new Double(value*255).intValue();
+        return (int) (value * 255 + 0.5); // Adding 0.5 for rounding only
     }
 }
