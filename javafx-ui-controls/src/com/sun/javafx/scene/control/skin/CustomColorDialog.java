@@ -385,11 +385,15 @@ public class CustomColorDialog extends HBox {
         }
         
         private void updateValues() {
+            if (getCurrentColor() == null) {
+                setCurrentColor(Color.TRANSPARENT);
+            }
             changeIsLocal = true;
             //Initialize hue, sat, bright, color, red, green and blue
             hue.set(getCurrentColor().getHue());
             sat.set(getCurrentColor().getSaturation()*100);
             bright.set(getCurrentColor().getBrightness()*100);
+            alpha.set(getCurrentColor().getOpacity()*100);
             setCustomColor(Color.hsb(hue.get(), clamp(sat.get() / 100), clamp(bright.get() / 100), 
                     clamp(alpha.get()/100)));
             red.set(doubleToInt(getCustomColor().getRed()));
@@ -412,12 +416,6 @@ public class CustomColorDialog extends HBox {
     
     /* ------------------------------------------------------------------------*/
     
-    private enum ColorSettingsMode {
-        HSB,
-        RGB,
-        WEB
-    }
-    
     private class ControlsPane extends VBox {
         
         private Label currentColorLabel;
@@ -437,7 +435,6 @@ public class CustomColorDialog extends HBox {
         private IntegerField fields[] = new IntegerField[4];
         private HBox buttonBox;
         private Region whiteBox;
-        private ColorSettingsMode colorSettingsMode = ColorSettingsMode.HSB;
         
         private GridPane settingsPane = new GridPane();
         
@@ -605,13 +602,6 @@ public class CustomColorDialog extends HBox {
             saveButton.setDefaultButton(true);
             saveButton.setOnAction(new EventHandler<ActionEvent>() {
                 @Override public void handle(ActionEvent t) {
-                    if (colorSettingsMode == ColorSettingsMode.WEB) {
-                        customColorProperty.set(webField.valueProperty().get());
-                    } else {
-                        customColorProperty.set(Color.rgb(colorRectPane.red.get(), 
-                            colorRectPane.green.get(), colorRectPane.blue.get(), 
-                            clamp(colorRectPane.alpha.get() / 100)));
-                    }
                     if (onSave != null) {
                         onSave.run();
                     }
@@ -622,9 +612,6 @@ public class CustomColorDialog extends HBox {
             Button useButton = new Button("Use");
             useButton.setOnAction(new EventHandler<ActionEvent>() {
                 @Override public void handle(ActionEvent t) {
-                    customColorProperty.set(Color.rgb(colorRectPane.red.get(), 
-                            colorRectPane.green.get(), colorRectPane.blue.get(), 
-                            clamp(colorRectPane.alpha.get() / 100)));
                     if (onUse != null) {
                         onUse.run();
                     }
@@ -649,21 +636,18 @@ public class CustomColorDialog extends HBox {
         }
         
         private void showHSBSettings() {
-            colorSettingsMode = ColorSettingsMode.HSB;
             set(0, "Hue:", 360, colorRectPane.hue);
             set(1, "Saturation:", 100, colorRectPane.sat);
             set(2, "Brightness:", 100, colorRectPane.bright);
         }
         
         private void showRGBSettings() {
-            colorSettingsMode = ColorSettingsMode.RGB;
             set(0, "Red:", 255, colorRectPane.red);
             set(1, "Green:", 255, colorRectPane.green);
             set(2, "Blue:", 255, colorRectPane.blue);
         }
         
         private void showWebSettings() {
-            colorSettingsMode = ColorSettingsMode.WEB;
             labels[0].setText("Web:");
         }
                 
