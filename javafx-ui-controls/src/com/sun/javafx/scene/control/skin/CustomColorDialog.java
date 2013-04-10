@@ -285,6 +285,7 @@ public class CustomColorDialog extends HBox {
             colorRectIndicator = new Region();
             colorRectIndicator.setId("color-rect-indicator");
             colorRectIndicator.setManaged(false);
+            colorRectIndicator.setMouseTransparent(true);
             colorRectIndicator.setCache(true);
         
             final Pane colorRectOpacityContainer = new StackPane();
@@ -345,7 +346,7 @@ public class CustomColorDialog extends HBox {
                     new Stop(0, Color.rgb(0, 0, 0, 0)), new Stop(1, Color.rgb(0, 0, 0, 1))), 
                     CornerRadii.EMPTY, Insets.EMPTY)));
             colorRectOverlayTwo.setOnMouseDragged(rectMouseHandler);
-            colorRectOverlayTwo.setOnMouseClicked(rectMouseHandler);
+            colorRectOverlayTwo.setOnMousePressed(rectMouseHandler);
             
             Pane colorRectBlackBorder = new Pane();
             colorRectBlackBorder.setMouseTransparent(true);
@@ -358,6 +359,7 @@ public class CustomColorDialog extends HBox {
 
             colorBarIndicator = new Region();
             colorBarIndicator.setId("color-bar-indicator");
+            colorBarIndicator.setMouseTransparent(true);
             colorBarIndicator.setCache(true);
             
             colorRectIndicator.layoutXProperty().bind(sat.divide(100).multiply(colorRect.widthProperty()));
@@ -373,7 +375,7 @@ public class CustomColorDialog extends HBox {
             };
             
             colorBar.setOnMouseDragged(barMouseHandler);
-            colorBar.setOnMouseClicked(barMouseHandler);
+            colorBar.setOnMousePressed(barMouseHandler);
         
             colorBar.getChildren().setAll(colorBarIndicator);
             colorRectOpacityContainer.getChildren().setAll(colorRectHue, colorRectOverlayOne, colorRectOverlayTwo);
@@ -383,11 +385,15 @@ public class CustomColorDialog extends HBox {
         }
         
         private void updateValues() {
+            if (getCurrentColor() == null) {
+                setCurrentColor(Color.TRANSPARENT);
+            }
             changeIsLocal = true;
             //Initialize hue, sat, bright, color, red, green and blue
             hue.set(getCurrentColor().getHue());
             sat.set(getCurrentColor().getSaturation()*100);
             bright.set(getCurrentColor().getBrightness()*100);
+            alpha.set(getCurrentColor().getOpacity()*100);
             setCustomColor(Color.hsb(hue.get(), clamp(sat.get() / 100), clamp(bright.get() / 100), 
                     clamp(alpha.get()/100)));
             red.set(doubleToInt(getCustomColor().getRed()));
@@ -410,12 +416,6 @@ public class CustomColorDialog extends HBox {
     
     /* ------------------------------------------------------------------------*/
     
-    private enum ColorSettingsMode {
-        HSB,
-        RGB,
-        WEB
-    }
-    
     private class ControlsPane extends VBox {
         
         private Label currentColorLabel;
@@ -433,9 +433,9 @@ public class CustomColorDialog extends HBox {
         private Label labels[] = new Label[4];
         private Slider sliders[] = new Slider[4];
         private IntegerField fields[] = new IntegerField[4];
+        private Label units[] = new Label[4];
         private HBox buttonBox;
         private Region whiteBox;
-        private ColorSettingsMode colorSettingsMode = ColorSettingsMode.HSB;
         
         private GridPane settingsPane = new GridPane();
         
@@ -523,15 +523,17 @@ public class CustomColorDialog extends HBox {
             settingsPane.setId("settings-pane");
             settingsPane.getColumnConstraints().addAll(new ColumnConstraints(), 
                     new ColumnConstraints(), new ColumnConstraints(), 
-                    new ColumnConstraints(), new ColumnConstraints());
+                    new ColumnConstraints(), new ColumnConstraints(), 
+                    new ColumnConstraints());
             settingsPane.getColumnConstraints().get(0).setHgrow(Priority.NEVER);
             settingsPane.getColumnConstraints().get(2).setHgrow(Priority.ALWAYS);
             settingsPane.getColumnConstraints().get(3).setHgrow(Priority.NEVER);
             settingsPane.getColumnConstraints().get(4).setHgrow(Priority.NEVER);
-            settingsPane.add(whiteBox, 0, 0, 5, 5);
-            settingsPane.add(hBox, 0, 0, 5, 1);
+            settingsPane.getColumnConstraints().get(5).setHgrow(Priority.NEVER);
+            settingsPane.add(whiteBox, 0, 0, 6, 5);
+            settingsPane.add(hBox, 0, 0, 6, 1);
             settingsPane.add(leftSpacer, 0, 0);
-            settingsPane.add(rightSpacer, 4, 0);
+            settingsPane.add(rightSpacer, 5, 0);
             settingsPane.add(bottomSpacer, 0, 4);   
             
             webField = new WebColorField();
@@ -544,12 +546,16 @@ public class CustomColorDialog extends HBox {
             // Color settings Grid Pane
             for (int i = 0; i < 4; i++) {
                 labels[i] = new Label();
+                labels[i].getStyleClass().add("settings-label");
 
                 sliders[i] = new Slider();
 
                 fields[i] = new IntegerField();
                 fields[i].getStyleClass().addAll("color-input-field", "text-field");
                 fields[i].setSkin(new IntegerFieldSkin(fields[i]));
+                
+                units[i] = new Label(i == 0 ? "\u00B0" : "%");                
+                units[i].getStyleClass().add("settings-unit");
 
                 if (i > 0 && i < 3) {
                     // first row and opacity labels are always visible
@@ -560,6 +566,7 @@ public class CustomColorDialog extends HBox {
                     // sliders and fields shouldn't be visible in Web page
                     sliders[i].visibleProperty().bind(group.selectedToggleProperty().isNotEqualTo(webButton));
                     fields[i].visibleProperty().bind(group.selectedToggleProperty().isNotEqualTo(webButton));
+                    units[i].visibleProperty().bind(group.selectedToggleProperty().isEqualTo(hsbButton));
                 }
                 int row = 1 + i;
                 if (i == 3) {
@@ -570,6 +577,7 @@ public class CustomColorDialog extends HBox {
                 settingsPane.add(labels[i], 1, row);
                 settingsPane.add(sliders[i], 2, row);
                 settingsPane.add(fields[i], 3, row);
+                settingsPane.add(units[i], 4, row);
             }
             
             set(3, "Opacity:", 100, colorRectPane.alpha);
@@ -600,15 +608,9 @@ public class CustomColorDialog extends HBox {
             buttonBox.setId("buttons-hbox");
             
             Button saveButton = new Button("Save");
+            saveButton.setDefaultButton(true);
             saveButton.setOnAction(new EventHandler<ActionEvent>() {
                 @Override public void handle(ActionEvent t) {
-                    if (colorSettingsMode == ColorSettingsMode.WEB) {
-                        customColorProperty.set(webField.valueProperty().get());
-                    } else {
-                        customColorProperty.set(Color.rgb(colorRectPane.red.get(), 
-                            colorRectPane.green.get(), colorRectPane.blue.get(), 
-                            clamp(colorRectPane.alpha.get() / 100)));
-                    }
                     if (onSave != null) {
                         onSave.run();
                     }
@@ -619,9 +621,6 @@ public class CustomColorDialog extends HBox {
             Button useButton = new Button("Use");
             useButton.setOnAction(new EventHandler<ActionEvent>() {
                 @Override public void handle(ActionEvent t) {
-                    customColorProperty.set(Color.rgb(colorRectPane.red.get(), 
-                            colorRectPane.green.get(), colorRectPane.blue.get(), 
-                            clamp(colorRectPane.alpha.get() / 100)));
                     if (onUse != null) {
                         onUse.run();
                     }
@@ -630,6 +629,7 @@ public class CustomColorDialog extends HBox {
             });
             
             Button cancelButton = new Button("Cancel");
+            cancelButton.setCancelButton(true);
             cancelButton.setOnAction(new EventHandler<ActionEvent>() {
                 @Override public void handle(ActionEvent e) {
                     customColorProperty.set(getCurrentColor());
@@ -645,21 +645,18 @@ public class CustomColorDialog extends HBox {
         }
         
         private void showHSBSettings() {
-            colorSettingsMode = ColorSettingsMode.HSB;
             set(0, "Hue:", 360, colorRectPane.hue);
             set(1, "Saturation:", 100, colorRectPane.sat);
             set(2, "Brightness:", 100, colorRectPane.bright);
         }
         
         private void showRGBSettings() {
-            colorSettingsMode = ColorSettingsMode.RGB;
             set(0, "Red:", 255, colorRectPane.red);
             set(1, "Green:", 255, colorRectPane.green);
             set(2, "Blue:", 255, colorRectPane.blue);
         }
         
         private void showWebSettings() {
-            colorSettingsMode = ColorSettingsMode.WEB;
             labels[0].setText("Web:");
         }
                 

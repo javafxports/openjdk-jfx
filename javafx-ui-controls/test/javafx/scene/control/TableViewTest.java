@@ -54,6 +54,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.sun.javafx.scene.control.TableColumnComparatorBase.TableColumnComparator;
+import com.sun.javafx.scene.control.skin.VirtualScrollBar;
 import com.sun.javafx.scene.control.test.ControlAsserts;
 import com.sun.javafx.scene.control.test.Person;
 import com.sun.javafx.scene.control.test.RT_22463_Person;
@@ -1000,5 +1001,299 @@ public class TableViewTest {
         assertEquals(p2, table.getItems().get(2));
         assertEquals(p3, table.getItems().get(3));
         assertEquals(p4, table.getItems().get(4));
+    }
+    
+    @Test public void test_rt29331() {
+        TableView<Person> table = new TableView<Person>();
+        
+        TableColumn firstNameCol = new TableColumn("First Name");
+        firstNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("firstName"));
+
+        TableColumn lastNameCol = new TableColumn("Last Name");
+        lastNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("lastName"));
+
+        TableColumn emailCol = new TableColumn("Email");
+        emailCol.setCellValueFactory(new PropertyValueFactory<Person, String>("email"));
+        
+        TableColumn parentColumn = new TableColumn<>("Parent");
+        parentColumn.getColumns().addAll(firstNameCol, lastNameCol, emailCol);
+        
+        table.getColumns().addAll(parentColumn);
+        
+        // table is setup, now hide the 'last name' column
+        emailCol.setVisible(false);
+        assertFalse(emailCol.isVisible());
+        
+        // reorder columns inside the parent column
+        parentColumn.getColumns().setAll(emailCol, firstNameCol, lastNameCol);
+        
+        // the email column should not become visible after this, but it does
+        assertFalse(emailCol.isVisible());
+    }
+    
+    private int rt29330_count = 0;
+    @Test public void test_rt29330_1() {
+        TableView<Person> table = new TableView<Person>();
+        table.setItems(FXCollections.observableArrayList(
+              new Person("Jacob", "Smith", "jacob.smith@example.com"),
+              new Person("Isabella", "Johnson", "isabella.johnson@example.com"),
+              new Person("Ethan", "Williams", "ethan.williams@example.com"),
+              new Person("Emma", "Jones", "emma.jones@example.com"),
+              new Person("Michael", "Brown", "michael.brown@example.com")));
+        
+        TableColumn parentColumn = new TableColumn<>("Parent");
+        table.getColumns().addAll(parentColumn);
+        
+        TableColumn firstNameCol = new TableColumn("First Name");
+        firstNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("firstName"));
+
+        TableColumn lastNameCol = new TableColumn("Last Name");
+        lastNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("lastName"));
+        
+        parentColumn.getColumns().addAll(firstNameCol, lastNameCol);
+
+        table.setOnSort(new EventHandler<SortEvent<TableView<Person>>>() {
+            @Override public void handle(SortEvent<TableView<Person>> event) {
+                rt29330_count++;
+            }
+        });
+        
+        // test preconditions
+        assertEquals(ASCENDING, lastNameCol.getSortType());
+        assertEquals(0, rt29330_count);
+        
+        table.getSortOrder().add(lastNameCol);
+        assertEquals(1, rt29330_count);
+        
+        lastNameCol.setSortType(DESCENDING);
+        assertEquals(2, rt29330_count);
+        
+        lastNameCol.setSortType(null);
+        assertEquals(3, rt29330_count);
+        
+        lastNameCol.setSortType(ASCENDING);
+        assertEquals(4, rt29330_count);
+    }
+    
+    @Test public void test_rt29330_2() {
+        TableView<Person> table = new TableView<Person>();
+        table.setItems(FXCollections.observableArrayList(
+              new Person("Jacob", "Smith", "jacob.smith@example.com"),
+              new Person("Isabella", "Johnson", "isabella.johnson@example.com"),
+              new Person("Ethan", "Williams", "ethan.williams@example.com"),
+              new Person("Emma", "Jones", "emma.jones@example.com"),
+              new Person("Michael", "Brown", "michael.brown@example.com")));
+        
+        TableColumn firstNameCol = new TableColumn("First Name");
+        firstNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("firstName"));
+
+        TableColumn lastNameCol = new TableColumn("Last Name");
+        lastNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("lastName"));
+        
+        // this test differs from the previous one by installing the parent column
+        // into the tableview after it has the children added into it
+        TableColumn parentColumn = new TableColumn<>("Parent");
+        parentColumn.getColumns().addAll(firstNameCol, lastNameCol);
+        table.getColumns().addAll(parentColumn);
+
+        table.setOnSort(new EventHandler<SortEvent<TableView<Person>>>() {
+            @Override public void handle(SortEvent<TableView<Person>> event) {
+                rt29330_count++;
+            }
+        });
+        
+        // test preconditions
+        assertEquals(ASCENDING, lastNameCol.getSortType());
+        assertEquals(0, rt29330_count);
+        
+        table.getSortOrder().add(lastNameCol);
+        assertEquals(1, rt29330_count);
+        
+        lastNameCol.setSortType(DESCENDING);
+        assertEquals(2, rt29330_count);
+        
+        lastNameCol.setSortType(null);
+        assertEquals(3, rt29330_count);
+        
+        lastNameCol.setSortType(ASCENDING);
+        assertEquals(4, rt29330_count);
+    }
+    
+    @Test public void test_rt29313_selectedIndices() {
+        TableView<Person> table = new TableView<Person>();
+        table.setItems(FXCollections.observableArrayList(
+              new Person("Jacob", "Smith", "jacob.smith@example.com"),
+              new Person("Isabella", "Johnson", "isabella.johnson@example.com"),
+              new Person("Ethan", "Williams", "ethan.williams@example.com"),
+              new Person("Emma", "Jones", "emma.jones@example.com"),
+              new Person("Michael", "Brown", "michael.brown@example.com")));
+        
+        TableSelectionModel sm = table.getSelectionModel();
+        
+        TableColumn firstNameCol = new TableColumn("First Name");
+        firstNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("firstName"));
+
+        TableColumn lastNameCol = new TableColumn("Last Name");
+        lastNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("lastName"));
+        
+        TableColumn emailCol = new TableColumn("Email");
+        emailCol.setCellValueFactory(new PropertyValueFactory<Person, String>("email"));
+        
+        table.getColumns().addAll(firstNameCol, lastNameCol, emailCol);
+        sm.setCellSelectionEnabled(true);
+        sm.setSelectionMode(SelectionMode.MULTIPLE);
+        
+        assertTrue(sm.getSelectedIndices().isEmpty());
+        
+        // only (0,0) should be selected, so selected indices should be [0]
+        sm.select(0, firstNameCol);
+        assertEquals(1, sm.getSelectedIndices().size());
+        
+        // now (0,0) and (1,0) should be selected, so selected indices should be [0, 1]
+        sm.select(1, firstNameCol);
+        assertEquals(2, sm.getSelectedIndices().size());
+        
+        // now (0,0), (1,0) and (1,1) should be selected, but selected indices 
+        // should remain as [0, 1], as we don't want selected indices to become
+        // [0,1,1] (which is what RT-29313 is about)
+        sm.select(1, lastNameCol);
+        assertEquals(2, sm.getSelectedIndices().size());
+        assertEquals(0, sm.getSelectedIndices().get(0));
+        assertEquals(1, sm.getSelectedIndices().get(1));
+    }
+    
+    @Test public void test_rt29313_selectedItems() {
+        Person p0, p1;
+        TableView<Person> table = new TableView<Person>();
+        table.setItems(FXCollections.observableArrayList(
+              p0 = new Person("Jacob", "Smith", "jacob.smith@example.com"),
+              p1 = new Person("Isabella", "Johnson", "isabella.johnson@example.com"),
+              new Person("Ethan", "Williams", "ethan.williams@example.com"),
+              new Person("Emma", "Jones", "emma.jones@example.com"),
+              new Person("Michael", "Brown", "michael.brown@example.com")));
+        
+        TableSelectionModel sm = table.getSelectionModel();
+        
+        TableColumn firstNameCol = new TableColumn("First Name");
+        firstNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("firstName"));
+
+        TableColumn lastNameCol = new TableColumn("Last Name");
+        lastNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("lastName"));
+        
+        TableColumn emailCol = new TableColumn("Email");
+        emailCol.setCellValueFactory(new PropertyValueFactory<Person, String>("email"));
+        
+        table.getColumns().addAll(firstNameCol, lastNameCol, emailCol);
+        sm.setCellSelectionEnabled(true);
+        sm.setSelectionMode(SelectionMode.MULTIPLE);
+        
+        assertTrue(sm.getSelectedItems().isEmpty());
+        
+        // only (0,0) should be selected, so selected items should be [p0]
+        sm.select(0, firstNameCol);
+        assertEquals(1, sm.getSelectedItems().size());
+        
+        // now (0,0) and (1,0) should be selected, so selected items should be [p0, p1]
+        sm.select(1, firstNameCol);
+        assertEquals(2, sm.getSelectedItems().size());
+        
+        // now (0,0), (1,0) and (1,1) should be selected, but selected items 
+        // should remain as [p0, p1], as we don't want selected items to become
+        // [p0,p1,p1] (which is what RT-29313 is about)
+        sm.select(1, lastNameCol);
+        assertEquals(2, sm.getSelectedItems().size());
+        assertEquals(p0, sm.getSelectedItems().get(0));
+        assertEquals(p1, sm.getSelectedItems().get(1));
+    }
+    
+    @Test public void test_rt29566() {
+        TableView<Person> table = new TableView<Person>();
+        table.setItems(FXCollections.observableArrayList(
+              new Person("Jacob", "Smith", "jacob.smith@example.com"),
+              new Person("Isabella", "Johnson", "isabella.johnson@example.com"),
+              new Person("Ethan", "Williams", "ethan.williams@example.com"),
+              new Person("Emma", "Jones", "emma.jones@example.com"),
+              new Person("Michael", "Brown", "michael.brown@example.com")));
+        
+        TableSelectionModel sm = table.getSelectionModel();
+        
+        TableColumn firstNameCol = new TableColumn("First Name");
+        firstNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("firstName"));
+
+        TableColumn lastNameCol = new TableColumn("Last Name");
+        lastNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("lastName"));
+        
+        TableColumn emailCol = new TableColumn("Email");
+        emailCol.setCellValueFactory(new PropertyValueFactory<Person, String>("email"));
+        
+        table.getColumns().addAll(firstNameCol, lastNameCol, emailCol);
+        
+        // test the state before we hide and re-add a column
+        ControlAsserts.assertCellTextEquals(table, 0, "Jacob", "Smith", "jacob.smith@example.com");
+        ControlAsserts.assertCellTextEquals(table, 1, "Isabella", "Johnson", "isabella.johnson@example.com");
+        ControlAsserts.assertCellTextEquals(table, 2, "Ethan", "Williams", "ethan.williams@example.com");
+        ControlAsserts.assertCellTextEquals(table, 3, "Emma", "Jones", "emma.jones@example.com");
+        ControlAsserts.assertCellTextEquals(table, 4, "Michael", "Brown", "michael.brown@example.com");
+        
+        // hide the last name column, and test cells again
+        table.getColumns().remove(lastNameCol);
+        ControlAsserts.assertCellTextEquals(table, 0, "Jacob", "jacob.smith@example.com");
+        ControlAsserts.assertCellTextEquals(table, 1, "Isabella", "isabella.johnson@example.com");
+        ControlAsserts.assertCellTextEquals(table, 2, "Ethan", "ethan.williams@example.com");
+        ControlAsserts.assertCellTextEquals(table, 3, "Emma", "emma.jones@example.com");
+        ControlAsserts.assertCellTextEquals(table, 4, "Michael", "michael.brown@example.com");
+        
+        // re-add the last name column - we should go back to the original state.
+        // However, what appears to be happening is that, for some reason, some
+        // of the cells from the removed column do not reappear - meaning in this case
+        // some of the last name values will not be where we expect them to be.
+        // This is clearly not ideal!
+        table.getColumns().add(1, lastNameCol);
+        ControlAsserts.assertCellTextEquals(table, 0, "Jacob", "Smith", "jacob.smith@example.com");
+        ControlAsserts.assertCellTextEquals(table, 1, "Isabella", "Johnson", "isabella.johnson@example.com");
+        ControlAsserts.assertCellTextEquals(table, 2, "Ethan", "Williams", "ethan.williams@example.com");
+        ControlAsserts.assertCellTextEquals(table, 3, "Emma", "Jones", "emma.jones@example.com");
+        ControlAsserts.assertCellTextEquals(table, 4, "Michael", "Brown", "michael.brown@example.com");
+    }
+    
+    @Test public void test_rt29390() {
+        final TableView<Person> tableView = new TableView<Person>();
+        tableView.setMaxHeight(50);
+        tableView.setPrefHeight(50);
+        tableView.setItems(FXCollections.observableArrayList(
+            new Person("Jacob", "Smith", "jacob.smith@example.com"),
+            new Person("Isabella", "Johnson", "isabella.johnson@example.com"),
+            new Person("Ethan", "Williams", "ethan.williams@example.com"),
+            new Person("Emma", "Jones", "emma.jones@example.com"),
+            new Person("Jacob", "Smith", "jacob.smith@example.com"),
+            new Person("Isabella", "Johnson", "isabella.johnson@example.com"),
+            new Person("Ethan", "Williams", "ethan.williams@example.com"),
+            new Person("Emma", "Jones", "emma.jones@example.com"),
+            new Person("Jacob", "Smith", "jacob.smith@example.com"),
+            new Person("Isabella", "Johnson", "isabella.johnson@example.com"),
+            new Person("Ethan", "Williams", "ethan.williams@example.com"),
+            new Person("Emma", "Jones", "emma.jones@example.com"),
+            new Person("Jacob", "Smith", "jacob.smith@example.com"),
+            new Person("Isabella", "Johnson", "isabella.johnson@example.com"),
+            new Person("Ethan", "Williams", "ethan.williams@example.com"),
+            new Person("Emma", "Jones", "emma.jones@example.com")
+        ));
+        
+        TableColumn firstNameCol = new TableColumn("First Name");
+        firstNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("firstName"));
+        
+        tableView.getColumns().add(firstNameCol);
+        
+        // we want the vertical scrollbar
+        VirtualScrollBar scrollBar = ControlAsserts.getVirtualFlowVerticalScrollbar(tableView);
+        
+        assertNotNull(scrollBar);
+        assertTrue(scrollBar.isVisible());
+        assertTrue(scrollBar.getVisibleAmount() > 0.0);
+        assertTrue(scrollBar.getVisibleAmount() < 1.0);
+        
+        // this next test is likely to be brittle, but we'll see...If it is the
+        // cause of failure then it can be commented out
+        assertEquals(0.125, scrollBar.getVisibleAmount(), 0.0);
     }
 }

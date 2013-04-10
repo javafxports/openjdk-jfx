@@ -116,8 +116,18 @@ public class ComboBoxListViewSkin<T> extends ComboBoxPopupControl<T> {
         this.comboBox = comboBox;
         updateComboBoxItems();
         
-        this.listView = createListView();
+        // editable input node
         this.textField = comboBox.isEditable() ? getEditableInputNode() : null;
+        
+        // Fix for RT-29565. Without this the textField does not have a correct
+        // pref width at startup, as it is not part of the scenegraph (and therefore
+        // has no pref width until after the first measurements have been taken).
+        if (this.textField != null) {
+            getChildren().add(textField);
+        }
+        
+        // listview for popup
+        this.listView = createListView();
         
         // Fix for RT-21207. Additional code related to this bug is further below.
         this.listView.setManaged(false);
@@ -502,15 +512,11 @@ public class ComboBoxListViewSkin<T> extends ComboBoxPopupControl<T> {
     
     private ListView<T> createListView() {
         final ListView<T> _listView = new ListView<T>() {
-            private boolean isFirstSizeCalculation = true;
-
             @Override protected double computeMinHeight(double width) {
                 return 30;
             }
             
             @Override protected double computePrefWidth(double height) {
-                doCSSCheck();
-                
                 double pw;
                 if (getSkin() instanceof ListViewSkin) {
                     ListViewSkin<?> skin = (ListViewSkin<?>)getSkin();
@@ -539,20 +545,7 @@ public class ComboBoxListViewSkin<T> extends ComboBoxPopupControl<T> {
             }
 
             @Override protected double computePrefHeight(double width) {
-                doCSSCheck();
-                
                 return getListViewPrefHeight();
-            }
-            
-            private void doCSSCheck() {
-                if (listView != null && listView.getScene() != null && (isFirstSizeCalculation || getSkin() == null)) {
-                    // if the skin is null, it means that the css related to the
-                    // listview skin hasn't been loaded yet, so we force it here.
-                    // This ensures the combobox button is the correct width
-                    // when it is first displayed, before the listview is shown.
-                    listView.impl_processCSS(true);
-                    isFirstSizeCalculation = false;
-                }
             }
         };
 
