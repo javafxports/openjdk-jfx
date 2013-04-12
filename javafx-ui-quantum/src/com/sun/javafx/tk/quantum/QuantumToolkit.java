@@ -165,7 +165,6 @@ import static com.sun.javafx.logging.PulseLogger.*;
 import com.sun.javafx.sg.PGAmbientLight;
 import com.sun.javafx.sg.PGBox;
 import com.sun.javafx.sg.PGCylinder;
-import com.sun.javafx.sg.PGLightBase;
 import com.sun.javafx.sg.PGMeshView;
 import com.sun.javafx.sg.PGParallelCamera;
 import com.sun.javafx.sg.PGPerspectiveCamera;
@@ -1345,29 +1344,13 @@ public final class QuantumToolkit extends Toolkit implements ToolkitInterface {
 
     @Override
     public PGAmbientLight createPGAmbientLight() {
-        NGAmbientLight light = new NGAmbientLight();
-        lightsInScene.add(light);
-        return light;
+        return new NGAmbientLight();
     }
 
     @Override
     public PGPointLight createPGPointLight() {
-        //        return new NGPointLight();
-        NGPointLight light = new NGPointLight();
-        lightsInScene.add(light);
-        return light;
+        return new NGPointLight();
     }
-
-    /**
-     * TODO: 3D - we need a better way of keeping track of lights in
-     * the scene. This does not account for lights being deleted or for
-     * light scoping.
-     */
-    private List<PGLightBase> lightsInScene = new ArrayList<PGLightBase>();
-    public List<PGLightBase> getLightsInScene() { return lightsInScene; }
-    private boolean lightsDirty = true;
-    public boolean isLightsDirty() { return lightsDirty; }
-    public void setLightsDirty(boolean lightsDirty) { this.lightsDirty = lightsDirty; }
 
     @Override
     public PGParallelCamera createPGParallelCamera() {
@@ -1393,6 +1376,12 @@ public final class QuantumToolkit extends Toolkit implements ToolkitInterface {
         RTTexture getRT(int w, int h, ResourceFactory rfNew) {
             boolean rttOk = rt != null && rf == rfNew &&
                     rt.getContentWidth() == w && rt.getContentHeight() == h;
+            if (rttOk) {
+                rt.lock();
+                if (rt.isSurfaceLost()) {
+                    rttOk = false;
+                }
+            }
 
             if (!rttOk) {
                 if (rt != null) {
@@ -1562,6 +1551,8 @@ public final class QuantumToolkit extends Toolkit implements ToolkitInterface {
                         }
                     }
 
+                    rt.unlock();
+
                     params.platformImage = pImage;
 
                 } catch (Throwable t) {
@@ -1622,30 +1613,10 @@ public final class QuantumToolkit extends Toolkit implements ToolkitInterface {
                             ? CommonDialogs.Type.SAVE
                             : CommonDialogs.Type.OPEN,
                     (fileChooserType == FileChooserType.OPEN_MULTIPLE),
-                    convertExtensionFilters(extensionFilters));
+                    convertExtensionFilters(extensionFilters),
+                    0);
 
-            String extension = result.getExtensionFilter() == null ?
-                null : result.getExtensionFilter().getExtensions().get(0);
-
-            if (fileChooserType == FileChooserType.OPEN || extension == null || extension.endsWith("*")) {
-                return result.getFiles();
-            } else {
-                final List<File> list = new ArrayList<File>(result.getFiles().size());
-                if (extension.startsWith("*")) {
-                    extension = extension.substring(1, extension.length());
-                }
-
-                for (File f : result.getFiles()) {
-                    String filename = f.getAbsolutePath();
-
-                    if (filename.endsWith(extension)) {
-                        list.add(f);
-                    } else {
-                        list.add(new File(filename + extension));
-                    }
-                }
-                return list;
-            }
+            return result.getFiles();
         } finally {
             if (blockedStage != null) {
                 blockedStage.setEnabled(true);

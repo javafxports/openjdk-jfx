@@ -130,8 +130,10 @@ public abstract class Parent extends Node {
                     for(int i = 0; i < removed.size(); i++) {
                         peer.addToRemoved(removed.get(i).impl_getPGNode());
                     }
-                    removed.clear();
                 }
+            }
+            if (removed != null) {
+                removed.clear();
             }
             pgChildrenSize = children.size();
             startIdx = pgChildrenSize;
@@ -928,7 +930,7 @@ public abstract class Parent extends Node {
             if (node.isManaged()) {
                 final double x = node.getLayoutBounds().getMinX() + node.getLayoutX();
                 minX = Math.min(minX, x);
-                maxX = Math.max(maxX, x + node.prefWidth(-1));
+                maxX = Math.max(maxX, x + boundedSize(node.prefWidth(-1), node.minWidth(-1), node.maxWidth(-1)));
             }
         }
         return maxX - minX;
@@ -953,7 +955,7 @@ public abstract class Parent extends Node {
             if (node.isManaged()) {
                 final double y = node.getLayoutBounds().getMinY() + node.getLayoutY();
                 minY = Math.min(minY, y);
-                maxY = Math.max(maxY, y + node.prefHeight(-1));
+                maxY = Math.max(maxY, y + boundedSize(node.prefHeight(-1), node.minHeight(-1), node.maxHeight(-1)));
             }
         }
         return maxY - minY;

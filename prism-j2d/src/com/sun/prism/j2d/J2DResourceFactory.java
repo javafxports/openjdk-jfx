@@ -27,6 +27,9 @@ package com.sun.prism.j2d;
 
 import com.sun.glass.ui.Screen;
 import com.sun.prism.MediaFrame;
+import com.sun.prism.Mesh;
+import com.sun.prism.MeshView;
+import com.sun.prism.PhongMaterial;
 import com.sun.prism.PixelFormat;
 import com.sun.prism.Presentable;
 import com.sun.prism.PresentableState;
@@ -37,6 +40,8 @@ import com.sun.prism.Texture.Usage;
 import com.sun.prism.Texture.WrapMode;
 import com.sun.prism.impl.BaseResourceFactory;
 import com.sun.prism.impl.BaseRenderingContext;
+import com.sun.prism.impl.ManagedResource;
+import com.sun.prism.impl.TextureResourcePool;
 import com.sun.prism.impl.VertexBuffer;
 import com.sun.prism.impl.shape.BasicShapeRep;
 import com.sun.prism.shape.ShapeRep;
@@ -47,6 +52,10 @@ class J2DResourceFactory extends BaseResourceFactory
 
     J2DResourceFactory(Screen screen) {
         this.screen = screen;
+    }
+
+    public TextureResourcePool getTextureResourcePool() {
+        return J2DTexturePool.instance;
     }
 
     Screen getScreen() {
@@ -76,6 +85,11 @@ class J2DResourceFactory extends BaseResourceFactory
     }
 
     public RTTexture createRTTexture(int width, int height, WrapMode wrapMode) {
+        J2DTexturePool pool = J2DTexturePool.instance;
+        long size = pool.estimateRTTextureSize(width, height, false);
+        if (!pool.prepareForAllocation(size)) {
+            return null;
+        }
         return new J2DRTTexture(width, height, this);
     }
 
@@ -83,7 +97,7 @@ class J2DResourceFactory extends BaseResourceFactory
                                  Usage usageHint, WrapMode wrapMode,
                                  int w, int h)
     {
-        return new J2DTexture(formatHint, wrapMode, w, h);
+        return J2DTexture.create(formatHint, wrapMode, w, h);
     }
 
     public Texture createTexture(MediaFrame vdb) {
@@ -101,8 +115,8 @@ class J2DResourceFactory extends BaseResourceFactory
             }
         }
 
-        tex = new J2DTexture(vdb.getPixelFormat(), WrapMode.CLAMP_TO_EDGE,
-                             vdb.getWidth(), vdb.getHeight());
+        tex = J2DTexture.create(vdb.getPixelFormat(), WrapMode.CLAMP_TO_EDGE,
+                                vdb.getWidth(), vdb.getHeight());
         vdb.releaseFrame();
         return tex;
     }
@@ -145,5 +159,17 @@ class J2DResourceFactory extends BaseResourceFactory
     }
 
     public void dispose() {
+    }
+
+    public PhongMaterial createPhongMaterial() {
+        throw new UnsupportedOperationException("Not supported yet.");
+}
+
+    public MeshView createMeshView(Mesh mesh) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    public Mesh createMesh() {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 }

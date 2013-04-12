@@ -27,6 +27,9 @@ package com.sun.prism.sw;
 
 import com.sun.glass.ui.Screen;
 import com.sun.prism.MediaFrame;
+import com.sun.prism.Mesh;
+import com.sun.prism.MeshView;
+import com.sun.prism.PhongMaterial;
 import com.sun.prism.PixelFormat;
 import com.sun.prism.Presentable;
 import com.sun.prism.PresentableState;
@@ -39,6 +42,7 @@ import com.sun.prism.Texture.WrapMode;
 import com.sun.prism.impl.BaseRenderingContext;
 import com.sun.prism.impl.BaseResourceFactory;
 import com.sun.prism.impl.PrismSettings;
+import com.sun.prism.impl.TextureResourcePool;
 import com.sun.prism.impl.VertexBuffer;
 import com.sun.prism.impl.shape.BasicRoundRectRep;
 import com.sun.prism.impl.shape.BasicShapeRep;
@@ -58,7 +62,11 @@ final class SWResourceFactory
         this.screen = screen;
         this.context = new SWContext(this);
     }
-    
+
+    public TextureResourcePool getTextureResourcePool() {
+        return SWTexturePool.instance;
+    }
+
     public Screen getScreen() {
         return screen;
     }
@@ -105,6 +113,11 @@ final class SWResourceFactory
     @Override public RTTexture createRTTexture(int width, int height,
                                                WrapMode wrapMode)
     {
+        SWTexturePool pool = SWTexturePool.instance;
+        long size = pool.estimateRTTextureSize(width, height, false);
+        if (!pool.prepareForAllocation(size)) {
+            return null;
+        }
         return new SWRTTexture(this, width, height);
     }
 
@@ -137,6 +150,23 @@ final class SWResourceFactory
                                            WrapMode wrapMode,
                                            int w, int h)
     {
+        SWTexturePool pool = SWTexturePool.instance;
+        long size = pool.estimateTextureSize(w, h, formatHint);
+        if (!pool.prepareForAllocation(size)) {
+            return null;
+        }
         return SWTexture.create(this, formatHint, wrapMode, w, h);
+    }
+
+    public PhongMaterial createPhongMaterial() {
+        throw new UnsupportedOperationException("Not supported yet.");
+}
+
+    public MeshView createMeshView(Mesh mesh) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    public Mesh createMesh() {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 }

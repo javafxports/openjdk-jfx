@@ -23,17 +23,16 @@
  * questions.
  */
 
-package com.sun.prism;
+package com.sun.prism.impl;
 
-/**
- * TODO: 3D - Need documentation
- * This is Factory for retained mode objects
- */
-public interface MeshFactory {
+public abstract class DisposerManagedResource<T> extends ManagedResource<T> {
+    Object referent;
 
-    Mesh createMesh();
-
-    MeshView createMeshView(Mesh mesh);
-
-    PhongMaterial createPhongMaterial();
+    public DisposerManagedResource(T resource, ResourcePool pool,
+                                   Disposer.Record record)
+    {
+        super(resource, pool);
+        this.referent = new Object();
+        Disposer.addRecord(referent, record);
+    }
 }

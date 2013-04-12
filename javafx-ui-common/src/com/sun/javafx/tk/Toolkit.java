@@ -99,7 +99,6 @@ import com.sun.javafx.sg.PGText;
 import com.sun.javafx.sg.PGAmbientLight;
 import com.sun.javafx.sg.PGCamera;
 import com.sun.javafx.sg.PGCylinder;
-import com.sun.javafx.sg.PGLightBase;
 import com.sun.javafx.sg.PGMeshView;
 import com.sun.javafx.sg.PGParallelCamera;
 import com.sun.javafx.sg.PGPerspectiveCamera;
@@ -144,6 +143,8 @@ public abstract class Toolkit {
             return DEFAULT_TOOLKIT;
         } else if (PlatformUtil.isIOS()) {
             return DEFAULT_TOOLKIT;
+        } else if (PlatformUtil.isAndroid()) {
+           return DEFAULT_TOOLKIT;
         }
 
         throw new UnsupportedOperationException(System.getProperty("os.name") + " is not supported");
@@ -663,11 +664,6 @@ public abstract class Toolkit {
     // Cameras
     public abstract PGParallelCamera createPGParallelCamera();
     public abstract PGPerspectiveCamera createPGPerspectiveCamera(boolean fixedEyePosition);
-
-    // TODO: Need to evaluate the lighting logic
-    public abstract List<PGLightBase> getLightsInScene();
-    public abstract boolean isLightsDirty();
-    public abstract void setLightsDirty(boolean lightsDirty);
 
     public abstract PGExternalNode createPGExternalNode();
 
