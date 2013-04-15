@@ -203,8 +203,8 @@ class WindowStage extends GlassStage {
             AbstractPainter.renderLock.lock();
             try {
                 platformWindow.setView(view);
-                if (oldScene != null) oldScene.updateViewState();
-                newScene.updateViewState();
+                if (oldScene != null) oldScene.updateSceneState();
+                newScene.updateSceneState();
             } finally {
                 AbstractPainter.renderLock.unlock();
             }
@@ -214,15 +214,13 @@ class WindowStage extends GlassStage {
             AbstractPainter.renderLock.lock();
             try {
                 platformWindow.setView(null);
-                if (oldScene != null) oldScene.updateViewState();
+                if (oldScene != null) oldScene.updateSceneState();
             } finally {
                 AbstractPainter.renderLock.unlock();
             }
         }
         if (oldScene != null) {
-            PrismPen  pen       = ((ViewScene)oldScene).getPen();
-            ViewPainter painter = pen.getPainter();
-            
+            ViewPainter painter = ((ViewScene)oldScene).getPainter();
             renderer.disposePresentable(painter.presentable);   // latched on RT
         }
     }
@@ -408,7 +406,9 @@ class WindowStage extends GlassStage {
                 // mentioned in RT-12607
                 if (owner != null) {
                     WindowStage ownerStage = (WindowStage)owner;
-                    ownerStage.requestToFront();
+                    if (!ownerStage.getPlatformWindow().isClosed()) {
+                        ownerStage.requestToFront();
+                    }
                 }
             }
         }
@@ -596,7 +596,7 @@ class WindowStage extends GlassStage {
             try {
                 GlassScene oldScene = getViewScene();
                 platformWindow.close();
-                if (oldScene != null) oldScene.updateViewState();
+                if (oldScene != null) oldScene.updateSceneState();
             } finally {
                 AbstractPainter.renderLock.unlock();
             }

@@ -188,28 +188,11 @@ final class WinApplication extends Application implements InvokeLaterDispatcher.
         return new WinRobot();
     }
 
-    @Override protected Screen staticScreen_getDeepestScreen() {
-        return WinScreen.getDeepestScreen_impl();
-    }
-
-    @Override protected Screen staticScreen_getMainScreen() {
-        return WinScreen.getMainScreen_impl();
-    }
-    @Override protected Screen staticScreen_getScreenForLocation(int x, int y) {
-        return WinScreen.getScreenForLocation_impl(x, y);
-    }
-
-    @Override protected Screen staticScreen_getScreenForPtr(long screenPtr) {
-        return WinScreen.getScreenForPtr_impl(screenPtr);
-    }
-
-    @Override protected List<Screen> staticScreen_getScreens() {
-        return WinScreen.getScreens_impl();
-    }
-
     @Override protected double staticScreen_getVideoRefreshPeriod() {
         return 0.0;     // indicate millisecond resolution
     }
+
+    @Override native protected Screen[] staticScreen_getScreens();
     
     @Override public Timer createTimer(Runnable runnable) {
         return new WinTimer(runnable);
@@ -224,9 +207,9 @@ final class WinApplication extends Application implements InvokeLaterDispatcher.
     }
 
     @Override protected FileChooserResult staticCommonDialogs_showFileChooser(Window owner, String folder, String filename, String title, int type,
-                                             boolean multipleMode, ExtensionFilter[] extensionFilters) {
+                                             boolean multipleMode, ExtensionFilter[] extensionFilters, int defaultFilterIndex) {
         invokeLaterDispatcher.notifyEnteringNestedEventLoop();
-        return WinCommonDialogs.showFileChooser_impl(owner, folder, filename, title, type, multipleMode, extensionFilters);
+        return WinCommonDialogs.showFileChooser_impl(owner, folder, filename, title, type, multipleMode, extensionFilters, defaultFilterIndex);
     }
 
     @Override protected File staticCommonDialogs_showFolderChooser(Window owner, String folder, String title) {

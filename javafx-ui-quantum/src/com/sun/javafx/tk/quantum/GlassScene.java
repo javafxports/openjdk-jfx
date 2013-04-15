@@ -27,6 +27,7 @@ package com.sun.javafx.tk.quantum;
 
 import javafx.application.Platform;
 import javafx.scene.input.InputMethodRequests;
+import javafx.stage.StageStyle;
 import com.sun.glass.ui.Clipboard;
 import com.sun.glass.ui.ClipboardAssistance;
 import com.sun.glass.ui.View;
@@ -52,7 +53,9 @@ import com.sun.prism.camera.PrismCameraImpl;
 import com.sun.prism.camera.PrismParallelCameraImpl;
 import com.sun.prism.camera.PrismPerspectiveCameraImpl;
 import com.sun.prism.impl.PrismSettings;
+import com.sun.prism.paint.Color;
 import com.sun.prism.paint.Paint;
+
 import sun.util.logging.PlatformLogger;
 
 import java.security.AccessControlContext;
@@ -74,17 +77,17 @@ abstract class GlassScene implements TKScene, SceneChangeListener {
 
     private TKClipboard dragSourceClipboard;
 
-    protected NGNode root;
-    protected PrismCameraImpl camera;
-    protected Paint fillPaint;
+    private NGNode root;
+    private PrismCameraImpl camera;
+    private Paint fillPaint;
 
     private boolean entireSceneDirty = true;
     private boolean dirty = true;
     private boolean doPresent = true;
 
     private boolean depthBuffer = false;
-    
-    private SceneState viewState;
+
+    private final SceneState sceneState;
 
     private AccessControlContext accessCtrlCtx = null;
 
@@ -95,7 +98,7 @@ abstract class GlassScene implements TKScene, SceneChangeListener {
     protected GlassScene(boolean verbose, boolean depthBuffer) {
         this.verbose = verbose;
         this.depthBuffer = depthBuffer;
-        viewState = new SceneState(this);
+        sceneState = new SceneState(this);
     }
 
     // To be used by subclasses to enforce context check
@@ -125,14 +128,14 @@ abstract class GlassScene implements TKScene, SceneChangeListener {
         // can process the new tree.  Capture the current state of
         // the view (such as the width and height) so that the view
         // state matches the state in the render tree
-        updateViewState();
+        updateSceneState();
         AbstractPainter.renderLock.unlock();
     }
 
-    boolean hasDepthBuffer() {
+    boolean getDepthBuffer() {
         return depthBuffer;
     }
-    
+
     protected abstract boolean isSynchronous();
 
     @Override public void setScene(Object scene) {
@@ -168,10 +171,21 @@ abstract class GlassScene implements TKScene, SceneChangeListener {
         this.root = (NGNode)root;
         entireSceneNeedsRepaint();
     }
-    
-    protected PGNode getRoot() {
+
+    protected NGNode getRoot() {
         return root;
     }
+
+    PrismCameraImpl getCamera() {
+        return camera;
+    }
+
+    // List of all attached PGLights
+    private Object lights[];
+
+    public Object[] getLights() { return lights; }
+
+    public void setLights(Object[] lights) { this.lights = lights; }
 
     @Override
     public void setCamera(PGCamera camera) {
@@ -181,6 +195,10 @@ abstract class GlassScene implements TKScene, SceneChangeListener {
             this.camera = PrismParallelCameraImpl.getInstance();
         }
         entireSceneNeedsRepaint();
+    }
+
+    Paint getFillPaint() {
+        return fillPaint;
     }
 
     @Override
@@ -226,7 +244,7 @@ abstract class GlassScene implements TKScene, SceneChangeListener {
             glassStage.requestFocus();
         }
     }
-    
+
     @Override
     public TKClipboard createDragboard(boolean isDragSource) {
         ClipboardAssistance assistant = new ClipboardAssistance(Clipboard.DND) {
@@ -262,13 +280,14 @@ abstract class GlassScene implements TKScene, SceneChangeListener {
             PaintCollector.getInstance().removeDirtyScene(this);
         }
     }
-    protected SceneState getViewState() {
-        return viewState;
+
+    final SceneState getSceneState() {
+        return sceneState;
     }
 
-    protected void updateViewState() {
+    final void updateSceneState() {
         // should only be called on the event thread
-        viewState.update();
+        sceneState.update();
     }
 
     protected View getPlatformView() {
@@ -369,9 +388,9 @@ abstract class GlassScene implements TKScene, SceneChangeListener {
 
     @Override public void sceneChanged() {
         if (glassStage instanceof PopupStage) {
-            GlassScene popupScene = ((PopupStage)glassStage).getOwnerScene(); 
-            if (popupScene != null) { 
-                popupScene.sceneChanged(); 
+            GlassScene popupScene = ((PopupStage)glassStage).getOwnerScene();
+            if (popupScene != null) {
+                popupScene.sceneChanged();
             }
         }
         if (glassStage != null) {
@@ -402,6 +421,41 @@ abstract class GlassScene implements TKScene, SceneChangeListener {
 
     public final synchronized boolean getDoPresent() {
         return doPresent;
+    }
+
+    protected final Color getClearColor() {
+        WindowStage windowStage = glassStage instanceof WindowStage ? (WindowStage)glassStage : null;
+        if (windowStage != null && windowStage.getPlatformWindow().isTransparentWindow()) {
+            return (Color.TRANSPARENT);
+        } else {
+            if (fillPaint == null) {
+                return Color.WHITE;
+            } else if (fillPaint.isOpaque() ||
+                    (windowStage != null && windowStage.getPlatformWindow().isUnifiedWindow())) {
+                //For bare windows the transparent fill is allowed
+                if (fillPaint.getType() == Paint.Type.COLOR) {
+                    return (Color)fillPaint;
+                } else if (depthBuffer) {
+                    // Must set clearColor in order for the depthBuffer to be cleared
+                    return Color.TRANSPARENT;
+                } else {
+                    return null;
+                }
+            } else {
+                return Color.WHITE;
+            }
+        }
+    }
+
+    protected Paint getCurrentPaint() {
+        WindowStage windowStage = glassStage instanceof WindowStage ? (WindowStage)glassStage : null;
+        if ((windowStage != null) && windowStage.getStyle() == StageStyle.TRANSPARENT) {
+            return Color.TRANSPARENT.equals(fillPaint) ? null : fillPaint;
+        }
+        if ((fillPaint != null) && fillPaint.isOpaque() && (fillPaint.getType() == Paint.Type.COLOR)) {
+            return null;
+        }
+        return fillPaint;
     }
 
     @Override public String toString() {

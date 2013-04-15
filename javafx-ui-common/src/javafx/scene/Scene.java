@@ -138,6 +138,8 @@ import javafx.util.Callback;
 import static com.sun.javafx.logging.PulseLogger.PULSE_LOGGING_ENABLED;
 import static com.sun.javafx.logging.PulseLogger.PULSE_LOGGER;
 import com.sun.javafx.scene.input.KeyCodeMap;
+import com.sun.javafx.sg.PGLightBase;
+
 import javafx.geometry.NodeOrientation;
 
 /**
@@ -154,7 +156,9 @@ import javafx.geometry.NodeOrientation;
  * <p>
  * The scene's size may be initialized by the application during construction.
  * If no size is specified, the scene will automatically compute its initial
- * size based on the preferred size of its content.
+ * size based on the preferred size of its content. If only one dimension is specified,
+ * the other dimension is computed using the specified dimension, respecting content bias
+ * of a root.
  *
  * <p>
  * Scene objects must be constructed and modified on the
@@ -190,6 +194,8 @@ public class Scene implements EventTarget {
     private int dirtyBits;
 
     private final AccessControlContext acc = AccessController.getContext();
+
+    private Camera defaultCamera;
 
     //Neither width nor height are initialized and will be calculated according to content when this Scene
     //is shown for the first time.
@@ -296,10 +302,10 @@ public class Scene implements EventTarget {
     public Scene(Parent root, @Default("-1") double width, @Default("-1") double height, boolean depthBuffer) {
         this(root, width, height, Color.WHITE, depthBuffer);
     }
-    
+
     /**
      * Constructs a scene consisting of a root, with a dimension of width and
-     * height, specifies whether a depth buffer is created for this scene and 
+     * height, specifies whether a depth buffer is created for this scene and
      * specifies whether scene anti-aliasing is requested.
      *
      * @param root The root node of the scene graph
@@ -308,7 +314,7 @@ public class Scene implements EventTarget {
      * @param depthBuffer The depth buffer flag
      * @param antiAliasing The scene anti-aliasing flag
      * <p>
-     * The depthBuffer and antiAliasing flags are conditional feature and the default 
+     * The depthBuffer and antiAliasing flags are conditional feature and the default
      * value for both are false. See
      * {@link javafx.application.ConditionalFeature#SCENE3D ConditionalFeature.SCENE3D}
      * for more information.
@@ -322,7 +328,7 @@ public class Scene implements EventTarget {
     public Scene(Parent root, @Default("-1") double width, @Default("-1") double height,
             boolean depthBuffer, boolean antiAliasing) {
 
-        // TODO: Support scene anti-aliasing using MSAA.
+        // TODO: 3D - Support scene anti-aliasing using MSAA.
         this(root, width, height, Color.WHITE, depthBuffer);
 
         try {
@@ -381,7 +387,7 @@ public class Scene implements EventTarget {
                         public void setPaused(boolean paused) {
                             Scene.paused = paused;
                         }
-                        
+
                         @Override
                         public void parentEffectiveOrientationInvalidated(
                                 final Scene scene) {
@@ -459,7 +465,7 @@ public class Scene implements EventTarget {
      */
     private Node[] dirtyNodes;
     private int dirtyNodesSize;
-    
+
     /**
      * Add the specified node to this scene's dirty list. Called by the
      * markDirty method in Node or when the Node's scene changes.
@@ -486,21 +492,21 @@ public class Scene implements EventTarget {
         //
         // RT-17547: when the tree is synchronized, the dirty bits are
         // are cleared but the cssFlag might still be something other than
-        // clean. 
+        // clean.
         //
         // Before RT-17547, the code checked the dirty bit. But this is
         // superfluous since the dirty bit will be set if the flag is not clean,
         // but the flag will never be anything other than clean if the dirty
-        // bit is not set. The dirty bit is still needed, however, since setting 
-        // it ensures a pulse if no other dirty bits have been set. 
+        // bit is not set. The dirty bit is still needed, however, since setting
+        // it ensures a pulse if no other dirty bits have been set.
         //
-        // For the purpose of showing the change, the dirty bit 
-        // check code was commented out and not removed. 
+        // For the purpose of showing the change, the dirty bit
+        // check code was commented out and not removed.
         //
 //        if (sceneRoot.impl_isDirty(com.sun.javafx.scene.DirtyBits.NODE_CSS)) {
         if (sceneRoot.cssFlag != CssFlags.CLEAN) {
             // The dirty bit isn't checked but we must ensure it is cleared.
-            // The cssFlag is set to clean in either Node.processCSS or 
+            // The cssFlag is set to clean in either Node.processCSS or
             // Node.impl_processCSS(boolean)
             sceneRoot.impl_clearDirty(com.sun.javafx.scene.DirtyBits.NODE_CSS);
             sceneRoot.processCSS();
@@ -720,8 +726,9 @@ public class Scene implements EventTarget {
         PerformanceTracker.logEvent("Scene.initPeer TKScene set");
         impl_peer.setRoot(getRoot().impl_getPGNode());
         impl_peer.setFillPaint(getFill() == null ? null : tk.getPaint(getFill()));
-        impl_peer.setCamera(getCamera() == null ? null : getCamera().getPlatformCamera());
-        pickingCamera = getCamera();
+        impl_peer.setCamera(getCamera() == null
+                ? getDefaultCamera().getPlatformCamera()
+                : getCamera().getPlatformCamera());
 
         impl_setAllowPGAccess(false);
 
@@ -894,20 +901,14 @@ public class Scene implements EventTarget {
         return height;
     }
 
-    /*
-     * 3D pickRays are computed on the toolkit layer. The camera settings are
-     * pushed to the toolkit layer on pulse. So we need to keep track of the
-     * camera currently used by toolkit not to ask it to compute 3D pick ray
-     * when it thinks we are using 2D camera.
-     */
-    private Camera pickingCamera;
-
     // Reusable target wrapper (to avoid creating new one for each picking)
     private TargetWrapper tmpTargetWrapper = new TargetWrapper();
 
     /**
      * Specifies the type of camera use for rendering this {@code Scene}.
      * If {@code camera} is null, a parallel camera is used for rendering.
+     * It is illegal to set a camera that belongs to other {@code Scene}
+     * or {@code SubScene}.
      * <p>
      * Note: this is a conditional feature. See
      * {@link javafx.application.ConditionalFeature#SCENE3D ConditionalFeature.SCENE3D}
@@ -932,6 +933,14 @@ public class Scene implements EventTarget {
 
                 @Override
                 protected void invalidated() {
+                    Camera _value = get();
+                    // Illegal value if it belongs to other scene or any subscene
+                    if (_value != null
+                            && ((_value.getScene() != null && _value.getScene() != Scene.this)
+                            || _value.getSubScene() != null)) {
+                        throw new IllegalArgumentException(_value
+                                + "is already set as camera in other scene");
+                    }
                     markDirty(DirtyBits.CAMERA_DIRTY);
                 }
 
@@ -947,6 +956,13 @@ public class Scene implements EventTarget {
             };
         }
         return camera;
+    }
+
+    private Camera getDefaultCamera() {
+        if (defaultCamera == null) {
+             defaultCamera = new ParallelCamera();
+        }
+        return defaultCamera;
     }
 
     /**
@@ -998,9 +1014,9 @@ public class Scene implements EventTarget {
      * layout of the scene graph.    If a resizable node (layout {@code Region} or
      * {@code Control}) is set as the root, then the root's size will track the
      * scene's size, causing the contents to be relayed out as necessary.
-     * 
+     *
      * Scene doesn't accept null root.
-     * 
+     *
      */
     private ObjectProperty<Parent> root;
 
@@ -1048,7 +1064,7 @@ public class Scene implements EventTarget {
                     }
 
                     if (oldRoot != null) {
-                        oldRoot.setScene(null);
+                        oldRoot.setScenes(null, null);
                         oldRoot.setImpl_traversalEngine(null);
                     }
                     oldRoot = _value;
@@ -1056,7 +1072,7 @@ public class Scene implements EventTarget {
                         _value.setImpl_traversalEngine(new TraversalEngine(_value, true));
                     }
                     _value.getStyleClass().add(0, "root");
-                    _value.setScene(Scene.this);
+                    _value.setScenes(Scene.this, null);
                     markDirty(DirtyBits.ROOT_DIRTY);
                     _value.resize(getWidth(), getHeight()); // maybe no-op if root is not resizable
                     _value.requestLayout();
@@ -1176,9 +1192,10 @@ public class Scene implements EventTarget {
         double h = getHeight();
         BaseTransform transform = BaseTransform.IDENTITY_TRANSFORM;
 
+        Camera cam = getCamera();
         return doSnapshot(this, 0, 0, w, h,
                 getRoot(), transform, isDepthBuffer(),
-                getFill(), getCamera(), img);
+                getFill(), cam == null ? getDefaultCamera() : cam, img);
     }
 
     // Pulse listener used to run all deferred (async) snapshot requests
@@ -1387,7 +1404,7 @@ public class Scene implements EventTarget {
         @Override
         protected void onChanged(Change<String> c) {
             StyleManager.getInstance().stylesheetsChanged(Scene.this, c);
-            // RT-9784 - if stylesheet is removed, reset styled properties to 
+            // RT-9784 - if stylesheet is removed, reset styled properties to
             // their initial value.
             c.reset();
             while(c.next()) {
@@ -1401,8 +1418,8 @@ public class Scene implements EventTarget {
     };
 
     /**
-     * Gets an observable list of string URLs linking to the stylesheets to use 
-     * with this scene's contents. For additional information about using CSS 
+     * Gets an observable list of string URLs linking to the stylesheets to use
+     * with this scene's contents. For additional information about using CSS
      * with the scene graph, see the <a href="doc-files/cssref.html">CSS Reference
      * Guide</a>.
      *
@@ -1475,13 +1492,13 @@ public class Scene implements EventTarget {
             computeHeight = true;
         }
         if (root.getContentBias() == Orientation.HORIZONTAL) {
-            if (heightSetByUser < 0) {            
+            if (heightSetByUser < 0) {
                 rootHeight = root.boundedSize(
                         root.prefHeight(rootWidth),
                         root.minHeight(rootWidth),
                         root.maxHeight(rootWidth));
                 computeHeight = true;
-            }            
+            }
         } else if (root.getContentBias() == Orientation.VERTICAL) {
             if (widthSetByUser < 0) {
                 rootWidth = root.boundedSize(
@@ -1489,8 +1506,8 @@ public class Scene implements EventTarget {
                         root.minWidth(rootHeight),
                         root.maxWidth(rootHeight));
                 computeWidth = true;
-            }            
-        }        
+            }
+        }
         root.resize(rootWidth, rootHeight);
         doLayoutPass();
 
@@ -1740,8 +1757,13 @@ public class Scene implements EventTarget {
     }
 
     private void pick(TargetWrapper target, final double x, final double y) {
-        final PickRay pickRay = Scene.this.impl_peer.computePickRay(
-                (float)x, (float)y, null);
+        Camera cam = getCamera();
+        if (cam == null) {
+            cam = getDefaultCamera();
+        }
+        final PickRay pickRay = cam.computePickRay(
+                x, y, getWidth(), getHeight(), null);
+
         final double mag = pickRay.getDirectionNoClone().length();
         pickRay.getDirectionNoClone().normalize();
         final PickResult res = mouseHandler.pickNode(pickRay);
@@ -1755,7 +1777,7 @@ public class Scene implements EventTarget {
                     null, new Point3D(
                     o.x + mag * d.x,
                     o.y + mag * d.y,
-                    o.z + mag * d.z), 
+                    o.z + mag * d.z),
                     pickRay.isParallel() ? Double.POSITIVE_INFINITY : mag),
                     isInScene(x, y) ? this : null);
         }
@@ -1930,7 +1952,7 @@ public class Scene implements EventTarget {
     }
 
     private Node oldFocusOwner;
-    
+
     /**
       * The scene's current focus owner node. This node's "focused"
       * variable might be false if this scene has no window, or if the
@@ -1967,7 +1989,7 @@ public class Scene implements EventTarget {
             oldFocusOwner = value;
         }
     };
-    
+
     public final Node getFocusOwner() {
         return focusOwner.get();
     }
@@ -2062,7 +2084,8 @@ public class Scene implements EventTarget {
     private enum DirtyBits {
         FILL_DIRTY,
         ROOT_DIRTY,
-        CAMERA_DIRTY;
+        CAMERA_DIRTY,
+        LIGHTS_DIRTY;
 
         private int mask;
 
@@ -2073,7 +2096,6 @@ public class Scene implements EventTarget {
         public final int getMask() { return mask; }
     }
 
-    private Camera defaultCamera = new ParallelCamera();
     // TODO: RT-28290 - Camera's parameters need to be computed on the FX layer
     // Should remove once we move the camera's projViewTx computation to the FX side
     private Rectangle viewport = new Rectangle();
@@ -2082,11 +2104,59 @@ public class Scene implements EventTarget {
     private void snapshotCameraParameters() {
         Camera cam = getCamera();
         if (cam == null) {
-            cam = defaultCamera;
+            cam = getDefaultCamera();
         }
-        
+
         projViewTx = cam.computeProjViewTx(projViewTx, getWidth(), getHeight());
         viewport = cam.getViewport(viewport);
+    }
+
+    // TODO: 3D - Should avoid the need to do costly linear search and update of
+    //            lights at every light add and graph sync.
+    private List<LightBase> lights = new ArrayList<LightBase>();
+
+    final void addLight(LightBase light) {
+        // There is only an add light method and no removed method. However, if
+        // a light is no longer attached it will be removed via syncLights.
+        if (!lights.contains(light)) {
+            lights.add(light);
+            markDirty(DirtyBits.LIGHTS_DIRTY);
+        }
+    }
+
+    /**
+     * PG Light synchronizer. It will verify if light is attached, if not the
+     * light is removed.
+     */
+    private void syncLights() {
+        if (impl_peer == null || !this.isDirty(DirtyBits.LIGHTS_DIRTY)) {
+            return;
+        }
+        Object peerLights[] = impl_peer.getLights();
+        if (!lights.isEmpty() || (peerLights != null)) {
+            if (lights.isEmpty()) {
+                impl_peer.setLights(null);
+            } else {
+                if (peerLights == null || peerLights.length != lights.size()) {
+                    peerLights = new PGLightBase[lights.size()];
+                }
+                int i = 0;
+                for (; i < lights.size(); i++) {
+                    LightBase light = lights.get(i);
+                    if (light.getScene() == Scene.this
+                            && light.getSubScene() == null) {
+                        peerLights[i] = (PGLightBase) light.impl_getPGNode();
+                    } else {
+                        lights.remove(i--);
+                    }
+                }
+                // Clear the rest of the list
+                while (i < peerLights.length && peerLights[i] != null) {
+                    peerLights[i++] = null;
+                }
+                impl_peer.setLights(peerLights);
+            }
+        }
     }
 
     GeneralTransform3D getProjViewTx(GeneralTransform3D pTx) {
@@ -2134,7 +2204,7 @@ public class Scene implements EventTarget {
                 // must do this recursively
                 syncAll(getRoot());
                 dirtyNodes = new Node[MIN_DIRTY_CAPACITY];
-                
+
             } else {
                 // This is not the first time this scene has been synchronized,
                 // so we will only synchronize those nodes that need it
@@ -2142,13 +2212,14 @@ public class Scene implements EventTarget {
                     Node node = dirtyNodes[i];
                     dirtyNodes[i] = null;
                     if (node.getScene() == Scene.this) {
-                        node.impl_syncPGNode();
+                            node.impl_syncPGNode();
+                        }
                     }
-                }
                 dirtyNodesSize = 0;
             }
 
             snapshotCameraParameters();
+            syncLights();
 
             Scene.inSynchronizer = false;
         }
@@ -2170,6 +2241,9 @@ public class Scene implements EventTarget {
                         size += syncAll(n);
                     }
                 }
+            } else if (node instanceof SubScene) {
+                SubScene subScene = (SubScene)node;
+                size += syncAll(subScene.getRoot());
             }
             if (node.getClip() != null) {
                 size += syncAll(node.getClip());
@@ -2192,12 +2266,11 @@ public class Scene implements EventTarget {
             // new camera was set on the scene
             if (isDirty(DirtyBits.CAMERA_DIRTY)) {
                 Camera camera = getCamera();
-                pickingCamera = camera;
                 if (camera != null) {
                     camera.impl_updatePG();
                     impl_peer.setCamera(camera.getPlatformCamera());
                  } else {
-                     impl_peer.setCamera(null);
+                     impl_peer.setCamera(getDefaultCamera().getPlatformCamera());
                  }
             }
 
@@ -2241,7 +2314,7 @@ public class Scene implements EventTarget {
                 long start = System.currentTimeMillis();
                 Scene.this.doCSSPass();
                 PULSE_LOGGER.fxMessage(start, System.currentTimeMillis(), "CSS Pass");
-                
+
                 start = System.currentTimeMillis();
                 Scene.this.doLayoutPass();
                 PULSE_LOGGER.fxMessage(start, System.currentTimeMillis(), "Layout Pass");
@@ -2379,22 +2452,22 @@ public class Scene implements EventTarget {
                 int scrollTextX, int scrollTextY,
                 int defaultTextX, int defaultTextY,
                 double x, double y, double screenX, double screenY,
-                boolean _shiftDown, boolean _controlDown, 
+                boolean _shiftDown, boolean _controlDown,
                 boolean _altDown, boolean _metaDown,
                 boolean _direct, boolean _inertia) {
 
             ScrollEvent.HorizontalTextScrollUnits xUnits = scrollTextX > 0 ?
                     ScrollEvent.HorizontalTextScrollUnits.CHARACTERS :
                     ScrollEvent.HorizontalTextScrollUnits.NONE;
-            
+
             double xText = scrollTextX < 0 ? 0 : scrollTextX * scrollX;
 
             ScrollEvent.VerticalTextScrollUnits yUnits = scrollTextY > 0 ?
                     ScrollEvent.VerticalTextScrollUnits.LINES :
-                    (scrollTextY < 0 ? 
+                    (scrollTextY < 0 ?
                         ScrollEvent.VerticalTextScrollUnits.PAGES :
                         ScrollEvent.VerticalTextScrollUnits.NONE);
-                    
+
             double yText = scrollTextY < 0 ? scrollY : scrollTextY * scrollY;
 
             xMultiplier = defaultTextX > 0 && scrollTextX >= 0
@@ -2419,13 +2492,13 @@ public class Scene implements EventTarget {
                 y = cursorScenePos.getY();
                 screenX = cursorScreenPos.getX();
                 screenY = cursorScreenPos.getY();
-            } 
+            }
 
             inMousePick = true;
             Scene.this.processGestureEvent(new ScrollEvent(
                     eventType,
-                    x, y, screenX, screenY, 
-                    _shiftDown, _controlDown, _altDown, _metaDown, 
+                    x, y, screenX, screenY,
+                    _shiftDown, _controlDown, _altDown, _metaDown,
                     _direct, _inertia,
                     scrollX * xMultiplier, scrollY * yMultiplier,
                     totalScrollX * xMultiplier, totalScrollY * yMultiplier,
@@ -2462,7 +2535,7 @@ public class Scene implements EventTarget {
             inMousePick = true;
             Scene.this.processGestureEvent(new ZoomEvent(eventType,
                     x, y, screenX, screenY,
-                    _shiftDown, _controlDown, _altDown, _metaDown, 
+                    _shiftDown, _controlDown, _altDown, _metaDown,
                     _direct, _inertia,
                     zoomFactor, totalZoomFactor, pick(x, y)),
                     zoomGesture);
@@ -2496,7 +2569,7 @@ public class Scene implements EventTarget {
             inMousePick = true;
             Scene.this.processGestureEvent(new RotateEvent(
                     eventType, x, y, screenX, screenY,
-                    _shiftDown, _controlDown, _altDown, _metaDown, 
+                    _shiftDown, _controlDown, _altDown, _metaDown,
                     _direct, _inertia, angle, totalAngle, pick(x, y)),
                     rotateGesture);
             inMousePick = false;
@@ -2524,7 +2597,7 @@ public class Scene implements EventTarget {
             inMousePick = true;
             Scene.this.processGestureEvent(new SwipeEvent(
                     eventType, x, y, screenX, screenY,
-                    _shiftDown, _controlDown, _altDown, _metaDown, _direct, 
+                    _shiftDown, _controlDown, _altDown, _metaDown, _direct,
                     touchCount, pick(x, y)),
                     swipeGesture);
             inMousePick = false;
@@ -2730,7 +2803,7 @@ public class Scene implements EventTarget {
            dndGesture = new DnDGesture();
            dndGesture.dragboard = dragboard;
            // TODO: support mouse buttons in DragEvent
-           DragEvent dragEvent = new DragEvent(DragEvent.ANY, dragboard, x, y, screenX, screenY, 
+           DragEvent dragEvent = new DragEvent(DragEvent.ANY, dragboard, x, y, screenX, screenY,
                    null, null, null, pick(x, y));
            dndGesture.processRecognized(dragEvent);
            dndGesture = null;
@@ -3043,7 +3116,7 @@ public class Scene implements EventTarget {
 
                 // cancel drag and drop
                 DragEvent de = new DragEvent(
-                        source, source, DragEvent.DRAG_DONE, dragboard, 0, 0, 0, 0, 
+                        source, source, DragEvent.DRAG_DONE, dragboard, 0, 0, 0, 0,
                         null, source, null, null);
                 if (source != null) {
                     Event.fireEvent(source, de);
@@ -3260,7 +3333,7 @@ public class Scene implements EventTarget {
 
                 if (clickedTarget != null) {
                     MouseEvent click = new MouseEvent(null, clickedTarget,
-                            MouseEvent.MOUSE_CLICKED, e.getX(), e.getY(),
+                            MouseEvent.MOUSE_CLICKED, e.getSceneX(), e.getSceneY(),
                             e.getScreenX(), e.getScreenY(), e.getButton(),
                             cc.get(),
                             e.isShiftDown(), e.isControlDown(), e.isAltDown(), e.isMetaDown(),
@@ -3931,7 +4004,10 @@ public class Scene implements EventTarget {
     public EventDispatchChain buildEventDispatchChain(
             EventDispatchChain tail) {
         if (eventDispatcher != null) {
-            tail = tail.prepend(eventDispatcher.get());
+            final EventDispatcher eventDispatcherValue = eventDispatcher.get();
+            if (eventDispatcherValue != null) {
+                tail = tail.prepend(eventDispatcherValue);
+            }
         }
 
         if (getWindow() != null) {
@@ -5723,7 +5799,7 @@ public class Scene implements EventTarget {
             scene = s;
         }
     }
-    
+
     /***************************************************************************
      *                                                                         *
      *                       Component Orientation Properties                  *
@@ -5739,7 +5815,7 @@ public class Scene implements EventTarget {
         }) ? NodeOrientation.RIGHT_TO_LEFT : NodeOrientation.INHERIT;
 
 
-    
+
     private ObjectProperty<NodeOrientation> nodeOrientation;
     private EffectiveOrientationProperty effectiveNodeOrientationProperty;
 
@@ -5748,11 +5824,11 @@ public class Scene implements EventTarget {
     public final void setNodeOrientation(NodeOrientation orientation) {
         nodeOrientationProperty().set(orientation);
     }
-    
-    public final NodeOrientation getNodeOrientation() {        
+
+    public final NodeOrientation getNodeOrientation() {
         return nodeOrientation == null ? defaultNodeOrientation : nodeOrientation.get();
     }
-    
+
     /**
      * Property holding NodeOrientation.
      * <p>

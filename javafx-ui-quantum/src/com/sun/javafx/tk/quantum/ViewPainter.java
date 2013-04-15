@@ -29,7 +29,6 @@ import com.sun.javafx.sg.NodePath;
 import com.sun.javafx.sg.prism.NGNode;
 import com.sun.prism.Graphics;
 import com.sun.prism.GraphicsPipeline;
-import com.sun.prism.camera.PrismCameraImpl;
 import com.sun.prism.impl.PrismSettings;
 import com.sun.prism.paint.Color;
 import com.sun.prism.paint.Paint;
@@ -37,9 +36,7 @@ import com.sun.prism.paint.Paint;
 import static com.sun.javafx.logging.PulseLogger.PULSE_LOGGING_ENABLED;
 import static com.sun.javafx.logging.PulseLogger.PULSE_LOGGER;
 
-class ViewPainter extends AbstractPainter {
-
-    protected PrismPen          pen;
+abstract class ViewPainter extends AbstractPainter {
 
     // Pen dimensions. Pen width and height are checked on every repaint
     // to match its scene width/height. If any difference is found, the
@@ -51,10 +48,8 @@ class ViewPainter extends AbstractPainter {
     
     protected boolean           valid;
 
-    protected ViewPainter(GlassScene gs, PrismPen pp) {
+    protected ViewPainter(GlassScene gs) {
         super(gs);
-        
-        pen = pp;
     }
         
     @Override protected boolean validateStageGraphics() {
@@ -63,15 +58,15 @@ class ViewPainter extends AbstractPainter {
         if (!valid) {
             return false;
         }
-        
-        if (!viewState.isValid()) {
+
+        if (!sceneState.isValid()) {
             // indicates something happened between the scheduling of the 
             // job and the running of this job. 
             return false;
         }
 
-        viewWidth = viewState.getWidth();
-        viewHeight = viewState.getHeight();
+        viewWidth = sceneState.getWidth();
+        viewHeight = sceneState.getHeight();
 
         setPaintBounds(viewWidth, viewHeight);
 
@@ -79,19 +74,20 @@ class ViewPainter extends AbstractPainter {
             // the factory really should not be null as
             // we really want all that factory work on the event thread
             try {
-                viewState.lock();
+                sceneState.lock();
                 factory = GraphicsPipeline.getDefaultResourceFactory();
             } finally {
                 /*
                  * Don't flush to the screen if there was a failure
                  * creating the graphics factory
                  */
-                viewState.unlock();
+                sceneState.unlock();
             }
             return ((factory != null) && factory.isDeviceReady());
         }
-        return (viewState.isWindowVisible() && ! viewState.isWindowMinimized()
-                                   && factory.isDeviceReady());
+        return sceneState.isWindowVisible() &&
+               !sceneState.isWindowMinimized() &&
+               factory.isDeviceReady();
     }
     
     @Override protected void doPaint(Graphics g, NodePath<NGNode> renderRootPath) {
@@ -100,13 +96,15 @@ class ViewPainter extends AbstractPainter {
         }
         long start = PULSE_LOGGING_ENABLED ? System.currentTimeMillis() : 0;
         try {
-            viewState.getScene().clearEntireSceneDirty();
-            g.setDepthBuffer(pen.getDepthBuffer());
-            Color clearColor = pen.getClearColor();
+            GlassScene scene = sceneState.getScene();
+            scene.clearEntireSceneDirty();
+            g.setLights(scene.getLights());
+            g.setDepthBuffer(scene.getDepthBuffer());
+            Color clearColor = scene.getClearColor();
             if (clearColor != null) {
                 g.clear(clearColor);
             }
-            Paint curPaint = pen.getCurrentPaint();
+            Paint curPaint = scene.getCurrentPaint();
             if (curPaint != null) {
                 if (curPaint.getType() != com.sun.prism.paint.Paint.Type.COLOR) {
                     g.getRenderTarget().setOpaque(curPaint.isOpaque());
@@ -114,7 +112,7 @@ class ViewPainter extends AbstractPainter {
                 g.setPaint(curPaint);
                 g.fillQuad(0, 0, width, height);
             }
-            g.setCamera((PrismCameraImpl) pen.getCamera());        
+            g.setCamera(scene.getCamera());
             g.setRenderRoot(renderRootPath);
             root.render(g);
         } finally {
@@ -124,11 +122,4 @@ class ViewPainter extends AbstractPainter {
         }
     }
     
-    @Override protected PrismCameraImpl getCamera() {
-        if (pen != null) {
-            return pen.getCamera();
-        }
-        return null;
-    }
-
 }

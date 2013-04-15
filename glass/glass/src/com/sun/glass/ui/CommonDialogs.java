@@ -24,6 +24,7 @@
  */
 package com.sun.glass.ui;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
 import java.io.File;
@@ -174,6 +175,7 @@ public class CommonDialogs {
      * @param type              the type of the file chooser, one of the constants from {@link Type}
      * @param multipleMode      enables or disable multiple file selections
      * @param extensionFilters  the filters of the file chooser
+     * @param defaultFilterIndex the zero-based index of the filter selected by default
      * @throws IllegalArgumentException
      *         if the initial folder is an invalid folder;
      *         if the type doesn't equal one of the constants from {@link Type}
@@ -182,7 +184,7 @@ public class CommonDialogs {
      *         results object.
      */
     public static FileChooserResult showFileChooser(Window owner, File folder, String filename, String title, int type,
-                                        boolean multipleMode, List<ExtensionFilter> extensionFilters)
+                                        boolean multipleMode, List<ExtensionFilter> extensionFilters, int defaultFilterIndex)
     {
         Application.checkEventThread();
         String _folder = convertFolder(folder);
@@ -198,9 +200,16 @@ public class CommonDialogs {
         if (extensionFilters != null) {
             _extensionFilters = extensionFilters.toArray(new ExtensionFilter[extensionFilters.size()]);
         }
+        
+        if (extensionFilters == null
+                || extensionFilters.isEmpty()
+                || defaultFilterIndex < 0
+                || defaultFilterIndex >= extensionFilters.size()) {
+            defaultFilterIndex = 0;
+        }
 
         return Application.GetApplication().
-            staticCommonDialogs_showFileChooser(owner, _folder, filename, convertTitle(title), type, multipleMode, _extensionFilters);
+            staticCommonDialogs_showFileChooser(owner, _folder, filename, convertTitle(title), type, multipleMode, _extensionFilters, defaultFilterIndex);
     }
 
     /**
@@ -220,7 +229,11 @@ public class CommonDialogs {
     private static String convertFolder(File folder) {
         if (folder != null) {
             if (folder.isDirectory()) {
-                return folder.getAbsolutePath();
+                try {
+                    return folder.getCanonicalPath();
+                } catch (IOException e) {
+                    throw new IllegalArgumentException("Unable to get a canonical path for folder", e);
+                }
             } else {
                 throw new IllegalArgumentException("Folder parameter must be a valid folder");
             }

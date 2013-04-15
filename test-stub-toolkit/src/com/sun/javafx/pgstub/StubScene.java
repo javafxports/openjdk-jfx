@@ -35,8 +35,6 @@ import com.sun.javafx.tk.TKScene;
 import com.sun.javafx.tk.TKSceneListener;
 import com.sun.javafx.tk.TKScenePaintListener;
 
-import javafx.scene.input.Dragboard;
-
 import java.security.AccessControlContext;
 
 public class StubScene implements TKScene {
@@ -80,15 +78,7 @@ public class StubScene implements TKScene {
     }
 
     public PickRay computePickRay(float x, float y, PickRay pickRay) {
-        if (pickRay == null) {
-            pickRay = new PickRay();
-        }
-        if (camera instanceof PGPerspectiveCamera) {
-            pickRay.set(new Vec3d(x, y, -1000), new Vec3d(0, 0, 1000));
-        } else {
-            pickRay.set(x, y);
-        }
-        return pickRay;
+        return null;
     }
 
     public void setFillPaint(Object fillPaint) {
@@ -128,5 +118,16 @@ public class StubScene implements TKScene {
 
     public TKSceneListener getListener() {
         return listener;
+    }
+
+    @Override
+    public Object[] getLights() {
+        // ignore
+        return null;
+    }
+
+    @Override
+    public void setLights(Object[] lights) {
+        // ignore
     }
 }

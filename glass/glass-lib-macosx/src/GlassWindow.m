@@ -41,6 +41,7 @@
 #import "GlassApplication.h"
 #import "GlassLayer3D.h"
 #import "GlassAccessibleRoot.h"
+#import "GlassHelper.h"
 
 //#define VERBOSE
 #ifndef VERBOSE
@@ -78,24 +79,6 @@ static inline NSView<GlassView> *getMacView(JNIEnv *env, jobject jview)
     }
 }
 
-static inline NSString* getNSString(JNIEnv* env, jstring jstring)
-{
-    NSString *string = @"";
-    if (jstring != NULL)
-    {
-        const jchar* jstrChars = (*env)->GetStringChars(env, jstring, NULL);
-        jsize size = (*env)->GetStringLength(env, jstring);
-        if (size > 0)
-        {
-            string = [[[NSString alloc] initWithCharacters:jstrChars length:(NSUInteger)size] autorelease];
-        }
-        (*env)->ReleaseStringChars(env, jstring, jstrChars);
-    }
-    return string;
-}
-
-
-
 // --------------------------------------------------------------------------------------
 // NSWindow/NSPanel descendants implementation
 #define GLASS_NS_WINDOW_IMPLEMENTATION                                                  \
@@ -127,8 +110,18 @@ static inline NSString* getNSString(JNIEnv* env, jstring jstring)
                                                                                         \
 - (void)close                                                                           \
 {                                                                                       \
+    self->gWindow->isClosed = YES;                                                      \
     [self->gWindow close];                                                              \
     [super close];                                                                      \
+}                                                                                       \
+/* super calls NSWindow on the next run-loop pass when NSWindow could be released */    \
+- (BOOL)performKeyEquivalent:(NSEvent *)theEvent                                        \
+{                                                                                       \
+    [self retain];                                                                      \
+    BOOL result = [super performKeyEquivalent:theEvent];                                \
+    result = result || self->gWindow->isClosed;                                         \
+    [self release];                                                                     \
+    return result;                                                                      \
 }                                                                                       \
 - (BOOL)canBecomeMainWindow                                                             \
 {                                                                                       \
@@ -1388,7 +1381,7 @@ JNIEXPORT jboolean JNICALL Java_com_sun_glass_ui_mac_MacWindow__1setTitle
     {
         GlassWindow *window = getGlassWindow(env, jPtr);
         
-        NSString *title = getNSString(env, jTitle);
+        NSString *title = [GlassHelper nsStringWithJavaString:jTitle withEnv:env];
         LOG("   title: %s", [title UTF8String]);
         if ([NSThread isMainThread] == YES)
         {

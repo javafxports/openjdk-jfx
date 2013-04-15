@@ -69,13 +69,13 @@ import static com.sun.javafx.logging.PulseLogger.*;
 public abstract class NGNode extends BaseNode<Graphics> {
     protected static float highestPixelScale;
     static {
-        // TODO: temporary until RT-27958 is fixed. Screens may be null
+        // TODO: temporary until RT-27958 is fixed. Screens may be null or could be not initialized
         // when running unit tests
         try {
             for (Screen s : Screen.getScreens()) {
                 highestPixelScale = Math.max(s.getScale(), highestPixelScale);
             }
-        } catch (NullPointerException ex) {
+        } catch (RuntimeException ex) {
             System.err.println("WARNING: unable to get max pixel scale for screens");
             highestPixelScale = 1.0f;
         }
@@ -337,32 +337,16 @@ public abstract class NGNode extends BaseNode<Graphics> {
      *                                                                         *
      **************************************************************************/
 
-    // TODO: 3D - Reconsider the NodeType interface.
-    // At the very least it needs to be documented.
-    enum NodeType {
-        NODE_NONE, NODE_2D, NODE_3D
+    // This node requires 2D graphics state for rendering
+    boolean isShape3D() {
+        return false;
     }
 
-    // TODO: 3D - Reconsider the NodeType interface.
-    // At the very least it needs to be documented.
-    NodeType getNodeType() {
-        return NodeType.NODE_2D;
-    }
-    
-    protected final boolean configureRenderer(Graphics g) {
-        switch (getNodeType()) {
-            case NODE_2D: return g.beginRender2D();
-            case NODE_3D: return g.beginRender3D();
-        }
-        return true;
-    }
-    
     @Override
     protected void doRender(Graphics g) {
-        // check if the renderer configured properly
-        if (!configureRenderer(g))
-            return;
-        
+
+        g.setState3D(isShape3D());
+
         boolean preCullingTurnedOff = false;
         if (PrismSettings.dirtyOptsEnabled) {
             if (g.hasPreCullingBits()) {
@@ -780,6 +764,8 @@ public abstract class NGNode extends BaseNode<Graphics> {
             try {
                 ret = Effect.getCompatibleImage(fctx,
                                           bounds.width, bounds.height);
+                Texture cachedTex = ((PrDrawable) ret).getTextureObject();
+                cachedTex.contentsUseful();
             } catch (Throwable e) {
                 ret = null;
             }
@@ -919,6 +905,12 @@ public abstract class NGNode extends BaseNode<Graphics> {
             int h = r.height - (int) Math.abs(yDelta);
 
             final Graphics g = drawable.createGraphics();
+            if (tempTexture != null) {
+                tempTexture.lock();
+                if (tempTexture.isSurfaceLost()) {
+                    tempTexture = null;
+                }
+            }
             if (tempTexture == null) {
                 tempTexture = g.getResourceFactory().
                     createRTTexture(drawable.getPhysicalWidth(), drawable.getPhysicalHeight(),
@@ -931,6 +923,7 @@ public abstract class NGNode extends BaseNode<Graphics> {
 
             g.clear();
             g.drawTexture(tempTexture, destX, destY, destX + w, destY + h, 0, 0, w, h);
+            tempTexture.unlock();
         }
 
         /**

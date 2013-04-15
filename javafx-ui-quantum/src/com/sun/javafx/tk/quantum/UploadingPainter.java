@@ -35,13 +35,15 @@ import com.sun.prism.RTTexture;
 import com.sun.prism.Texture.WrapMode;
 import com.sun.prism.impl.BufferUtil;
 import com.sun.prism.impl.Disposer;
+import com.sun.prism.impl.ManagedResource;
+import com.sun.prism.impl.PrismSettings;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * UploadingPainter is used when we need to render into an offscreen buffer.
  * The PresentingPainter is used when we are rendering to the main screen.
  */
-class UploadingPainter extends ViewPainter implements Runnable {
+final class UploadingPainter extends ViewPainter implements Runnable {
 
     private Application app = Application.GetApplication();
     private Pixels      pix;
@@ -50,8 +52,8 @@ class UploadingPainter extends ViewPainter implements Runnable {
     private final AtomicInteger uploadCount = new AtomicInteger(0);
     private RTTexture   rttexture;
 
-    protected UploadingPainter(ViewScene view, PrismPen pen) {
-        super(view, pen);
+    UploadingPainter(ViewScene view) {
+        super(view);
     }
 
     void disposeRTTexture() {
@@ -65,7 +67,7 @@ class UploadingPainter extends ViewPainter implements Runnable {
         renderLock.lock();
 
         boolean locked = false;
-        
+
         try {
             valid = validateStageGraphics();
 
@@ -75,18 +77,24 @@ class UploadingPainter extends ViewPainter implements Runnable {
                 }
                 return;
             }
-            
-            if (viewState != null) {
-                /*
-                 * As Glass is responsible for creating the rendering contexts,
-                 * locking should be done prior to the Prism calls.
-                 */
-                viewState.lock();
-                locked = true;
-            }
+
+            /*
+             * As Glass is responsible for creating the rendering contexts,
+             * locking should be done prior to the Prism calls.
+             */
+            sceneState.lock();
+            locked = true;
 
             boolean needsReset = (rttexture == null) || (viewWidth != penWidth) || (viewHeight != penHeight);
-            
+
+            if (!needsReset) {
+                rttexture.lock();
+                if (rttexture.isSurfaceLost()) {
+                    rttexture.unlock();
+                    needsReset = true;
+                }
+            }
+
             if (needsReset) {
                 context = factory.createRenderingContext(null);
             }
@@ -108,7 +116,7 @@ class UploadingPainter extends ViewPainter implements Runnable {
             Graphics g = rttexture.createGraphics();
             if (g == null) {
                 disposeRTTexture();
-                viewState.getScene().entireSceneNeedsRepaint();
+                sceneState.getScene().entireSceneNeedsRepaint();
                 return;
             }
             paintImpl(g);
@@ -131,23 +139,27 @@ class UploadingPainter extends ViewPainter implements Runnable {
                         pix = app.createPixels(viewWidth, viewHeight, textureBits);
                     } else {
                         /* device lost */
-                        viewState.getScene().entireSceneNeedsRepaint();
+                        sceneState.getScene().entireSceneNeedsRepaint();
                         disposeRTTexture();
                         pix = null;
                     }
                 }
             }
-            
+
+            if (rttexture != null) {
+                rttexture.unlock();
+            }
+
             if (pix != null) {
                 /* transparent pixels created and ready for upload */
                 // Copy references, which are volatile, used by upload. Thus
                 // ensure they still exist once event queue is consumed.
                 final Pixels pixRefCopy = pix;
-                final View viewRefCopy = viewState.getView();
+                final View viewRefCopy = sceneState.getView();
                 uploadCount.incrementAndGet();
                 Application.invokeLater(new Runnable() {
                     @Override public void run() {
-                        if (viewRefCopy.isClosed() == false) {
+                        if (!viewRefCopy.isClosed()) {
                             viewRefCopy.uploadPixels(pixRefCopy);
                         }
                         uploadCount.decrementAndGet();
@@ -163,10 +175,16 @@ class UploadingPainter extends ViewPainter implements Runnable {
                 context.end();            
             }
             if (locked) {
-                 viewState.unlock();
+                sceneState.unlock();
             }
 
-            pen.getPainting().set(false);
+            ViewScene viewScene = (ViewScene)sceneState.getScene();
+            viewScene.setPainting(false);
+            if (PrismSettings.poolStats ||
+                ManagedResource.anyLockedResources())
+            {
+                ManagedResource.printSummary();
+            }
             renderLock.unlock();
         }
     }

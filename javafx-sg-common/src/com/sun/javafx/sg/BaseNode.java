@@ -782,9 +782,9 @@ public abstract class BaseNode<G> implements PGNode {
      * Gets whether this SGNode is clean. This will return true only if
      * this node and any / all child nodes are clean.
      */
-//    public final boolean isClean() {
-//        return !dirty && !childDirty;
-//    }
+    public final boolean isClean() {
+        return dirty == DirtyFlag.CLEAN && !childDirty;
+    }
 
     /**
      * Gets whether this node itself is dirty.
@@ -1344,7 +1344,12 @@ public abstract class BaseNode<G> implements PGNode {
 
         @Override
         public BaseBounds getBounds(BaseTransform transform, Effect defaultInput) {
-            return bounds;
+            if (bounds.getBoundsType() == BaseBounds.BoundsType.RECTANGLE) {
+                return bounds;
+            } else {
+                //RT-29453 - CCE: in case we get 3D bounds we need to "flatten" them
+                return new RectBounds(bounds.getMinX(), bounds.getMinY(), bounds.getMaxX(), bounds.getMaxY());
+            }
         }
 
         @Override

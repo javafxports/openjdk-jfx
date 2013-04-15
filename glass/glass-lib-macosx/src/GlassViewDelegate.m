@@ -41,6 +41,9 @@
 #import "GlassLayer3D.h"
 #import "GlassNSEvent.h"
 #import "GlassPasteboard.h"
+#import "GlassHelper.h"
+#import "GlassStatics.h"
+#import "GlassPasteboard.h"
 
 //#define VERBOSE
 #ifndef VERBOSE
@@ -150,11 +153,6 @@ static jint getSwipeDirFromEvent(NSEvent *theEvent)
         self->gestureInProgress = NO;
 
         self->nativeFullScreenModeWindow = nil;
-
-        // Ensure JNI stuff related to gesture processing is ready
-        if (NULL == jGestureSupportClass) {
-            (*env)->FindClass(env, "com/sun/glass/ui/mac/MacGestureSupport");
-        }
 
         // optimization
         [self->nsView allocateGState];
@@ -546,14 +544,18 @@ static jint getSwipeDirFromEvent(NSEvent *theEvent)
                     sender = com_sun_glass_ui_mac_MacGestureSupport_SCROLL_SRC_GESTURE;
                 }
             }
-
-            (*env)->CallStaticVoidMethod(env, jGestureSupportClass, 
-                                        jGestureSupportScrollGesturePerformed,
-                                        self->jView, modifiers, sender,
-                                        (jint)viewPoint.x, (jint)viewPoint.y, 
-                                        (jint)basePoint.x, (jint)basePoint.y,
-                                        rotationX, rotationY);
-                                        
+            
+            const jclass jGestureSupportClass = [GlassHelper ClassForName:"com.sun.glass.ui.mac.MacGestureSupport"
+                                                                  withEnv:env];
+            if (jGestureSupportClass)
+            {
+                (*env)->CallStaticVoidMethod(env, jGestureSupportClass,
+                                             javaIDs.GestureSupport.scrollGesturePerformed,
+                                             self->jView, modifiers, sender,
+                                             (jint)viewPoint.x, (jint)viewPoint.y,
+                                             (jint)basePoint.x, (jint)basePoint.y,
+                                             rotationX, rotationY);
+            }
         } else {
             (*env)->CallVoidMethod(env, self->jView, jViewNotifyMouse, type, button, 
                     (jint)viewPoint.x, (jint)viewPoint.y, (jint)basePoint.x, (jint)basePoint.y, 
@@ -708,33 +710,37 @@ static jint getSwipeDirFromEvent(NSEvent *theEvent)
     jint modifiers = GetJavaModifiers(theEvent);
 
     GET_MAIN_JENV;
-
-    switch (type)
+    const jclass jGestureSupportClass = [GlassHelper ClassForName:"com.sun.glass.ui.mac.MacGestureSupport"
+                                                          withEnv:env];
+    if (jGestureSupportClass)
     {
-        case com_sun_glass_ui_mac_MacGestureSupport_GESTURE_ROTATE:
-            (*env)->CallStaticVoidMethod(env, jGestureSupportClass, 
-                                        jGestureSupportRotateGesturePerformed,
-                                        self->jView, modifiers, 
-                                        (jint)viewPoint.x, (jint)viewPoint.y, 
-                                        (jint)basePoint.x, (jint)basePoint.y,
-                                        (jfloat)[theEvent rotation]);
-            break;
-        case com_sun_glass_ui_mac_MacGestureSupport_GESTURE_SWIPE:
-            (*env)->CallStaticVoidMethod(env, jGestureSupportClass, 
-                                        jGestureSupportSwipeGesturePerformed,
-                                        self->jView, modifiers, 
-                                        getSwipeDirFromEvent(theEvent),
-                                        (jint)viewPoint.x, (jint)viewPoint.y, 
-                                        (jint)basePoint.x, (jint)basePoint.y);
-            break;
-        case com_sun_glass_ui_mac_MacGestureSupport_GESTURE_MAGNIFY:
-            (*env)->CallStaticVoidMethod(env, jGestureSupportClass, 
-                                        jGestureSupportMagnifyGesturePerformed,
-                                        self->jView, modifiers, 
-                                        (jint)viewPoint.x, (jint)viewPoint.y, 
-                                        (jint)basePoint.x, (jint)basePoint.y,
-                                        (jfloat)[theEvent magnification]);
-            break;
+        switch (type)
+        {
+            case com_sun_glass_ui_mac_MacGestureSupport_GESTURE_ROTATE:
+                (*env)->CallStaticVoidMethod(env, jGestureSupportClass,
+                                             javaIDs.GestureSupport.rotateGesturePerformed,
+                                             self->jView, modifiers,
+                                             (jint)viewPoint.x, (jint)viewPoint.y,
+                                             (jint)basePoint.x, (jint)basePoint.y,
+                                             (jfloat)[theEvent rotation]);
+                break;
+            case com_sun_glass_ui_mac_MacGestureSupport_GESTURE_SWIPE:
+                (*env)->CallStaticVoidMethod(env, jGestureSupportClass,
+                                             javaIDs.GestureSupport.swipeGesturePerformed,
+                                             self->jView, modifiers,
+                                             getSwipeDirFromEvent(theEvent),
+                                             (jint)viewPoint.x, (jint)viewPoint.y,
+                                             (jint)basePoint.x, (jint)basePoint.y);
+                break;
+            case com_sun_glass_ui_mac_MacGestureSupport_GESTURE_MAGNIFY:
+                (*env)->CallStaticVoidMethod(env, jGestureSupportClass,
+                                             javaIDs.GestureSupport.magnifyGesturePerformed,
+                                             self->jView, modifiers,
+                                             (jint)viewPoint.x, (jint)viewPoint.y,
+                                             (jint)basePoint.x, (jint)basePoint.y,
+                                             (jfloat)[theEvent magnification]);
+                break;
+        }
     }
     GLASS_CHECK_EXCEPTION(env);
 }
@@ -754,12 +760,17 @@ static jint getSwipeDirFromEvent(NSEvent *theEvent)
     jint modifiers = GetJavaModifiers(theEvent);
 
     GET_MAIN_JENV;
-    
-    (*env)->CallStaticVoidMethod(env, jGestureSupportClass, 
-                                jGestureSupportGestureFinished,
-                                self->jView, modifiers, 
-                                (jint)viewPoint.x, (jint)viewPoint.y, 
-                                (jint)basePoint.x, (jint)basePoint.y);
+    const jclass jGestureSupportClass = [GlassHelper ClassForName:"com.sun.glass.ui.mac.MacGestureSupport"
+                                                          withEnv:env];
+    if (jGestureSupportClass)
+    {
+        (*env)->CallStaticVoidMethod(env, jGestureSupportClass,
+                                     javaIDs.GestureSupport.gestureFinished,
+                                     self->jView, modifiers,
+                                     (jint)viewPoint.x, (jint)viewPoint.y,
+                                     (jint)basePoint.x, (jint)basePoint.y);
+
+    }
     GLASS_CHECK_EXCEPTION(env);
 }
 
@@ -781,6 +792,7 @@ static jint getSwipeDirFromEvent(NSEvent *theEvent)
     {
         case com_sun_glass_events_DndEvent_ENTER:
             DNDLOG("com_sun_glass_events_DndEvent_ENTER");
+            copyToDragPasteboardIfNeeded(info);
             mask = (*env)->CallIntMethod(env, self->jView, jViewNotifyDragEnter, x, y, xAbs, yAbs, recommendedAction);
             [GlassDragSource setMask:mask];
             break;
@@ -793,12 +805,6 @@ static jint getSwipeDirFromEvent(NSEvent *theEvent)
             DNDLOG("com_sun_glass_events_DndEvent_PERFORM");
             mask = (*env)->CallIntMethod(env, self->jView, jViewNotifyDragDrop, x, y, xAbs, yAbs, recommendedAction);
             [GlassDragSource setMask:mask];
-            break;
-        case com_sun_glass_events_DndEvent_END:
-            //TODO: this doesn't belong here. END is for drag source.
-            DNDLOG("com_sun_glass_events_DndEvent_END");
-            (*env)->CallVoidMethod(env, self->jView, jViewNotifyDragEnd, recommendedAction);
-            [GlassDragSource setMask:com_sun_glass_ui_Clipboard_ACTION_NONE];
             break;
         case com_sun_glass_events_DndEvent_EXIT:
             DNDLOG("com_sun_glass_events_DndEvent_EXIT");
@@ -920,6 +926,13 @@ static jint getSwipeDirFromEvent(NSEvent *theEvent)
         [image release];
     }
     self->dragOperation = NSDragOperationNone;
+}
+
+- (void)draggingEnded
+{
+    GET_MAIN_JENV;
+    (*env)->CallVoidMethod(env, self->jView, jViewNotifyDragEnd,  [GlassDragSource getMask]);
+    GLASS_CHECK_EXCEPTION(env);
 }
 
 - (BOOL)suppressMouseEnterExitOnMouseDown

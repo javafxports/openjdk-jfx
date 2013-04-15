@@ -26,6 +26,9 @@
 #ifndef LENS_COMMON_H
 #define LENS_COMMON_H
 
+#ifdef ANDROID_NDK
+#include <stdio.h>
+#endif
 #include "stdlib.h"
 #include "string.h"
 #include <unistd.h>
@@ -143,7 +146,7 @@ void glass_throw_exception_by_name(JNIEnv *env,
 typedef enum _LensResult{
     LENS_OK         = 0, 
     LENS_FAILED     = 1
-} LensResult;
+}LensResult;
 
 /**                                                   
  * Data structure that define NativeWindow and NativeView bounds
@@ -267,6 +270,11 @@ jboolean glass_screen_capture(jint x,
                               jint height,
                               jint *pixels);
 
+
+/**
+ * Get an array of available screens
+ */
+ jobjectArray createJavaScreens(JNIEnv *env);
 
 /////////////Aplication
 
@@ -522,13 +530,37 @@ void glass_application_notifyDeviceEvent(JNIEnv *env,
                                          jint flags,
                                          jboolean attach);
 
+/**
+ * Call Window.java::add(Window window) private method that adds 
+ * a window to the visible window list. 
+ * Windows on that list are the actual windows rendered by 
+ * Quantum/Prism 
+ * 
+ * @param env 
+ * @param window the window to add
+ */
+void glass_application_addWindowToVisibleWindowList(JNIEnv *env,
+                                                    NativeWindow window);
+
+/**
+ * Call Window.java::remove(Window window) private method that 
+ * removes a window from the visible window list. 
+ * Windows on that list are the actual windows rendered by 
+ * Quantum/Prism 
+ * 
+ * @param env 
+ * @param window the window to remove
+ */
+void glass_application_RemoveWindowFromVisibleWindowList(JNIEnv *env,
+                                          NativeWindow window);
+
 /////////////Window
 /**
  * NWS stands for Native Window State
  * the enum holds all the possible state of a window.
  * Window can have only one state at a given time
  */
-typedef enum {
+typedef enum _NativeWindowState{
     NWS_NORMAL,
     NWS_MINIMIZED,
     NWS_MAXIMIZED,
@@ -611,7 +643,7 @@ struct _NativeWindow {
  *
  * @return char* String representation of NativeWindowState
  */
-char *glass_window_getNativeStateName(int nativeWindowState);
+char *lens_window_getNativeStateName(NativeWindowState state);
 
 /**
  * Service function that release _NativeWindow resources and 
@@ -861,15 +893,13 @@ jboolean glass_window_setMaximumSize(JNIEnv *env,
 
 
 /**
- * This service functions check if window's current dimensions 
- * are within bounds and correct them if not. 
- * This is required as we don't have a window manager to force
- * this on our window.
- * the max* / min* attribute are been set by
+ * This service function checks if given width and height can be
+ * applied to the given window by comparing them to the window's 
+ * max and min attributes that were set by 
  * glass_window_setMaximumSize() and
- * glass_window_setMinimumSize(). value of 0, means no
- * restriction.
- * 
+ * glass_window_setMinimumSize().
+ * If given values are out of bounds they will be update with
+ * the closest in bounds values to match the restrictions.
  * 
  * 
  * @param window the window to check
@@ -877,10 +907,13 @@ jboolean glass_window_setMaximumSize(JNIEnv *env,
  *              be changed to value within bounds
  * @param height [IN/OUT] the requested height of a window. Will
  *              be changed to value within bounds
+ * @return JNI_TRUE means values are valid, JNI_FALSE means 
+ *         values are not valid and have been updated.
+ * 
  */
-void glass_window_check_bounds(NativeWindow window,
-                               int *width,
-                               int *height);
+jboolean glass_window_check_bounds(NativeWindow window,
+                                   int *width,
+                                   int *height);
 
 /**
  * Maximize / Restore window
@@ -962,6 +995,12 @@ void glass_window_list_add(NativeWindow window);
  * @param window window
  */
 void glass_window_list_remove(NativeWindow window);
+
+/**
+ * Print the content of the windows list to the console. Used 
+ * for debugging. 
+ */
+void glass_window_listPrint();
 
 /**
  * Get the current focused window (as was set by 
@@ -1464,10 +1503,6 @@ extern jint glass_log_level;
  * @param level the logging level (e.g. LOG_WARNING)
  * @param ... a format string and parameters in printf format
  */
-#define GLASS_LOG(level,...) \
-    GLASS_IF_LOG(level) \
-    glass_logf(level, __func__, __FILE__, __LINE__, __VA_ARGS__)
-
 /** Logging levels, with same meanings as in java.util.logging.Level */
 #define GLASS_LOG_LEVEL_SEVERE  1000
 #define GLASS_LOG_LEVEL_WARNING 900
@@ -1477,6 +1512,20 @@ extern jint glass_log_level;
 #define GLASS_LOG_LEVEL_FINER   400
 #define GLASS_LOG_LEVEL_FINEST  300
 
+#ifdef ANDROID_NDK
+// Can't use java logger in jvm8 on Android. Remove when this issue is fixed.
+#include <android/log.h>
+#define TAG "GLASS"
+#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, __VA_ARGS__))
+#define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, __VA_ARGS__))
+#define LOGV(...) ((void)__android_log_print(ANDROID_LOG_VERBOSE, __VA_ARGS__))
+#define GLASS_LOG(level,...) \
+        LOGI(TAG, __VA_ARGS__)
+#else
+#define GLASS_LOG(level,...) \
+    GLASS_IF_LOG(level) \
+    glass_logf(level, __func__, __FILE__, __LINE__, __VA_ARGS__)
+
 #define GLASS_IF_LOG_SEVERE  GLASS_IF_LOG(GLASS_LOG_LEVEL_SEVERE)
 #define GLASS_IF_LOG_WARNING GLASS_IF_LOG(GLASS_LOG_LEVEL_WARNING)
 #define GLASS_IF_LOG_INFO    GLASS_IF_LOG(GLASS_LOG_LEVEL_INFO)
@@ -1484,6 +1533,7 @@ extern jint glass_log_level;
 #define GLASS_IF_LOG_FINE    GLASS_IF_LOG(GLASS_LOG_LEVEL_FINE)
 #define GLASS_IF_LOG_FINER   GLASS_IF_LOG(GLASS_LOG_LEVEL_FINER)
 #define GLASS_IF_LOG_FINEST  GLASS_IF_LOG(GLASS_LOG_LEVEL_FINEST)
+#endif
 
 #ifdef NO_LOGGING
 #define GLASS_LOG_SEVERE(...)  (void)0, ##__VA_ARGS__

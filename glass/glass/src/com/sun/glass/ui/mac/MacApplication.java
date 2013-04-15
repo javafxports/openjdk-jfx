@@ -194,29 +194,8 @@ final class MacApplication extends Application implements InvokeLaterDispatcher.
         return new MacRobot();
     }
 
-    @Override protected double staticScreen_getVideoRefreshPeriod() {
-        return MacScreen.getVideoRefreshPeriod_impl();
-    }
-    
-    @Override protected Screen staticScreen_getDeepestScreen() {
-        return MacScreen.getDeepestScreen_impl();
-    }
-    
-    @Override protected Screen staticScreen_getMainScreen() {
-        return MacScreen.getMainScreen_impl();
-    }
-
-    @Override protected Screen staticScreen_getScreenForLocation(int x, int y) {
-        return MacScreen.getScreenForLocation_impl(x, y);
-    }
-
-    @Override protected Screen staticScreen_getScreenForPtr(long screenPtr) {
-        return MacScreen.getScreenForPtr_impl(screenPtr);
-    }
-
-    @Override protected List<Screen> staticScreen_getScreens() {
-        return MacScreen.getScreens_impl();
-    }
+    @Override native protected double staticScreen_getVideoRefreshPeriod();
+    @Override native protected Screen[] staticScreen_getScreens();
 
     @Override public Timer createTimer(Runnable runnable) {
         return new MacTimer(runnable);
@@ -231,9 +210,12 @@ final class MacApplication extends Application implements InvokeLaterDispatcher.
     }
 
     @Override protected FileChooserResult staticCommonDialogs_showFileChooser(Window owner, String folder, String filename, String title, int type,
-                                                     boolean multipleMode, ExtensionFilter[] extensionFilters) {
+                                                     boolean multipleMode, ExtensionFilter[] extensionFilters, int defaultFilterIndex) {
         //TODO: support FileChooserResult
-        return new FileChooserResult(MacCommonDialogs.showFileChooser_impl(owner, folder, filename, title, type, multipleMode, extensionFilters), null);
+        //TODO: support defaultFilterIndex
+        return new FileChooserResult(
+                MacCommonDialogs.showFileChooser_impl(owner, folder, filename,
+                title, type, multipleMode, extensionFilters, defaultFilterIndex), null);
     }
 
     @Override protected File staticCommonDialogs_showFolderChooser(Window owner, String folder, String title) {

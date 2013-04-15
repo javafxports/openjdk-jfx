@@ -27,7 +27,6 @@ package com.sun.javafx.sg.prism;
 
 import java.nio.Buffer;
 import com.sun.glass.ui.Screen;
-import com.sun.glass.ui.View;
 import com.sun.javafx.font.FontStrike;
 import com.sun.javafx.geom.RectBounds;
 import com.sun.javafx.geom.Shape;
@@ -37,7 +36,9 @@ import com.sun.prism.BasicStroke;
 import com.sun.prism.Graphics;
 import com.sun.prism.Image;
 import com.sun.prism.MediaFrame;
-import com.sun.prism.MeshFactory;
+import com.sun.prism.Mesh;
+import com.sun.prism.MeshView;
+import com.sun.prism.PhongMaterial;
 import com.sun.prism.PixelFormat;
 import com.sun.prism.Presentable;
 import com.sun.prism.PresentableState;
@@ -51,6 +52,7 @@ import com.sun.prism.Texture.WrapMode;
 import com.sun.prism.camera.PrismCameraImpl;
 import com.sun.prism.impl.BaseContext;
 import com.sun.prism.impl.BaseGraphics;
+import com.sun.prism.impl.TextureResourcePool;
 import com.sun.prism.impl.VertexBuffer;
 import com.sun.prism.paint.Color;
 import com.sun.prism.shape.ShapeRep;
@@ -60,7 +62,7 @@ import com.sun.prism.shape.ShapeRep;
  *
  */
 public class TestGraphics extends BaseGraphics {
-    
+
     public static final Graphics TEST_GRAPHICS = new TestGraphics();
 
     public TestGraphics() {
@@ -124,6 +126,18 @@ public class TestGraphics extends BaseGraphics {
     public void reset() {
     }
 
+    @Override
+    public void setState3D(boolean flag) {
+    }
+
+    @Override
+    public boolean isState3D() {
+        return false;
+    }
+
+    public void setup3DRendering() {
+    }
+
     private static class TestContext extends BaseContext {
 
         public TestContext() {
@@ -131,7 +145,7 @@ public class TestGraphics extends BaseGraphics {
         }
 
         @Override
-        protected void setRenderTarget(RenderTarget target, PrismCameraImpl camera, boolean depthTest) {
+        protected void setRenderTarget(RenderTarget target, PrismCameraImpl camera, boolean depthTest, boolean state3D) {
         }
 
         @Override
@@ -147,10 +161,11 @@ public class TestGraphics extends BaseGraphics {
             return null;
         }
     }
-    
+
     private static class TestResourceFactory implements ResourceFactory {
         @Override public boolean isDeviceReady() { return true; }
 
+        @Override public TextureResourcePool getTextureResourcePool() { return null; }
         @Override public Texture createTexture(Image image, Texture.Usage usageHint, Texture.WrapMode wrapMode) { return null; }
         @Override public Texture createTexture(PixelFormat formatHint, Texture.Usage usageHint, Texture.WrapMode wrapMode, int w, int h) { return null; }
         @Override public Texture createTexture(MediaFrame frame) { return null; }
@@ -192,6 +207,14 @@ public class TestGraphics extends BaseGraphics {
                 @Override public boolean getLinearFiltering() { return false; }
                 @Override public void setLinearFiltering(boolean linear) { }
                 @Override public void dispose() { }
+                @Override public void lock() { }
+                @Override public void unlock() { }
+                @Override public boolean isLocked() { return true; }
+                @Override public int getLockCount() { return 1; }
+                @Override public void assertLocked() { }
+                @Override public void makePermanent() { }
+                @Override public void contentsUseful() { }
+                @Override public void contentsNotUseful() { }
                 @Override public void setOpaque(boolean opaque) { }
             };
         }
@@ -206,11 +229,11 @@ public class TestGraphics extends BaseGraphics {
         @Override public RenderingContext createRenderingContext(PresentableState pstate) { return null; }
         @Override public void dispose() { }
 
-        @Override public MeshFactory get3DFactory() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
+        @Override public PhongMaterial createPhongMaterial() { return null; }
+        @Override public MeshView createMeshView(Mesh mesh) { return null; }
+        @Override public Mesh createMesh() { return null; }
     }
-    
+
     private static class TestRenderTarget implements RenderTarget {
 
         public Screen getAssociatedScreen() {
@@ -251,6 +274,15 @@ public class TestGraphics extends BaseGraphics {
         public int getContentHeight() {
             return 0;
         }
-        
+
+    }
+
+    @Override
+    public void setLights(Object[] lights) {
+    }
+
+    @Override
+    public Object[] getLights() {
+        return null;
     }
 }

@@ -29,6 +29,7 @@ import com.sun.glass.ui.Screen;
 import com.sun.javafx.font.FontResource;
 import com.sun.javafx.font.FontStrike;
 import com.sun.javafx.font.Metrics;
+import com.sun.javafx.font.PrismFontUtils;
 import com.sun.javafx.scene.text.GlyphList;
 import com.sun.javafx.geom.Ellipse2D;
 import com.sun.javafx.geom.Line2D;
@@ -41,7 +42,6 @@ import com.sun.javafx.geom.transform.Affine2D;
 import com.sun.javafx.geom.transform.BaseTransform;
 import com.sun.javafx.geom.transform.GeneralTransform3D;
 import com.sun.javafx.geom.transform.NoninvertibleTransformException;
-import com.sun.openpisces.Renderer;
 import com.sun.pisces.GradientColorMap;
 import com.sun.pisces.PiscesRenderer;
 import com.sun.pisces.RendererBase;
@@ -49,14 +49,13 @@ import com.sun.pisces.Transform6;
 import com.sun.prism.BasicStroke;
 import com.sun.prism.CompositeMode;
 import com.sun.prism.Image;
-import com.sun.prism.MeshView;
+import com.sun.prism.PixelFormat;
 import com.sun.prism.ReadbackGraphics;
 import com.sun.prism.RenderTarget;
 import com.sun.prism.RTTexture;
 import com.sun.prism.Texture;
 import com.sun.prism.camera.PrismCameraImpl;
 import com.sun.prism.impl.PrismSettings;
-import com.sun.prism.impl.shape.OpenPiscesPrismUtils;
 import com.sun.prism.paint.Color;
 import com.sun.prism.paint.Gradient;
 import com.sun.prism.paint.ImagePattern;
@@ -67,11 +66,10 @@ import com.sun.prism.paint.Stop;
 
 final class SWGraphics implements ReadbackGraphics {
 
-    private static final DirectRTPiscesAlphaConsumer consumer = new DirectRTPiscesAlphaConsumer();
-
     private static final int TO_PISCES = 65536;
 
     private final PiscesRenderer pr;
+    private final SWContext context;
     private final SWRTTexture target;
 
     private final BaseTransform tx = new Affine2D();
@@ -108,9 +106,9 @@ final class SWGraphics implements ReadbackGraphics {
         return renderRoot;
     }
 
-
-    public SWGraphics(SWRTTexture target, PiscesRenderer pr) {
+    public SWGraphics(SWRTTexture target, SWContext context, PiscesRenderer pr) {
         this.target = target;
+        this.context = context;
         this.pr = pr;
 
         this.setClipRect(null);
@@ -119,7 +117,7 @@ final class SWGraphics implements ReadbackGraphics {
     public RenderTarget getRenderTarget() {
         return target;
     }
-    
+
     public SWResourceFactory getResourceFactory() {
         return target.getResourceFactory();
     }
@@ -127,10 +125,10 @@ final class SWGraphics implements ReadbackGraphics {
     public Screen getAssociatedScreen() {
         return target.getAssociatedScreen();
     }
-    
+
     public void sync() {
     }
-    
+
     public void reset() {
         throw new UnsupportedOperationException("unimp: SWG.reset");
     }
@@ -288,7 +286,7 @@ final class SWGraphics implements ReadbackGraphics {
         }
         clipRectIndex = index;
     }
-    
+
     public float getExtraAlpha() {
         return compositeAlpha;
     }
@@ -303,7 +301,7 @@ final class SWGraphics implements ReadbackGraphics {
     public Paint getPaint() {
         return paint;
     }
-    
+
     public void setPaint(Paint paint) {
         this.paint = paint;
     }
@@ -319,12 +317,16 @@ final class SWGraphics implements ReadbackGraphics {
     }
 
     private void setPaintBeforeDraw(float x, float y, float width, float height) {
-        switch (paint.getType()) {
+        this.setPaintBeforeDraw(this.paint, x, y, width, height);
+    }
+
+    private void setPaintBeforeDraw(Paint p, float x, float y, float width, float height) {
+        switch (p.getType()) {
             case COLOR:
-                this.setColor((Color)this.paint, this.compositeAlpha);
+                this.setColor((Color)p, this.compositeAlpha);
                 break;
             case LINEAR_GRADIENT:
-                final LinearGradient lg = (LinearGradient)this.paint;
+                final LinearGradient lg = (LinearGradient)p;
                 if (PrismSettings.debug) {
                     System.out.println("PR.setLinearGradient: " + lg.getX1() + ", " + lg.getY1() + ", " + lg.getX2() + ", " + lg.getY2());
                 }
@@ -338,7 +340,7 @@ final class SWGraphics implements ReadbackGraphics {
                     getFractions(lg), getARGB(lg, this.compositeAlpha), getPiscesGradientCycleMethod(lg.getSpreadMethod()), piscesTx);
                 break;
             case RADIAL_GRADIENT:
-                final RadialGradient rg = (RadialGradient)this.paint;
+                final RadialGradient rg = (RadialGradient)p;
                 if (PrismSettings.debug) {
                     System.out.println("PR.setRadialGradient: " + rg.getCenterX() + ", " + rg.getCenterY() + ", " + rg.getFocusAngle() + ", " + rg.getFocusDistance() + ", " + rg.getRadius());
                 }
@@ -354,7 +356,7 @@ final class SWGraphics implements ReadbackGraphics {
                         getFractions(rg), getARGB(rg, this.compositeAlpha), getPiscesGradientCycleMethod(rg.getSpreadMethod()), piscesTx);
                 break;
             case IMAGE_PATTERN:
-                final ImagePattern ip = (ImagePattern)this.paint;
+                final ImagePattern ip = (ImagePattern)p;
                 final Image image = ip.getImage();
                 if (PrismSettings.debug) {
                     System.out.println("PR.setTexturePaint: " + image);
@@ -373,18 +375,22 @@ final class SWGraphics implements ReadbackGraphics {
                             x + ip.getX(), y + ip.getY());
                 }
                 convertToPiscesTransform(paintTx, piscesTx);
-                SWTexture tex = (SWTexture)
-                    getResourceFactory().createTexture(ip.getImage(),
-                                                       Texture.Usage.DEFAULT,
-                                                       Texture.WrapMode.REPEAT);
-                if (this.compositeAlpha < 1.0f) {
-                    tex.applyCompositeAlpha(this.compositeAlpha);
+                if (ip.getImage().getPixelFormat() == PixelFormat.BYTE_ALPHA) {
+                    throw new UnsupportedOperationException("Alpha image is not supported as an image pattern.");
+                } else {
+                    SWArgbPreTexture tex = (SWArgbPreTexture)getResourceFactory().createTexture(ip.getImage(),
+                                                Texture.Usage.DEFAULT,
+                                                Texture.WrapMode.REPEAT);
+                    if (this.compositeAlpha < 1.0f) {
+                        tex.applyCompositeAlpha(this.compositeAlpha);
+                    }
+                    this.pr.setTexture(RendererBase.TYPE_INT_ARGB_PRE, tex.getDataNoClone(),
+                            tex.getPhysicalWidth(), tex.getPhysicalHeight(),
+                            piscesTx, true, tex.hasAlpha());
                 }
-                this.pr.setTexture(RendererBase.TYPE_INT_ARGB_PRE, tex.getDataNoClone(), tex.getPhysicalWidth(), tex.getPhysicalHeight(),
-                        piscesTx, true, tex.hasAlpha());
                 break;
             default:
-                throw new IllegalArgumentException("Unknown paint type: " + paint.getType());
+                throw new IllegalArgumentException("Unknown paint type: " + p.getType());
         }
     }
 
@@ -427,7 +433,7 @@ final class SWGraphics implements ReadbackGraphics {
     public BasicStroke getStroke() {
         return stroke;
     }
-    
+
     public void setStroke(BasicStroke stroke) {
         this.stroke = stroke;
     }
@@ -475,7 +481,7 @@ final class SWGraphics implements ReadbackGraphics {
     public void clear() {
         this.clear(Color.TRANSPARENT);
     }
-    
+
     /**
      * Clears the current {@code RenderTarget} with the given {@code Color}.
      * Note that this operation is affected by the current clip rectangle,
@@ -490,7 +496,7 @@ final class SWGraphics implements ReadbackGraphics {
         pr.clearRect(0, 0, target.getPhysicalWidth(), target.getPhysicalHeight());
         getRenderTarget().setOpaque(color.isOpaque());
     }
-    
+
     /**
      * Clears the region represented by the given quad with transparent pixels.
      * Note that this operation is affected by the current clip rectangle,
@@ -521,7 +527,7 @@ final class SWGraphics implements ReadbackGraphics {
         }
         this.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
     }
-    
+
     public void fillRect(float x, float y, float width, float height) {
         if (PrismSettings.debug) {
             System.out.printf("+ SWG.fillRect, x: %f, y: %f, w: %f, h: %f\n", x, y, width, height);
@@ -547,22 +553,22 @@ final class SWGraphics implements ReadbackGraphics {
             this.fillRoundRect(x, y, width, height, 0, 0);
         }
     }
-    
-    public void fillRoundRect(float x, float y, float width, float height, 
+
+    public void fillRoundRect(float x, float y, float width, float height,
                               float arcw, float arch) {
         if (PrismSettings.debug) {
             System.out.println("+ SWG.fillRoundRect");
         }
         this.paintRoundRect(x, y, width, height, arcw, arch, null);
     }
-    
+
     public void fillEllipse(float x, float y, float width, float height) {
         if (PrismSettings.debug) {
             System.out.println("+ SWG.fillEllipse");
         }
         this.paintEllipse(x, y, width, height, null);
     }
-    
+
     public void draw(Shape shape) {
         if (PrismSettings.debug) {
             System.out.println("+ draw(Shape)");
@@ -590,9 +596,7 @@ final class SWGraphics implements ReadbackGraphics {
             System.out.println("Clip: " + finalClip);
             System.out.println("Composite rule: " + compositeMode);
         }
-        Renderer r = OpenPiscesPrismUtils.setupRenderer(shape, st, tr, this.finalClip);
-        consumer.initConsumer(r, pr);
-        r.produceAlphas(consumer);
+        context.renderShape(this.pr, shape, st, tr, this.finalClip);
     }
 
     private void setPaintFromShape(Shape shape, BaseTransform tr, float localX, float localY, float localWidth, float localHeight) {
@@ -650,22 +654,22 @@ final class SWGraphics implements ReadbackGraphics {
         }
         paintShape(this.line2d, this.stroke, this.tx);
     }
-    
+
     public void drawRect(float x, float y, float width, float height) {
         if (PrismSettings.debug) {
             System.out.println("+ SWG.drawRect");
         }
         this.drawRoundRect(x, y, width, height, 0, 0);
     }
-    
-    public void drawRoundRect(float x, float y, float width, float height, 
+
+    public void drawRoundRect(float x, float y, float width, float height,
                               float arcw, float arch) {
         if (PrismSettings.debug) {
             System.out.println("+ SWG.drawRoundRect");
         }
         this.paintRoundRect(x, y, width, height, arcw, arch, stroke);
     }
-    
+
     public void drawEllipse(float x, float y, float width, float height) {
         if (PrismSettings.debug) {
             System.out.println("+ SWG.drawEllipse");
@@ -724,37 +728,49 @@ final class SWGraphics implements ReadbackGraphics {
 
         // check for selection that is out of range of this line (TextArea)
         if ((selectGlyphStart < 0 && selectGlyphEnd < 0)||(selectGlyphStart >= gl.getGlyphCount() && selectGlyphEnd >= gl.getGlyphCount())) {
-            this.setPaintBeforeDraw(bx, by, bw, bh);
-            this.drawStringInternal(gl, strike, x, y, 0, gl.getGlyphCount());
+            this.drawStringInternal(gl, strike, x, y, 0, gl.getGlyphCount(), this.paint, bx, by, bw, bh);
         } else {
             float advanceX = 0;
             if (selectGlyphStart > 0) {
-                this.setPaintBeforeDraw(bx, by, bw, bh);
-                advanceX = this.drawStringInternal(gl, strike, x, y, 0, selectGlyphStart);
+                advanceX = this.drawStringInternal(gl, strike, x, y, 0, selectGlyphStart, this.paint, bx, by, bw, bh);
             }
-            this.setColor(selectColor, this.compositeAlpha);
             advanceX += this.drawStringInternal(gl, strike, x+advanceX, y,
-                                                Math.max(0, selectGlyphStart), Math.min(gl.getGlyphCount(), selectGlyphEnd));
+                                                Math.max(0, selectGlyphStart), Math.min(gl.getGlyphCount(), selectGlyphEnd),
+                                                selectColor, 0, 0, 0, 0);
             if (selectGlyphEnd < gl.getGlyphCount()) {
-                this.setPaintBeforeDraw(bx, by, bw, bh);
-                this.drawStringInternal(gl, strike, x+advanceX, y, selectGlyphEnd, gl.getGlyphCount());
+                this.drawStringInternal(gl, strike, x+advanceX, y, selectGlyphEnd, gl.getGlyphCount(),
+                                        this.paint, bx, by, bw, bh);
             }
         }
     }
 
-    private float drawStringInternal(GlyphList gl, FontStrike strike, float x, float y, int strFrom, int strTo) {
+    private float drawStringInternal(GlyphList gl, FontStrike strike, float x, float y, int strFrom, int strTo,
+                                     Paint p, float bx, float by, float bw, float bh)
+    {
         float advanceX = 0;
         if (tx.isTranslateOrIdentity() && strike.supportsGlyphImages() && (!strike.drawAsShapes())) {
             final boolean doLCDText = (strike.getAAMode() == FontResource.AA_LCD) &&
                     getRenderTarget().isOpaque() &&
-                    (paint.getType() == Paint.Type.COLOR) &&
+                    (p.getType() == Paint.Type.COLOR) &&
                     tx.is2D();
 
-            if (!doLCDText) {
+            final float gamma, invgamma;
+            if (doLCDText) {
+                invgamma = PrismFontUtils.getLCDContrast();
+                gamma = 1.0f/invgamma;
+                final Color c = (Color)p;
+                final Color correctedColor = new Color((float)Math.pow(c.getRed(), invgamma),
+                                                       (float)Math.pow(c.getGreen(), invgamma),
+                                                       (float)Math.pow(c.getBlue(), invgamma),
+                                                       (float)Math.pow(c.getAlpha(), invgamma));
+                this.setColor(correctedColor, this.compositeAlpha);
+            } else {
+                gamma = invgamma = 0;
                 final FontResource fr = strike.getFontResource();
                 final float origSize = strike.getSize();
                 final BaseTransform origTx = strike.getTransform();
                 strike = fr.getStrike(origSize, origTx, FontResource.AA_GREYSCALE);
+                this.setPaintBeforeDraw(p, bx, by, bw, bh);
             }
 
             for (int i = strFrom; i < strTo; i++) {
@@ -764,7 +780,8 @@ final class SWGraphics implements ReadbackGraphics {
                             (int)(x + tx.getMxt() + g.getOriginX() + gl.getPosX(i) + 0.5f),
                             (int)(y + tx.getMyt() + g.getOriginY() + gl.getPosY(i) + 0.5f),
                             g.getWidth(), g.getHeight(),
-                            0, g.getWidth());
+                            0, g.getWidth(),
+                            gamma, invgamma);
                 } else {
                     this.pr.fillAlphaMask(g.getPixelData(),
                             (int)(x + tx.getMxt() + g.getOriginX() + gl.getPosX(i) + 0.5f),
@@ -778,7 +795,7 @@ final class SWGraphics implements ReadbackGraphics {
             glyphTx.deriveWithTranslation(x, y);
             for (int i = strFrom; i < strTo; i++) {
                 final FontStrike.Glyph g = strike.getGlyph(gl.getGlyphCode(i));
-                this.paintShape(g.getShape(), this.stroke, glyphTx);
+                this.paintShape(g.getShape(), null, glyphTx);
                 advanceX += g.getAdvance();
                 glyphTx.deriveWithTranslation(g.getAdvance(), 0);
             }
@@ -801,7 +818,7 @@ final class SWGraphics implements ReadbackGraphics {
         }
         this.drawTextureVO(tex, 1, 1, dx1, dy1, dx2, dy2, sx1, sy1, sx2, sy2);
     }
-    
+
     private void computeScaleAndPixelCorrection(float[] target, float dv1, float dv2, float sv1, float sv2) {
         final float dv_diff = dv2 - dv1;
         float scale = dv_diff / (sv2 - sv1);
@@ -841,8 +858,8 @@ final class SWGraphics implements ReadbackGraphics {
             System.out.println("Clip: " + finalClip);
             System.out.println("Composite rule: " + compositeMode);
         }
-        
-        final SWTexture swTex = (SWTexture) tex;
+   
+        final SWArgbPreTexture swTex = (SWArgbPreTexture) tex;
         int data[] = swTex.getDataNoClone();
 
         final int ix1 = SWUtils.fastFloor(dx1);
@@ -861,7 +878,7 @@ final class SWGraphics implements ReadbackGraphics {
         tx.transform(srcBBox, dstBBox);
 
         paintTx.setTransform(tx);
-        
+
         final float[] scale_correction = new float[2];
         computeScaleAndPixelCorrection(scale_correction, dx1, dx2, sx1, sx2);
         final float scaleX = scale_correction[0];
@@ -916,7 +933,7 @@ final class SWGraphics implements ReadbackGraphics {
             System.out.println("* drawTextureVO, DONE");
         }
     }
-    
+
     public void drawTextureRaw(Texture tex,
                                float dx1, float dy1, float dx2, float dy2,
                                float tx1, float ty1, float tx2, float ty2)
@@ -933,7 +950,7 @@ final class SWGraphics implements ReadbackGraphics {
         ty2 *= h;
         drawTexture(tex, dx1, dy1, dx2, dy2, tx1, ty1, tx2, ty2);
     }
-    
+
     public void drawMappedTextureRaw(Texture tex,
                                      float dx1, float dy1, float dx2, float dy2,
                                      float tx11, float ty11, float tx21, float ty21,
@@ -975,26 +992,39 @@ final class SWGraphics implements ReadbackGraphics {
     }
 
     public RTTexture readBack(Rectangle view) {
+        context.validateRBBuffer(Math.max(0, view.width), Math.max(0, view.height));
+        RTTexture rbb = context.getReadBackBuffer();
+
         if (view.width <= 0 || view.height <= 0) {
-            return new SWRTTexture(getResourceFactory(), 0, 0);
+            return rbb;
         }
 
-        RTTexture rtt = getResourceFactory().createRTTexture(view.width, view.height, Texture.WrapMode.CLAMP_NOT_NEEDED);
-        int pixels[] = rtt.getPixels();
-        this.target.getSurface().getRGB(pixels, 0, rtt.getPhysicalWidth(), view.x, view.y, view.width, view.height);
-        return rtt;
+        int pixels[] = rbb.getPixels();
+        this.target.getSurface().getRGB(pixels, 0, rbb.getPhysicalWidth(), view.x, view.y, view.width, view.height);
+        return rbb;
     }
 
-    public void releaseReadBackBuffer(RTTexture view) { }
+    public void releaseReadBackBuffer(RTTexture view) {
+    }
 
-    // switch to classic rendering mode (default)
-    public boolean beginRender2D() { return true; }
-    
-    // switch to retained rendering mode
-    public boolean beginRender3D() { return false; }
-    
-    // render retained object
-    public boolean draw3DObject(MeshView obj) { return false; }
+    public void setState3D(boolean flag) {
+    }
 
+    public boolean isState3D() {
+        return false;
+    }
 
+    public void setup3DRendering() {
+    }
+
+    @Override
+    public void setLights(Object[] lights) {
+        // Light are not supported by SW pipeline
+    }
+
+    @Override
+    public Object[] getLights() {
+        // Light are not supported by SW pipeline
+        return null;
+    }
 }

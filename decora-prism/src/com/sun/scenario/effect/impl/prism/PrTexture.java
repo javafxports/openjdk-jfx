@@ -26,8 +26,9 @@
 package com.sun.scenario.effect.impl.prism;
 
 import com.sun.javafx.geom.Rectangle;
+import com.sun.scenario.effect.LockableResource;
 
-public class PrTexture {
+public class PrTexture implements LockableResource {
 
     private final com.sun.prism.Texture tex;
     private final Rectangle bounds;
@@ -38,6 +39,18 @@ public class PrTexture {
         }
         this.tex = tex;
         this.bounds = new Rectangle(tex.getPhysicalWidth(), tex.getPhysicalHeight());
+    }
+
+    public void lock() {
+        if (tex != null) tex.lock();
+    }
+
+    public void unlock() {
+        if (tex != null) tex.unlock();
+    }
+
+    public boolean isLost() {
+        return tex.isSurfaceLost();
     }
 
     public Rectangle getNativeBounds() {

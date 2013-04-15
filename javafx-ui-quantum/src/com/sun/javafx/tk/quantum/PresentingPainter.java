@@ -27,15 +27,17 @@ package com.sun.javafx.tk.quantum;
 
 import com.sun.prism.Graphics;
 import com.sun.prism.impl.Disposer;
+import com.sun.prism.impl.ManagedResource;
+import com.sun.prism.impl.PrismSettings;
 
 /**
  * The PresentingPainter is used when we are rendering to the main screen.
  * UploadingPainter is used when we need to render into an offscreen buffer.
  */
-class PresentingPainter extends ViewPainter implements Runnable {
+final class PresentingPainter extends ViewPainter {
     
-    protected PresentingPainter(ViewScene view, PrismPen pen) {
-        super(view, pen);
+    PresentingPainter(ViewScene view) {
+        super(view);
     }
 
     @Override public void run() {
@@ -53,19 +55,20 @@ class PresentingPainter extends ViewPainter implements Runnable {
                 return;
             }
             
-            if (viewState != null) {
-                /*
-                 * As Glass is responsible for creating the rendering contexts,
-                 * locking should be done prior to the Prism calls.
-                 */
-                viewState.lock();
-                locked = true;
-            }
+            /*
+             * As Glass is responsible for creating the rendering contexts,
+             * locking should be done prior to the Prism calls.
+             */
+            sceneState.lock();
+            locked = true;
 
             boolean needsReset = (presentable == null) || (penWidth != viewWidth) || (penHeight != viewHeight);
+            if (!needsReset && presentable.lockResources()) {
+                needsReset=true;
+            }
             if (needsReset) {
                 if (presentable == null || presentable.recreateOnResize()) {
-                    context = factory.createRenderingContext(viewState);
+                    context = factory.createRenderingContext(sceneState);
                 }
             }
             
@@ -74,7 +77,7 @@ class PresentingPainter extends ViewPainter implements Runnable {
             if (needsReset) {
                 if (presentable == null || presentable.recreateOnResize()) {
                     disposePresentable();
-                    presentable = factory.createPresentable(viewState);
+                    presentable = factory.createPresentable(sceneState);
                     needsReset = false;
                 }
                 penWidth  = viewWidth;
@@ -84,7 +87,7 @@ class PresentingPainter extends ViewPainter implements Runnable {
             if (presentable != null) {
                 Graphics g = presentable.createGraphics();
 
-                ViewScene vs = (ViewScene) viewState.getScene();
+                ViewScene vs = (ViewScene) sceneState.getScene();
                 if (g != null && vs.getDirty()) {
                     if (needsReset) {
                         g.reset();
@@ -95,7 +98,7 @@ class PresentingPainter extends ViewPainter implements Runnable {
                 
                 if (!presentable.prepare(null)) {
                     disposePresentable();
-                    viewState.getScene().entireSceneNeedsRepaint();
+                    sceneState.getScene().entireSceneNeedsRepaint();
                     return;
                 }
                 
@@ -103,7 +106,7 @@ class PresentingPainter extends ViewPainter implements Runnable {
                 if (vs.getDoPresent()) {
                     if (!presentable.present()) {
                         disposePresentable();
-                        viewState.getScene().entireSceneNeedsRepaint();
+                        sceneState.getScene().entireSceneNeedsRepaint();
                     }
                 }
             }
@@ -115,10 +118,16 @@ class PresentingPainter extends ViewPainter implements Runnable {
                 context.end();
             }
             if (locked) {
-                viewState.unlock();
+                sceneState.unlock();
             }
-            
-            pen.getPainting().set(false);
+
+            ViewScene viewScene = (ViewScene)sceneState.getScene();
+            viewScene.setPainting(false);
+            if (PrismSettings.poolStats ||
+                ManagedResource.anyLockedResources())
+            {
+                ManagedResource.printSummary();
+            }
             renderLock.unlock();
         }
     }

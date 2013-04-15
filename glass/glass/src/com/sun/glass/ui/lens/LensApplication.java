@@ -907,7 +907,8 @@ final class LensApplication extends Application {
                                       int width, int height) {
         if (LensLogger.isLogging(PlatformLogger.INFO)) {
             LensLogger.getLogger().info(
-                "Resize " + window + " to " + width + "x" + height);
+                "notifyResize with "+WindowEvent.getEventName(eventType)+
+                " event "+ window + " to " + width + "x" + height);
         }
         if (window != null) {
             postEvent(new LensWindowEvent(LensWindowEvent.EType.RESIZE,
@@ -950,38 +951,36 @@ final class LensApplication extends Application {
      * @param windowEvent the event type as defined in WindowEvent
      *                    class.
      */
-    protected void notifyWindowEvent(LensWindow window, int windowEvent) {
+    protected void notifyWindowEvent(LensWindow window, int windowEvent) {        
 
-        String eventName;
+        
         LensWindowEvent.EType etype = null;
         switch (windowEvent) {
             case WindowEvent.FOCUS_GAINED:
-                eventName = "Focus Gained";
                 etype = LensWindowEvent.EType.FOCUS;
                 break;
             case WindowEvent.FOCUS_LOST:
-                eventName = "Focus Lost";
                 etype = LensWindowEvent.EType.FOCUS;
                 break;
             case WindowEvent.DESTROY:
-                eventName = "Window Destroy";
                 etype = LensWindowEvent.EType.DESTROY;
                 break;
             case WindowEvent.CLOSE:
-                eventName = "window Close";
                 etype = LensWindowEvent.EType.CLOSE;
                 break;
             case WindowEvent.FOCUS_UNGRAB:
                 etype = LensWindowEvent.EType.UNGRAB;
-                eventName = "Ungrab";
                 break;
             default:
-                eventName = "Unknown event code=" + windowEvent + " Ignoring";
+                LensLogger.getLogger().warning("Unsupported event type ("+
+                    WindowEvent.getEventName(windowEvent)+" skipping event");
+                return;
         }
 
         if (LensLogger.isLogging(PlatformLogger.FINE)) {
             LensLogger.getLogger().fine(
-                "notifyWindowEvent eventType = " + eventName);
+                "notifyWindowEvent eventType = " + 
+                WindowEvent.getEventName(windowEvent));
         }
 
         if (etype != null) {
@@ -1447,34 +1446,11 @@ final class LensApplication extends Application {
         return new LensRobot();
     }
 
-    @Override
-    protected Screen staticScreen_getDeepestScreen() {
-        return LensScreen.getDeepestScreen_impl();
-    }
-
-    @Override
-    protected Screen staticScreen_getMainScreen() {
-        return LensScreen.getMainScreen_impl();
-    }
-
-    @Override
-    protected Screen staticScreen_getScreenForLocation(int x, int y) {
-        return LensScreen.getScreenForLocation_impl(x, y);
-    }
-
-    @Override
-    protected Screen staticScreen_getScreenForPtr(long screenPtr) {
-        return LensScreen.getScreenForPtr_impl(screenPtr);
-    }
-
-    @Override
-    protected List<Screen> staticScreen_getScreens() {
-        return LensScreen.getScreens_impl();
-    }
-
     @Override protected double staticScreen_getVideoRefreshPeriod() {
         return 0.0;     // indicate millisecond resolution
     }
+
+    @Override native protected Screen[] staticScreen_getScreens();
 
     @Override
     public Timer createTimer(Runnable runnable) {
@@ -1496,11 +1472,11 @@ final class LensApplication extends Application {
                                         String filename,
                                         String title, int type,
                                         boolean multipleMode,
-                                        ExtensionFilter[] extensionFilters) {
+                                        ExtensionFilter[] extensionFilters, int defaultFilterIndex) {
         //TODO: support FileChooserResult
         return new FileChooserResult(LensCommonDialogs.showFileChooser_impl(folder, title, type,
                                                       multipleMode,
-                                                      extensionFilters), null);
+                                                      extensionFilters, defaultFilterIndex), null);
     }
 
     @Override

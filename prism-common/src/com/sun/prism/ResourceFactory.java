@@ -25,6 +25,7 @@
 
 package com.sun.prism;
 
+import com.sun.prism.impl.TextureResourcePool;
 import com.sun.prism.impl.VertexBuffer;
 import com.sun.prism.shape.ShapeRep;
 
@@ -41,6 +42,8 @@ public interface ResourceFactory extends GraphicsResource {
      **/
 
     public boolean isDeviceReady();
+
+    public TextureResourcePool getTextureResourcePool();
 
     /**
      * Returns a new {@code Texture} containing the pixels from the given
@@ -173,7 +176,8 @@ public interface ResourceFactory extends GraphicsResource {
     
     /*
      * 3D stuff
-     * TODO: 3D - is this how we want to expose tihs?
      */
-    public MeshFactory get3DFactory();
+    public PhongMaterial createPhongMaterial();
+    public MeshView createMeshView(Mesh mesh);
+    public Mesh createMesh();
 }
