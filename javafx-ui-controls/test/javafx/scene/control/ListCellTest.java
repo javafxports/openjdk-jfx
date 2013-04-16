@@ -399,7 +399,7 @@ public class ListCellTest {
         assertFalse(other.isSelected());
     }
 
-    @Test public void replacingTheSelectionModelRemovesTheListenerFromTheOldModel() {
+    @Ignore @Test public void replacingTheSelectionModelRemovesTheListenerFromTheOldModel() {
         cell.updateIndex(0);
         cell.updateListView(list);
         MultipleSelectionModel<String> sm = list.getSelectionModel();
@@ -496,7 +496,7 @@ public class ListCellTest {
         assertFalse(other.isSelected());
     }
 
-    @Test public void replacingTheFocusModelRemovesTheListenerFromTheOldModel() {
+    @Ignore @Test public void replacingTheFocusModelRemovesTheListenerFromTheOldModel() {
         cell.updateIndex(0);
         cell.updateListView(list);
         FocusModel<String> fm = list.getFocusModel();
