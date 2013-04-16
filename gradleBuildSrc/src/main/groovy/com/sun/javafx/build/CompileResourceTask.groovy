@@ -23,19 +23,16 @@
  * questions.
  */
 
-include "base", "graphics", "controls", "swing", "swt", "fxml", "designTime", "fxpackager"
+class CompileResourceTask extends NativeCompileTask {
+    protected File outputFile(File sourceFile) {
+        final String outFileName = sourceFile.getName().substring(0, sourceFile.getName().lastIndexOf("."));
+        return new File("$output/${outFileName}.res");
+    }
 
-project(":base").projectDir = file("modules/base")
-project(":graphics").projectDir = file("modules/graphics")
-project(":controls").projectDir = file("modules/controls")
-project(":swing").projectDir = file("modules/swing")
-project(":swt").projectDir = file("modules/swt")
-project(":fxml").projectDir = file("modules/fxml")
-project(":designTime").projectDir = file("modules/designTime")
-project(":fxpackager").projectDir = file("modules/fxpackager")
-
-if (hasProperty("SUPPLEMENTAL_BUILD_FILE")) {
-    File supplementalBuildFile = file(SUPPLEMENTAL_BUILD_FILE)
-    File supplementalSettingsFile = new File(supplementalBuildFile.getParentFile(), "closed-settings.gradle");
-    apply from: supplementalSettingsFile
+    protected void doCompile(File sourceFile, File outputFile){
+        project.exec({
+            commandLine("$project.RC", "/nologo", "/fo$outputFile", "$sourceFile");
+            environment(project.WINDOWS_NATIVE_COMPILE_ENVIRONMENT);
+        });
+    }
 }

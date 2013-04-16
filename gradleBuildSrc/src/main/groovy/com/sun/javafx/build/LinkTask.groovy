@@ -23,19 +23,36 @@
  * questions.
  */
 
-include "base", "graphics", "controls", "swing", "swt", "fxml", "designTime", "fxpackager"
+import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.TaskAction
 
-project(":base").projectDir = file("modules/base")
-project(":graphics").projectDir = file("modules/graphics")
-project(":controls").projectDir = file("modules/controls")
-project(":swing").projectDir = file("modules/swing")
-project(":swt").projectDir = file("modules/swt")
-project(":fxml").projectDir = file("modules/fxml")
-project(":designTime").projectDir = file("modules/designTime")
-project(":fxpackager").projectDir = file("modules/fxpackager")
-
-if (hasProperty("SUPPLEMENTAL_BUILD_FILE")) {
-    File supplementalBuildFile = file(SUPPLEMENTAL_BUILD_FILE)
-    File supplementalSettingsFile = new File(supplementalBuildFile.getParentFile(), "closed-settings.gradle");
-    apply from: supplementalSettingsFile
+class LinkTask extends DefaultTask {
+    List<String> linkParams = new ArrayList<String>();
+    @InputDirectory File objectDir;
+    @OutputFile File lib;
+    @TaskAction void compile() {
+        // Link & generate the library (.dll, .so, .dylib)
+        lib.getParentFile().mkdirs();
+        project.exec({
+            commandLine("$project.LINK");
+            args(objectDir.listFiles());
+            if (project.IS_WINDOWS) {
+                args("/out:$lib");
+            } else {
+                args("-o", "$lib");
+            }
+            if (project.IS_DEBUG && !project.IS_WINDOWS) args("-g");
+            if (linkParams != null) args(linkParams);
+            if (project.IS_WINDOWS){
+                final String libPath = lib.toString();
+                final String libPrefix = libPath.substring(0, libPath.lastIndexOf("."))
+                args("/pdb:${libPrefix}.pdb",
+                    "/map:${libPrefix}.map");
+                environment(project.WINDOWS_NATIVE_COMPILE_ENVIRONMENT);
+            }
+        });
+    }
 }
+
