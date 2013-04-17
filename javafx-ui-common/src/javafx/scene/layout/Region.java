@@ -1354,6 +1354,52 @@ public class Region extends Parent {
         return snapPosition(value, isSnapToPixel());
     }
 
+
+    /**
+     * Utility method to get the top inset which includes padding and border
+     * inset. Then snapped to whole pixels if isSnapToPixel() is true.
+     *
+     * @since 8.0
+     * @return Rounded up insets top
+     */
+    public final int snappedTopInset() {
+        return (int)snapSize(getInsets().getTop());
+    }
+
+    /**
+     * Utility method to get the bottom inset which includes padding and border
+     * inset. Then snapped to whole pixels if isSnapToPixel() is true.
+     *
+     * @since 8.0
+     * @return Rounded up insets bottom
+     */
+    public final int snappedBottomInset() {
+        return (int)snapSize(getInsets().getBottom());
+    }
+
+    /**
+     * Utility method to get the left inset which includes padding and border
+     * inset. Then snapped to whole pixels if isSnapToPixel() is true.
+     *
+     * @since 8.0
+     * @return Rounded up insets left
+     */
+    public final int snappedLeftInset() {
+        return (int)snapSize(getInsets().getLeft());
+    }
+
+    /**
+     * Utility method to get the right inset which includes padding and border
+     * inset. Then snapped to whole pixels if isSnapToPixel() is true.
+     *
+     * @since 8.0
+     * @return Rounded up insets right
+     */
+    public final int snappedRightInset() {
+        return (int)snapSize(getInsets().getRight());
+    }
+
+
     double computeChildMinAreaWidth(Node child, Insets margin) {
         return computeChildMinAreaWidth(child, margin, -1);
     }
@@ -1365,7 +1411,7 @@ public class Region extends Parent {
         double alt = -1;
         if (child.getContentBias() == Orientation.VERTICAL) { // width depends on height
             alt = snapSize(height != -1? boundedSize(child.minHeight(-1), height, child.maxHeight(-1)) :
-                                         child.minHeight(-1));
+                                         child.maxHeight(-1));
         }
         return left + snapSize(child.minWidth(alt)) + right;
     }
@@ -1381,7 +1427,7 @@ public class Region extends Parent {
         double alt = -1;
         if (child.getContentBias() == Orientation.HORIZONTAL) { // height depends on width
             alt = snapSize(width != -1? boundedSize(child.minWidth(-1), width, child.maxWidth(-1)) :
-                                        child.minWidth(-1));
+                                        child.maxWidth(-1));
         }
         return top + snapSize(child.minHeight(alt)) + bottom;
     }
@@ -1435,7 +1481,7 @@ public class Region extends Parent {
         double alt = -1;
         if (child.getContentBias() == Orientation.VERTICAL) { // width depends on height
             alt = snapSize(height != -1? boundedSize(child.minHeight(-1), height, child.maxHeight(-1)) :
-                child.maxHeight(-1));
+                child.minHeight(-1));
             max = child.maxWidth(alt);
         }
         // if min > max, min wins, so still need to call boundedSize()
@@ -1454,7 +1500,7 @@ public class Region extends Parent {
         double alt = -1;
         if (child.getContentBias() == Orientation.HORIZONTAL) { // height depends on width
             alt = snapSize(width != -1? boundedSize(child.minWidth(-1), width, child.maxWidth(-1)) :
-                child.maxWidth(-1));
+                child.minWidth(-1));
             max = child.maxHeight(alt);
         }
         // if min > max, min wins, so still need to call boundedSize()
@@ -1890,9 +1936,8 @@ public class Region extends Parent {
                           areaBaselineOffset - child.getBaselineOffset() :
                           computeYOffset(areaHeight - topMargin - bottomMargin,
                                          child.getLayoutBounds().getHeight(), vpos));
-        // do not snap position if child is not resizable because it can cause gaps
-        final double x = child.isResizable()? snapPosition(areaX + xoffset, isSnapToPixel) : areaX + xoffset;
-        final double y = child.isResizable()? snapPosition(areaY + yoffset, isSnapToPixel) : areaY + yoffset;
+        final double x = snapPosition(areaX + xoffset, isSnapToPixel);
+        final double y = snapPosition(areaY + yoffset, isSnapToPixel);
 
         child.relocate(x,y);
     }
@@ -1906,7 +1951,7 @@ public class Region extends Parent {
     /** @treatAsPrivate */
     @Override public void impl_updatePG() {
         super.impl_updatePG();
-        if (_shape != null) _shape.impl_updatePG();
+        if (_shape != null) _shape.impl_syncPGNode();
         PGRegion pg = (PGRegion) impl_getPGNode();
 
         final boolean sizeChanged = impl_isDirty(DirtyBits.NODE_GEOMETRY);

@@ -42,7 +42,7 @@ import javafx.scene.shape.*;
 import org.junit.Ignore;
 
 
-public class StackedAreaChartTest extends ChartTestBase {
+public class StackedAreaChartTest extends XYChartTestBase {
     
     private Scene scene;
     private StubToolkit toolkit;
@@ -105,8 +105,8 @@ public class StackedAreaChartTest extends ChartTestBase {
         ac.getData().addAll(series1);
         pulse();
         StringBuffer sb = getSeriesLineFromPlot();
-//        assertEquals("L206.0 57.0 L247.0 171.0 L412.0 171.0 L658.0 284.0 ", sb.toString());
-        assertEquals("L220.0 59.0 L264.0 175.0 L440.0 175.0 L704.0 291.0 ", sb.toString());
+//        assertEquals("L220.0 59.0 L264.0 175.0 L440.0 175.0 L704.0 291.0 ", sb.toString());
+        assertEquals("L219.0 58.0 L263.0 173.0 L438.0 173.0 L700.0 289.0 ", sb.toString());
     
     }
     
@@ -183,4 +183,20 @@ public class StackedAreaChartTest extends ChartTestBase {
         startApp();
         useCategoryAxis = false;
     }
+
+    @Test public void testCreateSymbols() {
+         startApp();
+         ac.setCreateSymbols(false);
+         pulse();
+         ac.getData().addAll(series1);
+         pulse();
+         assertEquals(0, countSymbols(ac, "chart-area-symbol"));
+         
+         ac.getData().clear();
+         pulse();
+         ac.setCreateSymbols(true);
+         pulse();
+         ac.getData().addAll(series1);
+         assertEquals(5, countSymbols(ac, "chart-area-symbol"));
+     }
 }
