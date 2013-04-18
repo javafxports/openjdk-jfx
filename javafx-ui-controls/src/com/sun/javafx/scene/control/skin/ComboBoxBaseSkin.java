@@ -25,16 +25,19 @@
 
 package com.sun.javafx.scene.control.skin;
 
-import javafx.scene.control.ComboBoxBase;
-import com.sun.javafx.scene.control.behavior.ComboBoxBaseBehavior;
+import java.util.List;
+
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
+import javafx.scene.control.ComboBoxBase;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+
+import com.sun.javafx.scene.control.behavior.ComboBoxBaseBehavior;
 
 public abstract class ComboBoxBaseSkin<T> extends BehaviorSkinBase<ComboBoxBase<T>, ComboBoxBaseBehavior<T>> {
     
@@ -123,8 +126,14 @@ public abstract class ComboBoxBaseSkin<T> extends BehaviorSkinBase<ComboBoxBase<
     }
     
     private void updateDisplayArea() {
+        List<Node> children = getChildren();
+        if (displayNode != null) {
+            children.remove(displayNode);
+        }
         displayNode = getDisplayNode();
-        getChildren().setAll(displayNode, arrowButton);
+        if (displayNode != null && !children.contains(displayNode)) {
+            children.add(displayNode);
+        }
     }
     
     private boolean isButton() {
@@ -136,14 +145,11 @@ public abstract class ComboBoxBaseSkin<T> extends BehaviorSkinBase<ComboBoxBase<
         if (displayNode == null) {
             updateDisplayArea();
         }
-        
-        final Insets padding = getSkinnable().getInsets();
-        final Insets arrowButtonPadding = arrowButton.getInsets();
 
         final double arrowWidth = snapSize(arrow.prefWidth(-1));
         final double arrowButtonWidth = (isButton()) ? 0 :
-                (snapSpace(arrowButtonPadding.getLeft()) + arrowWidth + 
-                snapSpace(arrowButtonPadding.getRight()));
+                arrowButton.snappedLeftInset() + arrowWidth +
+                arrowButton.snappedRightInset();
         
         if (displayNode != null) {
             displayNode.resizeRelocate(x, y, w - arrowButtonWidth, h);
@@ -153,29 +159,27 @@ public abstract class ComboBoxBaseSkin<T> extends BehaviorSkinBase<ComboBoxBase<
         
         arrowButton.resize(arrowButtonWidth, h);
         positionInArea(arrowButton, 
-                getSkinnable().getWidth() - padding.getRight() - arrowButtonWidth, padding.getTop(), 
+                (x+w) - arrowButtonWidth, y,
                 arrowButtonWidth, h, 0, HPos.CENTER, VPos.CENTER);
     }
     
-    @Override protected double computePrefWidth(double height) {
+    @Override protected double computePrefWidth(double height, int topInset, int rightInset, int bottomInset, int leftInset) {
         if (displayNode == null) {
             updateDisplayArea();
         }
-        
-        final Insets arrowButtonPadding = arrowButton.getInsets();
+
         final double arrowWidth = snapSize(arrow.prefWidth(-1));
         final double arrowButtonWidth = (isButton()) ? 0 : 
-                                        (snapSpace(arrowButtonPadding.getLeft()) + 
+                                        arrowButton.snappedLeftInset() +
                                         arrowWidth + 
-                                        snapSpace(arrowButtonPadding.getRight()));
+                                        arrowButton.snappedRightInset();
+        final double displayNodeWidth = displayNode == null ? 0 : displayNode.prefWidth(height);
         
-        final double totalWidth = (displayNode == null) ? 0 : (displayNode.prefWidth(height) 
-                + arrowButtonWidth);
-        final Insets padding = getSkinnable().getInsets();
-        return padding.getLeft() + totalWidth + padding.getRight();
+        final double totalWidth = displayNodeWidth + arrowButtonWidth;
+        return leftInset + totalWidth + rightInset;
     }
     
-    @Override protected double computePrefHeight(double width) {
+    @Override protected double computePrefHeight(double width, int topInset, int rightInset, int bottomInset, int leftInset) {
         if (displayNode == null) {
             updateDisplayArea();
             
@@ -190,23 +194,21 @@ public abstract class ComboBoxBaseSkin<T> extends BehaviorSkinBase<ComboBoxBase<
         double ph;
         if (displayNode == null) {
             final int DEFAULT_HEIGHT = 21;
-            final Insets arrowButtonPadding = arrowButton.getInsets();
             double arrowHeight = (isButton()) ? 0 : 
-                    (arrowButtonPadding.getTop() + arrow.prefHeight(-1) + arrowButtonPadding.getBottom());
+                    (arrowButton.snappedTopInset() + arrow.prefHeight(-1) + arrowButton.snappedBottomInset());
             ph = Math.max(DEFAULT_HEIGHT, arrowHeight);
         } else {
             ph = displayNode.prefHeight(width);
         }
 
-        final Insets padding = getSkinnable().getInsets();
-        return padding.getTop()+ ph + padding.getBottom();
+        return topInset+ ph + bottomInset;
     }
 
-    @Override protected double computeMaxWidth(double height) {
+    @Override protected double computeMaxWidth(double height, int topInset, int rightInset, int bottomInset, int leftInset) {
         return getSkinnable().prefWidth(height);
     }
 
-    @Override protected double computeMaxHeight(double width) {
+    @Override protected double computeMaxHeight(double width, int topInset, int rightInset, int bottomInset, int leftInset) {
         return getSkinnable().prefHeight(width);
     }
 }

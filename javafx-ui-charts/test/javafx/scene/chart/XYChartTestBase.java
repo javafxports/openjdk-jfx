@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,36 +23,21 @@
  * questions.
  */
 
-package com.sun.javafx.scene.control.skin;
+package javafx.scene.chart;
 
-import javafx.scene.control.TableCell;
+import javafx.collections.ObservableList;
 
-import com.sun.javafx.scene.control.behavior.TableCellBehavior;
-import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.ReadOnlyDoubleProperty;
-import javafx.scene.control.TableColumn;
+import javafx.scene.Node;
 
-/**
- */
-public class TableCellSkin<S,T> extends TableCellSkinBase<TableCell<S,T>, TableCellBehavior<S,T>> {
+
+public abstract class XYChartTestBase extends ChartTestBase {
     
-    private final TableCell<S,T> tableCell;
-    private final TableColumn<S,T> tableColumn;
-    
-    public TableCellSkin(TableCell<S,T> tableCell) {
-        super(tableCell, new TableCellBehavior<S,T>(tableCell));
-        
-        this.tableCell = tableCell;
-        this.tableColumn = tableCell.getTableColumn();
-        
-        super.init(tableCell);
-    }
-
-    @Override protected BooleanProperty columnVisibleProperty() {
-        return tableColumn.visibleProperty();
-    }
-
-    @Override protected ReadOnlyDoubleProperty columnWidthProperty() {
-        return tableColumn.widthProperty();
+    protected int countSymbols(XYChart chart, String style) {
+        int numSymbols = 0;
+        ObservableList<Node> childrenList = chart.getPlotChildren();
+         for (Node n : childrenList) {
+            if (n.getStyleClass().contains(style)) numSymbols++;
+         }
+         return numSymbols;
     }
 }

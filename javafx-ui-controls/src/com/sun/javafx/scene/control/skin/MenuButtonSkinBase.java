@@ -31,12 +31,13 @@ import javafx.collections.ListChangeListener;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
-import javafx.geometry.Insets;
 import javafx.scene.Scene;
+import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.RadioMenuItem;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
@@ -230,26 +231,24 @@ public abstract class MenuButtonSkinBase<C extends MenuButton, B extends MenuBut
      *                                                                         *
      **************************************************************************/
 
-    @Override protected double computePrefWidth(double height) {
-        final Insets padding = getSkinnable().getInsets();
-        return padding.getLeft()
+    @Override protected double computePrefWidth(double height, int topInset, int rightInset, int bottomInset, int leftInset) {
+        return leftInset
                 + label.prefWidth(height)
                 + snapSize(arrowButton.prefWidth(height))
-                + padding.getRight();
+                + rightInset;
     }
 
-    @Override protected double computePrefHeight(double width) {
-        final Insets padding = getSkinnable().getInsets();
-        return padding.getTop()
+    @Override protected double computePrefHeight(double width, int topInset, int rightInset, int bottomInset, int leftInset) {
+        return topInset
                 + Math.max(label.prefHeight(width), snapSize(arrowButton.prefHeight(-1)))
-                + padding.getBottom();
+                + bottomInset;
     }
 
-    @Override protected double computeMaxWidth(double height) {
+    @Override protected double computeMaxWidth(double height, int topInset, int rightInset, int bottomInset, int leftInset) {
         return getSkinnable().prefWidth(height);
     }
 
-    @Override protected double computeMaxHeight(double width) {
+    @Override protected double computeMaxHeight(double width, int topInset, int rightInset, int bottomInset, int leftInset) {
         return getSkinnable().prefHeight(width);
     }
 
@@ -281,7 +280,16 @@ public abstract class MenuButtonSkinBase<C extends MenuButton, B extends MenuBut
                                 if(target!= null && target.getOnMenuValidation() != null) {
                                     Event.fireEvent(target, new Event(MenuItem.MENU_VALIDATION_EVENT));
                                 }
-                                if (!menuitem.isDisable()) menuitem.fire();
+                                if (!menuitem.isDisable()) {
+                                    if (menuitem instanceof RadioMenuItem) {
+                                        ((RadioMenuItem)menuitem).setSelected(!((RadioMenuItem)menuitem).isSelected());
+                                    }
+                                    else if (menuitem instanceof CheckMenuItem) {
+                                        ((CheckMenuItem)menuitem).setSelected(!((CheckMenuItem)menuitem).isSelected());
+                                    }
+
+                                    menuitem.fire();
+                                }
                             }
                         };
                         getSkinnable().getScene().getAccelerators().put(menuitem.getAccelerator(), acceleratorRunnable);
@@ -290,28 +298,7 @@ public abstract class MenuButtonSkinBase<C extends MenuButton, B extends MenuBut
             }
         }
     }
-    
-    // remove this after Mick approves.
-//    private void addAccelerators() {
-//        for (final MenuItem menuitem : popup.getItems()) {
-//
-//            /*
-//            ** check is there are any accelerators in this menu
-//            */
-//            if (menuitem.getAccelerator() != null) {
-//                if (getSkinnable().getScene().getAccelerators() != null) {
-//                    
-//                    Runnable acceleratorRunnable = new Runnable() {
-//                            public void run() {
-//                                menuitem.fire();
-//                            }
-//                        };
-//                    getSkinnable().getScene().getAccelerators().put(menuitem.getAccelerator(), acceleratorRunnable);
-//                }
-//            }
-//        }
-//    }
-
+   
 
     private class MenuLabeledImpl extends LabeledImpl {
 

@@ -26,15 +26,12 @@
 package javafx.scene.control;
 
 import javafx.css.PseudoClass;
-import javafx.beans.InvalidationListener;
-import javafx.beans.Observable;
-import javafx.beans.WeakInvalidationListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener;
 import javafx.event.Event;
 import javafx.scene.control.TableView.TableViewFocusModel;
 
-import com.sun.javafx.property.PropertyReference;
+import com.sun.javafx.scene.control.MultiplePropertyChangeListenerHandler;
 import com.sun.javafx.scene.control.skin.TableCellSkin;
 import javafx.collections.WeakListChangeListener;
 import java.lang.ref.WeakReference;
@@ -87,55 +84,22 @@ public class TableCell<S,T> extends IndexedCell<T> {
     
     private boolean itemDirty = false;
     
-    /*
-     * This is the list observer we use to keep an eye on the SelectedCells
-     * ObservableList in the table view. Because it is possible that the table can
-     * be mutated, we create this observer here, and add/remove it from the
-     * storeTableView method.
-     */
-    private ListChangeListener<TablePosition> selectedListener = new ListChangeListener<TablePosition>() {
-        @Override public void onChanged(Change<? extends TablePosition> c) {
-            updateSelection();
-        }
-    };
-
-    // same as above, but for focus
-    private final InvalidationListener focusedListener = new InvalidationListener() {
-        @Override public void invalidated(Observable value) {
-            updateFocus();
-        }
-    };
-
-    // same as above, but for for changes to the properties on TableRow
-    private final InvalidationListener tableRowUpdateObserver = new InvalidationListener() {
-        @Override public void invalidated(Observable value) {
-            itemDirty = true;
-            requestLayout();
+    private ListChangeListener<String> columnStyleClassListener = new ListChangeListener<String>() {
+        @Override public void onChanged(Change<? extends String> c) {
+            while (c.next()) {
+                if (c.wasRemoved()) {
+                    getStyleClass().removeAll(c.getRemoved());
+                }
+                
+                if (c.wasAdded()) {
+                    getStyleClass().addAll(c.getAddedSubList());
+                }
+            }
         }
     };
     
-    private final InvalidationListener editingListener = new InvalidationListener() {
-        @Override public void invalidated(Observable value) {
-            updateEditing();
-        }
-    };
-    
-    private ListChangeListener<TableColumn<S,T>> visibleLeafColumnsListener = new ListChangeListener<TableColumn<S,T>>() {
-        @Override public void onChanged(Change<? extends TableColumn<S,T>> c) {
-            updateColumnIndex();
-        }
-    };
-    
-    private final WeakListChangeListener weakSelectedListener = 
-            new WeakListChangeListener(selectedListener);
-    private final WeakInvalidationListener weakFocusedListener = 
-            new WeakInvalidationListener(focusedListener);
-    private final WeakInvalidationListener weaktableRowUpdateObserver = 
-            new WeakInvalidationListener(tableRowUpdateObserver);
-    private final WeakInvalidationListener weakEditingListener = 
-            new WeakInvalidationListener(editingListener);
-    private final WeakListChangeListener weakVisibleLeafColumnsListener =
-            new WeakListChangeListener(visibleLeafColumnsListener);
+    private final WeakListChangeListener<String> weakColumnStyleClassListener =
+            new WeakListChangeListener<String>(columnStyleClassListener);
 
     
     /***************************************************************************
@@ -194,19 +158,22 @@ public class TableCell<S,T> extends IndexedCell<T> {
                         cleanUpTableViewListeners(weakTableViewRef.get());
                     }
                     
-                    if (get() != null) {
-                        sm = get().getSelectionModel();
+                    TableView<S> tv = get();
+                    if (tv != null) {
+                        final MultiplePropertyChangeListenerHandler listener = getPropertyListener();
+                        
+                        sm = tv.getSelectionModel();
                         if (sm != null) {
-                            sm.getSelectedCells().addListener(weakSelectedListener);
+                            listener.registerChangeListener(sm.getSelectedCells(), "SELECTED_CELLS");
                         }
 
-                        fm = get().getFocusModel();
+                        fm = tv.getFocusModel();
                         if (fm != null) {
-                            fm.focusedCellProperty().addListener(weakFocusedListener);
+                            listener.registerChangeListener(fm.focusedCellProperty(), "FOCUSED_CELL");
                         }
 
-                        get().editingCellProperty().addListener(weakEditingListener);
-                        get().getVisibleLeafColumns().addListener(weakVisibleLeafColumnsListener);
+                        listener.registerChangeListener(tv.editingCellProperty(), "EDITING_CELL");
+                        listener.registerChangeListener(tv.getVisibleLeafColumns(), "VISIBLE_LEAF_COLUMNS");
                         
                         weakTableViewRef = new WeakReference<TableView<S>>(get());
                     }
@@ -376,18 +343,20 @@ public class TableCell<S,T> extends IndexedCell<T> {
     
     private void cleanUpTableViewListeners(TableView<S> tableView) {
         if (tableView != null) {
+            final MultiplePropertyChangeListenerHandler listener = getPropertyListener();
+            
             TableView.TableViewSelectionModel sm = tableView.getSelectionModel();
             if (sm != null) {
-                sm.getSelectedCells().removeListener(weakSelectedListener);
+                listener.unregisterChangeListener(sm.getSelectedCells());
             }
 
             TableViewFocusModel fm = tableView.getFocusModel();
             if (fm != null) {
-                fm.focusedCellProperty().removeListener(weakFocusedListener);
+                listener.unregisterChangeListener(fm.focusedCellProperty());
             }
 
-            tableView.editingCellProperty().removeListener(weakEditingListener);
-            tableView.getVisibleLeafColumns().removeListener(weakVisibleLeafColumnsListener);
+            listener.unregisterChangeListener(tableView.editingCellProperty());
+            listener.unregisterChangeListener(tableView.getVisibleLeafColumns());
         }        
     }
     
@@ -499,7 +468,7 @@ public class TableCell<S,T> extends IndexedCell<T> {
      */
     private void updateItem() {
         if (currentObservableValue != null) {
-            currentObservableValue.removeListener(weaktableRowUpdateObserver);
+            getPropertyListener().unregisterChangeListener(currentObservableValue);
         }
         
         // get the total number of items in the data model
@@ -535,7 +504,7 @@ public class TableCell<S,T> extends IndexedCell<T> {
         }
         
         // add property change listeners to this item
-        currentObservableValue.addListener(weaktableRowUpdateObserver);
+        getPropertyListener().registerChangeListener(currentObservableValue, "TABLE_ROW_VALUE");
     }
 
     @Override protected void layoutChildren() {
@@ -544,6 +513,23 @@ public class TableCell<S,T> extends IndexedCell<T> {
             itemDirty = false;
         }
         super.layoutChildren();
+    }
+    
+    @Override void handlePropertyChanged(String p) {
+        super.handlePropertyChanged(p);
+        
+        if ("TABLE_ROW_VALUE".equals(p)) {
+            itemDirty = true;
+            requestLayout();
+        } else if ("SELECTED_CELLS".equals(p)) {
+            updateSelection();
+        } else if ("VISIBLE_LEAF_COLUMNS".equals(p))  {
+            updateColumnIndex();
+        } else if ("FOCUSED_CELL".equals(p)) {
+            updateFocus();
+        } else if ("EDITING_CELL".equals(p)) {
+            updateEditing();
+        }
     }
 
     
@@ -586,7 +572,19 @@ public class TableCell<S,T> extends IndexedCell<T> {
      *         for developers or designers to access this function directly.
      */
     public final void updateTableColumn(TableColumn col) {
+        // remove style class of existing table column, if it is non-null
+        TableColumn<S,T> oldCol = getTableColumn();
+        if (oldCol != null) {
+            oldCol.getStyleClass().removeListener(weakColumnStyleClassListener);
+            getStyleClass().removeAll(oldCol.getStyleClass());
+        }
+        
         setTableColumn(col);
+        
+        if (col != null) {
+            getStyleClass().addAll(col.getStyleClass());
+            col.getStyleClass().addListener(weakColumnStyleClassListener);
+        }
     }
 
 

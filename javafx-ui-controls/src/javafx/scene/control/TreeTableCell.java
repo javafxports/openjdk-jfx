@@ -26,20 +26,17 @@
 package javafx.scene.control;
 
 import javafx.css.PseudoClass;
+
+import com.sun.javafx.scene.control.MultiplePropertyChangeListenerHandler;
 import com.sun.javafx.scene.control.skin.TreeTableCellSkin;
-import javafx.beans.InvalidationListener;
-import javafx.beans.Observable;
-import javafx.beans.WeakInvalidationListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener;
 import javafx.event.Event;
 
 import javafx.collections.WeakListChangeListener;
 import java.lang.ref.WeakReference;
-import java.util.List;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
-import javafx.collections.FXCollections;
 
 import javafx.scene.control.TreeTableColumn.CellEditEvent;
 
@@ -86,55 +83,22 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
     
     private boolean itemDirty = false;
     
-    /*
-     * This is the list observer we use to keep an eye on the SelectedCells
-     * ObservableList in the tree table view. Because it is possible that the table can
-     * be mutated, we create this observer here, and add/remove it from the
-     * storeTableView method.
-     */
-    private ListChangeListener<TreeTablePosition<S,T>> selectedListener = new ListChangeListener<TreeTablePosition<S,T>>() {
-        @Override public void onChanged(Change<? extends TreeTablePosition<S,T>> c) {
-            updateSelection();
-        }
-    };
-
-    // same as above, but for focus
-    private final InvalidationListener focusedListener = new InvalidationListener() {
-        @Override public void invalidated(Observable value) {
-            updateFocus();
-        }
-    };
-
-    // same as above, but for for changes to the properties on TableRow
-    private final InvalidationListener tableRowUpdateObserver = new InvalidationListener() {
-        @Override public void invalidated(Observable value) {
-            itemDirty = true;
-            requestLayout();
+    private ListChangeListener<String> columnStyleClassListener = new ListChangeListener<String>() {
+        @Override public void onChanged(Change<? extends String> c) {
+            while (c.next()) {
+                if (c.wasRemoved()) {
+                    getStyleClass().removeAll(c.getRemoved());
+                }
+                
+                if (c.wasAdded()) {
+                    getStyleClass().addAll(c.getAddedSubList());
+                }
+            }
         }
     };
     
-    private final InvalidationListener editingListener = new InvalidationListener() {
-        @Override public void invalidated(Observable value) {
-            updateEditing();
-        }
-    };
-    
-    private ListChangeListener<TreeTableColumn<S,?>> visibleLeafColumnsListener = new ListChangeListener<TreeTableColumn<S,?>>() {
-        @Override public void onChanged(Change<? extends TreeTableColumn<S,?>> c) {
-            updateColumnIndex();
-        }
-    };
-    
-    private final WeakListChangeListener<TreeTablePosition<S,T>> weakSelectedListener = 
-            new WeakListChangeListener<TreeTablePosition<S,T>>(selectedListener);
-    private final WeakInvalidationListener weakFocusedListener = 
-            new WeakInvalidationListener(focusedListener);
-    private final WeakInvalidationListener weaktableRowUpdateObserver = 
-            new WeakInvalidationListener(tableRowUpdateObserver);
-    private final WeakInvalidationListener weakEditingListener = 
-            new WeakInvalidationListener(editingListener);
-    private final WeakListChangeListener<TreeTableColumn<S,?>> weakVisibleLeafColumnsListener =
-            new WeakListChangeListener<TreeTableColumn<S,?>>(visibleLeafColumnsListener);
+    private final WeakListChangeListener<String> weakColumnStyleClassListener =
+            new WeakListChangeListener<String>(columnStyleClassListener);
 
     
     /***************************************************************************
@@ -178,40 +142,43 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
             treeTableView = new ReadOnlyObjectWrapper<TreeTableView<S>>(this, "treeTableView") {
                 private WeakReference<TreeTableView<S>> weakTableViewRef;
                 @Override protected void invalidated() {
-                    TreeTableView.TreeTableViewSelectionModel sm;
-                    TreeTableView.TreeTableViewFocusModel fm;
+                    TreeTableView.TreeTableViewSelectionModel<S> sm;
+                    TreeTableView.TreeTableViewFocusModel<S> fm;
+                    
+                    final MultiplePropertyChangeListenerHandler listener = getPropertyListener();
                     
                     if (weakTableViewRef != null) {
                         TreeTableView<S> oldTableView = weakTableViewRef.get();
                         if (oldTableView != null) {
                             sm = oldTableView.getSelectionModel();
                             if (sm != null) {
-                                sm.getSelectedCells().removeListener(weakSelectedListener);
+                                listener.unregisterChangeListener(sm.getSelectedCells());
                             }
 
                             fm = oldTableView.getFocusModel();
                             if (fm != null) {
-                                fm.focusedCellProperty().removeListener(weakFocusedListener);
+                                listener.unregisterChangeListener(fm.focusedCellProperty());
                             }
 
-                            oldTableView.editingCellProperty().removeListener(weakEditingListener);
-                            oldTableView.getVisibleLeafColumns().removeListener(weakVisibleLeafColumnsListener);
+                            listener.unregisterChangeListener(oldTableView.editingCellProperty());
+                            listener.unregisterChangeListener(oldTableView.getVisibleLeafColumns());
                         }
                     }
                     
-                    if (get() != null) {
-                        sm = get().getSelectionModel();
+                    TreeTableView<S> ttv = get();
+                    if (ttv != null) {
+                        sm = ttv.getSelectionModel();
                         if (sm != null) {
-                            sm.getSelectedCells().addListener(weakSelectedListener);
+                            listener.registerChangeListener(sm.getSelectedCells(), "SELECTED_CELLS");
                         }
 
-                        fm = get().getFocusModel();
+                        fm = ttv.getFocusModel();
                         if (fm != null) {
-                            fm.focusedCellProperty().addListener(weakFocusedListener);
+                            listener.registerChangeListener(fm.focusedCellProperty(), "FOCUSED_CELL");
                         }
 
-                        get().editingCellProperty().addListener(weakEditingListener);
-                        get().getVisibleLeafColumns().addListener(weakVisibleLeafColumnsListener);
+                        listener.registerChangeListener(ttv.editingCellProperty(), "EDITING_CELL");
+                        listener.registerChangeListener(ttv.getVisibleLeafColumns(), "VISIBLE_LEAF_COLUMNS");
                         
                         weakTableViewRef = new WeakReference<TreeTableView<S>>(get());
                     }
@@ -228,11 +195,11 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
     /**
      * The TreeTableRow that this TreeTableCell currently finds itself placed within.
      */
-    private ReadOnlyObjectWrapper<TreeTableRow> treeTableRow = 
-            new ReadOnlyObjectWrapper<TreeTableRow>(this, "treeTableRow");
-    private void setTreeTableRow(TreeTableRow value) { treeTableRow.set(value); }
-    public final TreeTableRow getTreeTableRow() { return treeTableRow.get(); }
-    public final ReadOnlyObjectProperty<TreeTableRow> tableRowProperty() { return treeTableRow;  }
+    private ReadOnlyObjectWrapper<TreeTableRow<S>> treeTableRow = 
+            new ReadOnlyObjectWrapper<TreeTableRow<S>>(this, "treeTableRow");
+    private void setTreeTableRow(TreeTableRow<S> value) { treeTableRow.set(value); }
+    public final TreeTableRow<S> getTreeTableRow() { return treeTableRow.get(); }
+    public final ReadOnlyObjectProperty<TreeTableRow<S>> tableRowProperty() { return treeTableRow;  }
 
 
 
@@ -257,11 +224,14 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
         // by calling super.startEdit().
         super.startEdit();
         
+        @SuppressWarnings("unchecked")
+        TreeTablePosition<S,T> editingCell = (TreeTablePosition<S,T>) table.getEditingCell();
+        
         if (column != null) {
-            CellEditEvent editEvent = new CellEditEvent(
+            CellEditEvent<S,T> editEvent = new CellEditEvent<S,T>(
                 table,
-                table.getEditingCell(),
-                TreeTableColumn.editStartEvent(),
+                editingCell,
+                TreeTableColumn.<S,T>editStartEvent(),
                 null
             );
 
@@ -275,11 +245,14 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
         
         final TreeTableView<S> table = getTreeTableView();
         if (table != null) {
+            @SuppressWarnings("unchecked")
+            TreeTablePosition<S,T> editingCell = (TreeTablePosition<S,T>) table.getEditingCell();
+            
             // Inform the TableView of the edit being ready to be committed.
-            CellEditEvent editEvent = new CellEditEvent(
+            CellEditEvent<S,T> editEvent = new CellEditEvent<S,T>(
                 table,
-                table.getEditingCell(),
-                TreeTableColumn.editCommitEvent(),
+                editingCell,
+                TreeTableColumn.<S,T>editCommitEvent(),
                 newValue
             );
 
@@ -310,13 +283,15 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
 
         // reset the editing index on the TableView
         if (table != null) {
-            TreeTablePosition<S,?> editingCell = table.getEditingCell();
+            @SuppressWarnings("unchecked")
+            TreeTablePosition<S,T> editingCell = (TreeTablePosition<S,T>) table.getEditingCell();
+            
             if (updateEditingIndex) table.edit(-1, null);
 
-            CellEditEvent editEvent = new CellEditEvent(
+            CellEditEvent<S,T> editEvent = new CellEditEvent<S,T>(
                 table,
                 editingCell,
-                TreeTableColumn.editCancelEvent(),
+                TreeTableColumn.<S,T>editCancelEvent(),
                 null
             );
 
@@ -366,8 +341,8 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
     private int columnIndex = -1;
     
     private void updateColumnIndex() {
-        final TreeTableView tv = getTreeTableView();
-        TreeTableColumn tc = getTableColumn();
+        final TreeTableView<S> tv = getTreeTableView();
+        TreeTableColumn<S,T> tc = getTableColumn();
         columnIndex = tv == null || tc == null ? -1 : tv.getVisibleLeafIndex(tc);
         
         // update the pseudo class state regarding whether this is the last
@@ -390,7 +365,7 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
          */
         if (isEmpty()) return;
         
-        final TreeTableView tv = getTreeTableView();
+        final TreeTableView<S> tv = getTreeTableView();
         if (getIndex() == -1 || getTreeTableView() == null) return;
         if (tv.getSelectionModel() == null) return;
         
@@ -402,7 +377,7 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
     }
 
     private void updateFocus() {
-        final TreeTableView tv = getTreeTableView();
+        final TreeTableView<S> tv = getTreeTableView();
         if (getIndex() == -1 || tv == null) return;
         if (tv.getFocusModel() == null) return;
         
@@ -414,10 +389,10 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
     }
 
     private void updateEditing() {
-        final TreeTableView tv = getTreeTableView();
+        final TreeTableView<S> tv = getTreeTableView();
         if (getIndex() == -1 || tv == null) return;
 
-        TreeTablePosition editCell = tv.getEditingCell();
+        TreeTablePosition<S,?> editCell = tv.getEditingCell();
         boolean match = match(editCell);
         
         if (match && ! isEditing()) {
@@ -441,7 +416,7 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
     }
 
     private boolean isInCellSelectionMode() {
-        TreeTableView treeTable = getTreeTableView();
+        TreeTableView<S> treeTable = getTreeTableView();
         return treeTable != null &&
                 treeTable.getSelectionModel() != null &&
                 treeTable.getSelectionModel().isCellSelectionEnabled();
@@ -463,12 +438,12 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
      */
     private void updateItem() {
         if (currentObservableValue != null) {
-            currentObservableValue.removeListener(weaktableRowUpdateObserver);
+            getPropertyListener().unregisterChangeListener(currentObservableValue);
         }
         
         // get the total number of items in the data model
-        final TreeTableView tableView = getTreeTableView();
-        final TreeTableColumn tableColumn = getTableColumn();
+        final TreeTableView<S> tableView = getTreeTableView();
+        final TreeTableColumn<S,T> tableColumn = getTableColumn();
         final int itemCount = tableView == null ? -1 : getTreeTableView().getExpandedItemCount();
         final int index = getIndex();
         
@@ -500,7 +475,7 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
         }
         
         // add property change listeners to this item
-        currentObservableValue.addListener(weaktableRowUpdateObserver);
+        getPropertyListener().registerChangeListener(currentObservableValue, "TABLE_ROW_VALUE");
     }
 
     @Override protected void layoutChildren() {
@@ -511,6 +486,22 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
         super.layoutChildren();
     }
 
+    @Override void handlePropertyChanged(final String p) {
+        super.handlePropertyChanged(p);
+        
+        if ("SELECTED_CELLS".equals(p)) {
+            updateSelection();
+        } else if ("TABLE_ROW_VALUE".equals(p)) {
+            itemDirty = true;
+            requestLayout();
+        } else if ("VISIBLE_LEAF_COLUMNS".equals(p)) {
+            updateColumnIndex();
+        } else if ("FOCUSED_CELL".equals(p)) {
+            updateFocus();
+        } else if ("EDITING_CELL".equals(p)) {
+            updateEditing();
+        }
+    }
     
 
 
@@ -528,7 +519,7 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
      *         by those implementing new Skins. It is not common
      *         for developers or designers to access this function directly.
      */
-    public final void updateTreeTableView(TreeTableView tv) {
+    public final void updateTreeTableView(TreeTableView<S> tv) {
         setTreeTableView(tv);
     }
 
@@ -539,7 +530,7 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
      *         by those implementing new Skins. It is not common
      *         for developers or designers to access this function directly.
      */
-    public final void updateTreeTableRow(TreeTableRow treeTableRow) {
+    public final void updateTreeTableRow(TreeTableRow<S> treeTableRow) {
         this.setTreeTableRow(treeTableRow);
     }
 
@@ -550,8 +541,20 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
      *         by those implementing new Skins. It is not common
      *         for developers or designers to access this function directly.
      */
-    public final void updateTreeTableColumn(TreeTableColumn col) {
+    public final void updateTreeTableColumn(TreeTableColumn<S,T> col) {
+        // remove style class of existing tree table column, if it is non-null
+        TreeTableColumn<S,T> oldCol = getTableColumn();
+        if (oldCol != null) {
+            oldCol.getStyleClass().removeListener(weakColumnStyleClassListener);
+            getStyleClass().removeAll(oldCol.getStyleClass());
+        }
+        
         setTableColumn(col);
+        
+        if (col != null) {
+            getStyleClass().addAll(col.getStyleClass());
+            col.getStyleClass().addListener(weakColumnStyleClassListener);
+        }
     }
 
 
@@ -568,6 +571,6 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
 
     /** {@inheritDoc} */
     @Override protected Skin<?> createDefaultSkin() {
-        return new TreeTableCellSkin(this);
+        return new TreeTableCellSkin<S,T>(this);
     }
 }

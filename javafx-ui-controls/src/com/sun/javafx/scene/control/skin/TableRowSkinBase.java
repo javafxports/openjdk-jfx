@@ -29,8 +29,6 @@ package com.sun.javafx.scene.control.skin;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.WeakHashMap;
 
 import javafx.animation.FadeTransition;
@@ -181,12 +179,15 @@ public abstract class TableRowSkinBase<T,
     private final double fixedCellLength;
     private final boolean fixedCellLengthEnabled;
     
-    private ListChangeListener visibleLeafColumnsListener = new ListChangeListener() {
-        @Override public void onChanged(Change c) {
+    private ListChangeListener<TableColumnBase> visibleLeafColumnsListener = new ListChangeListener<TableColumnBase>() {
+        @Override public void onChanged(Change<? extends TableColumnBase> c) {
             isDirty = true;
             getSkinnable().requestLayout();
         }
     };
+    
+    private WeakListChangeListener<TableColumnBase> weakVisibleLeafColumnsListener = 
+            new WeakListChangeListener<TableColumnBase>(visibleLeafColumnsListener);
     
 //    // spanning support
 //    protected SpanModel spanModel;
@@ -336,8 +337,7 @@ public abstract class TableRowSkinBase<T,
         // watches for any change in the leaf columns observableArrayList - this will indicate
         // that the column order has changed and that we should update the row
         // such that the cells are in the new order
-        getVisibleLeafColumns().addListener(
-                new WeakListChangeListener(visibleLeafColumnsListener));
+        getVisibleLeafColumns().addListener(weakVisibleLeafColumnsListener);
         // --- end init bindings
         
 //        registerChangeListener(control.textProperty(), "TEXT");
@@ -373,7 +373,7 @@ public abstract class TableRowSkinBase<T,
     @Override protected void layoutChildren(double x, final double y,
             final double w, final double h) {
         
-        checkState();
+        checkState(true);
         if (cellsMap.isEmpty()) return;
         
         ObservableList<? extends TableColumnBase> visibleLeafColumns = getVisibleLeafColumns();
@@ -428,10 +428,8 @@ public abstract class TableRowSkinBase<T,
             double width;
             double height;
             
-            Insets insets = getSkinnable().getInsets();
-            
-            double verticalPadding = insets.getTop() + insets.getBottom();
-            double horizontalPadding = insets.getLeft() + insets.getRight();
+            double verticalPadding = snappedTopInset() + snappedBottomInset();
+            double horizontalPadding = snappedLeftInset() + snappedRightInset();
 
             /**
              * RT-26743:TreeTableView: Vertical Line looks unfinished.
@@ -572,7 +570,7 @@ public abstract class TableRowSkinBase<T,
 //                    ///////////////////////////////////////////
                     
                     tableCell.resize(width, height);
-                    tableCell.relocate(x, insets.getTop());
+                    tableCell.relocate(x, snappedTopInset());
                     
                     // Request layout is here as (partial) fix for RT-28684
                     tableCell.requestLayout();
@@ -642,11 +640,9 @@ public abstract class TableRowSkinBase<T,
                 continue;
             }
             
-            // we must create a TableCell for each table column
-            R cell = getCell(col);
-
-            // and store this in our HashMap until needed
-            cellsMap.put(col, cell);
+            // create a TableCell for this column and store it in the cellsMap
+            // for future use
+            createCell(col);
         }
     }
 
@@ -661,7 +657,11 @@ public abstract class TableRowSkinBase<T,
         for (int i = 0, max = visibleLeafColumns.size(); i < max; i++) {
             TableColumnBase<T,?> col = visibleLeafColumns.get(i);
             R cell = cellsMap.get(col);
-            if (cell == null) continue;
+            if (cell == null) {
+                // if the cell is null it means we don't have it in cache and
+                // need to create it
+                cell = createCell(col);
+            }
 
             updateCell(cell, skinnable);
             cell.updateIndex(skinnableIndex);
@@ -674,7 +674,17 @@ public abstract class TableRowSkinBase<T,
         }
     }
     
-    @Override protected double computePrefWidth(double height) {
+    private R createCell(TableColumnBase col) {
+        // we must create a TableCell for this table column
+        R cell = getCell(col);
+
+        // and store this in our HashMap until needed
+        cellsMap.put(col, cell);
+        
+        return cell;
+    }
+    
+    @Override protected double computePrefWidth(double height, int topInset, int rightInset, int bottomInset, int leftInset) {
         double prefWidth = 0.0F;
 
         List<? extends TableColumnBase/*<T,?>*/> visibleLeafColumns = getVisibleLeafColumns();
@@ -686,13 +696,13 @@ public abstract class TableRowSkinBase<T,
         return prefWidth;
     }
     
-    @Override protected double computePrefHeight(double width) {
+    @Override protected double computePrefHeight(double width, int topInset, int rightInset, int bottomInset, int leftInset) {
         if (fixedCellLengthEnabled) {
             return fixedCellLength;
         }
         
         // fix for RT-29080
-        checkState();
+        checkState(false);
         
         // Support for RT-18467: making it easier to specify a height for
         // cells via CSS, where the desired height is less than the height
@@ -715,9 +725,13 @@ public abstract class TableRowSkinBase<T,
         return ph;
     }
     
-    private void checkState() {
+    private void checkState(boolean doRecreateIfNecessary) {
         if (isDirty) {
-            recreateCells();
+            // doRecreateIfNecessary was added to resolve RT-29382, which was
+            // introduced by the fix for RT-29080 above in computePrefHeight
+            if (doRecreateIfNecessary) {
+                recreateCells();
+            }
             updateCells(true);
             isDirty = false;
         } else if (updateCells) {

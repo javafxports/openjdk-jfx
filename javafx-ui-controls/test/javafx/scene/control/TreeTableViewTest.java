@@ -52,6 +52,7 @@ import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TreeItemPropertyValueFactory;
+import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 
@@ -60,9 +61,11 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.sun.javafx.scene.control.TableColumnComparatorBase.TreeTableColumnComparator;
+import com.sun.javafx.scene.control.skin.VirtualScrollBar;
 import com.sun.javafx.scene.control.test.ControlAsserts;
 import com.sun.javafx.scene.control.test.Person;
 import com.sun.javafx.scene.control.test.RT_22463_Person;
+import com.sun.javafx.tk.Toolkit;
 
 public class TreeTableViewTest {
     private TreeTableView<String> treeTableView;
@@ -1474,5 +1477,346 @@ public class TreeTableViewTest {
         assertEquals(p2, root.getChildren().get(2));
         assertEquals(p3, root.getChildren().get(3));
         assertEquals(p4, root.getChildren().get(4));
+    }
+    
+    @Test public void test_rt29331() {
+        TreeTableView<Person> table = new TreeTableView<Person>();
+        
+        // p1 == lowest first name
+        TreeItem<Person> p0, p1, p2, p3, p4;
+        
+        TreeTableColumn firstNameCol = new TreeTableColumn("First Name");
+        firstNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("firstName"));
+
+        TreeTableColumn lastNameCol = new TreeTableColumn("Last Name");
+        lastNameCol.setCellValueFactory(new PropertyValueFactory<Person, String>("lastName"));
+
+        TreeTableColumn emailCol = new TreeTableColumn("Email");
+        emailCol.setCellValueFactory(new PropertyValueFactory<Person, String>("email"));
+        
+        TreeTableColumn parentColumn = new TreeTableColumn<>("Parent");
+        parentColumn.getColumns().addAll(firstNameCol, lastNameCol, emailCol);
+        
+        table.getColumns().addAll(parentColumn);
+        
+        // table is setup, now hide the 'last name' column
+        emailCol.setVisible(false);
+        assertFalse(emailCol.isVisible());
+        
+        // reorder columns inside the parent column
+        parentColumn.getColumns().setAll(emailCol, firstNameCol, lastNameCol);
+        
+        // the email column should not become visible after this, but it does
+        assertFalse(emailCol.isVisible());
+    }
+    
+    private int rt29330_count = 0;
+    @Test public void test_rt29330_1() {
+        ObservableList<TreeItem<Person>> persons = FXCollections.observableArrayList(
+                new TreeItem<Person>(new Person("Jacob", "Smith", "jacob.smith@example.com")),
+                new TreeItem<Person>(new Person("Isabella", "Johnson", "isabella.johnson@example.com")),
+                new TreeItem<Person>(new Person("Ethan", "Williams", "ethan.williams@example.com")),
+                new TreeItem<Person>(new Person("Emma", "Jones", "emma.jones@example.com")),
+                new TreeItem<Person>(new Person("Michael", "Brown", "michael.brown@example.com")));
+                
+        TreeTableView<Person> table = new TreeTableView<>();
+        
+        TreeItem<Person> root = new TreeItem<Person>(new Person("Root", null, null));
+        root.setExpanded(true);
+        table.setRoot(root);
+        table.setShowRoot(false);
+        root.getChildren().setAll(persons);
+        
+        TreeTableColumn parentColumn = new TreeTableColumn<>("Parent");
+        table.getColumns().addAll(parentColumn);
+        
+        TreeTableColumn firstNameCol = new TreeTableColumn("First Name");
+        firstNameCol.setCellValueFactory(new TreeItemPropertyValueFactory<Person, String>("firstName"));
+
+        TreeTableColumn lastNameCol = new TreeTableColumn("Last Name");
+        lastNameCol.setCellValueFactory(new TreeItemPropertyValueFactory<Person, String>("lastName"));
+        
+        parentColumn.getColumns().addAll(firstNameCol, lastNameCol);
+
+        table.setOnSort(new EventHandler<SortEvent<TreeTableView<Person>>>() {
+            @Override public void handle(SortEvent<TreeTableView<Person>> event) {
+                rt29330_count++;
+            }
+        });
+        
+        // test preconditions
+        assertEquals(ASCENDING, lastNameCol.getSortType());
+        assertEquals(0, rt29330_count);
+        
+        table.getSortOrder().add(lastNameCol);
+        assertEquals(1, rt29330_count);
+        
+        lastNameCol.setSortType(DESCENDING);
+        assertEquals(2, rt29330_count);
+        
+        lastNameCol.setSortType(null);
+        assertEquals(3, rt29330_count);
+        
+        lastNameCol.setSortType(ASCENDING);
+        assertEquals(4, rt29330_count);
+    }
+    
+    @Test public void test_rt29330_2() {
+        ObservableList<TreeItem<Person>> persons = FXCollections.observableArrayList(
+                new TreeItem<Person>(new Person("Jacob", "Smith", "jacob.smith@example.com")),
+                new TreeItem<Person>(new Person("Isabella", "Johnson", "isabella.johnson@example.com")),
+                new TreeItem<Person>(new Person("Ethan", "Williams", "ethan.williams@example.com")),
+                new TreeItem<Person>(new Person("Emma", "Jones", "emma.jones@example.com")),
+                new TreeItem<Person>(new Person("Michael", "Brown", "michael.brown@example.com")));
+                
+        TreeTableView<Person> table = new TreeTableView<>();
+        
+        TreeItem<Person> root = new TreeItem<Person>(new Person("Root", null, null));
+        root.setExpanded(true);
+        table.setRoot(root);
+        table.setShowRoot(false);
+        root.getChildren().setAll(persons);
+        
+        TreeTableColumn firstNameCol = new TreeTableColumn("First Name");
+        firstNameCol.setCellValueFactory(new TreeItemPropertyValueFactory<Person, String>("firstName"));
+
+        TreeTableColumn lastNameCol = new TreeTableColumn("Last Name");
+        lastNameCol.setCellValueFactory(new TreeItemPropertyValueFactory<Person, String>("lastName"));
+        
+        // this test differs from the previous one by installing the parent column
+        // into the tableview after it has the children added into it
+        TreeTableColumn parentColumn = new TreeTableColumn<>("Parent");
+        parentColumn.getColumns().addAll(firstNameCol, lastNameCol);
+        table.getColumns().addAll(parentColumn);
+
+        table.setOnSort(new EventHandler<SortEvent<TreeTableView<Person>>>() {
+            @Override public void handle(SortEvent<TreeTableView<Person>> event) {
+                rt29330_count++;
+            }
+        });
+        
+        // test preconditions
+        assertEquals(ASCENDING, lastNameCol.getSortType());
+        assertEquals(0, rt29330_count);
+        
+        table.getSortOrder().add(lastNameCol);
+        assertEquals(1, rt29330_count);
+        
+        lastNameCol.setSortType(DESCENDING);
+        assertEquals(2, rt29330_count);
+        
+        lastNameCol.setSortType(null);
+        assertEquals(3, rt29330_count);
+        
+        lastNameCol.setSortType(ASCENDING);
+        assertEquals(4, rt29330_count);
+    }
+    
+    @Test public void test_rt29313_selectedIndices() {
+        ObservableList<TreeItem<Person>> persons = FXCollections.observableArrayList(
+                new TreeItem<Person>(new Person("Jacob", "Smith", "jacob.smith@example.com")),
+                new TreeItem<Person>(new Person("Isabella", "Johnson", "isabella.johnson@example.com")),
+                new TreeItem<Person>(new Person("Ethan", "Williams", "ethan.williams@example.com")),
+                new TreeItem<Person>(new Person("Emma", "Jones", "emma.jones@example.com")),
+                new TreeItem<Person>(new Person("Michael", "Brown", "michael.brown@example.com")));
+                
+        TreeTableView<Person> table = new TreeTableView<>();
+        
+        TreeItem<Person> root = new TreeItem<Person>(new Person("Root", null, null));
+        root.setExpanded(true);
+        table.setRoot(root);
+        table.setShowRoot(false);
+        root.getChildren().setAll(persons);
+        
+        TableSelectionModel sm = table.getSelectionModel();
+        
+        TreeTableColumn firstNameCol = new TreeTableColumn("First Name");
+        firstNameCol.setCellValueFactory(new TreeItemPropertyValueFactory<Person, String>("firstName"));
+
+        TreeTableColumn lastNameCol = new TreeTableColumn("Last Name");
+        lastNameCol.setCellValueFactory(new TreeItemPropertyValueFactory<Person, String>("lastName"));
+        
+        TreeTableColumn emailCol = new TreeTableColumn("Email");
+        emailCol.setCellValueFactory(new TreeItemPropertyValueFactory<Person, String>("email"));
+        
+        table.getColumns().addAll(firstNameCol, lastNameCol, emailCol);
+        sm.setCellSelectionEnabled(true);
+        sm.setSelectionMode(SelectionMode.MULTIPLE);
+        
+        assertTrue(sm.getSelectedIndices().isEmpty());
+        
+        // only (0,0) should be selected, so selected indices should be [0]
+        sm.select(0, firstNameCol);
+        assertEquals(1, sm.getSelectedIndices().size());
+        
+        // now (0,0) and (1,0) should be selected, so selected indices should be [0, 1]
+        sm.select(1, firstNameCol);
+        assertEquals(2, sm.getSelectedIndices().size());
+        
+        // now (0,0), (1,0) and (1,1) should be selected, but selected indices 
+        // should remain as [0, 1], as we don't want selected indices to become
+        // [0,1,1] (which is what RT-29313 is about)
+        sm.select(1, lastNameCol);
+        assertEquals(2, sm.getSelectedIndices().size());
+        assertEquals(0, sm.getSelectedIndices().get(0));
+        assertEquals(1, sm.getSelectedIndices().get(1));
+    }
+    
+    @Test public void test_rt29313_selectedItems() {
+        TreeItem<Person> p0, p1;
+        ObservableList<TreeItem<Person>> persons = FXCollections.observableArrayList(
+                p0 = new TreeItem<Person>(new Person("Jacob", "Smith", "jacob.smith@example.com")),
+                p1 = new TreeItem<Person>(new Person("Isabella", "Johnson", "isabella.johnson@example.com")),
+                new TreeItem<Person>(new Person("Ethan", "Williams", "ethan.williams@example.com")),
+                new TreeItem<Person>(new Person("Emma", "Jones", "emma.jones@example.com")),
+                new TreeItem<Person>(new Person("Michael", "Brown", "michael.brown@example.com")));
+                
+        TreeTableView<Person> table = new TreeTableView<>();
+        
+        TreeItem<Person> root = new TreeItem<Person>(new Person("Root", null, null));
+        root.setExpanded(true);
+        table.setRoot(root);
+        table.setShowRoot(false);
+        root.getChildren().setAll(persons);
+        
+        TableSelectionModel sm = table.getSelectionModel();
+        
+        TreeTableColumn firstNameCol = new TreeTableColumn("First Name");
+        firstNameCol.setCellValueFactory(new TreeItemPropertyValueFactory<Person, String>("firstName"));
+
+        TreeTableColumn lastNameCol = new TreeTableColumn("Last Name");
+        lastNameCol.setCellValueFactory(new TreeItemPropertyValueFactory<Person, String>("lastName"));
+        
+        TreeTableColumn emailCol = new TreeTableColumn("Email");
+        emailCol.setCellValueFactory(new TreeItemPropertyValueFactory<Person, String>("email"));
+        
+        table.getColumns().addAll(firstNameCol, lastNameCol, emailCol);
+        sm.setCellSelectionEnabled(true);
+        sm.setSelectionMode(SelectionMode.MULTIPLE);
+        
+        assertTrue(sm.getSelectedItems().isEmpty());
+        
+        // only (0,0) should be selected, so selected items should be [p0]
+        sm.select(0, firstNameCol);
+        assertEquals(1, sm.getSelectedItems().size());
+        
+        // now (0,0) and (1,0) should be selected, so selected items should be [p0, p1]
+        sm.select(1, firstNameCol);
+        assertEquals(2, sm.getSelectedItems().size());
+        
+        // now (0,0), (1,0) and (1,1) should be selected, but selected items 
+        // should remain as [p0, p1], as we don't want selected items to become
+        // [p0,p1,p1] (which is what RT-29313 is about)
+        sm.select(1, lastNameCol);
+        assertEquals(2, sm.getSelectedItems().size());
+        assertEquals(p0, sm.getSelectedItems().get(0));
+        assertEquals(p1, sm.getSelectedItems().get(1));
+    }
+    
+    @Test public void test_rt29566() {
+        ObservableList<TreeItem<Person>> persons = FXCollections.observableArrayList(
+                new TreeItem<Person>(new Person("Jacob", "Smith", "jacob.smith@example.com")),
+                new TreeItem<Person>(new Person("Isabella", "Johnson", "isabella.johnson@example.com")),
+                new TreeItem<Person>(new Person("Ethan", "Williams", "ethan.williams@example.com")),
+                new TreeItem<Person>(new Person("Emma", "Jones", "emma.jones@example.com")),
+                new TreeItem<Person>(new Person("Michael", "Brown", "michael.brown@example.com")));
+                
+        TreeTableView<Person> table = new TreeTableView<>();
+        
+        TreeItem<Person> root = new TreeItem<Person>(new Person("Root", null, null));
+        root.setExpanded(true);
+        table.setRoot(root);
+        table.setShowRoot(false);
+        root.getChildren().setAll(persons);
+        
+        TableSelectionModel sm = table.getSelectionModel();
+        
+        TreeTableColumn firstNameCol = new TreeTableColumn("First Name");
+        firstNameCol.setCellValueFactory(new TreeItemPropertyValueFactory<Person, String>("firstName"));
+
+        TreeTableColumn lastNameCol = new TreeTableColumn("Last Name");
+        lastNameCol.setCellValueFactory(new TreeItemPropertyValueFactory<Person, String>("lastName"));
+        
+        TreeTableColumn emailCol = new TreeTableColumn("Email");
+        emailCol.setCellValueFactory(new TreeItemPropertyValueFactory<Person, String>("email"));
+        
+        table.getColumns().addAll(firstNameCol, lastNameCol, emailCol);
+        
+        // test the state before we hide and re-add a column
+        ControlAsserts.assertCellTextEquals(table, 0, "Jacob", "Smith", "jacob.smith@example.com");
+        ControlAsserts.assertCellTextEquals(table, 1, "Isabella", "Johnson", "isabella.johnson@example.com");
+        ControlAsserts.assertCellTextEquals(table, 2, "Ethan", "Williams", "ethan.williams@example.com");
+        ControlAsserts.assertCellTextEquals(table, 3, "Emma", "Jones", "emma.jones@example.com");
+        ControlAsserts.assertCellTextEquals(table, 4, "Michael", "Brown", "michael.brown@example.com");
+        
+        // hide the last name column, and test cells again
+        table.getColumns().remove(lastNameCol);
+        ControlAsserts.assertCellTextEquals(table, 0, "Jacob", "jacob.smith@example.com");
+        ControlAsserts.assertCellTextEquals(table, 1, "Isabella", "isabella.johnson@example.com");
+        ControlAsserts.assertCellTextEquals(table, 2, "Ethan", "ethan.williams@example.com");
+        ControlAsserts.assertCellTextEquals(table, 3, "Emma", "emma.jones@example.com");
+        ControlAsserts.assertCellTextEquals(table, 4, "Michael", "michael.brown@example.com");
+        
+        // re-add the last name column - we should go back to the original state.
+        // However, what appears to be happening is that, for some reason, some
+        // of the cells from the removed column do not reappear - meaning in this case
+        // some of the last name values will not be where we expect them to be.
+        // This is clearly not ideal!
+        table.getColumns().add(1, lastNameCol);
+        ControlAsserts.assertCellTextEquals(table, 0, "Jacob", "Smith", "jacob.smith@example.com");
+        ControlAsserts.assertCellTextEquals(table, 1, "Isabella", "Johnson", "isabella.johnson@example.com");
+        ControlAsserts.assertCellTextEquals(table, 2, "Ethan", "Williams", "ethan.williams@example.com");
+        ControlAsserts.assertCellTextEquals(table, 3, "Emma", "Jones", "emma.jones@example.com");
+        ControlAsserts.assertCellTextEquals(table, 4, "Michael", "Brown", "michael.brown@example.com");
+    }
+    
+    @Test public void test_rt29390() {
+        ObservableList<TreeItem<Person>> persons = FXCollections.observableArrayList(
+                new TreeItem<Person>(new Person("Jacob", "Smith", "jacob.smith@example.com")),
+                new TreeItem<Person>(new Person("Isabella", "Johnson", "isabella.johnson@example.com")),
+                new TreeItem<Person>(new Person("Ethan", "Williams", "ethan.williams@example.com")),
+                new TreeItem<Person>(new Person("Emma", "Jones", "emma.jones@example.com")),
+                new TreeItem<Person>(new Person("Jacob", "Smith", "jacob.smith@example.com")),
+                new TreeItem<Person>(new Person("Isabella", "Johnson", "isabella.johnson@example.com")),
+                new TreeItem<Person>(new Person("Ethan", "Williams", "ethan.williams@example.com")),
+                new TreeItem<Person>(new Person("Emma", "Jones", "emma.jones@example.com")),
+                new TreeItem<Person>(new Person("Jacob", "Smith", "jacob.smith@example.com")),
+                new TreeItem<Person>(new Person("Isabella", "Johnson", "isabella.johnson@example.com")),
+                new TreeItem<Person>(new Person("Ethan", "Williams", "ethan.williams@example.com")),
+                new TreeItem<Person>(new Person("Emma", "Jones", "emma.jones@example.com")),
+                new TreeItem<Person>(new Person("Jacob", "Smith", "jacob.smith@example.com")),
+                new TreeItem<Person>(new Person("Isabella", "Johnson", "isabella.johnson@example.com")),
+                new TreeItem<Person>(new Person("Ethan", "Williams", "ethan.williams@example.com")),
+                new TreeItem<Person>(new Person("Emma", "Jones", "emma.jones@example.com")
+        ));
+                
+        TreeTableView<Person> table = new TreeTableView<>();
+        table.setMaxHeight(50);
+        table.setPrefHeight(50);
+        
+        TreeItem<Person> root = new TreeItem<Person>(new Person("Root", null, null));
+        root.setExpanded(true);
+        table.setRoot(root);
+        table.setShowRoot(false);
+        root.getChildren().setAll(persons);
+        
+        TreeTableColumn firstNameCol = new TreeTableColumn("First Name");
+        firstNameCol.setCellValueFactory(new TreeItemPropertyValueFactory<Person, String>("firstName"));
+        
+        table.getColumns().add(firstNameCol);
+        
+        Toolkit.getToolkit().firePulse();
+        
+        // we want the vertical scrollbar
+        VirtualScrollBar scrollBar = ControlAsserts.getVirtualFlowVerticalScrollbar(table);
+        
+        assertNotNull(scrollBar);
+        assertTrue(scrollBar.isVisible());
+        assertTrue(scrollBar.getVisibleAmount() > 0.0);
+        assertTrue(scrollBar.getVisibleAmount() < 1.0);
+        
+        // this next test is likely to be brittle, but we'll see...If it is the
+        // cause of failure then it can be commented out
+        assertEquals(0.125, scrollBar.getVisibleAmount(), 0.0);
     }
 }

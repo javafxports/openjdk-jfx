@@ -471,7 +471,7 @@ public class PlatformImpl {
      * Set the platform user agent stylesheet to the default.
      */
     public static void setDefaultPlatformUserAgentStylesheet() {
-        setPlatformUserAgentStylesheet(Application.STYLESHEET_CASPIAN);
+        setPlatformUserAgentStylesheet(Application.STYLESHEET_MODENA);
     }
 
     private static boolean isModena = false;
@@ -497,7 +497,7 @@ public class PlatformImpl {
      *
      * @return true if using caspian stylesheet
      */
-    public static boolean isCaspain() {
+    public static boolean isCaspian() {
         return isCaspian;
     }
 
@@ -535,7 +535,6 @@ public class PlatformImpl {
                         }
                     });
         } else if (Application.STYLESHEET_MODENA.equalsIgnoreCase(stylesheetUrl)) {
-            System.out.println("Using Modena Theme");
             AccessController.doPrivileged(
                     new PrivilegedAction() {
                         @Override public Object run() {
