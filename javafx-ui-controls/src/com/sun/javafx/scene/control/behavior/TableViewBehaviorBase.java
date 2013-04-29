@@ -237,7 +237,7 @@ public abstract class TableViewBehaviorBase<C extends Control, T, TC extends Tab
                 boolean cellSelectionEnabled = sm.isCellSelectionEnabled();
                 
                 // there are no selected items, so lets clear out the anchor
-                if (! selectionChanging) {
+                if (! selectionChanging && anchor != null) {
                     if (sm.isEmpty()) {
                         setAnchor(null);
                     } else if (! sm.isSelected(anchor.getRow(), anchor.getTableColumn())) {
@@ -299,17 +299,24 @@ public abstract class TableViewBehaviorBase<C extends Control, T, TC extends Tab
     /**
      * Call to record the current anchor position
      */
-    protected abstract void setAnchor(TablePositionBase tp);
+    protected void setAnchor(TablePositionBase tp) {
+        TableCellBehaviorBase.setAnchor(getControl(), tp);
+        selectionPathDeviated = false;
+    }
     
     /**
      * Will return the current anchor position.
      */
-    protected abstract TablePositionBase getAnchor();
+    protected TablePositionBase getAnchor() {
+        return TableCellBehaviorBase.getAnchor(getControl(), getFocusedCell());
+    }
     
     /**
      * Returns true if there is an anchor set, and false if not anchor is set.
      */
-    protected abstract boolean hasAnchor();
+    protected boolean hasAnchor() {
+        return TableCellBehaviorBase.hasAnchor(getControl());
+    }
     
     /**
      * Returns the number of items in the underlying data model.
@@ -447,16 +454,6 @@ public abstract class TableViewBehaviorBase<C extends Control, T, TC extends Tab
         }
     }
     
-    public void dispose() {
-        removeAnchor();
-    }
-
-    /** 
-     * Removes the anchor for this control.
-     */
-    public void removeAnchor() {
-        TableCellBehaviorBase.removeAnchor(getControl());
-    }
     
     
     /**************************************************************************
@@ -720,6 +717,9 @@ public abstract class TableViewBehaviorBase<C extends Control, T, TC extends Tab
             fm.focus(newFocusOwner, focusedCell.getTableColumn());
         } else if (isShiftDown && getAnchor() != null && ! selectionPathDeviated) {
             int newRow = fm.getFocusedIndex() + delta;
+            
+            // we don't let the newRow go outside the bounds of the data
+            newRow = Math.max(Math.min(getItemCount() - 1, newRow), 0);
 
             int start = Math.min(getAnchor().getRow(), newRow);
             int end = Math.max(getAnchor().getRow(), newRow);

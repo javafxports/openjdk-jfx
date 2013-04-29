@@ -25,8 +25,10 @@
 
 package javafx.scene.control;
 
+import com.sun.javafx.application.PlatformImpl;
 import com.sun.javafx.runtime.VersionInfo;
-import com.sun.javafx.scene.control.test.ControlAsserts;
+import com.sun.javafx.scene.control.infrastructure.VirtualFlowTestUtils;
+import com.sun.javafx.scene.control.skin.VirtualScrollBar;
 import com.sun.javafx.scene.control.test.Employee;
 import com.sun.javafx.scene.control.test.Person;
 import com.sun.javafx.scene.control.test.RT_22463_Person;
@@ -37,7 +39,7 @@ import java.util.Comparator;
 import java.util.List;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
-import static javafx.scene.control.ControlTestUtils.assertStyleClassContains;
+import static com.sun.javafx.scene.control.infrastructure.ControlTestUtils.assertStyleClassContains;
 import static org.junit.Assert.*;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -50,6 +52,7 @@ import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.cell.TreeItemPropertyValueFactory;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -668,8 +671,8 @@ public class TreeViewTest {
         
         TreeView<Person> tree = new TreeView<Person>(root);
         
-        ControlAsserts.assertRowsNotEmpty(tree, 0, 6); // rows 0 - 6 should be filled
-        ControlAsserts.assertRowsEmpty(tree, 6, -1); // rows 6+ should be empty
+        VirtualFlowTestUtils.assertRowsNotEmpty(tree, 0, 6); // rows 0 - 6 should be filled
+        VirtualFlowTestUtils.assertRowsEmpty(tree, 6, -1); // rows 6+ should be empty
         
         // now we replace the data and expect the cells that have no data
         // to be empty
@@ -677,8 +680,8 @@ public class TreeViewTest {
                 new TreeItem(new Person("*_*Emma", "Jones", "emma.jones@example.com")),
                 new TreeItem(new Person("_Michael", "Brown", "michael.brown@example.com")));
         
-        ControlAsserts.assertRowsNotEmpty(tree, 0, 3); // rows 0 - 3 should be filled
-        ControlAsserts.assertRowsEmpty(tree, 3, -1); // rows 3+ should be empty
+        VirtualFlowTestUtils.assertRowsNotEmpty(tree, 0, 3); // rows 0 - 3 should be filled
+        VirtualFlowTestUtils.assertRowsEmpty(tree, 3, -1); // rows 3+ should be empty
     }
     
     @Test public void test_rt28556() {
@@ -706,9 +709,13 @@ public class TreeViewTest {
 
         TreeView<String> treeView = new TreeView<String>(rootNode);
         
+        final double indent = PlatformImpl.isCaspian() ? 31 : 
+                        PlatformImpl.isModena()  ? 35 :
+                        0;
+        
         // ensure all children of the root node have the correct indentation 
         // before the sort occurs
-        ControlAsserts.assertLayoutX(treeView, 1, 11, 31.0);
+        VirtualFlowTestUtils.assertLayoutX(treeView, 1, 11, indent);
         for (TreeItem<String> children : rootNode.getChildren()) {
             assertEquals(rootNode, children.getParent());
         }
@@ -722,7 +729,7 @@ public class TreeViewTest {
         
         // ensure the same indentation exists after the sort (which is where the
         // bug is - it drops down to 21.0px indentation when it shouldn't).
-        ControlAsserts.assertLayoutX(treeView, 1, 11, 31.0);
+        VirtualFlowTestUtils.assertLayoutX(treeView, 1, 11, indent);
         for (TreeItem<String> children : rootNode.getChildren()) {
             assertEquals(rootNode, children.getParent());
         }
@@ -747,8 +754,8 @@ public class TreeViewTest {
         root.getChildren().addAll(
                 new TreeItem<RT_22463_Person>(p1), 
                 new TreeItem<RT_22463_Person>(p2));
-        ControlAsserts.assertCellTextEquals(tree, 1, "name1");
-        ControlAsserts.assertCellTextEquals(tree, 2, "name2");
+        VirtualFlowTestUtils.assertCellTextEquals(tree, 1, "name1");
+        VirtualFlowTestUtils.assertCellTextEquals(tree, 2, "name2");
         
         // now we change the persons but they are still equal as the ID's don't
         // change - but the items list is cleared so the cells should update
@@ -762,8 +769,8 @@ public class TreeViewTest {
         root.getChildren().setAll(
                 new TreeItem<RT_22463_Person>(new_p1), 
                 new TreeItem<RT_22463_Person>(new_p2));
-        ControlAsserts.assertCellTextEquals(tree, 1, "updated name1");
-        ControlAsserts.assertCellTextEquals(tree, 2, "updated name2");
+        VirtualFlowTestUtils.assertCellTextEquals(tree, 1, "updated name1");
+        VirtualFlowTestUtils.assertCellTextEquals(tree, 2, "updated name2");
     }
     
     @Test public void test_rt28637() {
@@ -813,7 +820,7 @@ public class TreeViewTest {
         Node graphic = new Circle(6, Color.RED);
         
         assertNull(s2.getGraphic());
-        TreeCell s2Cell = (TreeCell) ControlAsserts.getCell(treeView, 1);
+        TreeCell s2Cell = (TreeCell) VirtualFlowTestUtils.getCell(treeView, 1);
         assertNull(s2Cell.getGraphic());
         
         s2.setGraphic(graphic);
@@ -821,5 +828,50 @@ public class TreeViewTest {
                 
         assertEquals(graphic, s2.getGraphic());
         assertEquals(graphic, s2Cell.getGraphic());
+    }
+    
+    @Test public void test_rt29390() {
+        ObservableList<TreeItem<Person>> persons = FXCollections.observableArrayList(
+                new TreeItem<Person>(new Person("Jacob", "Smith", "jacob.smith@example.com")),
+                new TreeItem<Person>(new Person("Isabella", "Johnson", "isabella.johnson@example.com")),
+                new TreeItem<Person>(new Person("Ethan", "Williams", "ethan.williams@example.com")),
+                new TreeItem<Person>(new Person("Emma", "Jones", "emma.jones@example.com")),
+                new TreeItem<Person>(new Person("Jacob", "Smith", "jacob.smith@example.com")),
+                new TreeItem<Person>(new Person("Isabella", "Johnson", "isabella.johnson@example.com")),
+                new TreeItem<Person>(new Person("Ethan", "Williams", "ethan.williams@example.com")),
+                new TreeItem<Person>(new Person("Emma", "Jones", "emma.jones@example.com")),
+                new TreeItem<Person>(new Person("Jacob", "Smith", "jacob.smith@example.com")),
+                new TreeItem<Person>(new Person("Isabella", "Johnson", "isabella.johnson@example.com")),
+                new TreeItem<Person>(new Person("Ethan", "Williams", "ethan.williams@example.com")),
+                new TreeItem<Person>(new Person("Emma", "Jones", "emma.jones@example.com")),
+                new TreeItem<Person>(new Person("Jacob", "Smith", "jacob.smith@example.com")),
+                new TreeItem<Person>(new Person("Isabella", "Johnson", "isabella.johnson@example.com")),
+                new TreeItem<Person>(new Person("Ethan", "Williams", "ethan.williams@example.com")),
+                new TreeItem<Person>(new Person("Emma", "Jones", "emma.jones@example.com")
+        ));
+                
+        TreeView<Person> treeView = new TreeView<>();
+        treeView.setMaxHeight(50);
+        treeView.setPrefHeight(50);
+        
+        TreeItem<Person> root = new TreeItem<Person>(new Person("Root", null, null));
+        root.setExpanded(true);
+        treeView.setRoot(root);
+        treeView.setShowRoot(false);
+        root.getChildren().setAll(persons);
+        
+        Toolkit.getToolkit().firePulse();
+        
+        // we want the vertical scrollbar
+        VirtualScrollBar scrollBar = VirtualFlowTestUtils.getVirtualFlowVerticalScrollbar(treeView);
+        
+        assertNotNull(scrollBar);
+        assertTrue(scrollBar.isVisible());
+        assertTrue(scrollBar.getVisibleAmount() > 0.0);
+        assertTrue(scrollBar.getVisibleAmount() < 1.0);
+        
+        // this next test is likely to be brittle, but we'll see...If it is the
+        // cause of failure then it can be commented out
+        assertEquals(0.125, scrollBar.getVisibleAmount(), 0.0);
     }
 }

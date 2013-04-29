@@ -37,18 +37,13 @@ import com.sun.javafx.tk.TKScene;
 import com.sun.javafx.tk.Toolkit;
 import com.sun.javafx.accessible.providers.AccessibleProvider;
 import com.sun.javafx.accessible.providers.AccessibleStageProvider;
-import com.sun.prism.impl.PrismSettings;
 import javafx.application.Platform;
 
-class EmbeddedStage extends GlassStage implements EmbeddedStageInterface {
+final class EmbeddedStage extends GlassStage implements EmbeddedStageInterface {
 
     private HostInterface host;
 
-    private boolean visible = false;
-    
     public EmbeddedStage(HostInterface host) {
-        super(PrismSettings.verbose);
-        
         this.host = host;
     }
 
@@ -72,7 +67,7 @@ class EmbeddedStage extends GlassStage implements EmbeddedStageInterface {
                           float w, float h, float cw, float ch,
                           float xGravity, float yGravity)
     {
-        if (verbose) {
+        if (QuantumToolkit.verbose) {
             System.err.println("EmbeddedStage.setBounds: x=" + x + " y=" + y + " xSet=" + xSet + " ySet=" + ySet +
                                " w=" + w + " h=" + " cw=" + cw + " ch=" + ch);
         }
@@ -93,29 +88,26 @@ class EmbeddedStage extends GlassStage implements EmbeddedStageInterface {
 
     @Override
     protected void setPlatformEnabled(boolean enabled) {
+        super.setPlatformEnabled(enabled);
         host.setEnabled(enabled);
     }
 
     @Override
-    protected void requestToFront() {}
-
-    @Override
     public void setIcons(List icons) {
-        if (verbose) {
+        if (QuantumToolkit.verbose) {
             System.err.println("EmbeddedStage.setIcons");
         }
     }
 
     @Override
     public void setTitle(String title) {
-        if (verbose) {
+        if (QuantumToolkit.verbose) {
             System.err.println("EmbeddedStage.setTitle " + title);
         }
     }
 
     @Override
     public void setVisible(boolean visible) {
-        this.visible = visible;
         host.setEmbeddedStage(visible ? this : null);
         super.setVisible(visible);
     }
@@ -127,28 +119,28 @@ class EmbeddedStage extends GlassStage implements EmbeddedStageInterface {
 
     @Override
     public void setIconified(boolean iconified) {
-        if (verbose) {
+        if (QuantumToolkit.verbose) {
             System.err.println("EmbeddedScene.setIconified " + iconified);
         }
     }
 
     @Override
     public void setMaximized(boolean maximized) {
-        if (verbose) {
+        if (QuantumToolkit.verbose) {
             System.err.println("EmbeddedScene.setMaximized " + maximized);
         }
     }
 
     @Override
     public void setResizable(boolean resizable) {
-        if (verbose) {
+        if (QuantumToolkit.verbose) {
             System.err.println("EmbeddedStage.setResizable " + resizable);
         }
     }
 
     @Override
     public void setFullScreen(boolean fullScreen) {
-        if (verbose) {
+        if (QuantumToolkit.verbose) {
             System.err.println("EmbeddedStage.setFullScreen " + fullScreen);
         }
     }
@@ -163,14 +155,14 @@ class EmbeddedStage extends GlassStage implements EmbeddedStageInterface {
 
     @Override
     public void toBack() {
-        if (verbose) {
+        if (QuantumToolkit.verbose) {
             System.err.println("EmbeddedStage.toBack");
         }
     }
 
     @Override
     public void toFront() {
-        if (verbose) {
+        if (QuantumToolkit.verbose) {
             System.err.println("EmbeddedStage.toFront");
         }
     }
@@ -297,29 +289,34 @@ class EmbeddedStage extends GlassStage implements EmbeddedStageInterface {
      * Accessibility glue for native
      * 
      */
+    
     /**
-     * Initialize Accessiblility
+     * Initialize Accessibility
+     * 
+     * @param ac    the Glass accessible root object.
      */
-    @Override public void accessibleInitIsComplete(Object ac) {
+    @Override public void setAccessibilityInitIsComplete(Object ac) {
         // TODO: not yet supported, RT-28492
     } 
 
     /**
-     * Create accessible native object corresponding to stage
+     * Create accessible Glass object corresponding to stage
      * 
-     * @param ac 
-     * returns native Object
+     * @param ac    the FX accessible root/stage node.
+     * 
+     * @return the Glass AccessibleRoot object.
      */
-    @Override public Object accessibleCreateStageProvider(AccessibleStageProvider ac, long ptr) {
+    @Override public Object accessibleCreateStageProvider(AccessibleStageProvider ac) {
         // TODO: not yet supported, RT-28492
         return null ;
     }
 
     /**
-     * Create accessible native object corresponding to controls
+     * Create Glass accessible object corresponding to controls
      * 
-     * @param ac 
-     * returns native Object
+     * @param ac    the FX accessible node
+     *
+     * @return the Glass accessible Object
      */
     @Override public Object accessibleCreateBasicProvider(AccessibleProvider ac) {
         // TODO: not yet supported, RT-28492
@@ -327,37 +324,48 @@ class EmbeddedStage extends GlassStage implements EmbeddedStageInterface {
     }
 
     /**
-     * Delete accessible native object corresponding to controls
+     * Delete Glass accessible object corresponding to controls
      * 
-     * @param nativeAcc
-     * returns native Object
+     * @param glassAcc the Glass accessible
      */
-    @Override public void accessibleDestroyBasicProvider(Object nativeAcc) {
+    @Override public void accessibleDestroyBasicProvider(Object glassAcc) {
         // TODO: not yet supported, RT-28492
     }
 
     /**
      * Fire accessible event
      * 
-     * @param eventID   identifies the event.
+     * @param glassAcc  the Glass accessible
      */
-    @Override public void accessibleFireEvent(Object nativeAcc, int eventID) {
+    @Override public void accessibleFireEvent(Object glassAcc, int eventID) {
         // TODO: not yet supported, RT-28492
     }
     
-    /** Fire accessible property change event
-     * 
+    /**
+     * Fire accessible property change event when an int property has changed
+     *
+     * @param glassAcc      the Glass accessible 
      * @param propertyId    identifies the property
      * @param oldProperty   the old value of the property
      * @param newProperty   the new value of the property
      */
-    @Override public void accessibleFirePropertyChange(Object nativeAcc, int propertyId, int oldProperty,
-                                             int newProperty ) {
+    @Override public void accessibleFirePropertyChange( Object glassAcc, int propertyId,
+                                                        int oldProperty, int newProperty ) {
         // TODO: not yet supported, RT-28492
     }
     
-    @Override public void accessibleFirePropertyChange(Object nativeAcc, int propertyId, boolean oldProperty,
-                                             boolean newProperty ) {
+    /**
+     * Fire accessible property change event when a boolean property has changed 
+     *
+     * @param glassAcc      the Glass accessible
+     * @param propertyId    identifies the property
+     * @param oldProperty   the old value of the property
+     * @param newProperty   the new value of the property
+     */
+    @Override public void accessibleFirePropertyChange( Object glassAcc, int propertyId,
+                                                        boolean oldProperty,
+                                                        boolean newProperty ) {
         // TODO: not yet supported, RT-28492
-    }        
+    }
+    
 }

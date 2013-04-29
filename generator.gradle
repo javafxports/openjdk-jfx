@@ -80,39 +80,44 @@ task generate << {
         include "generated/ensemble/search/index/"
     }
 
-    // Create the build-tools project
+    // Create the buildSrc project
+    copy {
+        from "$RTDir/gradleBuildSrc"
+        into "$FXDir/buildSrc"
+    }
+
     copy {
         from "${RTDir}/javafx-beans/src"
-        into "${FXDir}/build-tools/src/main/java"
+        into "${FXDir}/buildSrc/src/main/java"
         include "com/sun/javafx/beans/annotations/**",
                 "com/sun/javafx/collections/annotations/**"
     }
     copy {
         from "${RTDir}/javafx-annotation-processor/src",
              "${RTDir}/decora-compiler/src"
-        into "${FXDir}/build-tools/src/main/java"
+        into "${FXDir}/buildSrc/src/main/java"
         exclude excludeFromSource
     }
     copy {
         from "${RTDir}/javafx-annotation-processor/src",
              "${RTDir}/decora-compiler/src"
-        into "${FXDir}/build-tools/src/main/resources"
+        into "${FXDir}/buildSrc/src/main/resources"
         include includeInResources
         exclude excludeFromResources
         exclude "**/META-INF/**/*"
     }
     copy {
         from "${RTDir}/decora-compiler/src/com/sun/scenario/effect/compiler/JSL.g"
-        into "${FXDir}/build-tools/src/main/antlr"
+        into "${FXDir}/buildSrc/src/main/antlr"
     }
     copy {
         from "${RTDir}/decora-compiler/test"
-        into "${FXDir}/build-tools/src/test/java"
+        into "${FXDir}/buildSrc/src/test/java"
         exclude excludeFromSource
     }
     copy {
         from "${RTDir}/decora-compiler/test"
-        into "${FXDir}/build-tools/src/test/resources"
+        into "${FXDir}/buildSrc/src/test/resources"
         include includeInResources
         exclude excludeFromResources
     }
@@ -180,12 +185,21 @@ task generate << {
              "${RTDir}/javafx-concurrent/src",
              "${RTDir}/javafx-geom/src",
              "${RTDir}/javafx-geom/cagsrc.double",
+             "${RTDir}/javafx-iio/src",
              "${RTDir}/javafx-sg-common/src",
              "${RTDir}/javafx-sg-prism/src",
              "${RTDir}/pisces/src",
              "${RTDir}/glass/glass/src",
              "${RTDir}/javafx-ui-quantum/src",
              "${RTDir}/prism-common/src",
+             "${RTDir}/prism-d3d/src",
+             "${RTDir}/prism-es2/src",
+             "${RTDir}/prism-es2-eglfb/src",
+             "${RTDir}/prism-es2-eglx11/src",
+             "${RTDir}/prism-es2-ios/src",
+             "${RTDir}/prism-es2-mac/src",
+             "${RTDir}/prism-es2-win/src",
+             "${RTDir}/prism-es2-x11/src",
              "${RTDir}/prism-j2d/src",
              "${RTDir}/prism-null/src",
              "${RTDir}/prism-ps/src",
@@ -208,12 +222,21 @@ task generate << {
              "${RTDir}/javafx-concurrent/src",
              "${RTDir}/javafx-geom/src",
              "${RTDir}/javafx-geom/cagsrc.double",
+             "${RTDir}/javafx-iio/src",
              "${RTDir}/javafx-sg-common/src",
              "${RTDir}/javafx-sg-prism/src",
              "${RTDir}/pisces/src",
              "${RTDir}/glass/glass/src",
              "${RTDir}/javafx-ui-quantum/src",
              "${RTDir}/prism-common/src",
+             "${RTDir}/prism-d3d/src",
+             "${RTDir}/prism-es2/src",
+             "${RTDir}/prism-es2-eglfb/src",
+             "${RTDir}/prism-es2-eglx11/src",
+             "${RTDir}/prism-es2-ios/src",
+             "${RTDir}/prism-es2-mac/src",
+             "${RTDir}/prism-es2-win/src",
+             "${RTDir}/prism-es2-x11/src",
              "${RTDir}/prism-j2d/src",
              "${RTDir}/prism-null/src",
              "${RTDir}/prism-ps/src",
@@ -276,14 +299,8 @@ task generate << {
     copy {
         from "${RTDir}/prism-ps/jsl",
              "${RTDir}/prism-ps/shadergen"
-        into "${FXDir}/modules/graphics/prism-jsl/src/main/java"
-        exclude "nbproject", "*.iml", "*.stg"
-    }
-
-    copy {
-        from "${RTDir}/prism-ps/shadergen"
-        into "${FXDir}/modules/graphics/prism-jsl/src/main/resources"
-        include "*.stg"
+        into "${FXDir}/modules/graphics/src/main/jsl-prism"
+        exclude "nbproject", "*.iml"
     }
 
     ["glass-lib-gtk", "glass-lib-ios", "glass-lib-lens", "glass-lib-macosx", "glass-lib-windows"].each { dir ->
@@ -297,8 +314,23 @@ task generate << {
     }
 
     copy {
+        from "${RTDir}/javafx-iio-native/src"
+        into "${FXDir}/modules/graphics/src/main/native-iio"
+    }
+
+    copy {
         from "${RTDir}/prism-common-native/src"
         into "${FXDir}/modules/graphics/src/main/native-prism"
+    }
+
+    copy {
+        from "${RTDir}/prism-d3d-native/src"
+        into "${FXDir}/modules/graphics/src/main/native-prism-d3d"
+    }
+
+    copy {
+        from "${RTDir}/prism-es2-native/src"
+        into "${FXDir}/modules/graphics/src/main/native-prism-es2"
     }
 
     copy {
@@ -316,7 +348,7 @@ task generate << {
     copy {
         from "${RTDir}/decora-runtime/jsl",
              "${RTDir}/decora-runtime/generator"
-        into "${FXDir}/modules/graphics/effects-jsl/src/main/java"
+        into "${FXDir}/modules/graphics/src/main/jsl-decora"
     }
 
     // Create the controls module

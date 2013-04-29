@@ -41,7 +41,9 @@ import com.sun.javafx.accessible.providers.AccessibleStageProvider;
 import com.sun.javafx.accessible.utils.NavigateDirection;
 import com.sun.javafx.accessible.utils.PropertyIds;
 import com.sun.javafx.accessible.utils.Rect;
+import com.sun.javafx.stage.WindowHelper;
 import sun.util.logging.PlatformLogger;
+
 /**
  *
  * Maintains the correspondence of native object to node 
@@ -49,18 +51,23 @@ import sun.util.logging.PlatformLogger;
  */
 
 public class AccessibleStage implements AccessibleProvider,
-                                                AccessibleStageProvider  {
+                                        AccessibleStageProvider {
     Stage stage ;
     Scene scene ;
     Object accRoot ; // corresponding glass object
     List<AccessibleNode> accChildren ;
     
-    public AccessibleStage(Stage stage, long ptr)
+    /**
+     * Constructor
+     * 
+     * @param stage The FX stage.
+     */
+    public AccessibleStage(Stage stage)
     {
         //com.sun.javafx.Logging.getAccessibilityLogger().setLevel(PlatformLogger.FINEST);
-        this.stage =  stage ;
-        this.scene = stage.getScene() ;
-        initialize(ptr);
+        this.stage = stage;
+        this.scene = stage.getScene();
+        initialize();
     }   
 
     /** AccessibleStage : Initialize ()
@@ -76,10 +83,10 @@ public class AccessibleStage implements AccessibleProvider,
       * in return will add a listener to Scene for new node additions.
       * Attaches a Focus listener for tracking change of Focus.
       */    
-    private void initialize(long ptr)
+    private void initialize()
     {
         Parent pRoot = scene.getRoot() ; 
-        accRoot = stage.impl_getPeer().accessibleCreateStageProvider(this, ptr);
+        accRoot = stage.impl_getPeer().accessibleCreateStageProvider(this);
         
         // Note move it to a func later or redo the logic for first , the same is being used when scene graph is modified too
         // Rethink this logic in future
@@ -122,18 +129,20 @@ public class AccessibleStage implements AccessibleProvider,
         });
     }
  
+    // TODO: This method is not currently in use.  When it is in use should its
+    //       access be package-private like it currently is?
     void destroyHierarchy(List<AccessibleNode> currChildren)
     {
         PlatformLogger logger = Logging.getAccessibilityLogger();
-        for( int idx=0; idx<currChildren.size(); idx++) {
+        for (int idx=0; idx<currChildren.size(); idx++) {
             if (logger.isLoggable(PlatformLogger.FINER)) {
-                logger.finer(this.toString()+ "destroyHierarchy: idx=" + idx + currChildren.get(idx));
+                logger.finer(this.toString() + "destroyHierarchy: idx=" + idx + currChildren.get(idx));
             }
-            if( ((AccessibleNode)currChildren.get(idx)).children.size() > 0 ){
+            if ( currChildren.get(idx).children.size() > 0 ) {
                 if (logger.isLoggable(PlatformLogger.FINER)) {
-                    logger.finer(this.toString()+ "destroyHierarchy: Has Children" + ((AccessibleNode)currChildren.get(idx)).children);
+                    logger.finer(this.toString() + "destroyHierarchy: Has Children" + currChildren.get(idx).children);
                 }
-                destroyHierarchy(((AccessibleNode)currChildren.get(idx)).children) ;
+                destroyHierarchy(currChildren.get(idx).children) ;
             }
             // destroy native
             stage.impl_getPeer().accessibleDestroyBasicProvider(currChildren.get(idx).accElement);
@@ -144,15 +153,15 @@ public class AccessibleStage implements AccessibleProvider,
     void printAccHierarchy(List<AccessibleNode> currChildren)
     {
         PlatformLogger logger = Logging.getAccessibilityLogger();        
-        for( int idx=0; idx<currChildren.size(); idx++) {
+        for (int idx=0; idx<currChildren.size(); idx++) {
             if (logger.isLoggable(PlatformLogger.FINER)) {
-                logger.finer(this.toString()+ "printAccHierarchy: idx=" + idx + currChildren.get(idx));
+                logger.finer(this.toString() + "printAccHierarchy: idx=" + idx + currChildren.get(idx));
             }
-            if( ((AccessibleNode)currChildren.get(idx)).children.size() > 0 ){
+            if ( currChildren.get(idx).children.size() > 0 ) {
                 if (logger.isLoggable(PlatformLogger.FINER)) {
-                    logger.finer(this.toString()+ "printAccHierarchy: Has Children" + ((AccessibleNode)currChildren.get(idx)).children);
+                    logger.finer(this.toString() + "printAccHierarchy: Has Children" + currChildren.get(idx).children);
                 }
-                printAccHierarchy(((AccessibleNode)currChildren.get(idx)).children) ;
+                printAccHierarchy(currChildren.get(idx).children) ;
             }
         }
     }
@@ -241,45 +250,41 @@ public class AccessibleStage implements AccessibleProvider,
         }
     }
         
-    // Summary:
-    //     Gets a base provider for this element.
-    //
-    // Returns:
-    //     The base provider, or null.
+    /**
+     * Gets a base provider for this element.
+     *
+     * @return the base provider, or null.
+     */
     @Override
     public AccessibleProvider hostRawElementProvider() 
     {
         return this ;
     }
 
-    // Summary:
-    //     Retrieves an object that provides support for a control pattern on a UI Automation
-    //     element.
-    //
-    // Parameters:
-    //   patternId:
-    //     Identifier of the pattern.
-    //
-    // Returns:
-    //     Object that implements the pattern interface, or null if the pattern is not
-    //     supported.
+    /**
+     * Retrieves an object that provides support for a control pattern on a UI Automation
+     *      element.
+     *
+     * @param patternId identifier of the pattern.
+     * 
+     * @return Object that implements the pattern interface, or null if the pattern is not
+     *      supported.
+     */
     @Override
     public Object getPatternProvider(int patternId)
     {
         return this ;
     }
-    //
-    // Summary:
-    //     Retrieves the value of a property supported by the UI Automation provider.
-    //
-    // Parameters:
-    //   propertyId:
-    //     The property identifier.
-    //
-    // Returns:
-    //     The property value, or a null if the property is not supported by this provider,
-    //     or System.Windows.Automation.AutomationElementIdentifiers.NotSupported if
-    //     it is not supported at all.
+
+    /**
+     * Retrieves the value of a property supported by the UI Automation provider.
+     * 
+     * @param propertyId    The property identifier.
+     * 
+     * @return The property value, or a null if the property is not supported by this
+     *      provider, or System.Windows.Automation.AutomationElementIdentifiers.NotSupported
+     *      if it is not supported at all.
+     */
     @Override
     public Object getPropertyValue(int propertyId)
     {
@@ -308,9 +313,9 @@ public class AccessibleStage implements AccessibleProvider,
         // on the plaform.
         // Should the y value include the scene offset (the offset below the title bar).
         double x =
-            Screen.getPrimary().getBounds().getMinX() + stage.getX() + scene.getX();
+            Screen.getPrimary().getBounds().getMinX() + WindowHelper.getScreenX(stage) + scene.getX();
         double y =
-            Screen.getPrimary().getBounds().getMinY() + stage.getY() + scene.getY();      
+            Screen.getPrimary().getBounds().getMinY() + WindowHelper.getScreenY(stage) + scene.getY();
         return new Rect(x, y, scene.getWidth(), scene.getHeight());
     }
     
@@ -430,7 +435,7 @@ public class AccessibleStage implements AccessibleProvider,
             if (logger.isLoggable(PlatformLogger.FINER)) {
                 logger.finer(this.toString()+ "Accessible Stage: elementProviderFromPoint x=" + x + " y=" + y +"Node"+ aNode.accElement);
             }
-            Object aBase = (Object)(aNode.getAccessibleElement()); 
+            Object aBase = aNode.getAccessibleElement(); 
             return aBase ;
         }
         return null;

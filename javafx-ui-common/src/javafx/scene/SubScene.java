@@ -234,12 +234,15 @@ public class SubScene extends Node {
                 @Override
                 protected void invalidated() {
                     Camera _value = get();                    
-                    // Illegal value if it belongs to any scene or other subscene
-                    if (_value != null
-                            && (_value.getScene() != null || _value.getSubScene() != null)
-                            && (_value.getScene() != getScene() || _value.getSubScene() != SubScene.this)) {
-                        throw new IllegalArgumentException(_value
-                                + "is already set as camera in other scene/subscene");
+                    if (_value != null) {
+                        // Illegal value if it belongs to any scene or other subscene
+                        if ((_value.getScene() != null || _value.getSubScene() != null)
+                                && (_value.getScene() != getScene() || _value.getSubScene() != SubScene.this)) {
+                            throw new IllegalArgumentException(_value
+                                    + "is already set as camera in other scene/subscene");
+                        }
+                        _value.setViewWidth(getWidth());
+                        _value.setViewHeight(getHeight());
                     }
                     markDirty(SubScene.SubSceneDirtyBits.CAMERA_DIRTY);
                 }
@@ -260,11 +263,18 @@ public class SubScene extends Node {
 
     private Camera defaultCamera;
 
-    private Camera getDefaultCamera() {
-        if (defaultCamera == null) {
-            defaultCamera = new ParallelCamera();
+    Camera getEffectiveCamera() {
+        final Camera cam = getCamera();
+        if (cam == null) {
+            if (defaultCamera == null) {
+                defaultCamera = new ParallelCamera();
+                defaultCamera.setViewWidth(getWidth());
+                defaultCamera.setViewHeight(getHeight());
+            }
+            return defaultCamera;
         }
-        return defaultCamera;
+
+        return cam;
     }
 
     /**
@@ -298,6 +308,8 @@ public class SubScene extends Node {
                     }
                     markDirty(SubScene.SubSceneDirtyBits.CAMERA_DIRTY);
                     SubScene.this.impl_geomChanged();
+
+                    getEffectiveCamera().setViewWidth(get());
                 }
 
                 @Override
@@ -341,6 +353,8 @@ public class SubScene extends Node {
                     }
                     markDirty(SubScene.SubSceneDirtyBits.CAMERA_DIRTY);
                     SubScene.this.impl_geomChanged();
+
+                    getEffectiveCamera().setViewHeight(get());
                 }
 
                 @Override
@@ -404,12 +418,8 @@ public class SubScene extends Node {
     @Deprecated @Override
     public void impl_updatePG() {
         super.impl_updatePG();
-        Camera camera = getCamera();
-        if (camera != null) {
-            camera.impl_syncPGNode();
-        } else {
-            getDefaultCamera().impl_syncPGNode();
-        }
+        final Camera cam = getEffectiveCamera();
+        cam.impl_syncPGNode();
 
         // TODO deal with clip node
 
@@ -430,11 +440,7 @@ public class SubScene extends Node {
             if (isDirty(SubSceneDirtyBits.CAMERA_DIRTY)) {
                 peer.setWidth((float)getWidth());
                 peer.setHeight((float)getHeight());
-                if (camera != null) {
-                    peer.setCamera(camera.getPlatformCamera());
-                 } else {
-                    peer.setCamera(getDefaultCamera().getPlatformCamera());
-                 }
+                peer.setCamera(cam.getPlatformCamera());
             }
             syncLights();
             clearDirtyBits();
@@ -607,11 +613,8 @@ public class SubScene extends Node {
         if (localX < 0 || localY < 0 || localX > viewWidth || localY > viewHeight) {
             return null;
         }
-        final Camera camera = getCamera() == null ? getDefaultCamera() : getCamera();
         final PickResultChooser result = new PickResultChooser();
-        final PickRay pickRay = camera.computePickRay(localX, localY,
-                                                      viewWidth, viewHeight,
-                                                      new PickRay());
+        final PickRay pickRay = getEffectiveCamera().computePickRay(localX, localY, new PickRay());
         getRoot().impl_pickNode(pickRay, result);
         return result.toPickResult(!pickRay.isParallel());
     }
@@ -631,7 +634,7 @@ public class SubScene extends Node {
                     localPickRay, boundsDistance);
             final PickResult subSceneResult =
                     pickRootSG(intersectPt.getX(), intersectPt.getY());
-            if (result != null) {
+            if (subSceneResult != null) {
                 result.offerSubScenePickResult(this, subSceneResult, boundsDistance);
             } else if (isPickOnBounds() ||
                     subSceneComputeContains(intersectPt.getX(), intersectPt.getY())) {
@@ -650,22 +653,24 @@ public class SubScene extends Node {
     }
 
 
-    // TODO: 3D - Should avoid the need to do costly linear search and update of 
-    //            lights at every light add and graph sync.
-    private List<LightBase> lights = new ArrayList<LightBase>();
+    private List<LightBase> lights = new ArrayList<>();
 
+    // @param light must not be null
     final void addLight(LightBase light) {
-        // There is only an add light method and no removed method. However, if
-        // a light is no longer attached it will be removed via syncLights.
         if (!lights.contains(light)) {
-            markDirty(SubScene.SubSceneDirtyBits.LIGHTS_DIRTY);
+            markDirty(SubSceneDirtyBits.LIGHTS_DIRTY);
             lights.add(light);
         }
     }
 
+    final void removeLight(LightBase light) {
+        if (lights.remove(light)) {
+            markDirty(SubSceneDirtyBits.LIGHTS_DIRTY);
+        }
+    }
+
     /**
-     * PG Light synchronizer. It will verify if light is attached, if not the
-     * light is removed.
+     * PG Light synchronizer.
      */
     private void syncLights() {
         if (!isDirty(SubSceneDirtyBits.LIGHTS_DIRTY)) {
@@ -677,18 +682,12 @@ public class SubScene extends Node {
             if (lights.isEmpty()) {
                 pgSubScene.setLights(null);
             } else {
-                if (peerLights == null || peerLights.length != lights.size()) {
+                if (peerLights == null || peerLights.length < lights.size()) {
                     peerLights = new PGLightBase[lights.size()];
                 }
                 int i = 0;
                 for (; i < lights.size(); i++) {
-                    LightBase light = lights.get(i);
-                    if (light.getSubScene() == this) {
-                        peerLights[i] = (PGLightBase) light.impl_getPGNode();
-                    } else {
-                        // The light does not belong here
-                        lights.remove(i--);
-                    }
+                    peerLights[i] = lights.get(i).impl_getPGNode();
                 }
                 // Clear the rest of the list
                 while (i < peerLights.length && peerLights[i] != null) {

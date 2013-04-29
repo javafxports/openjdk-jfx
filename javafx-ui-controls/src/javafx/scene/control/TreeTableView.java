@@ -36,7 +36,9 @@ import com.sun.javafx.scene.control.skin.TreeTableViewSkin;
 import com.sun.javafx.scene.control.skin.VirtualContainerBase;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import javafx.application.Platform;
@@ -290,36 +292,6 @@ public class TreeTableView<S> extends Control {
         // we watch the columns list, such that when it changes we can update
         // the leaf columns and visible leaf columns lists (which are read-only).
         getColumns().addListener(weakColumnsObserver);
-        getColumns().addListener(new ListChangeListener<TreeTableColumn<S,?>>() {
-            @Override
-            public void onChanged(ListChangeListener.Change<? extends TreeTableColumn<S,?>> c) {
-                while (c.next()) {
-                    // update the TreeTableColumn.tableView property
-                    for (TreeTableColumn<S,?> tc : c.getRemoved()) {
-                        tc.setTreeTableView(null);
-                    }
-                    for (TreeTableColumn<S,?> tc : c.getAddedSubList()) {
-                        tc.setTreeTableView(TreeTableView.this);
-                    }
-
-                    // set up listeners
-                    TableUtil.removeTableColumnListener(c.getRemoved(),
-                            weakColumnVisibleObserver,
-                            weakColumnSortableObserver,
-                            weakColumnSortTypeObserver,
-                            weakColumnComparatorObserver);
-                    TableUtil.addTableColumnListener(c.getAddedSubList(),
-                            weakColumnVisibleObserver,
-                            weakColumnSortableObserver,
-                            weakColumnSortTypeObserver,
-                            weakColumnComparatorObserver);
-                }
-                    
-                // We don't maintain a bind for leafColumns, we simply call this update
-                // function behind the scenes in the appropriate places.
-                updateVisibleLeafColumns();
-            }
-        });
 
         // watch for changes to the sort order list - and when it changes run
         // the sort method.
@@ -588,22 +560,45 @@ public class TreeTableView<S> extends Control {
     
     private final ListChangeListener<TreeTableColumn<S,?>> columnsObserver = new ListChangeListener<TreeTableColumn<S,?>>() {
         @Override public void onChanged(ListChangeListener.Change<? extends TreeTableColumn<S,?>> c) {
+            // We don't maintain a bind for leafColumns, we simply call this update
+            // function behind the scenes in the appropriate places.
             updateVisibleLeafColumns();
             
             // Fix for RT-15194: Need to remove removed columns from the 
             // sortOrder list.
-            List<TreeTableColumn> toRemove = new ArrayList<TreeTableColumn>();
+            List<TreeTableColumn<S,?>> toRemove = new ArrayList<TreeTableColumn<S,?>>();
             while (c.next()) {
-                TableUtil.removeColumnsListener(c.getRemoved(), weakColumnsObserver);
-                TableUtil.addColumnsListener(c.getAddedSubList(), weakColumnsObserver);
+                final List<? extends TreeTableColumn<S, ?>> removed = c.getRemoved();
+                final List<? extends TreeTableColumn<S, ?>> added = c.getAddedSubList();
                 
                 if (c.wasRemoved()) {
-                    toRemove.addAll(c.getRemoved());
+                    toRemove.addAll(removed);
+                    for (TreeTableColumn<S,?> tc : removed) {
+                        tc.setTreeTableView(null);
+                    }
                 }
                 
                 if (c.wasAdded()) {
-                    toRemove.removeAll(c.getAddedSubList());
+                    toRemove.removeAll(added);
+                    for (TreeTableColumn<S,?> tc : added) {
+                        tc.setTreeTableView(TreeTableView.this);
+                    }
                 }
+                
+                // set up listeners
+                TableUtil.removeColumnsListener(removed, weakColumnsObserver);
+                TableUtil.addColumnsListener(added, weakColumnsObserver);
+                
+                TableUtil.removeTableColumnListener(c.getRemoved(),
+                        weakColumnVisibleObserver,
+                        weakColumnSortableObserver,
+                        weakColumnSortTypeObserver,
+                        weakColumnComparatorObserver);
+                TableUtil.addTableColumnListener(c.getAddedSubList(),
+                        weakColumnVisibleObserver,
+                        weakColumnSortableObserver,
+                        weakColumnSortTypeObserver,
+                        weakColumnComparatorObserver);
             }
             
             sortOrder.removeAll(toRemove);
@@ -663,8 +658,8 @@ public class TreeTableView<S> extends Control {
     private final WeakInvalidationListener weakColumnComparatorObserver = 
             new WeakInvalidationListener(columnComparatorObserver);
     
-    private final WeakListChangeListener weakColumnsObserver = 
-            new WeakListChangeListener(columnsObserver);
+    private final WeakListChangeListener<TreeTableColumn<S,?>> weakColumnsObserver = 
+            new WeakListChangeListener<TreeTableColumn<S,?>>(columnsObserver);
     
     private final WeakInvalidationListener weakCellSelectionModelInvalidationListener = 
             new WeakInvalidationListener(cellSelectionModelInvalidationListener);
@@ -1940,6 +1935,8 @@ public class TreeTableView<S> extends Control {
     // package for testing
     static class TreeTableViewArrayListSelectionModel<S> extends TreeTableViewSelectionModel<S> {
 
+        private BitSet selectedIndicesBitSet;
+        
         /***********************************************************************
          *                                                                     *
          * Constructors                                                        *
@@ -1949,6 +1946,7 @@ public class TreeTableView<S> extends Control {
         public TreeTableViewArrayListSelectionModel(final TreeTableView<S> treeTableView) {
             super(treeTableView);
             this.treeTableView = treeTableView;
+            this.selectedIndicesBitSet = new BitSet();
             
             this.treeTableView.rootProperty().addListener(weakRootPropertyListener);
             updateTreeEventListener(null, treeTableView.getRoot());
@@ -1969,6 +1967,60 @@ public class TreeTableView<S> extends Control {
             selectedCells.addListener(new ListChangeListener<TreeTablePosition<S,?>>() {
                 @Override
                 public void onChanged(final ListChangeListener.Change<? extends TreeTablePosition<S,?>> c) {
+                    // RT-29313: because selectedIndices and selectedItems represent
+                    // row-based selection, we need to update the
+                    // selectedIndicesBitSet when the selectedCells changes to 
+                    // ensure that selectedIndices and selectedItems return only
+                    // the correct values (and only once). The issue identified
+                    // by RT-29313 is that the size and contents of selectedIndices
+                    // and selectedItems can not simply defer to the
+                    // selectedCells as selectedCells may be representing 
+                    // multiple cells from one row (e.g. selectedCells of 
+                    // [(0,1), (1,1), (1,2), (1,3)] should result in 
+                    // selectedIndices of [0,1], not [0,1,1,1]).
+                    // An inefficient solution would rebuild the selectedIndicesBitSet
+                    // every time the change happens, but we can do better than
+                    // that. Inefficient solution:
+                    //
+                    // selectedIndicesBitSet.clear();
+                    // for (int i = 0; i < selectedCells.size(); i++) {
+                    //     final TreeTablePosition<S,?> tp = selectedCells.get(i);
+                    //     final int row = tp.getRow();
+                    //     selectedIndicesBitSet.set(row);
+                    // }
+                    // 
+                    // A more efficient solution:
+                    final List<Integer> newlySelectedRows = new ArrayList<Integer>();
+                    final List<Integer> newlyUnselectedRows = new ArrayList<Integer>();
+                    
+                    while (c.next()) {
+                        if (c.wasRemoved()) {
+                            List<? extends TreeTablePosition<S,?>> removed = c.getRemoved();
+                            for (int i = 0; i < removed.size(); i++) {
+                                final TreeTablePosition<S,?> tp = removed.get(i);
+                                final int row = tp.getRow();
+                                
+                                if (selectedIndicesBitSet.get(row)) {
+                                    selectedIndicesBitSet.clear(row);
+                                    newlySelectedRows.add(row);
+                                }
+                            }
+                        }
+                        if (c.wasAdded()) {
+                            List<? extends TreeTablePosition<S,?>> added = c.getAddedSubList();
+                            for (int i = 0; i < added.size(); i++) {
+                                final TreeTablePosition<S,?> tp = added.get(i);
+                                final int row = tp.getRow();
+                                
+                                if (! selectedIndicesBitSet.get(row)) {
+                                    selectedIndicesBitSet.set(row);
+                                    newlySelectedRows.add(row);
+                                }
+                            }
+                        }
+                    }
+                    c.reset();
+                    
                     // when the selectedCells observableArrayList changes, we manually call
                     // the observers of the selectedItems, selectedIndices and
                     // selectedCells lists.
@@ -1978,8 +2030,20 @@ public class TreeTableView<S> extends Control {
                     selectedItems.callObservers(new MappingChange<TreeTablePosition<S,?>, TreeItem<S>>(c, cellToItemsMap, selectedItems));
                     c.reset();
 
-                    selectedIndices.callObservers(new MappingChange<TreeTablePosition<S,?>, Integer>(c, cellToIndicesMap, selectedIndices));
-                    c.reset();
+                    if (! newlySelectedRows.isEmpty() && newlyUnselectedRows.isEmpty()) {
+                        // need to come up with ranges based on the actualSelectedRows, and
+                        // then fire the appropriate number of changes. We also need to
+                        // translate from a desired row to select to where that row is 
+                        // represented in the selectedIndices list. For example,
+                        // we may have requested to select row 5, and the selectedIndices
+                        // list may therefore have the following: [1,4,5], meaning row 5
+                        // is in position 2 of the selectedIndices list
+                        Change<Integer> change = createRangeChange(selectedIndices, newlySelectedRows);
+                        selectedIndices.callObservers(change);
+                    } else {
+                        selectedIndices.callObservers(new MappingChange<TreeTablePosition<S,?>, Integer>(c, cellToIndicesMap, selectedIndices));
+                        c.reset();
+                    }
 
                     selectedCellsSeq.callObservers(new MappingChange<TreeTablePosition<S,?>, TreeTablePosition<S,?>>(c, MappingChange.NOOP_MAP, selectedCellsSeq));
                     c.reset();
@@ -1987,12 +2051,32 @@ public class TreeTableView<S> extends Control {
             });
 
             selectedIndices = new ReadOnlyUnbackedObservableList<Integer>() {
-                @Override public Integer get(int i) {
-                    return selectedCells.get(i).getRow();
+                @Override public Integer get(int index) {
+                    if (index < 0 || index >= getItemCount()) return -1;
+
+                    for (int pos = 0, val = selectedIndicesBitSet.nextSetBit(0);
+                        val >= 0 || pos == index;
+                        pos++, val = selectedIndicesBitSet.nextSetBit(val+1)) {
+                            if (pos == index) return val;
+                    }
+
+                    return -1;
                 }
 
                 @Override public int size() {
-                    return selectedCells.size();
+                    return selectedIndicesBitSet.cardinality();
+                }
+
+                @Override public boolean contains(Object o) {
+                    if (o instanceof Number) {
+                        Number n = (Number) o;
+                        int index = n.intValue();
+
+                        return index > 0 && index < selectedIndicesBitSet.length() &&
+                                selectedIndicesBitSet.get(index);
+                    }
+
+                    return false;
                 }
             };
 
@@ -2203,6 +2287,11 @@ public class TreeTableView<S> extends Control {
         }
 
         @Override public void select(TreeItem<S> obj) {
+            if (obj == null && getSelectionMode() == SelectionMode.SINGLE) {
+                clearSelection();
+                return;
+            }
+            
             // We have no option but to iterate through the model and select the
             // first occurrence of the given object. Once we find the first one, we
             // don't proceed to select any others.
@@ -2263,19 +2352,25 @@ public class TreeTableView<S> extends Control {
                 }
             } else {
                 int lastIndex = -1;
-                List<TreeTablePosition<S,?>> positions = new ArrayList<TreeTablePosition<S,?>>();
+                Set<TreeTablePosition<S,?>> positions = new LinkedHashSet<TreeTablePosition<S,?>>();
 
                 if (row >= 0 && row < rowCount) {
-                    positions.add(new TreeTablePosition(getTreeTableView(), row, null));
-                    lastIndex = row;
+                    TreeTablePosition<S,Object> pos = new TreeTablePosition<S,Object>(getTreeTableView(), row, null);
+                    
+                    if (! selectedCells.contains(pos)) {
+                        positions.add(pos);
+                        lastIndex = row;
+                    }
                 }
 
                 for (int i = 0; i < rows.length; i++) {
                     int index = rows[i];
                     if (index < 0 || index >= rowCount) continue;
                     lastIndex = index;
-                    TreeTablePosition pos = new TreeTablePosition(getTreeTableView(), index, null);
-                    if (selectedCells.contains(pos)) continue;
+                    TreeTablePosition<S,Object> pos = new TreeTablePosition<S,Object>(getTreeTableView(), index, null);
+                    if (! selectedCells.contains(pos)) {
+                        positions.add(pos);
+                    }
 
                     positions.add(pos);
                 }

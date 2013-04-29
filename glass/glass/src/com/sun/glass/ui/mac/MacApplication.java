@@ -109,10 +109,43 @@ final class MacApplication extends Application implements InvokeLaterDispatcher.
         _leaveNestedEventLoopImpl(retValue);
     }
 
+    native private void _hide();
+    native private void _hideOtherApplications();
+    native private void _unhideAllApplications();
+
     public void installAppleMenu(MenuBar menubar) {
         this.appleMenu = createMenu("Apple");
-        
-        MenuItem quitMenu = createMenuItem("Quit "+getName(), new MenuItem.Callback() {
+
+        MenuItem hideMenu = createMenuItem("Hide " + getName(), new MenuItem.Callback() {
+            @Override public void action() {
+                MacApplication.this._hide();
+            }
+            @Override public void validate() {
+            }
+        }, 'h', KeyEvent.MODIFIER_COMMAND);
+        this.appleMenu.add(hideMenu);
+
+        MenuItem hideOthersMenu = createMenuItem("Hide Others", new MenuItem.Callback() {
+            @Override public void action() {
+                MacApplication.this._hideOtherApplications();
+            }
+            @Override public void validate() {
+            }
+        }, 'h', KeyEvent.MODIFIER_COMMAND | KeyEvent.MODIFIER_ALT);
+        this.appleMenu.add(hideOthersMenu);
+
+        MenuItem unhideAllMenu = createMenuItem("Show All", new MenuItem.Callback() {
+            @Override public void action() {
+                MacApplication.this._unhideAllApplications();
+            }
+            @Override public void validate() {
+            }
+        });
+        this.appleMenu.add(unhideAllMenu);
+
+        this.appleMenu.add(MenuItem.Separator);
+
+        MenuItem quitMenu = createMenuItem("Quit " + getName(), new MenuItem.Callback() {
             @Override public void action() {
                 Application.EventHandler eh = getEventHandler();
                 if (eh != null) {
@@ -211,11 +244,8 @@ final class MacApplication extends Application implements InvokeLaterDispatcher.
 
     @Override protected FileChooserResult staticCommonDialogs_showFileChooser(Window owner, String folder, String filename, String title, int type,
                                                      boolean multipleMode, ExtensionFilter[] extensionFilters, int defaultFilterIndex) {
-        //TODO: support FileChooserResult
-        //TODO: support defaultFilterIndex
-        return new FileChooserResult(
-                MacCommonDialogs.showFileChooser_impl(owner, folder, filename,
-                title, type, multipleMode, extensionFilters, defaultFilterIndex), null);
+        return MacCommonDialogs.showFileChooser_impl(owner, folder, filename,
+                title, type, multipleMode, extensionFilters, defaultFilterIndex);
     }
 
     @Override protected File staticCommonDialogs_showFolderChooser(Window owner, String folder, String title) {

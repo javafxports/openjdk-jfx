@@ -28,7 +28,7 @@ package javafx.scene;
 import com.sun.javafx.geom.BaseBounds;
 import com.sun.javafx.geom.BoxBounds;
 import com.sun.javafx.geom.PickRay;
-import com.sun.javafx.geom.Rectangle;
+import com.sun.javafx.geom.Vec3d;
 import com.sun.javafx.geom.transform.Affine3D;
 import com.sun.javafx.geom.transform.BaseTransform;
 import com.sun.javafx.geom.transform.GeneralTransform3D;
@@ -55,30 +55,51 @@ public abstract class Camera extends Node {
     private Affine3D localToSceneTx = new Affine3D();
 
     protected Camera() {
-        this.localToSceneTransformProperty().addListener(new InvalidationListener() {
+        InvalidationListener dirtyTransformListener = new InvalidationListener() {
             @Override
             public void invalidated(Observable observable) {
-                isL2STxChanged = true;
                 impl_markDirty(DirtyBits.NODE_CAMERA_TRANSFORM);
             }
-        });
-    }
+        };
 
-    private boolean isL2STxChanged = true;
-    private boolean isClipPlaneChanged = true;
+        this.localToSceneTransformProperty().addListener(dirtyTransformListener);
+        // if camera is removed from scene it needs to stop using its transforms
+        this.sceneProperty().addListener(dirtyTransformListener);
+    }
 
     // NOTE: farClipInScene and nearClipInScene are valid only if there is no rotation
     private double farClipInScene;
     private double nearClipInScene;
 
+    private GeneralTransform3D projViewTx = new GeneralTransform3D();
+    private GeneralTransform3D projTx = new GeneralTransform3D();
+    private Affine3D viewTx = new Affine3D();
+    private double viewWidth = 1.0;
+    private double viewHeight = 1.0;
+    private Vec3d position = new Vec3d();
+
+    private boolean clipInSceneValid = false;
+    private boolean projViewTxValid = false;
+    private boolean localToSceneValid = false;
+    private boolean sceneToLocalValid = false;
+
     double getFarClipInScene() {
-        updateMiscProperties();
+        updateClipPlane();
         return farClipInScene;
     }
 
     double getNearClipInScene() {
-        updateMiscProperties();
+        updateClipPlane();
         return nearClipInScene;
+    }
+
+    private void updateClipPlane() {
+        if (!clipInSceneValid) {
+            final Transform localToSceneTransform = getLocalToSceneTransform();
+            nearClipInScene = localToSceneTransform.transform(0, 0, getNearClip()).getZ();
+            farClipInScene = localToSceneTransform.transform(0, 0, getFarClip()).getZ();
+            clipInSceneValid = true;
+        }
     }
 
     /**
@@ -88,33 +109,19 @@ public abstract class Camera extends Node {
     private Affine3D sceneToLocalTx = new Affine3D();
 
     Affine3D getSceneToLocalTransform() {
-        updateMiscProperties();
-        return sceneToLocalTx;
-    }
-
-    private void updateMiscProperties() {
-        if (isL2STxChanged) {
-            Transform localToSceneTransform = getLocalToSceneTransform();
-            nearClipInScene = localToSceneTransform.transform(0, 0, getNearClip()).getZ();
-            farClipInScene = localToSceneTransform.transform(0, 0, getFarClip()).getZ();
-            
-            sceneToLocalTx.setToIdentity();
-            localToSceneTransform.impl_apply(sceneToLocalTx);
+        if (!sceneToLocalValid) {
+            sceneToLocalTx.setTransform(getCameraTransform());
             try {
                 sceneToLocalTx.invert();
             } catch (NoninvertibleTransformException ex) {
                 String logname = Camera.class.getName();
-                PlatformLogger.getLogger(logname).severe("updateMiscProperties", ex);
+                PlatformLogger.getLogger(logname).severe("getSceneToLocalTransform", ex);
+                sceneToLocalTx.setToIdentity();
             }
-            
-            isL2STxChanged = isClipPlaneChanged = false;
-        } else if (isClipPlaneChanged) {
-            Transform localToSceneTransform = getLocalToSceneTransform();
-            nearClipInScene = localToSceneTransform.transform(0, 0, getNearClip()).getZ();
-            farClipInScene = localToSceneTransform.transform(0, 0, getFarClip()).getZ();
-            
-            isClipPlaneChanged = false;
+            sceneToLocalValid = true;
         }
+
+        return sceneToLocalTx;
     }
 
     /**
@@ -139,7 +146,7 @@ public abstract class Camera extends Node {
             nearClip = new SimpleDoubleProperty(Camera.this, "nearClip", 0.1) {
                 @Override
                 protected void invalidated() {
-                    isClipPlaneChanged = true;
+                    clipInSceneValid = false;
                     impl_markDirty(DirtyBits.NODE_CAMERA);
                 }
             };
@@ -170,7 +177,7 @@ public abstract class Camera extends Node {
             farClip = new SimpleDoubleProperty(Camera.this, "farClip", 100.0) {
                 @Override
                 protected void invalidated() {
-                    isClipPlaneChanged = true;
+                    clipInSceneValid = false;
                     impl_markDirty(DirtyBits.NODE_CAMERA);
                 }
             };
@@ -195,43 +202,119 @@ public abstract class Camera extends Node {
     public void impl_updatePG() {
         super.impl_updatePG();
         PGCamera pgCamera = (PGCamera)impl_getPGNode();
-        if (impl_isDirty(DirtyBits.NODE_CAMERA)) {
-            pgCamera.setNearClip((float) getNearClip());
-            pgCamera.setFarClip((float) getFarClip());
-        }
-        if (impl_isDirty(DirtyBits.NODE_CAMERA_TRANSFORM)) {
-            localToSceneTx.setToIdentity();
-            getLocalToSceneTransform().impl_apply(localToSceneTx);
-            // TODO: 3D - For now, we are treating the scene as world.
-            // This may need to change for the fixed eye position case.
-            pgCamera.setWorldTransform(localToSceneTx);
+        if (!impl_isDirtyEmpty()) {
+            if (impl_isDirty(DirtyBits.NODE_CAMERA)) {
+                pgCamera.setNearClip((float) getNearClip());
+                pgCamera.setFarClip((float) getFarClip());
+                pgCamera.setViewWidth(getViewWidth());
+                pgCamera.setViewHeight(getViewHeight());
+            }
+            if (impl_isDirty(DirtyBits.NODE_CAMERA_TRANSFORM)) {
+                // TODO: 3D - For now, we are treating the scene as world.
+                // This may need to change for the fixed eye position case.
+                pgCamera.setWorldTransform(getCameraTransform());
+            }
+
+            pgCamera.setProjViewTransform(getProjViewTransform());
+
+            position = computePosition(position);
+            getCameraTransform().transform(position, position);
+            pgCamera.setPosition(position);
         }
     }
+
+    void setViewWidth(double width) {
+        this.viewWidth = width;
+        impl_markDirty(DirtyBits.NODE_CAMERA);
+    }
+
+    double getViewWidth() {
+        return viewWidth;
+    }
+
+    void setViewHeight(double height) {
+        this.viewHeight = height;
+        impl_markDirty(DirtyBits.NODE_CAMERA);
+    }
+
+    double getViewHeight() {
+        return viewHeight;
+    }
+
+    @Override
+    protected void impl_markDirty(DirtyBits dirtyBit) {
+        super.impl_markDirty(dirtyBit);
+        if (dirtyBit == DirtyBits.NODE_CAMERA_TRANSFORM) {
+            localToSceneValid = false;
+            sceneToLocalValid = false;
+            clipInSceneValid = false;
+            projViewTxValid = false;
+        } else if (dirtyBit == DirtyBits.NODE_CAMERA) {
+            projViewTxValid = false;
+        }
+    }
+
 
     /**
      * Returns the local-to-scene transform of this camera.
      * Package private, for use in our internal subclasses.
+     * Returns directly the internal instance, it must not be altered.
      */
     Affine3D getCameraTransform() {
+        if (!localToSceneValid) {
+            localToSceneTx.setToIdentity();
+            // if the camera is not in scene, its transforms are ignored
+            if (getScene() != null) {
+                getLocalToSceneTransform().impl_apply(localToSceneTx);
+            }
+            localToSceneValid = true;
+        }
         return localToSceneTx;
+    }
+
+    abstract void computeProjectionTransform(GeneralTransform3D proj);
+    abstract void computeViewTransform(Affine3D view);
+
+    /**
+     * Returns the projView transform of this camera.
+     * Package private, for internal use.
+     * Returns directly the internal instance, it must not be altered.
+     */
+    GeneralTransform3D getProjViewTransform() {
+        if (!projViewTxValid) {
+            computeProjectionTransform(projTx);
+            computeViewTransform(viewTx);
+
+            projViewTx.set(projTx);
+            projViewTx.mul(viewTx);
+            projViewTx.mul(getSceneToLocalTransform());
+
+            projViewTxValid = true;
+        }
+
+        return projViewTx;
     }
 
     /**
      * Computes pick ray for the content rendered by this camera.
-     * @param localX horizontal coordinate of the pick ray in the projected
+     * @param x horizontal coordinate of the pick ray in the projected
      *               view, usually mouse cursor position
-     * @param localY vertical coordinate of the pick ray in the projected
+     * @param y vertical coordinate of the pick ray in the projected
      *               view, usually mouse cursor position
-     * @param viewWidth width of the projected view
-     * @param viewHeight height of the projected view
      * @param pickRay pick ray to be reused. New instance is created in case
      *                of null.
      * @return The PickRay instance computed based on this camera and the given
      *         arguments.
      */
-    abstract PickRay computePickRay(double localX, double localY,
-                                    double viewWidth, double viewHeight,
-                                    PickRay pickRay);
+    abstract PickRay computePickRay(double x, double y, PickRay pickRay);
+
+    /**
+     * Computes local position of the camera in the scene.
+     * @param position Position to be reused. New instance is created in case 
+     *                 of null.
+     * @return The position of the camera in the scene in camera local coords
+     */
+    abstract Vec3d computePosition(Vec3d position);
 
     /**
      * @treatAsPrivate implementation detail
@@ -261,19 +344,5 @@ public abstract class Camera extends Node {
     @Override
     public Object impl_processMXNode(MXNodeAlgorithm alg, MXNodeAlgorithmContext ctx) {
         throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    // NOTE: This can only be called during scenegraph sync time by Scene only.
-    GeneralTransform3D computeProjViewTx(GeneralTransform3D tx, double sceneWidth, double sceneHeight) {
-        // TODO: Need to cache value at PG update time
-        PGCamera pgCamera = (PGCamera) impl_getPGNode();
-        return pgCamera.getScreenProjViewTx(tx, sceneWidth, sceneHeight);
-    }
-
-    // NOTE: This can only be called during scenegraph sync time by Scene only.
-    Rectangle getViewport(Rectangle vp) {
-        // TODO: Need to cache value at PG update time
-        PGCamera pgCamera = (PGCamera) impl_getPGNode();
-        return pgCamera.getViewport(vp);
     }
 }

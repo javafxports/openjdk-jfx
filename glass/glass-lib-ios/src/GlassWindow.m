@@ -670,6 +670,10 @@ static inline void setWindowFrame(GlassWindow *window, CGFloat x, CGFloat y, CGF
     if ([self superview] != nil) {
         [self removeFromSuperview];
     }
+    
+    if (focusOwner == self) {
+        focusOwner = nil;
+    }
         
     (*jEnv)->DeleteGlobalRef(jEnv, self->jWindow);
     GLASS_CHECK_EXCEPTION(jEnv);
@@ -775,6 +779,13 @@ jlong _1createWindow(JNIEnv *env, jobject jWindow, jlong jOwnerPtr, jlong jScree
         {
             GLASS_LOG("Adding %p window as usbview of owner window %lld", window, jOwnerPtr); 
             window->owner = (UIWindow*)jlong_to_ptr(jOwnerPtr);
+        } else {
+            NSArray *views = [masterWindowHost subviews];
+            // if there exists any secondary stage, its owner is primary stage internally if
+            // not set explicitly
+            if ([views count] > 1) {
+                window->owner = [views objectAtIndex:0];
+            }
         }
     }
     [pool drain];

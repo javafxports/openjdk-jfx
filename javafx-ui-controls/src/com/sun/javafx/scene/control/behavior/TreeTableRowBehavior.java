@@ -25,11 +25,9 @@
 
 package com.sun.javafx.scene.control.behavior;
 
-import java.util.Iterator;
 import java.util.List;
 
 import javafx.scene.Node;
-import javafx.scene.control.MultipleSelectionModel;
 import javafx.scene.control.TableSelectionModel;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeTableColumn;
@@ -38,9 +36,6 @@ import javafx.scene.control.TreeTableView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 
-/**
- *
- */
 public class TreeTableRowBehavior<T> extends CellBehaviorBase<TreeTableRow<T>> {
 
     public TreeTableRowBehavior(TreeTableRow<T> control) {
@@ -88,10 +83,14 @@ public class TreeTableRowBehavior<T> extends CellBehaviorBase<TreeTableRow<T>> {
             // In the case of clicking to the right of the rightmost
             // TreeTableCell, we should still support selection, so that
             // is what we are doing here.
-            if (isAlreadySelected) {
+            if (isAlreadySelected && e.isShortcutDown()) {
                 sm.clearSelection(index);
             } else {
-                sm.select(treeItem);
+                if (e.isShortcutDown()) {
+                    sm.select(treeTableRow.getIndex());
+                } else {
+                    sm.clearAndSelect(treeTableRow.getIndex());
+                }
             }
         }
     }

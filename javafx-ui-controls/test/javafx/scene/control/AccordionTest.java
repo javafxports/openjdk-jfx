@@ -25,7 +25,9 @@
 
 package javafx.scene.control;
 
+import com.sun.javafx.application.PlatformImpl;
 import com.sun.javafx.pgstub.StubToolkit;
+import com.sun.javafx.scene.control.infrastructure.ControlTestUtils;
 import com.sun.javafx.scene.control.infrastructure.KeyEventFirer;
 import com.sun.javafx.tk.Toolkit;
 import javafx.scene.Scene;
@@ -169,7 +171,11 @@ public class AccordionTest {
         root.autosize();
         root.layout();
         
-        assertEquals(54, accordion.prefWidth(-1), 1e-100);
+        final double expectedPrefWidth = PlatformImpl.isCaspian() ? 54 : 
+                                         PlatformImpl.isModena()  ? 52 :
+                                         0;
+        
+        assertEquals(expectedPrefWidth, accordion.prefWidth(-1), 1e-100);
         assertEquals(66, accordion.prefHeight(-1), 1e-100);
 
         accordion.setExpandedPane(b);
@@ -177,8 +183,12 @@ public class AccordionTest {
         root.autosize();
         root.layout();
 
-        assertEquals(54, accordion.prefWidth(-1), 1e-100);
-        assertEquals(170, accordion.prefHeight(-1), 1e-100);
+        assertEquals(expectedPrefWidth, accordion.prefWidth(-1), 1e-100);
+        
+        final double expectedPrefHeight = PlatformImpl.isCaspian() ? 170 : 
+                                          PlatformImpl.isModena()  ? 167 :
+                                          0;
+        assertEquals(expectedPrefHeight, accordion.prefHeight(-1), 1e-100);
     }
     
     @Test public void aiobeWhenFocusIsOnAControlInsideTheAccordion_RT22027() {

@@ -38,6 +38,10 @@ import javafx.collections.ObservableList;
  */
 class TableUtil {
     
+    private TableUtil() { 
+        // no-op
+    }
+    
     static void removeTableColumnListener(List<? extends TableColumnBase> list,
                         final InvalidationListener columnVisibleObserver,
                         final InvalidationListener columnSortableObserver,
@@ -77,7 +81,6 @@ class TableUtil {
             col.sortableProperty().addListener(columnSortableObserver);
             col.comparatorProperty().addListener(columnComparatorObserver);
             
-//            col.sortTypeProperty().addListener(columnSortTypeObserver);
             if (col instanceof TableColumn) {
                 ((TableColumn)col).sortTypeProperty().addListener(columnSortTypeObserver);
             } else if (col instanceof TreeTableColumn) {

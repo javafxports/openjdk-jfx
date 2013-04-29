@@ -25,7 +25,6 @@
 
 package com.sun.javafx.scene.control.behavior;
 
-import com.sun.javafx.PlatformUtil;
 import com.sun.javafx.application.PlatformImpl;
 import java.util.WeakHashMap;
 import javafx.application.ConditionalFeature;
@@ -41,7 +40,7 @@ import javafx.scene.input.MouseEvent;
 
 /**
  */
-public abstract class TableCellBehaviorBase<T extends IndexedCell> extends CellBehaviorBase<T> {
+public abstract class TableCellBehaviorBase<S, T extends IndexedCell> extends CellBehaviorBase<T> {
     
     /***************************************************************************
      *                                                                         *
@@ -49,30 +48,28 @@ public abstract class TableCellBehaviorBase<T extends IndexedCell> extends CellB
      *                                                                         *
      **************************************************************************/
     
-    // global map used to store the focus cell for a table view when it is first
-    // shift-clicked. This allows for proper keyboard interactions, in particular
-    // resolving RT-11446
-    private static final WeakHashMap<Control, TablePositionBase> map = 
-            new WeakHashMap<Control, TablePositionBase>();
+    private static final String ANCHOR_PROPERTY_KEY = "table.anchor";
     
     static TablePositionBase getAnchor(Control table, TablePositionBase focusedCell) {
-        return hasAnchor(table) ? map.get(table) : focusedCell;
+        return hasAnchor(table) ? 
+                (TablePositionBase) table.getProperties().get(ANCHOR_PROPERTY_KEY) : 
+                focusedCell;
     }
     
     static void setAnchor(Control table, TablePositionBase anchor) {
         if (table != null && anchor == null) {
-            map.remove(table);
+            removeAnchor(table);
         } else {
-            map.put(table, anchor);
+            table.getProperties().put(ANCHOR_PROPERTY_KEY, anchor);
         }
     }
     
     static boolean hasAnchor(Control table) {
-        return map.containsKey(table) && map.get(table) != null;
+        return table.getProperties().get(ANCHOR_PROPERTY_KEY) != null;
     }
     
     static void removeAnchor(Control table) {
-        map.remove(table);
+        table.getProperties().remove(ANCHOR_PROPERTY_KEY);
     }
     
     
@@ -117,7 +114,7 @@ public abstract class TableCellBehaviorBase<T extends IndexedCell> extends CellB
      *************************************************************************/  
     
     abstract Control getTableControl(); // tableCell.getTreeTableView()
-    abstract TableColumnBase getTableColumn(); // getControl().getTableColumn()
+    abstract TableColumnBase<S, T> getTableColumn(); // getControl().getTableColumn()
     abstract int getItemCount();        // tableView.impl_getTreeItemCount()
     abstract TableSelectionModel getSelectionModel();
     abstract TableFocusModel getFocusModel();
@@ -218,11 +215,11 @@ public abstract class TableCellBehaviorBase<T extends IndexedCell> extends CellB
         // result in the correct selection occuring (whilst the focus index moves
         // about).
         if (e.isShiftDown()) {
-            if (! map.containsKey(tableView)) {
+            if (! hasAnchor(tableView)) {
                 setAnchor(tableView, focusedCell);
             }
         } else {
-            map.remove(tableView);
+            removeAnchor(tableView);
         }
 
         // we must update the table appropriately, and this is determined by
@@ -244,17 +241,17 @@ public abstract class TableCellBehaviorBase<T extends IndexedCell> extends CellB
                 } else if (e.isShiftDown()) {
                     // we add all cells/rows between the current selection focus and
                     // this cell/row (inclusive) to the current selection.
-                    focusedCell = map.containsKey(tableView) ? map.get(tableView) : focusedCell;
-
+                    TablePositionBase anchor = getAnchor(tableView, focusedCell);
+                    
                     // and then determine all row and columns which must be selected
-                    int minRow = Math.min(focusedCell.getRow(), row);
-                    int maxRow = Math.max(focusedCell.getRow(), row);
-                    int minColumn = Math.min(focusedCell.getColumn(), column);
-                    int maxColumn = Math.max(focusedCell.getColumn(), column);
+                    int minRow = Math.min(anchor.getRow(), row);
+                    int maxRow = Math.max(anchor.getRow(), row);
+                    int minColumn = Math.min(anchor.getColumn(), column);
+                    int maxColumn = Math.max(anchor.getColumn(), column);
 
-                    // clear selection
+                    // clear selection, but maintain the anchor
                     sm.clearSelection();
-
+                    
                     // and then perform the selection
                     if (sm.isCellSelectionEnabled()) {
                         for (int _row = minRow; _row <= maxRow; _row++) {
@@ -267,7 +264,7 @@ public abstract class TableCellBehaviorBase<T extends IndexedCell> extends CellB
                     }
 
                     // return selection back to the focus owner
-                    focus(row, tableColumn);
+                    focus(anchor.getRow(), tableColumn);
                 } else {
                     simpleSelect(e);
                 }

@@ -57,6 +57,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener.Change;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
+import javafx.collections.ObservableSet;
 import javafx.event.Event;
 import javafx.event.EventDispatchChain;
 import javafx.event.EventDispatcher;
@@ -110,7 +111,6 @@ import javafx.css.StyleableBooleanProperty;
 import javafx.css.StyleableDoubleProperty;
 import javafx.css.StyleableObjectProperty;
 import javafx.css.CssMetaData;
-import javafx.css.StyleOrigin;
 import javafx.css.PseudoClass;
 import com.sun.javafx.css.converters.BooleanConverter;
 import com.sun.javafx.css.converters.CursorConverter;
@@ -122,7 +122,6 @@ import com.sun.javafx.geom.BaseBounds;
 import com.sun.javafx.geom.BoxBounds;
 import com.sun.javafx.geom.PickRay;
 import com.sun.javafx.geom.RectBounds;
-import com.sun.javafx.geom.Rectangle;
 import com.sun.javafx.geom.transform.Affine3D;
 import com.sun.javafx.geom.transform.BaseTransform;
 import com.sun.javafx.geom.transform.NoninvertibleTransformException;
@@ -142,6 +141,7 @@ import com.sun.javafx.scene.input.PickResultChooser;
 import com.sun.javafx.scene.transform.TransformUtils;
 import com.sun.javafx.scene.traversal.Direction;
 import com.sun.javafx.sg.PGNode;
+import com.sun.javafx.stage.WindowHelper;
 import com.sun.javafx.tk.Toolkit;
 import javafx.css.StyleableProperty;
 import javafx.geometry.NodeOrientation;
@@ -841,7 +841,7 @@ public abstract class Node implements EventTarget, Styleable {
     }
 
     /**
-     * Exists for Parent
+     * Exists for Parent and LightBase
      */
     void scenesChanged(final Scene newScene, final SubScene newSubScene,
                        final Scene oldScene, final SubScene oldSubScene) { }
@@ -2786,10 +2786,10 @@ public abstract class Node implements EventTarget, Styleable {
                 h = boundedSize(prefHeight(-1), minHeight(-1), maxHeight(-1));
             } else if (contentBias == Orientation.HORIZONTAL) {
                 w = boundedSize(prefWidth(-1), minWidth(-1), maxWidth(-1));
-                h = prefHeight(w);
+                h = boundedSize(prefHeight(w), minHeight(w), maxHeight(w));
             } else { // bias == VERTICAL
                 h = boundedSize(prefHeight(-1), minHeight(-1), maxHeight(-1));
-                w = prefWidth(h);
+                w = boundedSize(prefWidth(h), minWidth(h), maxWidth(h));
             }
             resize(w,h);
         }
@@ -2879,7 +2879,7 @@ public abstract class Node implements EventTarget, Styleable {
         Scene tmpScene = getScene();
         if (tmpScene != null) {
             Bounds bounds = getBoundsInLocal();
-            Camera camera = tmpScene.getCamera();
+            Camera camera = tmpScene.getEffectiveCamera();
             boolean isPerspective = camera instanceof PerspectiveCamera ? true : false;
             Transform localToSceneTx = getLocalToSceneTransform();
             Affine3D tempTx = TempState.getInstance().tempTx;
@@ -2963,9 +2963,7 @@ public abstract class Node implements EventTarget, Styleable {
             }
 
             GeneralTransform3D projViewTx = TempState.getInstance().projViewTx;
-            projViewTx = tmpScene.getProjViewTx(projViewTx);
-            Rectangle viewport = TempState.getInstance().viewport;
-            viewport = tmpScene.getViewport(viewport);
+            projViewTx.set(camera.getProjViewTransform());
 
             // We need to set tempTx to identity since it is a recycled transform.
             // This is because impl_apply is a matrix concatenation operation.
@@ -2985,7 +2983,7 @@ public abstract class Node implements EventTarget, Styleable {
                 localBounds.intersectWith(-1, -1, 0, 1, 1, 1);
                 area = (localBounds.getWidth() < 0 || localBounds.getHeight() < 0) ? 0 : area;
             }
-            return area * (viewport.width / 2 * viewport.height / 2);
+            return area * (camera.getViewWidth() / 2 * camera.getViewHeight() / 2);
         }
         return 0;
     }
@@ -3839,8 +3837,10 @@ public abstract class Node implements EventTarget, Styleable {
         }
         final com.sun.javafx.geom.Point2D tempPt =
                 TempState.getInstance().point;
-        tempPt.setLocation((float)(screenX - scene.getX() - window.getX()),
-                (float)(screenY - scene.getY() - window.getY()));
+        tempPt.setLocation((float)(screenX - scene.getX()
+                                       - WindowHelper.getScreenX(window)),
+                           (float)(screenY - scene.getY()
+                                       - WindowHelper.getScreenY(window)));
         try {
             sceneToLocal(tempPt);
         } catch (NoninvertibleTransformException e) {
@@ -3874,10 +3874,15 @@ public abstract class Node implements EventTarget, Styleable {
         if (scene == null || window == null) {
             return null;
         }
-        Bounds sceneBounds = new BoundingBox(screenBounds.getMinX() - scene.getX() - window.getX(),
-                screenBounds.getMinY() - scene.getY() - window.getY(),
-                screenBounds.getMinZ(),
-                screenBounds.getWidth(), screenBounds.getHeight(), screenBounds.getDepth());
+        Bounds sceneBounds =
+                new BoundingBox(screenBounds.getMinX() - scene.getX()
+                                    - WindowHelper.getScreenX(window),
+                                screenBounds.getMinY() - scene.getY()
+                                    - WindowHelper.getScreenY(window),
+                                screenBounds.getMinZ(),
+                                screenBounds.getWidth(),
+                                screenBounds.getHeight(),
+                                screenBounds.getDepth());
         return sceneToLocal(sceneBounds);
     }
 
@@ -4005,8 +4010,10 @@ public abstract class Node implements EventTarget, Styleable {
         tempPt.setLocation((float)localX, (float)localY);
         localToScene(tempPt);
 
-        return new Point2D(tempPt.x + scene.getX() + window.getX(),
-                tempPt.y + scene.getY() + window.getY());
+        return new Point2D(tempPt.x + scene.getX()
+                               + WindowHelper.getScreenX(window),
+                           tempPt.y + scene.getY()
+                               + WindowHelper.getScreenY(window));
     }
 
     /**
@@ -4033,10 +4040,14 @@ public abstract class Node implements EventTarget, Styleable {
         }
 
         Bounds sceneBounds = localToScene(localBounds);
-        return new BoundingBox(sceneBounds.getMinX() + scene.getX() + window.getX(),
-                sceneBounds.getMinY() + scene.getY() + window.getY(),
-                sceneBounds.getMinZ(),
-                sceneBounds.getWidth(), sceneBounds.getHeight(), sceneBounds.getDepth());
+        return new BoundingBox(sceneBounds.getMinX() + scene.getX()
+                                   + WindowHelper.getScreenX(window),
+                               sceneBounds.getMinY() + scene.getY()
+                                   + WindowHelper.getScreenY(window),
+                               sceneBounds.getMinZ(),
+                               sceneBounds.getWidth(),
+                               sceneBounds.getHeight(),
+                               sceneBounds.getDepth());
     }
 
     /**
@@ -5166,99 +5177,121 @@ public abstract class Node implements EventTarget, Styleable {
             return localToSceneTransformProperty().get();
         }
 
+        class LocalToSceneTransformProperty extends LazyTransformProperty {
+            // need this to track number of listeners
+            private List localToSceneListeners;
+            // stamps to watch for parent changes when the listeners
+            // are not present
+            private long stamp, parentStamp;
+
+            @Override
+            protected Transform computeTransform(Transform reuse) {
+                stamp++;
+                updateLocalToParentTransform();
+
+                Node parentNode = Node.this.getParent();
+                if (parentNode != null) {
+                    final LocalToSceneTransformProperty parentProperty =
+                            (LocalToSceneTransformProperty) parentNode.localToSceneTransformProperty();
+                    final Transform parentTransform = parentProperty.getInternalValue();
+
+                    parentStamp = parentProperty.stamp;
+
+                    return TransformUtils.immutableTransform(reuse,
+                            parentTransform,
+                            ((LazyTransformProperty) localToParentTransformProperty()).getInternalValue());
+                } else {
+                    return TransformUtils.immutableTransform(reuse,
+                            ((LazyTransformProperty) localToParentTransformProperty()).getInternalValue());
+                }
+            }
+
+            @Override
+            public Object getBean() {
+                return Node.this;
+            }
+
+            @Override
+            public String getName() {
+                return "localToSceneTransform";
+            }
+
+            @Override
+            protected boolean validityKnown() {
+                return listenerReasons > 0;
+            }
+
+            @Override
+            protected int computeValidity() {
+                if (valid != VALIDITY_UNKNOWN) {
+                    return valid;
+                }
+
+                Node n = (Node) getBean();
+                Node parent = n.getParent();
+
+                if (parent != null) {
+                    final LocalToSceneTransformProperty parentProperty =
+                            (LocalToSceneTransformProperty) parent.localToSceneTransformProperty();
+
+                    if (parentStamp != parentProperty.stamp) {
+                        valid = INVALID;
+                        return INVALID;
+                    }
+
+                    int parentValid = parentProperty.computeValidity();
+                    if (parentValid == INVALID) {
+                        valid = INVALID;
+                    }
+                    return parentValid;
+                }
+
+                // Validity unknown for root means it is valid
+                return VALID;
+            }
+
+            @Override
+            public void addListener(InvalidationListener listener) {
+                incListenerReasons();
+                if (localToSceneListeners == null) {
+                    localToSceneListeners = new LinkedList<Object>();
+                }
+                localToSceneListeners.add(listener);
+                super.addListener(listener);
+            }
+
+            @Override
+            public void addListener(ChangeListener<? super Transform> listener) {
+                incListenerReasons();
+                if (localToSceneListeners == null) {
+                    localToSceneListeners = new LinkedList<Object>();
+                }
+                localToSceneListeners.add(listener);
+                super.addListener(listener);
+            }
+
+            @Override
+            public void removeListener(InvalidationListener listener) {
+                if (localToSceneListeners != null &&
+                        localToSceneListeners.remove(listener)) {
+                    decListenerReasons();
+                }
+                super.removeListener(listener);
+            }
+
+            @Override
+            public void removeListener(ChangeListener<? super Transform> listener) {
+                if (localToSceneListeners != null &&
+                        localToSceneListeners.remove(listener)) {
+                    decListenerReasons();
+                }
+                super.removeListener(listener);
+            }
+        }
+
         public final ReadOnlyObjectProperty<Transform> localToSceneTransformProperty() {
             if (localToSceneTransform == null) {
-                localToSceneTransform = new LazyTransformProperty() {
-                    // need this to track number of listeners
-                    private List localToSceneListeners;
-
-                    @Override
-                    protected Transform computeTransform(Transform reuse) {
-                        updateLocalToParentTransform();
-
-                        Node parentNode = Node.this.getParent();
-                        if (parentNode != null) {
-                            return TransformUtils.immutableTransform(reuse,
-                                    ((LazyTransformProperty) parentNode.localToSceneTransformProperty()).getInternalValue(),
-                                    ((LazyTransformProperty) localToParentTransformProperty()).getInternalValue());
-                        } else {
-                            return TransformUtils.immutableTransform(reuse,
-                                    ((LazyTransformProperty) localToParentTransformProperty()).getInternalValue());
-                        }
-                    }
-
-                    @Override
-                    public Object getBean() {
-                        return Node.this;
-                    }
-
-                    @Override
-                    public String getName() {
-                        return "localToSceneTransform";
-                    }
-
-                    @Override
-                    protected boolean validityKnown() {
-                        return listenerReasons > 0;
-                    }
-
-                    @Override
-                    protected int computeValidity() {
-                        Node n = (Node) getBean();
-                        while (n != null) {
-                            int nValid = ((LazyTransformProperty)
-                                    n.localToSceneTransformProperty()).valid;
-
-                            if (nValid == VALID) {
-                                return VALID;
-                            } else if (nValid == INVALID) {
-                                return INVALID;
-                            }
-                            n = n.getParent();
-                        }
-
-                        // Everything up to the root is unknown, so there is no invalid parent
-                        return VALID;
-                    }
-
-                    @Override
-                    public void addListener(InvalidationListener listener) {
-                        incListenerReasons();
-                        if (localToSceneListeners == null) {
-                            localToSceneListeners = new LinkedList<Object>();
-                        }
-                        localToSceneListeners.add(listener);
-                        super.addListener(listener);
-                    }
-
-                    @Override
-                    public void addListener(ChangeListener<? super Transform> listener) {
-                        incListenerReasons();
-                        if (localToSceneListeners == null) {
-                            localToSceneListeners = new LinkedList<Object>();
-                        }
-                        localToSceneListeners.add(listener);
-                        super.addListener(listener);
-                    }
-
-                    @Override
-                    public void removeListener(InvalidationListener listener) {
-                        if (localToSceneListeners != null &&
-                                localToSceneListeners.remove(listener)) {
-                            decListenerReasons();
-                        }
-                        super.removeListener(listener);
-                    }
-
-                    @Override
-                    public void removeListener(ChangeListener<? super Transform> listener) {
-                        if (localToSceneListeners != null &&
-                                localToSceneListeners.remove(listener)) {
-                            decListenerReasons();
-                        }
-                        super.removeListener(listener);
-                    }
-                };
+                localToSceneTransform = new LocalToSceneTransformProperty();
             }
 
             return localToSceneTransform;
@@ -8318,13 +8351,13 @@ public abstract class Node implements EventTarget, Styleable {
    }
 
     // package so that StyleHelper can get at it
-    final Set<PseudoClass> pseudoClassStates = new PseudoClassState();
+    final ObservableSet<PseudoClass> pseudoClassStates = new PseudoClassState();
     /**
      * @return An unmodifiable Set of active pseudo-class states
      */
-    public final Set<PseudoClass> getPseudoClassStates() {
+    public final ObservableSet<PseudoClass> getPseudoClassStates() {
 
-        return Collections.unmodifiableSet(pseudoClassStates);
+        return FXCollections.unmodifiableObservableSet(pseudoClassStates);
 
     }
 
@@ -8383,7 +8416,7 @@ public abstract class Node implements EventTarget, Styleable {
         // apply the CSS immediately and not add it to the scene's queue
         // for deferred action.
         if (getParent() != null && getParent().performingLayout) {
-            impl_processCSS(true);
+            impl_processCSS();
         } else if (getScene() != null) {
             notifyParentsOfInvalidatedCSS();
         }
@@ -8478,8 +8511,6 @@ public abstract class Node implements EventTarget, Styleable {
 
         if (cssFlag == CssFlags.REAPPLY) {
 
-            final boolean hadStyles = styleHelper != null;
-
             // Match new styles if my own indicates I need to reapply
             styleHelper = CssStyleHelper.createStyleHelper(this);
 
@@ -8557,7 +8588,7 @@ public abstract class Node implements EventTarget, Styleable {
             helper = ExpressionHelper.removeListener(helper, listener);
         }
 
-        private Transform getInternalValue() {
+        protected Transform getInternalValue() {
             if (valid == INVALID ||
                     (valid == VALIDITY_UNKNOWN && computeValidity() == INVALID)) {
                 transform = computeTransform(canReuse ? transform : null);

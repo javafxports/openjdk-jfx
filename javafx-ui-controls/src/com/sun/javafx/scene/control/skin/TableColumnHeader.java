@@ -25,7 +25,12 @@
 
 package com.sun.javafx.scene.control.skin;
 
-import com.sun.javafx.PlatformUtil;
+import static com.sun.javafx.scene.control.TableColumnSortTypeWrapper.getSortTypeName;
+import static com.sun.javafx.scene.control.TableColumnSortTypeWrapper.getSortTypeProperty;
+import static com.sun.javafx.scene.control.TableColumnSortTypeWrapper.isAscending;
+import static com.sun.javafx.scene.control.TableColumnSortTypeWrapper.isDescending;
+import static com.sun.javafx.scene.control.TableColumnSortTypeWrapper.setSortType;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,6 +39,12 @@ import javafx.application.ConditionalFeature;
 import javafx.beans.property.DoubleProperty;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
+import javafx.collections.WeakListChangeListener;
+import javafx.css.CssMetaData;
+import javafx.css.PseudoClass;
+import javafx.css.Styleable;
+import javafx.css.StyleableDoubleProperty;
+import javafx.css.StyleableProperty;
 import javafx.event.EventHandler;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
@@ -43,6 +54,7 @@ import javafx.scene.Node;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableColumnBase;
 import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
@@ -51,18 +63,9 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.util.Callback;
 
-import javafx.css.StyleableDoubleProperty;
-import javafx.css.CssMetaData;
-import javafx.css.PseudoClass;
-import javafx.css.StyleableProperty;
 import com.sun.javafx.application.PlatformImpl;
 import com.sun.javafx.css.converters.SizeConverter;
 import com.sun.javafx.scene.control.MultiplePropertyChangeListenerHandler;
-import javafx.collections.WeakListChangeListener;
-import javafx.css.Styleable;
-import javafx.scene.control.TableColumnBase;
-
-import static com.sun.javafx.scene.control.TableColumnSortTypeWrapper.*;
 
 
 /**
@@ -85,8 +88,6 @@ public class TableColumnHeader extends Region {
         this.skin = skin;
         this.column = tc;
         
-        getStyleClass().setAll("column-header");
-
         setFocusTraversable(false);
 
         updateColumnIndex();
@@ -102,7 +103,7 @@ public class TableColumnHeader extends Region {
         changeListenerHandler.registerChangeListener(sceneProperty(), "SCENE");
         
         if (column != null && skin != null) {
-            setSortPos(! column.isSortable() ? -1 : skin.getSortOrder().indexOf(column));
+            updateSortPosition();
             skin.getSortOrder().addListener(weakSortOrderListener);
             skin.getVisibleLeafColumns().addListener(weakVisibleLeafColumnsListener);
         }
@@ -116,6 +117,9 @@ public class TableColumnHeader extends Region {
             changeListenerHandler.registerChangeListener(column.sortableProperty(), "TABLE_COLUMN_SORTABLE");
             changeListenerHandler.registerChangeListener(column.textProperty(), "TABLE_COLUMN_TEXT");
             changeListenerHandler.registerChangeListener(column.graphicProperty(), "TABLE_COLUMN_GRAPHIC");
+
+            column.getStyleClass().addListener(weakStyleClassListener);
+            updateStyleClass();
         }
     }
     
@@ -156,7 +160,12 @@ public class TableColumnHeader extends Region {
         } else if ("TABLE_COLUMN_SORT_NODE".equals(p)) {
             updateSortGrid();
         } else if ("TABLE_COLUMN_SORTABLE".equals(p)) {
-            setSortPos(! column.isSortable() ? -1 : skin.getSortOrder().indexOf(column));
+            // we need to notify all headers that a sortable state has changed,
+            // in case the sort grid in other columns needs to be updated.
+            if (skin.getSortOrder().contains(getTableColumn())) {
+                NestedTableColumnHeader root = getTableHeaderRow().getRootHeader();
+                updateAllHeaders(root);
+            }
         } else if ("TABLE_COLUMN_TEXT".equals(p)) {
             label.setText(column.getText());
         } else if ("TABLE_COLUMN_GRAPHIC".equals(p)) {
@@ -166,7 +175,7 @@ public class TableColumnHeader extends Region {
     
     private ListChangeListener<TableColumnBase<?,?>> sortOrderListener = new ListChangeListener<TableColumnBase<?,?>>() {
         @Override public void onChanged(Change<? extends TableColumnBase<?,?>> c) {
-            setSortPos(! getTableColumn().isSortable() ? -1 : getTableViewSkin().getSortOrder().indexOf(getTableColumn()));
+            updateSortPosition();
         }
     };
     
@@ -176,10 +185,18 @@ public class TableColumnHeader extends Region {
         }
     };
     
+    private ListChangeListener<String> styleClassListener = new ListChangeListener<String>() {
+        @Override public void onChanged(Change<? extends String> c) {
+            updateStyleClass();
+        }
+    };
+    
     private WeakListChangeListener<TableColumnBase<?,?>> weakSortOrderListener =
             new WeakListChangeListener<TableColumnBase<?,?>>(sortOrderListener);
-    private final WeakListChangeListener weakVisibleLeafColumnsListener =
-            new WeakListChangeListener(visibleLeafColumnsListener);
+    private final WeakListChangeListener<TableColumnBase<?,?>> weakVisibleLeafColumnsListener =
+            new WeakListChangeListener<TableColumnBase<?,?>>(visibleLeafColumnsListener);
+    private final WeakListChangeListener<String> weakStyleClassListener =
+            new WeakListChangeListener<String>(styleClassListener);
     
     private static final EventHandler<MouseEvent> mousePressedHandler = new EventHandler<MouseEvent>() {
         @Override public void handle(MouseEvent me) {
@@ -253,9 +270,6 @@ public class TableColumnHeader extends Region {
     
     private double dragOffset;
 
-//    private final TableView table;
-//    protected TableView getTableView() { return table; }
-    
     private final TableViewSkinBase skin;
     protected TableViewSkinBase getTableViewSkin() {
         return skin;
@@ -293,7 +307,7 @@ public class TableColumnHeader extends Region {
     NestedTableColumnHeader getNestedColumnHeader() { return nestedColumnHeader; }
     void setNestedColumnHeader(NestedTableColumnHeader nch) { nestedColumnHeader = nch; }
 
-    private final TableColumnBase column;
+    private final TableColumnBase<?,?> column;
     public TableColumnBase getTableColumn() { return column; }
 
     private TableHeaderRow tableHeaderRow;
@@ -337,6 +351,30 @@ public class TableColumnHeader extends Region {
      *                                                                         *
      **************************************************************************/   
     
+    // RT-29682: When the sortable property of a TableColumnBase changes this
+    // may impact other TableColumnHeaders, as they may need to change their
+    // sort order representation. Rather than install listeners across all 
+    // TableColumn in the sortOrder list for their sortable property, we simply
+    // update the sortPosition of all headers whenever the sortOrder property
+    // changes, assuming the column is within the sortOrder list.
+    private void updateAllHeaders(TableColumnHeader header) {
+        if (header instanceof NestedTableColumnHeader) {
+            List<TableColumnHeader> children = ((NestedTableColumnHeader)header).getColumnHeaders();
+            for (int i = 0; i < children.size(); i++) {
+                updateAllHeaders(children.get(i));
+            }
+        } else {
+            header.updateSortPosition();
+        }
+    }
+    
+    private void updateStyleClass() {
+        // For now we leave the 'column-header' style class intact so that the
+        // appropriate border styles are shown, etc.
+        getStyleClass().setAll("column-header");
+        getStyleClass().addAll(column.getStyleClass());
+    }
+    
     private void updateScene() {
         // RT-17684: If the TableColumn widths are all currently the default,
         // we attempt to 'auto-size' based on the preferred width of the first
@@ -362,9 +400,6 @@ public class TableColumnHeader extends Region {
         }
 
         changeListenerHandler.dispose();
-        
-        idProperty().unbind();
-        styleProperty().unbind();
     }
     
     private boolean isSortingEnabled() {
@@ -403,8 +438,8 @@ public class TableColumnHeader extends Region {
         }
     }
     
-    private void setSortPos(int sortPos) {
-        this.sortPos = sortPos;
+    private void updateSortPosition() {
+        this.sortPos = ! column.isSortable() ? -1 : getSortPosition(skin.getSortOrder(), column);
         updateSortGrid();
     }
     
@@ -430,7 +465,7 @@ public class TableColumnHeader extends Region {
         int visibleLeafIndex = skin.getVisibleLeafIndex(getTableColumn());
         if (visibleLeafIndex == -1) return;
         
-        final int sortColumnCount = getTableViewSkin().getSortOrder().size();
+        final int sortColumnCount = getSortColumnCount(getTableViewSkin().getSortOrder());
         boolean showSortOrderDots = sortPos <= 3 && sortColumnCount > 1;
         
         Node _sortArrow = null;
@@ -566,71 +601,7 @@ public class TableColumnHeader extends Region {
         pseudoClassStateChanged(PSEUDO_CLASS_LAST_VISIBLE, isLastVisibleColumn);
     }
 
-    public static void sortColumn(final ObservableList<TableColumnBase<?,?>> sortOrder, 
-            final TableColumnBase column, 
-            final boolean isSortingEnabled, 
-            final boolean isSortColumn, 
-            final boolean addColumn) {
-        if (! isSortingEnabled) return;
-        
-        // we only allow sorting on the leaf columns and columns
-        // that actually have comparators defined, and are sortable
-        if (column == null || column.getColumns().size() != 0 || column.getComparator() == null || !column.isSortable()) return;
-//        final int sortPos = getTable().getSortOrder().indexOf(column);
-//        final boolean isSortColumn = sortPos != -1;
-
-        // addColumn is true e.g. when the user is holding down Shift
-        if (addColumn) {
-            if (!isSortColumn) {
-                setSortType(column, TableColumn.SortType.ASCENDING);
-                sortOrder.add(column);
-            } else if (isAscending(column)) {
-                setSortType(column, TableColumn.SortType.DESCENDING);
-            } else {
-                int i = sortOrder.indexOf(column);
-                if (i != -1) {
-                    sortOrder.remove(i);
-                }
-            }
-        } else {
-            // the user has clicked on a column header - we should add this to
-            // the TableView sortOrder list if it isn't already there.
-            if (isSortColumn && sortOrder.size() == 1) {
-                // the column is already being sorted, and it's the only column.
-                // We therefore move through the 2nd or 3rd states:
-                //   1st click: sort ascending
-                //   2nd click: sort descending
-                //   3rd click: natural sorting (sorting is switched off) 
-                if (isAscending(column)) {
-                    setSortType(column, TableColumn.SortType.DESCENDING);
-                } else {
-                    // remove from sort
-                    sortOrder.remove(column);
-                }
-            } else if (isSortColumn) {
-                // the column is already being used to sort, so we toggle its
-                // sortAscending property, and also make the column become the
-                // primary sort column
-                if (isAscending(column)) {
-                    setSortType(column, TableColumn.SortType.DESCENDING);
-                } else if (isDescending(column)) {
-                    setSortType(column, TableColumn.SortType.ASCENDING);
-                }
-                
-                // to prevent multiple sorts, we make a copy of the sort order
-                // list, moving the column value from the current position to 
-                // its new position at the front of the list
-                List<TableColumnBase<?,?>> sortOrderCopy = new ArrayList<TableColumnBase<?,?>>(sortOrder);
-                sortOrderCopy.remove(column);
-                sortOrderCopy.add(0, column);
-                sortOrder.setAll(column);
-            } else {
-                // add to the sort order, in ascending form
-                setSortType(column, TableColumn.SortType.ASCENDING);
-                sortOrder.setAll(column);
-            }
-        }
-    }
+    
     
     
     
@@ -652,8 +623,8 @@ public class TableColumnHeader extends Region {
         }
         
         double sortWidth = 0;
-        double w = snapSize(getWidth()) - (snapSpace(getInsets().getLeft()) + snapSpace(getInsets().getRight()));
-        double h = getHeight() - getInsets().getTop() + getInsets().getBottom();
+        double w = snapSize(getWidth()) - (snappedLeftInset() + snappedRightInset());
+        double h = getHeight() - (snappedTopInset() + snappedBottomInset());
         double x = w;
         
         // a bit hacky, but we REALLY don't want the arrow shape to fluctuate 
@@ -666,13 +637,13 @@ public class TableColumnHeader extends Region {
             sortWidth = sortArrow.prefWidth(-1);
             x -= sortWidth;
             sortArrow.resize(sortWidth, sortArrow.prefHeight(-1));
-            positionInArea(sortArrow, x, getInsets().getTop(), 
+            positionInArea(sortArrow, x, snappedTopInset(),
                     sortWidth, h, 0, HPos.CENTER, VPos.CENTER);
         }
 
         if (label != null) {
             double labelWidth = w - sortWidth;
-            label.resizeRelocate(getInsets().getLeft(), 0, labelWidth, getHeight());
+            label.resizeRelocate(snappedLeftInset(), 0, labelWidth, getHeight());
         }
     }
 
@@ -821,8 +792,121 @@ public class TableColumnHeader extends Region {
         getTableHeaderRow().setReorderingRegion(null);
         dragOffset = 0.0F;
     }
-
     
+    
+    
+    /***************************************************************************
+     *                                                                         *
+     * Static utility methods                                                  *
+     *                                                                         *
+     **************************************************************************/ 
+
+    // Because it is possible that some columns are in the sortOrder list but are
+    // not themselves sortable, we cannot just do sortOrderList.indexOf(column).
+    // Therefore, this method does the proper work required of iterating through
+    // and ignoring non-sortable (and null) columns in the sortOrder list.
+    private static int getSortPosition(final ObservableList<TableColumnBase> sortOrder, final TableColumnBase tc) {
+        if (tc == null) {
+            return -1;
+        }
+        
+        int pos = 0;
+        for (int i = 0; i < sortOrder.size(); i++) {
+            TableColumnBase _tc = sortOrder.get(i);
+            if (_tc == null || ! _tc.isSortable()) {
+                continue;
+            }
+            
+            if (tc.equals(_tc)) {
+                return pos;
+            }
+            
+            pos++;
+        }
+        return -1;
+    }
+    
+    // as with getSortPosition above, this method iterates through the sortOrder
+    // list ignoring the null and non-sortable columns, so that we get the correct
+    // number of columns in the sortOrder list.
+    private static int getSortColumnCount(final ObservableList<TableColumnBase> sortOrder) {
+        int pos = 0;
+        for (int i = 0; i < sortOrder.size(); i++) {
+            TableColumnBase _tc = sortOrder.get(i);
+            if (_tc == null || ! _tc.isSortable()) {
+                continue;
+            }
+            
+            pos++;
+        }
+        return pos;
+    }
+    
+    public static void sortColumn(final ObservableList<TableColumnBase<?,?>> sortOrder, 
+            final TableColumnBase column, 
+            final boolean isSortingEnabled, 
+            final boolean isSortColumn, 
+            final boolean addColumn) {
+        if (! isSortingEnabled) return;
+        
+        // we only allow sorting on the leaf columns and columns
+        // that actually have comparators defined, and are sortable
+        if (column == null || column.getColumns().size() != 0 || column.getComparator() == null || !column.isSortable()) return;
+//        final int sortPos = getTable().getSortOrder().indexOf(column);
+//        final boolean isSortColumn = sortPos != -1;
+
+        // addColumn is true e.g. when the user is holding down Shift
+        if (addColumn) {
+            if (!isSortColumn) {
+                setSortType(column, TableColumn.SortType.ASCENDING);
+                sortOrder.add(column);
+            } else if (isAscending(column)) {
+                setSortType(column, TableColumn.SortType.DESCENDING);
+            } else {
+                int i = sortOrder.indexOf(column);
+                if (i != -1) {
+                    sortOrder.remove(i);
+                }
+            }
+        } else {
+            // the user has clicked on a column header - we should add this to
+            // the TableView sortOrder list if it isn't already there.
+            if (isSortColumn && sortOrder.size() == 1) {
+                // the column is already being sorted, and it's the only column.
+                // We therefore move through the 2nd or 3rd states:
+                //   1st click: sort ascending
+                //   2nd click: sort descending
+                //   3rd click: natural sorting (sorting is switched off) 
+                if (isAscending(column)) {
+                    setSortType(column, TableColumn.SortType.DESCENDING);
+                } else {
+                    // remove from sort
+                    sortOrder.remove(column);
+                }
+            } else if (isSortColumn) {
+                // the column is already being used to sort, so we toggle its
+                // sortAscending property, and also make the column become the
+                // primary sort column
+                if (isAscending(column)) {
+                    setSortType(column, TableColumn.SortType.DESCENDING);
+                } else if (isDescending(column)) {
+                    setSortType(column, TableColumn.SortType.ASCENDING);
+                }
+                
+                // to prevent multiple sorts, we make a copy of the sort order
+                // list, moving the column value from the current position to 
+                // its new position at the front of the list
+                List<TableColumnBase<?,?>> sortOrderCopy = new ArrayList<TableColumnBase<?,?>>(sortOrder);
+                sortOrderCopy.remove(column);
+                sortOrderCopy.add(0, column);
+                sortOrder.setAll(column);
+            } else {
+                // add to the sort order, in ascending form
+                setSortType(column, TableColumn.SortType.ASCENDING);
+                sortOrder.setAll(column);
+            }
+        }
+    }
 
     /***************************************************************************
      *                                                                         *

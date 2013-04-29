@@ -471,7 +471,7 @@ public class PlatformImpl {
      * Set the platform user agent stylesheet to the default.
      */
     public static void setDefaultPlatformUserAgentStylesheet() {
-        setPlatformUserAgentStylesheet(Application.STYLESHEET_CASPIAN);
+        setPlatformUserAgentStylesheet(Application.STYLESHEET_MODENA);
     }
 
     private static boolean isModena = false;
@@ -497,7 +497,7 @@ public class PlatformImpl {
      *
      * @return true if using caspian stylesheet
      */
-    public static boolean isCaspain() {
+    public static boolean isCaspian() {
         return isCaspian;
     }
 
@@ -506,8 +506,7 @@ public class PlatformImpl {
      * name constants.
      */
     public static void setPlatformUserAgentStylesheet(String stylesheetUrl) {
-        isModena = Application.STYLESHEET_MODENA.equals(stylesheetUrl);
-        isCaspian = Application.STYLESHEET_CASPIAN.equals(stylesheetUrl);
+        isModena = isCaspian = false;
         // check for command line override
         String overrideStylesheetUrl =
                 AccessController.doPrivileged(
@@ -519,6 +518,7 @@ public class PlatformImpl {
         if (overrideStylesheetUrl != null) stylesheetUrl = overrideStylesheetUrl;
         // check for named theme constants for modena and caspian
         if (Application.STYLESHEET_CASPIAN.equalsIgnoreCase(stylesheetUrl)) {
+            isCaspian = true;
             AccessController.doPrivileged(
                     new PrivilegedAction() {
                         @Override public Object run() {
@@ -535,7 +535,7 @@ public class PlatformImpl {
                         }
                     });
         } else if (Application.STYLESHEET_MODENA.equalsIgnoreCase(stylesheetUrl)) {
-            System.out.println("Using Modena Theme");
+            isModena = true;
             AccessController.doPrivileged(
                     new PrivilegedAction() {
                         @Override public Object run() {

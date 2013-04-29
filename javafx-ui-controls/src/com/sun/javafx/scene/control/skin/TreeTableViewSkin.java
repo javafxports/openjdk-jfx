@@ -139,7 +139,6 @@ public class TreeTableViewSkin<S> extends TableViewSkinBase<S, TreeTableView<S>,
     }
     
     @Override public void dispose() {
-        getBehavior().dispose();
         treeItemToListMap.remove(getSkinnable());
         
         super.dispose();
@@ -336,7 +335,7 @@ public class TreeTableViewSkin<S> extends TableViewSkinBase<S, TreeTableView<S>,
         Node n = cell.getSkin() == null ? null : cell.getSkin().getNode();
         if (n instanceof Region) {
             Region r = (Region) n;
-            padding = r.getInsets().getLeft() + r.getInsets().getRight();
+            padding = r.snappedLeftInset() + r.snappedRightInset();
         } 
         
         TreeTableRow treeTableRow = new TreeTableRow();

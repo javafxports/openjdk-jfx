@@ -25,13 +25,15 @@
 
 package javafx.scene.control;
 
-import com.sun.javafx.scene.control.skin.ListViewSkin;
-import com.sun.javafx.scene.control.skin.VirtualFlow;
-import com.sun.javafx.scene.control.test.ControlAsserts;
-import com.sun.javafx.scene.control.test.Person;
-import com.sun.javafx.scene.control.test.RT_22463_Person;
-import static javafx.scene.control.ControlTestUtils.assertStyleClassContains;
-import static org.junit.Assert.*;
+import static com.sun.javafx.scene.control.infrastructure.ControlTestUtils.assertStyleClassContains;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.util.Arrays;
 
 import javafx.beans.property.ObjectProperty;
@@ -40,10 +42,20 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.geometry.Orientation;
+import javafx.scene.Node;
+import javafx.scene.layout.StackPane;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
+
+import com.sun.javafx.scene.control.infrastructure.VirtualFlowTestUtils;
+import com.sun.javafx.scene.control.infrastructure.StageLoader;
+import com.sun.javafx.scene.control.skin.VirtualFlow;
+import com.sun.javafx.scene.control.skin.VirtualScrollBar;
+import com.sun.javafx.scene.control.test.Person;
+import com.sun.javafx.scene.control.test.RT_22463_Person;
+import com.sun.javafx.tk.Toolkit;
 
 public class ListViewTest {
     private ListView<String> listView;
@@ -441,8 +453,8 @@ public class ListViewTest {
             new Person("Emma", "Jones", "emma.jones@example.com"),
             new Person("Michael", "Brown", "michael.brown@example.com")));
         
-        ControlAsserts.assertRowsNotEmpty(list, 0, 5); // rows 0 - 5 should be filled
-        ControlAsserts.assertRowsEmpty(list, 5, -1); // rows 5+ should be empty
+        VirtualFlowTestUtils.assertRowsNotEmpty(list, 0, 5); // rows 0 - 5 should be filled
+        VirtualFlowTestUtils.assertRowsEmpty(list, 5, -1); // rows 5+ should be empty
         
         // now we replace the data and expect the cells that have no data
         // to be empty
@@ -450,8 +462,8 @@ public class ListViewTest {
             new Person("*_*Emma", "Jones", "emma.jones@example.com"),
             new Person("_Michael", "Brown", "michael.brown@example.com")));
         
-        ControlAsserts.assertRowsNotEmpty(list, 0, 2); // rows 0 - 2 should be filled
-        ControlAsserts.assertRowsEmpty(list, 2, -1); // rows 2+ should be empty
+        VirtualFlowTestUtils.assertRowsNotEmpty(list, 0, 2); // rows 0 - 2 should be filled
+        VirtualFlowTestUtils.assertRowsEmpty(list, 2, -1); // rows 2+ should be empty
     }
     
     @Test public void test_rt22463() {
@@ -465,8 +477,8 @@ public class ListViewTest {
         p2.setId(2l);
         p2.setName("name2");
         list.setItems(FXCollections.observableArrayList(p1, p2));
-        ControlAsserts.assertCellTextEquals(list, 0, "name1");
-        ControlAsserts.assertCellTextEquals(list, 1, "name2");
+        VirtualFlowTestUtils.assertCellTextEquals(list, 0, "name1");
+        VirtualFlowTestUtils.assertCellTextEquals(list, 1, "name2");
         
         // now we change the persons but they are still equal as the ID's don't
         // change - but the items list is cleared so the cells should update
@@ -478,8 +490,8 @@ public class ListViewTest {
         new_p2.setName("updated name2");
         list.getItems().clear();
         list.setItems(FXCollections.observableArrayList(new_p1, new_p2));
-        ControlAsserts.assertCellTextEquals(list, 0, "updated name1");
-        ControlAsserts.assertCellTextEquals(list, 1, "updated name2");
+        VirtualFlowTestUtils.assertCellTextEquals(list, 0, "updated name1");
+        VirtualFlowTestUtils.assertCellTextEquals(list, 1, "updated name2");
     }
     
     @Test public void test_rt28637() {
@@ -504,14 +516,14 @@ public class ListViewTest {
         
         final ListView<String> listView = new ListView<String>();
         listView.setItems(emptyModel);
-        ControlAsserts.assertRowsEmpty(listView, 0, 5);
+        VirtualFlowTestUtils.assertRowsEmpty(listView, 0, 5);
         
         ObservableList<String> mod = FXCollections.observableArrayList();
         String value = System.currentTimeMillis()+"";
         mod.add(value);
         listView.setItems(mod);
-        ControlAsserts.assertCellCount(listView, 1);
-        ControlAsserts.assertCellTextEquals(listView, 0, value);
+        VirtualFlowTestUtils.assertCellCount(listView, 1);
+        VirtualFlowTestUtils.assertCellTextEquals(listView, 0, value);
     }
     
     @Test public void test_rt28819_2() {
@@ -519,13 +531,38 @@ public class ListViewTest {
         
         final ListView<String> listView = new ListView<String>();
         listView.setItems(emptyModel);
-        ControlAsserts.assertRowsEmpty(listView, 0, 5);
+        VirtualFlowTestUtils.assertRowsEmpty(listView, 0, 5);
         
         ObservableList<String> mod1 = FXCollections.observableArrayList();
         String value1 = System.currentTimeMillis()+"";
         mod1.add(value1);
         listView.getItems().setAll(mod1);
-        ControlAsserts.assertCellCount(listView, 1);
-        ControlAsserts.assertCellTextEquals(listView, 0, value1);
+        VirtualFlowTestUtils.assertCellCount(listView, 1);
+        VirtualFlowTestUtils.assertCellTextEquals(listView, 0, value1);
+    }
+    
+    @Test public void test_rt29390() {
+        ObservableList<String> items = FXCollections.observableArrayList(
+                "String1", "String2", "String3", "String4",
+                "String1", "String2", "String3", "String4",
+                "String1", "String2", "String3", "String4",
+                "String1", "String2", "String3", "String4"
+        );
+        
+        final ListView<String> listView = new ListView<String>(items);
+        listView.setMaxHeight(50);
+        listView.setPrefHeight(50);
+        
+        // we want the vertical scrollbar
+        VirtualScrollBar scrollBar = VirtualFlowTestUtils.getVirtualFlowVerticalScrollbar(listView);
+        
+        assertNotNull(scrollBar);
+        assertTrue(scrollBar.isVisible());
+        assertTrue(scrollBar.getVisibleAmount() > 0.0);
+        assertTrue(scrollBar.getVisibleAmount() < 1.0);
+        
+        // this next test is likely to be brittle, but we'll see...If it is the
+        // cause of failure then it can be commented out
+        assertEquals(0.125, scrollBar.getVisibleAmount(), 0.0);
     }
 }

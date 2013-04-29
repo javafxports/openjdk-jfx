@@ -22,6 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.sun.glass.ui.swt;
 
 import com.sun.glass.events.WindowEvent;
@@ -30,7 +31,6 @@ import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.Screen;
 import com.sun.glass.ui.View;
 import com.sun.glass.ui.Window;
-import com.sun.glass.ui.accessible.AccessibleRoot;
 
 import org.eclipse.swt.*;
 import org.eclipse.swt.graphics.*;
@@ -74,6 +74,7 @@ final class SWTWindow extends Window {
         }
         int [] shellEvents = new int [] {
             SWT.Activate,
+            SWT.Close,
             SWT.Deactivate,
             SWT.Iconify,
             SWT.Deiconify,
@@ -137,6 +138,11 @@ final class SWTWindow extends Window {
                 Rectangle rect = shell.getClientArea();
                 Control [] children = shell.getChildren();
                 for (int i=0; i<children.length; i++) children[i].setBounds(rect);
+                break;
+            }
+            case SWT.Close: {
+                notifyClose();
+                event.doit = false;
                 break;
             }
             case SWT.Dispose: {
@@ -401,9 +407,5 @@ final class SWTWindow extends Window {
         return 0;
     }
 
-    @Override
-    protected void _accessibilityInitIsComplete(long ptr, AccessibleRoot acc) {
-        throw new RuntimeException("_accessibilityInitIsComplete not implemented.");
-    }
 }
 

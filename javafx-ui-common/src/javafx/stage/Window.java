@@ -25,9 +25,9 @@
 
 package javafx.stage;
 
+import java.security.AllPermission;
 import java.security.AccessControlContext;
 import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Iterator;
 
 import javafx.beans.property.DoubleProperty;
@@ -53,8 +53,8 @@ import javafx.scene.Scene;
 import com.sun.javafx.WeakReferenceQueue;
 import com.sun.javafx.beans.annotations.NoInit;
 import com.sun.javafx.css.StyleManager;
-import com.sun.javafx.stage.WindowBoundsAccessor;
 import com.sun.javafx.stage.WindowEventDispatcher;
+import com.sun.javafx.stage.WindowHelper;
 import com.sun.javafx.stage.WindowPeerListener;
 import com.sun.javafx.tk.TKPulseListener;
 import com.sun.javafx.tk.TKScene;
@@ -77,26 +77,46 @@ public class Window implements EventTarget {
      */
     private static WeakReferenceQueue<Window>windowQueue = new WeakReferenceQueue<Window>();
 
-    /**
-     * Allows window peer listeners to directly change window location and size
-     * without changing the xExplicit, yExplicit, widthExplicit and
-     * heightExplicit values.
-     */
-    private static final WindowBoundsAccessor BOUNDS_ACCESSOR =
-            new WindowBoundsAccessor() {
-                @Override
-                public void setLocation(Window window, double x, double y) {
-                    window.x.set(x - window.winTranslateX);
-                    window.y.set(y - window.winTranslateY);
-                }
+    static {
+        WindowHelper.setWindowAccessor(
+                new WindowHelper.WindowAccessor() {
+                    @Override
+                    public void setWindowTranslate(Window window,
+                                                   double translateX,
+                                                   double translateY) {
+                        window.setWindowTranslate(translateX, translateY);
+                    }
 
-                @Override
-                public void setSize(Window window,
-                                    double width, double height) {
-                    window.width.set(width);
-                    window.height.set(height);
-                }
-            };
+                    @Override
+                    public double getScreenX(Window window) {
+                        return window.getX() + window.winTranslateX;
+                    }
+
+                    @Override
+                    public double getScreenY(Window window) {
+                        return window.getY() + window.winTranslateY;
+                    }
+
+                    /**
+                     * Allow window peer listeners to directly change window
+                     * location and size without changing the xExplicit,
+                     * yExplicit, widthExplicit and heightExplicit values.
+                     */
+                    @Override
+                    public void setLocation(Window window, double x, double y) {
+                        window.x.set(x - window.winTranslateX);
+                        window.y.set(y - window.winTranslateY);
+                    }
+
+                    @Override
+                    public void setSize(Window window,
+                                        double width,
+                                        double height) {
+                        window.width.set(width);
+                        window.height.set(height);
+                    }
+                });
+    }
 
     /**
      * Return all Windows
@@ -108,14 +128,12 @@ public class Window implements EventTarget {
     @Deprecated
     @NoInit
     public static Iterator<Window> impl_getWindows() {
-        final Iterator iterator = AccessController.doPrivileged(
-            new PrivilegedAction<Iterator>() {
-                @Override public Iterator run() {
-                    return windowQueue.iterator();
-                }
-            }
-        );
-        return iterator;
+        final SecurityManager securityManager = System.getSecurityManager();
+        if (securityManager != null) {
+            securityManager.checkPermission(new AllPermission());
+        }
+
+        return (Iterator<Window>) windowQueue.iterator();
     }
 
     private final AccessControlContext acc = AccessController.getContext();
@@ -425,6 +443,7 @@ public class Window implements EventTarget {
                 // will also trigger scene's peer disposal.
                 if (oldScene != null) {
                     oldScene.impl_setWindow(null);
+                    StyleManager.getInstance().forget(oldScene);
                 }
                 if (newScene != null) {
                     final Window oldWindow = newScene.getWindow();
@@ -731,8 +750,6 @@ public class Window implements EventTarget {
                         peerListener = new WindowPeerListener(Window.this);
                     }
 
-                    peerListener.setBoundsAccessor(BOUNDS_ACCESSOR);
-
                     // Setup listener for changes coming back from peer
                     impl_peer.setTKStageListener(peerListener);
                     // Register pulse listener
@@ -777,6 +794,7 @@ public class Window implements EventTarget {
                     if (getScene() != null) {
                         impl_peer.setScene(null);
                         getScene().impl_disposePeer();
+                        StyleManager.getInstance().forget(getScene());
                     }
 
                     // Remove toolkit pulse listener

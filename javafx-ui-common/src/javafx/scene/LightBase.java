@@ -35,6 +35,8 @@ import com.sun.javafx.jmx.MXNodeAlgorithmContext;
 import com.sun.javafx.scene.DirtyBits;
 import com.sun.javafx.sg.PGLightBase;
 import com.sun.javafx.tk.Toolkit;
+import javafx.application.ConditionalFeature;
+import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.property.BooleanProperty;
@@ -45,6 +47,7 @@ import javafx.collections.ListChangeListener.Change;
 import javafx.collections.ObservableList;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Shape3D;
+import sun.util.logging.PlatformLogger;
 
 /**
  * The {@code LightBase} class provides definitions of common properties for
@@ -53,6 +56,10 @@ import javafx.scene.shape.Shape3D;
  * <ul>
  * <li>The color that defines color of the light source.
  * </ul>
+ *
+ * Note that this is a conditional feature. See
+ * {@link javafx.application.ConditionalFeature#SCENE3D ConditionalFeature.SCENE3D}
+ * for more information.
  *
  * @since JavaFX 8
  */
@@ -73,6 +80,12 @@ public abstract class LightBase extends Node {
      * @param color the color of the light source
      */
     protected LightBase(Color color) {
+        if (!Platform.isSupported(ConditionalFeature.SCENE3D)) {
+            String logname = LightBase.class.getName();
+            PlatformLogger.getLogger(logname).warning("System can't support "
+                                                      + "ConditionalFeature.SCENE3D");
+        }
+        
         setColor(color);
         this.localToSceneTransformProperty().addListener(new InvalidationListener() {
             @Override
@@ -172,6 +185,24 @@ public abstract class LightBase extends Node {
         return scope;
     }
 
+    @Override
+    void scenesChanged(final Scene newScene, final SubScene newSubScene,
+                       final Scene oldScene, final SubScene oldSubScene) {
+        // This light is owned by the Scene/SubScene, and thus must change
+        // accordingly. Note lights can owned by either a Scene or SubScene,
+        // but not both.
+        if (oldSubScene != null) {
+            oldSubScene.removeLight(this);
+        } else if (oldScene != null) {
+            oldScene.removeLight(this);
+        }
+        if (newSubScene != null) {
+            newSubScene.addLight(this);
+        } else if (newScene != null) {
+            newScene.addLight(this);
+        }
+    }
+
     /**
      * @treatAsPrivate implementation detail
      * @deprecated This is an internal API that is not intended for use and will be removed in the next version
@@ -206,11 +237,6 @@ public abstract class LightBase extends Node {
             // TODO: 3D - For now, we are treating the scene as world. This may need to change
             // for the fixed eye position case.
             pgLightBase.setWorldTransform(localToSceneTx);
-        }
-        if (getSubScene() == null) {
-            getScene().addLight(this);
-        } else {
-            getSubScene().addLight(this);
         }
     }
 

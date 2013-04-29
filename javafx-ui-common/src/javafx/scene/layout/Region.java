@@ -353,6 +353,7 @@ public class Region extends Parent {
         if (snapToPixel == null) {
             if (_snapToPixel != value) {
                 _snapToPixel = value;
+                updateSnappedInsets();
                 requestParentLayout();
             }
         } else {
@@ -374,6 +375,7 @@ public class Region extends Parent {
                     boolean value = get();
                     if (_snapToPixel != value) {
                         _snapToPixel = value;
+                        updateSnappedInsets();
                         requestParentLayout();
                     }
                 }
@@ -557,6 +559,7 @@ public class Region extends Parent {
 
         void fireValueChanged() {
             cache = null;
+            updateSnappedInsets();
             requestLayout();
             ExpressionHelper.fireValueChangedEvent(helper);
         }
@@ -593,6 +596,31 @@ public class Region extends Parent {
             return cache;
         }
     };
+
+    /**
+     * cached results of snapped insets, this are used a lot during layout so makes sense
+     * to keep fast access cached copies here.
+     */
+    private double snappedTopInset = 0;
+    private double snappedRightInset = 0;
+    private double snappedBottomInset = 0;
+    private double snappedLeftInset = 0;
+
+    /** Called to update the cached snapped insets */
+    private void updateSnappedInsets() {
+        final Insets insets = getInsets();
+        if (_snapToPixel) {
+            snappedTopInset = Math.ceil(insets.getTop());
+            snappedRightInset = Math.ceil(insets.getRight());
+            snappedBottomInset = Math.ceil(insets.getBottom());
+            snappedLeftInset = Math.ceil(insets.getLeft());
+        } else {
+            snappedTopInset = insets.getTop();
+            snappedRightInset = insets.getRight();
+            snappedBottomInset = insets.getBottom();
+            snappedLeftInset = insets.getLeft();
+        }
+    }
 
     /**
     * The width of this resizable node.  This property is set by the region's parent
@@ -1354,6 +1382,52 @@ public class Region extends Parent {
         return snapPosition(value, isSnapToPixel());
     }
 
+
+    /**
+     * Utility method to get the top inset which includes padding and border
+     * inset. Then snapped to whole pixels if isSnapToPixel() is true.
+     *
+     * @since 8.0
+     * @return Rounded up insets top
+     */
+    public final double snappedTopInset() {
+        return snappedTopInset;
+    }
+
+    /**
+     * Utility method to get the bottom inset which includes padding and border
+     * inset. Then snapped to whole pixels if isSnapToPixel() is true.
+     *
+     * @since 8.0
+     * @return Rounded up insets bottom
+     */
+    public final double snappedBottomInset() {
+        return snappedBottomInset;
+    }
+
+    /**
+     * Utility method to get the left inset which includes padding and border
+     * inset. Then snapped to whole pixels if isSnapToPixel() is true.
+     *
+     * @since 8.0
+     * @return Rounded up insets left
+     */
+    public final double snappedLeftInset() {
+        return snappedLeftInset;
+    }
+
+    /**
+     * Utility method to get the right inset which includes padding and border
+     * inset. Then snapped to whole pixels if isSnapToPixel() is true.
+     *
+     * @since 8.0
+     * @return Rounded up insets right
+     */
+    public final double snappedRightInset() {
+        return snappedRightInset;
+    }
+
+
     double computeChildMinAreaWidth(Node child, Insets margin) {
         return computeChildMinAreaWidth(child, margin, -1);
     }
@@ -1442,7 +1516,7 @@ public class Region extends Parent {
         return left + snapSize(boundedSize(child.minWidth(alt), max, child.maxWidth(alt))) + right;
     }
 
-     double computeChildMaxAreaHeight(Node child, Insets margin, double width) {
+    double computeChildMaxAreaHeight(Node child, Insets margin, double width) {
         double max = child.maxHeight(-1);
         if (max == Double.MAX_VALUE) {
             return max;
@@ -1905,7 +1979,7 @@ public class Region extends Parent {
     /** @treatAsPrivate */
     @Override public void impl_updatePG() {
         super.impl_updatePG();
-        if (_shape != null) _shape.impl_updatePG();
+        if (_shape != null) _shape.impl_syncPGNode();
         PGRegion pg = (PGRegion) impl_getPGNode();
 
         final boolean sizeChanged = impl_isDirty(DirtyBits.NODE_GEOMETRY);

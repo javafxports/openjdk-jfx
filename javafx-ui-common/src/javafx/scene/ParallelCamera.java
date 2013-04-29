@@ -28,6 +28,7 @@ package javafx.scene;
 import com.sun.javafx.geom.PickRay;
 import com.sun.javafx.geom.Vec3d;
 import com.sun.javafx.geom.transform.Affine3D;
+import com.sun.javafx.geom.transform.GeneralTransform3D;
 import com.sun.javafx.sg.PGNode;
 import com.sun.javafx.sg.PGParallelCamera;
 import com.sun.javafx.tk.Toolkit;
@@ -70,17 +71,32 @@ public class ParallelCamera extends Camera {
     }
 
     @Override
-    final PickRay computePickRay(double localX, double localY,
-                           double viewWidth, double viewHeight,
-                           PickRay pickRay) {
-        if (pickRay == null) {
-            pickRay = new PickRay();
-        }
-        pickRay.set(localX, localY);
+    final PickRay computePickRay(double x, double y, PickRay pickRay) {
+        return PickRay.computeParallelPickRay(x, y, getCameraTransform(), pickRay);
+    }
 
-        if (getScene() != null) {
-            pickRay.transform(getCameraTransform());
+    @Override
+    void computeProjectionTransform(GeneralTransform3D proj) {
+        final double viewWidth = getViewWidth();
+        final double viewHeight = getViewHeight();
+        final double halfDepth =
+                (viewWidth > viewHeight) ? viewWidth / 2.0 : viewHeight / 2.0;
+
+        proj.ortho(0.0, viewWidth, viewHeight, 0.0, -halfDepth, halfDepth);
+    }
+
+    @Override
+    protected void computeViewTransform(Affine3D view) {
+        view.setToIdentity();
+    }
+
+    @Override
+    Vec3d computePosition(Vec3d position) {
+        if (position == null) {
+            position = new Vec3d();
         }
-        return pickRay;
+
+        position.set(0.0, 0.0, -1.0);
+        return position;
     }
 }

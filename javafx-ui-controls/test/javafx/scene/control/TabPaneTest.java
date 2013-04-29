@@ -25,9 +25,9 @@
 
 package javafx.scene.control;
 
-import static javafx.scene.control.ControlTestUtils.assertPseudoClassDoesNotExist;
-import static javafx.scene.control.ControlTestUtils.assertPseudoClassExists;
-import static javafx.scene.control.ControlTestUtils.assertStyleClassContains;
+import static com.sun.javafx.scene.control.infrastructure.ControlTestUtils.assertPseudoClassDoesNotExist;
+import static com.sun.javafx.scene.control.infrastructure.ControlTestUtils.assertPseudoClassExists;
+import static com.sun.javafx.scene.control.infrastructure.ControlTestUtils.assertStyleClassContains;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -657,8 +657,8 @@ public class TabPaneTest {
 
         root.getChildren().add(tabPane);
         show();
+        tabPane.requestFocus();
 
-        tk.firePulse();
         assertTrue(tabPane.isFocused());
         
         tab2.setDisable(true);
@@ -668,13 +668,11 @@ public class TabPaneTest {
 
         KeyEventFirer keyboard = new KeyEventFirer(tabPane);
         keyboard.doRightArrowPress();
-        tk.firePulse();
 
         assertEquals(2, tabPane.getSelectionModel().getSelectedIndex());
         assertEquals(tab3, tabPane.getSelectionModel().getSelectedItem());
 
         keyboard.doLeftArrowPress();
-        tk.firePulse();
 
         assertEquals(0, tabPane.getSelectionModel().getSelectedIndex());
         assertEquals(tab1, tabPane.getSelectionModel().getSelectedItem());
