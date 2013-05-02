@@ -29,4 +29,6 @@ public enum CompositeMode {
     CLEAR,
     SRC,
     SRC_OVER,
+    DST_OUT,
+    ADD,
 }
