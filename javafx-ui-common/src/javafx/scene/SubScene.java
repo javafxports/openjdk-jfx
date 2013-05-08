@@ -42,6 +42,8 @@ import com.sun.javafx.sg.PGLightBase;
 import com.sun.javafx.sg.PGNode;
 import com.sun.javafx.sg.PGSubScene;
 import com.sun.javafx.tk.Toolkit;
+import javafx.application.ConditionalFeature;
+import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.DoublePropertyBase;
 import javafx.beans.property.ObjectProperty;
@@ -50,6 +52,7 @@ import javafx.geometry.NodeOrientation;
 import javafx.geometry.Point3D;
 import javafx.scene.input.PickResult;
 import javafx.scene.paint.Paint;
+import sun.util.logging.PlatformLogger;
 
 /**
  * The {@code SubScene} class is the container for content in a scene graph.
@@ -101,6 +104,21 @@ public class SubScene extends Node {
             boolean depthBuffer, boolean antiAliasing) {
         this(root, width, height);
         this.depthBuffer = depthBuffer;
+        
+        // NOTE: this block will be removed once implement anti-aliasing
+        if (antiAliasing) {
+            String logname = SubScene.class.getName();
+            PlatformLogger.getLogger(logname).warning("3D anti-aliasing is "
+                    + "not supported yet.");
+        }
+
+        if ((depthBuffer || antiAliasing)
+                && !Platform.isSupported(ConditionalFeature.SCENE3D)) {
+            String logname = SubScene.class.getName();
+            PlatformLogger.getLogger(logname).warning("System can't support "
+                    + "ConditionalFeature.SCENE3D");
+            // TODO: 3D - ignore depthBuffer and antiAliasing at rendering time
+        }
         //TODO: 3D - verify that depthBuffer is working correctly
         //TODO: 3D - complete antiAliasing
     }
@@ -114,6 +132,12 @@ public class SubScene extends Node {
 
     private boolean depthBuffer = false;
 
+    boolean isDepthBufferInteral() {
+        if (!Platform.isSupported(ConditionalFeature.SCENE3D)) {
+            return false;
+        }
+        return depthBuffer;
+    }
     /**
      * Defines the root {@code Node} of the SubScene scene graph.
      * If a {@code Group} is used as the root, the
@@ -185,7 +209,7 @@ public class SubScene extends Node {
                     }
                     _value.getStyleClass().add(0, "root");
                     _value.setScenes(getScene(), SubScene.this);
-                    markDirty(SubScene.SubSceneDirtyBits.ROOT_SG_DIRTY);
+                    markDirty(SubSceneDirtyBits.ROOT_SG_DIRTY);
                     _value.resize(getWidth(), getHeight()); // maybe no-op if root is not resizable
                     _value.requestLayout();
                 }
@@ -230,21 +254,33 @@ public class SubScene extends Node {
     public final ObjectProperty<Camera> cameraProperty() {
         if (camera == null) {
             camera = new ObjectPropertyBase<Camera>() {
+                Camera oldCamera = null;
 
                 @Override
                 protected void invalidated() {
                     Camera _value = get();                    
                     if (_value != null) {
+                        if (_value instanceof PerspectiveCamera
+                                && !Platform.isSupported(ConditionalFeature.SCENE3D)) {
+                            String logname = SubScene.class.getName();
+                            PlatformLogger.getLogger(logname).warning("System can't support "
+                                    + "ConditionalFeature.SCENE3D");
+                        }
                         // Illegal value if it belongs to any scene or other subscene
                         if ((_value.getScene() != null || _value.getSubScene() != null)
                                 && (_value.getScene() != getScene() || _value.getSubScene() != SubScene.this)) {
                             throw new IllegalArgumentException(_value
-                                    + "is already set as camera in other scene/subscene");
+                                    + "is already part of other scene or subscene");
                         }
+                        // throws exception if the camera already has a different owner
+                        _value.setOwnerSubScene(SubScene.this);
                         _value.setViewWidth(getWidth());
                         _value.setViewHeight(getHeight());
                     }
-                    markDirty(SubScene.SubSceneDirtyBits.CAMERA_DIRTY);
+                    if (oldCamera != null && oldCamera != _value) {
+                        oldCamera.setOwnerSubScene(null);
+                    }
+                    oldCamera = _value;
                 }
 
                 @Override
@@ -265,9 +301,12 @@ public class SubScene extends Node {
 
     Camera getEffectiveCamera() {
         final Camera cam = getCamera();
-        if (cam == null) {
+        if (cam == null
+                || (cam instanceof PerspectiveCamera
+                && !Platform.isSupported(ConditionalFeature.SCENE3D))) {
             if (defaultCamera == null) {
                 defaultCamera = new ParallelCamera();
+                defaultCamera.setOwnerSubScene(this);
                 defaultCamera.setViewWidth(getWidth());
                 defaultCamera.setViewHeight(getHeight());
             }
@@ -275,6 +314,11 @@ public class SubScene extends Node {
         }
 
         return cam;
+    }
+
+    // Used by the camera
+    void markCameraDirty() {
+        markDirty(SubSceneDirtyBits.CAMERA_DIRTY);
     }
 
     /**
@@ -306,7 +350,7 @@ public class SubScene extends Node {
                     if (_root.isResizable()) {
                         _root.resize(get() - _root.getLayoutX() - _root.getTranslateX(), _root.getLayoutBounds().getHeight());
                     }
-                    markDirty(SubScene.SubSceneDirtyBits.CAMERA_DIRTY);
+                    markDirty(SubSceneDirtyBits.SIZE_DIRTY);
                     SubScene.this.impl_geomChanged();
 
                     getEffectiveCamera().setViewWidth(get());
@@ -351,7 +395,7 @@ public class SubScene extends Node {
                     if (_root.isResizable()) {
                         _root.resize(_root.getLayoutBounds().getWidth(), get() - _root.getLayoutY() - _root.getTranslateY());
                     }
-                    markDirty(SubScene.SubSceneDirtyBits.CAMERA_DIRTY);
+                    markDirty(SubSceneDirtyBits.SIZE_DIRTY);
                     SubScene.this.impl_geomChanged();
 
                     getEffectiveCamera().setViewHeight(get());
@@ -394,7 +438,7 @@ public class SubScene extends Node {
 
                 @Override
                 protected void invalidated() {
-                    markDirty(SubScene.SubSceneDirtyBits.FILL_DIRTY);
+                    markDirty(SubSceneDirtyBits.FILL_DIRTY);
                 }
 
                 @Override
@@ -418,8 +462,6 @@ public class SubScene extends Node {
     @Deprecated @Override
     public void impl_updatePG() {
         super.impl_updatePG();
-        final Camera cam = getEffectiveCamera();
-        cam.impl_syncPGNode();
 
         // TODO deal with clip node
 
@@ -436,10 +478,14 @@ public class SubScene extends Node {
                         Toolkit.getPaintAccessor().getPlatformPaint(getFill());
                 peer.setFillPaint(platformPaint);
             }
-            peer.setDepthBuffer(depthBuffer);
-            if (isDirty(SubSceneDirtyBits.CAMERA_DIRTY)) {
+            peer.setDepthBuffer(isDepthBufferInteral());
+            if (isDirty(SubSceneDirtyBits.SIZE_DIRTY)) {
                 peer.setWidth((float)getWidth());
                 peer.setHeight((float)getHeight());
+            }
+            if (isDirty(SubSceneDirtyBits.CAMERA_DIRTY)) {
+                final Camera cam = getEffectiveCamera();
+                cam.impl_syncPGNode();
                 peer.setCamera(cam.getPlatformCamera());
             }
             syncLights();
@@ -532,13 +578,14 @@ public class SubScene extends Node {
     }
 
     private enum SubSceneDirtyBits {
+        SIZE_DIRTY,
         FILL_DIRTY,
         /* ROOT_SG_DIRTY is set either when the root has changed or hint that
          * root scene graph needs to be re-rendered. For example when layout
          * occurs, or node has been added or removed.
          */
         ROOT_SG_DIRTY,
-        CAMERA_DIRTY, // get set if the camera, width or height change
+        CAMERA_DIRTY,
         LIGHTS_DIRTY;
 
         private int mask;
@@ -706,9 +753,13 @@ public class SubScene extends Node {
 
         @Override
         public boolean isDepthBuffer(SubScene subScene) {
-            return subScene.depthBuffer;
+            return subScene.isDepthBufferInteral();
         };
 
+        @Override
+        public Camera getEffectiveCamera(SubScene subScene) {
+            return subScene.getEffectiveCamera();
+        }
     }
 
     static {

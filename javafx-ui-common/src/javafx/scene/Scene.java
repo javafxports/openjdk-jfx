@@ -121,6 +121,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import javafx.application.Platform;
+import javafx.application.ConditionalFeature;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ObjectPropertyBase;
 import javafx.beans.property.ReadOnlyDoubleProperty;
@@ -331,10 +332,19 @@ public class Scene implements EventTarget {
         // TODO: 3D - Support scene anti-aliasing using MSAA.
         this(root, width, height, Color.WHITE, depthBuffer);
 
-        try {
-            throw new UnsupportedOperationException("Unsupported Scene constructor --- *** antiAliasing ***");
-        } catch (UnsupportedOperationException ex) {
-            ex.printStackTrace();
+        // NOTE: this block will be removed once implement anti-aliasing
+        if (antiAliasing) {
+            String logname = Scene.class.getName();
+            PlatformLogger.getLogger(logname).warning("3D anti-aliasing is "
+                    + "not supported yet.");
+        }
+
+        if ((depthBuffer || antiAliasing)
+                && !Platform.isSupported(ConditionalFeature.SCENE3D)) {
+            String logname = Scene.class.getName();
+            PlatformLogger.getLogger(logname).warning("System can't support "
+                    + "ConditionalFeature.SCENE3D");
+            // TODO: 3D - ignore depthBuffer and antiAliasing at rendering time
         }
     }
 
@@ -345,6 +355,12 @@ public class Scene implements EventTarget {
             throw new NullPointerException("Root cannot be null");
         }
 
+        if (depthBuffer && !Platform.isSupported(ConditionalFeature.SCENE3D)) {
+            String logname = Scene.class.getName();
+            PlatformLogger.getLogger(logname).warning("System can't support "
+                    + "ConditionalFeature.SCENE3D");
+        }
+        
         Toolkit.getToolkit().checkFxUserThread();
         setRoot(root);
         init(width, height, depthBuffer);
@@ -393,6 +409,12 @@ public class Scene implements EventTarget {
                                 final Scene scene) {
                             scene.parentEffectiveOrientationInvalidated();
                         }
+
+                        @Override
+                        public Camera getEffectiveCamera(Scene scene) {
+                            return scene.getEffectiveCamera();
+                        }
+
                     });
         }
 
@@ -717,7 +739,7 @@ public class Scene implements EventTarget {
 
         impl_setAllowPGAccess(true);
 
-        impl_peer = windowPeer.createTKScene(isDepthBuffer());
+        impl_peer = windowPeer.createTKScene(isDepthBufferInteral());
         PerformanceTracker.logEvent("Scene.initPeer TKScene created");
         impl_peer.setSecurityContext(acc);
         impl_peer.setTKSceneListener(new ScenePeerListener());
@@ -932,21 +954,33 @@ public class Scene implements EventTarget {
     public final ObjectProperty<Camera> cameraProperty() {
         if (camera == null) {
             camera = new ObjectPropertyBase<Camera>() {
+                Camera oldCamera = null;
 
                 @Override
                 protected void invalidated() {
                     Camera _value = get();
                     if (_value != null) {
+                        if (_value instanceof PerspectiveCamera
+                                && !Platform.isSupported(ConditionalFeature.SCENE3D)) {
+                            String logname = Scene.class.getName();
+                            PlatformLogger.getLogger(logname).warning("System can't support "
+                                    + "ConditionalFeature.SCENE3D");
+                        }
                         // Illegal value if it belongs to other scene or any subscene
                         if ((_value.getScene() != null && _value.getScene() != Scene.this)
                                 || _value.getSubScene() != null) {
                             throw new IllegalArgumentException(_value
-                                    + "is already set as camera in other scene");
+                                    + "is already part of other scene or subscene");
                         }
+                        // throws exception if the camera already has a different owner
+                        _value.setOwnerScene(Scene.this);
                         _value.setViewWidth(getWidth());
                         _value.setViewHeight(getHeight());
                     }
-                    markDirty(DirtyBits.CAMERA_DIRTY);
+                    if (oldCamera != null && oldCamera != _value) {
+                        oldCamera.setOwnerScene(null);
+                    }
+                    oldCamera = _value;
                 }
 
                 @Override
@@ -965,9 +999,12 @@ public class Scene implements EventTarget {
 
     Camera getEffectiveCamera() {
         final Camera cam = getCamera();
-        if (cam == null) {
+        if (cam == null
+                || (cam instanceof PerspectiveCamera
+                && !Platform.isSupported(ConditionalFeature.SCENE3D))) {
             if (defaultCamera == null) {
                 defaultCamera = new ParallelCamera();
+                defaultCamera.setOwnerScene(this);
                 defaultCamera.setViewWidth(getWidth());
                 defaultCamera.setViewHeight(getHeight());
             }
@@ -975,6 +1012,11 @@ public class Scene implements EventTarget {
         }
 
         return cam;
+    }
+
+    // Used by the camera
+    void markCameraDirty() {
+        markDirty(DirtyBits.CAMERA_DIRTY);
     }
 
     /**
@@ -1220,7 +1262,7 @@ public class Scene implements EventTarget {
         BaseTransform transform = BaseTransform.IDENTITY_TRANSFORM;
 
         return doSnapshot(this, 0, 0, w, h,
-                getRoot(), transform, isDepthBuffer(),
+                getRoot(), transform, isDepthBufferInteral(),
                 getFill(), getEffectiveCamera(), img);
     }
 
@@ -1458,6 +1500,13 @@ public class Scene implements EventTarget {
      * @return the depth buffer attribute.
      */
     public final boolean isDepthBuffer() {
+        return depthBuffer;
+    }
+    
+    boolean isDepthBufferInteral() {
+        if (!Platform.isSupported(ConditionalFeature.SCENE3D)) {
+            return false;
+        }
         return depthBuffer;
     }
 
@@ -2251,7 +2300,7 @@ public class Scene implements EventTarget {
 
             // new camera was set on the scene or old camera changed
             final Camera cam = getEffectiveCamera();
-            if (isDirty(DirtyBits.CAMERA_DIRTY) || !cam.impl_isDirtyEmpty()) {
+            if (isDirty(DirtyBits.CAMERA_DIRTY)) {
                 cam.impl_updatePG();
                 impl_peer.setCamera(cam.getPlatformCamera());
             }
@@ -2305,7 +2354,7 @@ public class Scene implements EventTarget {
                 Scene.this.doLayoutPass();
             }
 
-            boolean dirty = dirtyNodes == null || dirtyNodesSize != 0 || !isDirtyEmpty() || !getEffectiveCamera().impl_isDirtyEmpty();
+            boolean dirty = dirtyNodes == null || dirtyNodesSize != 0 || !isDirtyEmpty();
             if (dirty) {
                 getRoot().updateBounds();
                 if (impl_peer != null) {
@@ -2317,10 +2366,10 @@ public class Scene implements EventTarget {
                         }
                         start = PULSE_LOGGING_ENABLED ? System.currentTimeMillis() : 0;
                         // synchronize scene properties
+                        syncLights();
                         synchronizeSceneProperties();
                         // Run the synchronizer
                         synchronizeSceneNodes();
-                        syncLights();
                         Scene.this.mouseHandler.pulse();
                         // Tell the scene peer that it needs to repaint
                         impl_peer.markDirty();
@@ -5721,7 +5770,8 @@ public class Scene implements EventTarget {
             Node n = node;
             while(n != null) {
                 list.add(n);
-                n = n.getParent();
+                final Parent p = n.getParent();
+                n = p != null ? p : n.getSubScene();
             }
 
             if (scene != null) {
@@ -5737,10 +5787,12 @@ public class Scene implements EventTarget {
             Cursor cursor = null;
             if (node != null) {
                 cursor = node.getCursor();
-                Parent p = node.getParent();
-                while (cursor == null && p != null) {
-                    cursor = p.getCursor();
-                    p = p.getParent();
+                Node n = node.getParent();
+                while (cursor == null && n != null) {
+                    cursor = n.getCursor();
+
+                    final Parent p = n.getParent();
+                    n = p != null ? p : n.getSubScene();
                 }
             }
             return cursor;

@@ -1783,8 +1783,8 @@ public abstract class Node implements EventTarget, Styleable {
             h = tempBounds.getHeight();
         }
         WritableImage result = Scene.doSnapshot(getScene(), x, y, w, h,
-                this, transform, params.isDepthBuffer(),
-                params.getFill(), params.getCamera(), img);
+                this, transform, params.isDepthBufferInternal(),
+                params.getFill(), params.getEffectiveCamera(), img);
 
         return result;
     }
@@ -1854,8 +1854,8 @@ public abstract class Node implements EventTarget, Styleable {
             params = new SnapshotParameters();
             Scene s = getScene();
             if (s != null) {
-                params.setCamera(s.getCamera());
-                params.setDepthBuffer(s.isDepthBuffer());
+                params.setCamera(s.getEffectiveCamera());
+                params.setDepthBuffer(s.isDepthBufferInteral());
                 params.setFill(s.getFill());
             }
         }
@@ -1948,8 +1948,8 @@ public abstract class Node implements EventTarget, Styleable {
             params = new SnapshotParameters();
             Scene s = getScene();
             if (s != null) {
-                params.setCamera(s.getCamera());
-                params.setDepthBuffer(s.isDepthBuffer());
+                params.setCamera(s.getEffectiveCamera());
+                params.setDepthBuffer(s.isDepthBufferInteral());
                 params.setFill(s.getFill());
             }
         } else {
@@ -7851,7 +7851,8 @@ public abstract class Node implements EventTarget, Styleable {
                     tail = tail.prepend(eventDispatcherValue);
                 }
             }
-            curNode = curNode.getParent();
+            final Node curParent = curNode.getParent();
+            curNode = curParent != null ? curParent : curNode.getSubScene();
         } while (curNode != null);
 
         if (getScene() != null) {

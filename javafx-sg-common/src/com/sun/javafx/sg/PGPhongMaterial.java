@@ -35,5 +35,5 @@ public interface PGPhongMaterial {
     public void setDiffuseMap(Object diffuseMap);
     public void setSpecularMap(Object specularMap);
     public void setBumpMap(Object bumpMap);
-    public void setSelfIlluminationMap(Object selfIlluminationMap);    
+    public void setSelfIllumMap(Object selfIllumMap);    
 }
