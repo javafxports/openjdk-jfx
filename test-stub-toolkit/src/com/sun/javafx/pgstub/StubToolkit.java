@@ -76,6 +76,7 @@ import com.sun.javafx.scene.text.TextLayoutFactory;
 import com.sun.javafx.sg.PGAmbientLight;
 import com.sun.javafx.sg.PGArc;
 import com.sun.javafx.sg.PGBox;
+import com.sun.javafx.sg.PGCamera;
 import com.sun.javafx.sg.PGCanvas;
 import com.sun.javafx.sg.PGCircle;
 import com.sun.javafx.sg.PGCubicCurve;
@@ -127,6 +128,7 @@ import com.sun.scenario.animation.AbstractMasterTimer;
 import com.sun.scenario.effect.Blend.Mode;
 import com.sun.scenario.effect.FilterContext;
 import com.sun.scenario.effect.Filterable;
+import javafx.application.ConditionalFeature;
 
 /**
  * A Toolkit implementation for use with Testing.
@@ -450,6 +452,13 @@ public class StubToolkit extends Toolkit {
         return new StubExternalNode();
     }
 
+    @Override public boolean isSupported(ConditionalFeature feature) {
+        if (feature == ConditionalFeature.SCENE3D) {
+            return true;
+        }
+        return false;
+    }
+    
     /*
      * additional testing functions
      */
@@ -889,7 +898,7 @@ public class StubToolkit extends Toolkit {
 
     @Override
     public PGSubScene createPGSubScene() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return new StubSubScene();
     }
 
     public interface DndDelegate {

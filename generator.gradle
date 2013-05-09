@@ -28,8 +28,8 @@ task createWrapper(type: Wrapper) {
 ext.RTDir = "."
 ext.FXDir = "../javafx"
 task generate << {
-    def excludeFromSource = ["META-INF/**", "**/*.properties", "**/*.stg", "**/*.g", "**/*.css", "**/*.png", "**/*.jpg", "nbproject", "*.iml", "**/*.txt", "**/*.fxml", "**/*.bak", "**/*.orig", "**/*.js"]
-    def includeInResources = ["META-INF/**", "**/*.properties", "**/*.stg", "**/*.css", "**/*.png", "**/*.jpg", "**/*.txt", "**/*.fxml", "**/*.js"]
+    def excludeFromSource = ["META-INF/**", "**/*.properties", "**/*.stg", "**/*.g", "**/*.css", "**/*.png", "**/*.jpg", "nbproject", "*.iml", "**/*.txt", "**/*.fxml", "**/*.bak", "**/*.orig", "**/*.js", "**/*.frag", "**/*.vert"]
+    def includeInResources = ["META-INF/**", "**/*.properties", "**/*.stg", "**/*.css", "**/*.png", "**/*.jpg", "**/*.txt", "**/*.fxml", "**/*.js", "**/*.frag", "**/*.vert"]
     def excludeFromResources = ["**/doc-files/**/*"]
 
     // Copy over the new gradle build files, LICENSE, and README
@@ -38,14 +38,6 @@ task generate << {
         into FXDir
         include "*.gradle", "LICENSE", "README", "gradle.properties"
         exclude "generator.gradle"
-    }
-
-    // Copy over the genVSproperties.bat, used to generate properties required
-    // for compilation on Windows.
-    copy {
-        from "$RTDir/gradle-genVSproperties.bat"
-        into FXDir
-        rename ("gradle-genVSproperties.bat", "genVSproperties.bat")
     }
 
     // Copy over the apps

@@ -38,6 +38,7 @@ import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener;
 import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
+import javafx.css.Styleable;
 import javafx.event.EventHandler;
 import javafx.geometry.Bounds;
 import javafx.geometry.NodeOrientation;
@@ -82,7 +83,6 @@ public class MenuBarSkin extends BehaviorSkinBase<MenuBar, BehaviorBase<MenuBar>
     private int focusedMenuIndex = -1;
     private TraversalEngine engine;
     private Direction direction;
-    private boolean firstF10 = true;
 
     private static WeakHashMap<Stage, MenuBarSkin> systemMenuMap;
     private static List<MenuBase> wrappedDefaultMenus = new ArrayList<MenuBase>();
@@ -285,7 +285,6 @@ public class MenuBarSkin extends BehaviorSkinBase<MenuBar, BehaviorBase<MenuBar>
             @Override public void handle(MouseEvent t) {
                 if (!container.localToScene(container.getLayoutBounds()).contains(t.getX(), t.getY())) {
                     unSelectMenus();
-                    firstF10 = true;
                 }
             }
         };
@@ -298,7 +297,6 @@ public class MenuBarSkin extends BehaviorSkinBase<MenuBar, BehaviorBase<MenuBar>
             public void changed(ObservableValue<? extends Boolean> ov, Boolean t, Boolean t1) {
               if (!t1) {
                   unSelectMenus();
-                  firstF10 = true;
               }
             }
         }));
@@ -386,15 +384,14 @@ public class MenuBarSkin extends BehaviorSkinBase<MenuBar, BehaviorBase<MenuBar>
                 if (container.getChildren().size() > 0) {
                     if (container.getChildren().get(0) instanceof MenuButton) {
 //                        container.getChildren().get(0).requestFocus();
-                        if (firstF10) { 
-                            firstF10 = false;
+                        if (focusedMenuIndex != 0) {
                             unSelectMenus();
                             focusedMenuIndex = 0;
                             openMenuButton = ((MenuBarButton)container.getChildren().get(0));
                             openMenu = getSkinnable().getMenus().get(0);
                             openMenuButton.setHover();
-                        } else {
-                            firstF10 = true;
+                        }
+                        else {
                             unSelectMenus();
                         }
                     }
@@ -550,7 +547,8 @@ public class MenuBarSkin extends BehaviorSkinBase<MenuBar, BehaviorBase<MenuBar>
             final MenuBarButton menuButton = new MenuBarButton(menu.getText(), menu.getGraphic());
             menuButton.setFocusTraversable(false);
             menuButton.getStyleClass().add("menu");
-            menuButton.setStyle(menu.getStyle()); // copy style 
+            menuButton.setStyle(menu.getStyle()); // copy style
+            menuButton.setId(menu.getId());
 
             menuButton.getItems().setAll(menu.getItems());
             container.getChildren().add(menuButton);
@@ -574,6 +572,12 @@ public class MenuBarSkin extends BehaviorSkinBase<MenuBar, BehaviorBase<MenuBar>
                             menuButton.getStyleClass().remove(str);
                         }
                     }
+                }
+            });
+            menu.idProperty().addListener(new ChangeListener<String>() {
+                @Override
+                public void changed(ObservableValue<? extends String> observableValue, String s, String s2) {
+                    menuButton.setId(s2);
                 }
             });
             menuButton.menuListener = new ChangeListener<Boolean>() {
@@ -767,8 +771,8 @@ public class MenuBarSkin extends BehaviorSkinBase<MenuBar, BehaviorBase<MenuBar>
     }
     
     private void unSelectMenus() {
-        if (focusedMenuIndex == -1) return;
         clearMenuButtonHover();
+        if (focusedMenuIndex == -1) return;
         if (openMenu != null) {
             openMenu.hide();
             openMenu = null;
@@ -899,7 +903,6 @@ public class MenuBarSkin extends BehaviorSkinBase<MenuBar, BehaviorBase<MenuBar>
         private void setHover() {
             setHover(true);
         }
-      
     }
 
     /***************************************************************************
