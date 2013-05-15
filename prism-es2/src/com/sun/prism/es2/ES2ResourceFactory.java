@@ -71,6 +71,10 @@ public class ES2ResourceFactory extends BaseShaderFactory {
         } else {
             maxTextureSize = max;
         }
+        if (PrismSettings.verbose) {
+            System.out.println("Non power of two texture support = " + 
+                    context.getGLContext().canCreateNonPowTwoTextures());
+        }
     }
 
     public TextureResourcePool getTextureResourcePool() {
@@ -91,6 +95,14 @@ public class ES2ResourceFactory extends BaseShaderFactory {
 
     public Texture createTexture(MediaFrame frame) {
         return ES2Texture.create(context, frame);
+    }
+
+    public int getRTTWidth(int w, WrapMode wrapMode) {
+        return ES2RTTexture.getCompatibleDimension(context, w, wrapMode);
+    }
+
+    public int getRTTHeight(int h, WrapMode wrapMode) {
+        return ES2RTTexture.getCompatibleDimension(context, h, wrapMode);
     }
 
     public RTTexture createRTTexture(int width, int height, WrapMode wrapMode) {
