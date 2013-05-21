@@ -215,6 +215,7 @@ public class PlatformImpl {
             }
 
             final AccessControlContext acc = AccessController.getContext();
+            // Don't catch exceptions, they are handled by Toolkit.defer()
             Toolkit.getToolkit().defer(new Runnable() {
                 @Override public void run() {
                     try {
@@ -225,9 +226,6 @@ public class PlatformImpl {
                                 return null;
                             }
                         }, acc);
-                    } catch (Throwable t) {
-                        System.err.println("Exception in runnable");
-                        t.printStackTrace();
                     } finally {
                         pendingRunnables.decrementAndGet();
                         checkIdle();
@@ -259,9 +257,6 @@ public class PlatformImpl {
                 @Override public void run() {
                     try {
                         r.run();
-                    } catch (Throwable t) {
-                        System.err.println("Exception in runnable");
-                        t.printStackTrace();
                     } finally {
                         doneLatch.countDown();
                     }
@@ -423,8 +418,10 @@ public class PlatformImpl {
                 return isSWTSupported;
             case SWING:
                 if (isSwingSupported == null) {
-                    isSwingSupported = checkForClass(
-                            "javafx.embed.swing.JFXPanel");
+                    isSwingSupported = 
+                        // check for JComponent first, it may not be present
+                        checkForClass("javax.swing.JComponent") &&
+                        checkForClass("javafx.embed.swing.JFXPanel");
                 }
                 return isSwingSupported;
             case FXML:
