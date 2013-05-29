@@ -128,6 +128,10 @@ import javafx.util.Callback;
  */
 
 public class StackPane extends Pane {
+    
+    private boolean biasDirty = true;
+    private boolean performingLayout = false;
+    private Orientation bias;
 
     /********************************************************************
      *  BEGIN static methods
@@ -256,14 +260,18 @@ public class StackPane extends Pane {
      * have a content bias.
      */
     @Override public Orientation getContentBias() {
-        final List<Node> children = getChildren();
-        for (int i = 0, size = children.size(); i < size; i++) {
-            Node child = children.get(i);
-            if (child.isManaged() && child.getContentBias() != null) {
-                return child.getContentBias();
+        if (biasDirty) {
+            final List<Node> children = getChildren();
+            for (Node child : children) {
+                Orientation contentBias = child.getContentBias();
+                if (child.isManaged() && contentBias != null) {
+                    bias = contentBias;
+                    break;
+                }
             }
-        }
-        return null;
+            biasDirty = false;
+        }        
+        return bias;
     }
 
     @Override protected double computeMinWidth(double height) {
@@ -325,7 +333,17 @@ public class StackPane extends Pane {
     }
 
 
+    @Override public void requestLayout() {
+        if (performingLayout) {
+            return;
+        }
+        biasDirty = true;
+        bias = null;
+        super.requestLayout();
+    }
+
     @Override protected void layoutChildren() {
+        performingLayout = true;
         List<Node> managed = getManagedChildren();
         Pos align = getAlignmentInternal();
         HPos alignHpos = align.getHpos();
@@ -349,6 +367,7 @@ public class StackPane extends Pane {
                            childAlignment != null? childAlignment.getHpos() : alignHpos,
                            childAlignment != null? childAlignment.getVpos() : alignVpos);
         }
+        performingLayout = false;
     }
 
     /***************************************************************************
