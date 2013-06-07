@@ -477,16 +477,18 @@ class Loader {
 
         Mesh mesh = convertToFXMesh(n);
 
-        MeshView mv = new MeshView();
-        mv.setId(n.getName());
-        mv.setMaterial(material);
-        //            mv.setWireframe(true);
-        //            mv.setAmbient(Color.GRAY); // TODO???
-        mv.setMesh(mesh);
+        if (((TriangleMesh)mesh).getPoints().size() > 0) {
+            MeshView mv = new MeshView();
+            mv.setId(n.getName());
+            mv.setMaterial(material);
+//            mv.setWireframe(true);
+//            mv.setAmbient(Color.GRAY); // TODO???
+            mv.setMesh(mesh);
 
-        loaded.put(n, mv);
-        if (node != null) {
-            ((Group) node).getChildren().add(mv);
+            loaded.put(n, mv);
+            if (node != null) {
+                ((Group) node).getChildren().add(mv);
+            }
         }
     }
 
@@ -1195,7 +1197,7 @@ class Loader {
 
             float t = kt - EPSILON;
             if (t < 0.0) {
-                t = 0.0f;
+                continue; // just skipping all the negative frames
             }
 
             /*
