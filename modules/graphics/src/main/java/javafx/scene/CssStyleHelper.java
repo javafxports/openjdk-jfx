@@ -24,10 +24,7 @@
  */
 package javafx.scene;
 
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,12 +32,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableMap;
 import javafx.css.CssMetaData;
 import javafx.css.FontCssMetaData;
+import javafx.css.ParsedValue;
 import javafx.css.PseudoClass;
 import javafx.css.StyleConverter;
 import javafx.css.StyleOrigin;
@@ -54,7 +53,6 @@ import com.sun.javafx.Utils;
 import com.sun.javafx.css.CalculatedValue;
 import com.sun.javafx.css.CascadingStyle;
 import com.sun.javafx.css.CssError;
-import com.sun.javafx.css.Declaration;
 import com.sun.javafx.css.ParsedValueImpl;
 import com.sun.javafx.css.PseudoClassState;
 import com.sun.javafx.css.Rule;
@@ -67,7 +65,6 @@ import com.sun.javafx.css.StyleManager;
 import com.sun.javafx.css.StyleMap;
 import com.sun.javafx.css.Stylesheet;
 import com.sun.javafx.css.converters.FontConverter;
-import com.sun.javafx.css.parser.CSSParser;
 import sun.util.logging.PlatformLogger;
 import sun.util.logging.PlatformLogger.Level;
 
@@ -88,13 +85,6 @@ final class CssStyleHelper {
      * Creates a new StyleHelper.
      */
     static CssStyleHelper createStyleHelper(Node node) {
-
-        // If this node had a style helper, then reset properties to their initial value
-        // since the node might not have a style helper after this call
-        if (node.styleHelper != null && node.styleHelper.cacheContainer != null) {
-            node.styleHelper.resetToInitialValues(node);
-            node.styleHelper.cacheContainer.cssSetProperties.clear();
-        }
 
         // need to know how far we are to root in order to init arrays.
         // TODO: should we hang onto depth to avoid this nonsense later?
@@ -120,10 +110,24 @@ final class CssStyleHelper {
         final StyleMap styleMap =
                 StyleManager.getInstance().findMatchingStyles(node, triggerStates);
 
+        if (node.styleHelper != null) {
+
+            boolean sameMap = false;
+
+            if (styleMap != null) {
+                StyleMap currentMap = node.styleHelper.getStyleMap(node);
+                // check instance equality!
+                if (currentMap == styleMap) {
+                    return node.styleHelper;
+                }
+            }
+
+        }
 
         if (styleMap == null || styleMap.isEmpty()) {
 
             boolean mightInherit = false;
+
             final List<CssMetaData<? extends Styleable, ?>> props = node.getCssMetaData();
 
             final int pMax = props != null ? props.size() : 0;
@@ -137,8 +141,16 @@ final class CssStyleHelper {
             }
 
             if (mightInherit == false) {
+
+                // If this node had a style helper, then reset properties to their initial value
+                // since the node won't have a style helper after this call
+                if (node.styleHelper != null) {
+                    node.styleHelper.resetToInitialValues(node);
+                }
+
                 return null;
             }
+
         }
 
         final CssStyleHelper helper = new CssStyleHelper();
@@ -174,6 +186,13 @@ final class CssStyleHelper {
         }
 
         helper.cacheContainer = new CacheContainer(node, styleMap, depth);
+
+        // If this node had a style helper, then reset properties to their initial value
+        // since the style map might now be different
+        if (node.styleHelper != null) {
+            node.styleHelper.resetToInitialValues(node);
+        }
+
         return helper;
     }
 
@@ -277,7 +296,11 @@ final class CssStyleHelper {
                 cacheContainer.cssSetProperties == null ||
                 cacheContainer.cssSetProperties.isEmpty()) return;
 
-        for (Entry<CssMetaData, CalculatedValue> resetValues : cacheContainer.cssSetProperties.entrySet()) {
+        // RT-31714 - make a copy of the entry set and clear the cssSetProperties immediately.
+        Set<Entry<CssMetaData, CalculatedValue>> entrySet = new HashSet<>(cacheContainer.cssSetProperties.entrySet());
+        cacheContainer.cssSetProperties.clear();
+
+        for (Entry<CssMetaData, CalculatedValue> resetValues : entrySet) {
 
             final CssMetaData metaData = resetValues.getKey();
             final StyleableProperty styleableProperty = metaData.getStyleableProperty(styleable);
@@ -994,8 +1017,8 @@ final class CssStyleHelper {
             ParsedValueImpl parsedValue,
             Set<PseudoClass> states,
             ObjectProperty<StyleOrigin> whence,
-            Set<CascadingStyle> resolves, List<Style> styleList) {
-
+            Set<ParsedValue> resolves,
+            List<Style> styleList) {
 
         //
         // either the value itself is a lookup, or the value contain a lookup
@@ -1014,23 +1037,22 @@ final class CssStyleHelper {
 
                 if (resolved != null) {
 
-                    if (resolves != null) {
+                    if (resolves != null ) {
 
-                        if (resolves.contains(resolved) == false) {
-                            resolves.add(resolved);
-
-                        } else {
+                        if (resolves.contains(resolved.getParsedValueImpl())) {
 
                             if (LOGGER.isLoggable(Level.WARNING)) {
-                                LOGGER.warning("Loop detected while resolving: '" + sval + "'");
+                                LOGGER.warning("Loop detected in " + resolved.getRule().toString() + " while resolving '" + sval + "'");
                             }
-                            throw new IllegalArgumentException(resolved.getRule().toString());
+                            throw new IllegalArgumentException("Loop detected in " + resolved.getRule().toString() + " while resolving '" + sval + "'");
 
+                        } else {
+                            resolves.add(parsedValue);
                         }
 
                     } else {
                         resolves = new HashSet<>();
-                        resolves.add(resolved);
+                        resolves.add(parsedValue);
                     }
 
                     if (styleList != null) {
@@ -1055,7 +1077,14 @@ final class CssStyleHelper {
                     // the resolved value may itself need to be resolved.
                     // For example, if the value "color" resolves to "base",
                     // then "base" will need to be resolved as well.
-                    return resolveLookups(styleable, resolved.getParsedValueImpl(), states, whence, resolves, styleList);
+                    ParsedValueImpl pv = resolveLookups(styleable, resolved.getParsedValueImpl(), states, whence, resolves, styleList);
+
+                    if (resolves != null) {
+                        resolves.remove(parsedValue);
+                    }
+
+                    return pv;
+
                 }
             }
         }
