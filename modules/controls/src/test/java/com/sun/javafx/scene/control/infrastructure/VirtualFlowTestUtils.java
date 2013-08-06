@@ -24,12 +24,7 @@
  */
 package com.sun.javafx.scene.control.infrastructure;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
-import java.util.List;
-
 import javafx.geometry.Orientation;
 import javafx.scene.Group;
 import javafx.scene.Node;
@@ -37,12 +32,13 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
 import javafx.util.Callback;
-
+import java.util.List;
 import com.sun.javafx.scene.control.skin.ComboBoxListViewSkin;
 import com.sun.javafx.scene.control.skin.LabeledText;
 import com.sun.javafx.scene.control.skin.VirtualFlow;
 import com.sun.javafx.scene.control.skin.VirtualScrollBar;
-import com.sun.javafx.tk.Toolkit;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class VirtualFlowTestUtils {
 
@@ -63,11 +59,11 @@ public class VirtualFlowTestUtils {
                     continue;
                 }
                 IndexedCell<?> childCell = (IndexedCell<?>)n;
-                MouseEventFirer.fireMousePressAndRelease(childCell, modifiers);
+                new MouseEventFirer(childCell).fireMousePressAndRelease(modifiers);
                 break;
             }
         } else {
-            MouseEventFirer.fireMousePressAndRelease(cell, modifiers);
+            new MouseEventFirer(cell).fireMousePressAndRelease(modifiers);
         }
     }
 
