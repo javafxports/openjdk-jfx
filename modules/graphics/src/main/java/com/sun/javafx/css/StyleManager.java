@@ -33,6 +33,7 @@ import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.AccessControlContext;
 import java.security.AccessController;
@@ -62,6 +63,8 @@ import com.sun.javafx.css.parser.CSSParser;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.regex.Pattern;
+
 import javafx.css.CssMetaData;
 import javafx.css.PseudoClass;
 import javafx.css.StyleOrigin;
@@ -432,7 +435,7 @@ final public class StyleManager {
     }
 
     /**
-     * called from Parent's or Scene's stylesheets property's onChanged method
+     * called from Scene's stylesheets property's onChanged method
      */
     public void stylesheetsChanged(Scene scene, Change<String> c) {
 
@@ -558,7 +561,7 @@ final public class StyleManager {
     }
 
     /**
-     * called from Parent's or Scene's stylesheets property's onChanged method
+     * called from Parent's stylesheets property's onChanged method
      */
     public void stylesheetsChanged(Parent parent, Change<String> c) {
         processChange(c);
@@ -732,18 +735,42 @@ final public class StyleManager {
     // Stylesheet loading
     //
     ////////////////////////////////////////////////////////////////////////////
-    private static URL getURL(String urlStr) {
+
+    private static URL getURL(final String str) {
+
+        // Note: this code is duplicated, more or less, in URLConverter
+
+        if (str == null || str.trim().isEmpty()) return null;
+
         try {
-            return new URL(urlStr);
-        } catch (MalformedURLException malf) {
-            // This may be a relative URL, so try resolving
-            // it using the application classloader
-            ClassLoader cl = Thread.currentThread().getContextClassLoader();
-            if (cl != null) {
-                String path = (urlStr != null && urlStr.startsWith("/"))
-                        ? urlStr.substring(1) : urlStr;
-                return cl.getResource(path);
+
+            URI uri =  new URI(str.trim());
+
+            // if url doesn't have a scheme
+            if (uri.isAbsolute() == false) {
+
+                final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+                final String path = uri.getPath();
+
+                URL resource = null;
+
+                if (path.startsWith("/")) {
+                    resource = contextClassLoader.getResource(path.substring(1));
+                } else {
+                    resource = contextClassLoader.getResource(path);
+                }
+
+                return resource;
             }
+
+            // else, url does have a scheme
+            return uri.toURL();
+
+        } catch (MalformedURLException malf) {
+            // Do not log exception here - caller will handle null return.
+            // For example, we might be looking for a .bss that doesn't exist
+            return null;
+        } catch (URISyntaxException urise) {
             return null;
         }
     }
@@ -1082,8 +1109,8 @@ final public class StyleManager {
 
         if (ua_stylesheet != null) {
             ua_stylesheet.setOrigin(StyleOrigin.USER_AGENT);
-            URL url = ua_stylesheet.getUrl();
-            userAgentStylesheets.add(new StylesheetContainer(url != null ? url.toExternalForm() : "", ua_stylesheet));
+            String url = ua_stylesheet.getUrl();
+            userAgentStylesheets.add(new StylesheetContainer(url != null ? url : "", ua_stylesheet));
             userAgentStylesheetsChanged();
         }
 
@@ -1157,8 +1184,8 @@ final public class StyleManager {
             throw new IllegalArgumentException("null arg ua_stylesheet");
         }
 
-        final URL url = stylesheet.getUrl();
-        final String fname = url != null ? url.toExternalForm() : "";
+        final String url = stylesheet.getUrl();
+        final String fname = url != null ? url : "";
 
         // if this stylesheet has been added already, move it to first element
         int index = getIndex(fname);
@@ -1193,6 +1220,8 @@ final public class StyleManager {
             container.clearCache();
         }
 
+        StyleConverterImpl.clearCache();
+
         for (Scene scene : cacheContainerMap.keySet()) {
             if (scene == null) {
                 continue;
@@ -1206,7 +1235,7 @@ final public class StyleManager {
     // recurse so that stylesheets of Parents closest to the root are
     // added to the list first. The ensures that declarations for
     // stylesheets further down the tree (closer to the leaf) have
-    // a higer ordinal in the cascade.
+    // a higher ordinal in the cascade.
     //
     private List<StylesheetContainer> gatherParentStylesheets(Parent parent) {
 
@@ -1665,7 +1694,7 @@ final public class StyleManager {
         // cache and is no longer valid.
         private int baseStyleMapId = 0;
 
-    }
+            }
 
     /**
      * Creates and caches maps of styles, reusing them as often as practical.
@@ -1822,7 +1851,7 @@ final public class StyleManager {
             int id = cacheContainer.nextSmapId();
             cache.put(keyObj, Integer.valueOf(id));
 
-            final StyleMap styleMap = new StyleMap(id, selectors);
+            final StyleMap styleMap = new StyleMap(id, selectors, hasInlineStyle);
             cacheContainer.addStyleMap(styleMap);
             return styleMap;
         }
@@ -1862,7 +1891,7 @@ final public class StyleManager {
         }
 
         // TODO: should have a cacheContainer for inline styles?
-        return new StyleMap(-1, selectorList);
+        return new StyleMap(-1, selectorList, true);
     }
 
 
@@ -1916,4 +1945,4 @@ final public class StyleManager {
     }
 
 
-}
+        }
