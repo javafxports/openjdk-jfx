@@ -86,18 +86,13 @@ public class NGGroup extends NGNode {
             throw new IndexOutOfBoundsException("invalid index");
         }
 
-        // We're going to do a little verification to make sure something
-        // awful hasn't happened. Really, this is pretty superfluous and
-        // a waste of processing because the FX side should be doing this
-        // work. TODO We should only do this when assertions are enabled
-        // (RT-26980)
-        NGNode child = node;
         // NOTE: We used to do checks here to make sure that a node
         // being added didn't already have another parent listed as
         // its parent. Now we just silently accept them. The FX side
         // is already doing this check, and implementing this check
         // properly would require that the "clear" implementation visit
         // all nodes and clear this flag, which is really just wasted work.
+        NGNode child = node;
 
         // When a new node is added, we need to make sure the new node has this
         // group registered as its parent. We also need to make sure I invalidate
@@ -321,10 +316,10 @@ public class NGGroup extends NGNode {
         // to the children yo.
         if (cullingIndex != -1) {
             final int bits = cullingBits >> (cullingIndex*2);
-            if ((bits & 0x11) == 0) {
+            if ((bits & CULLING_REGION_CONTAINS_OR_INTERSECTS_CLIP) == 0) {
                 return null;
             }
-            if ((bits & 0x10) != 0) {
+            if ((bits & CULLING_REGION_CONTAINS_CLIP) != 0) {
                 cullingIndex = -1; // Do not check culling in children, 
                                    // as culling bits are not set for fully interior groups
             }
