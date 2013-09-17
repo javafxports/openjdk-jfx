@@ -606,7 +606,30 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
                     scrollBarOn();
                 }
                 if (isFocusTraversable()) {
-                    requestFocus();
+                    // We check here to see if the current focus owner is within
+                    // this VirtualFlow, and if so we back-off from requesting
+                    // focus back to the VirtualFlow itself. This is particularly
+                    // relevant given the bug identified in RT-32869. In this
+                    // particular case TextInputControl was clearing selection
+                    // when the focus on the TextField changed, meaning that the
+                    // right-click context menu was not showing the correct
+                    // options as there was no selection in the TextField.
+                    boolean doFocusRequest = true;
+                    Node focusOwner = getScene().getFocusOwner();
+                    if (focusOwner != null) {
+                        Parent parent = focusOwner.getParent();
+                        while (parent != null) {
+                            if (parent.equals(VirtualFlow.this)) {
+                                doFocusRequest = false;
+                                break;
+                            }
+                            parent = parent.getParent();
+                        }
+                    }
+
+                    if (doFocusRequest) {
+                        requestFocus();
+                    }
                 }
 
                 lastX = e.getX();
@@ -1520,7 +1543,10 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     private void fitCells() {
         double size = Math.max(getMaxPrefBreadth(), getViewportBreadth());
         boolean isVertical = isVertical();
-        for (int i = 0, max = cells.size(); i < max; i++) {
+
+        // Note: Do not optimise this loop by pre-calculating the cells size and
+        // storing that into a int value - this can lead to RT-32828
+        for (int i = 0; i < cells.size(); i++) {
             Cell cell = cells.get(i);
             if (isVertical) {
                 cell.resize(size, cell.getHeight());
