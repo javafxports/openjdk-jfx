@@ -1104,6 +1104,9 @@ public class FXMLLoader {
             final ClassLoader cl = getClassLoader();
             if (source.charAt(0) == '/') {
                 location = cl.getResource(source.substring(1));
+                if (location == null) {
+                    throw new LoadException("Cannot resolve path: " + source);
+                }
             } else {
                 if (FXMLLoader.this.location == null) {
                     throw new LoadException("Base location is undefined.");
@@ -2054,8 +2057,11 @@ public class FXMLLoader {
     public boolean equals(Object obj) {
         if (obj instanceof FXMLLoader) {
             FXMLLoader loader = (FXMLLoader)obj;
-            return loader.location.toExternalForm().equals(
-                    location.toExternalForm());
+            if (location == null || loader.location == null) {
+                return loader.location == location;
+            }
+            return location.toExternalForm().equals(
+                    loader.location.toExternalForm());
         }
         return false;
     }
