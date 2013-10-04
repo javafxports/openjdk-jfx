@@ -337,11 +337,14 @@ import sun.util.logging.PlatformLogger.Level;
  * clip, or any transforms. For resizable classes (Regions and Controls)
  * layoutBounds will always map to {@code 0,0 width x height}.
  *
- * <p> The image shows a node with transformation (rotation by 20 degrees)
- * and its bounds. The red rectangle represents {@code boundsInParent} in the
- * coordinate space of the Node's parent. The green rectangle represents {@code boundsInLocal}
- * in coordinate space of the Node. </p>
- * <p> <img src="doc-files/bounds-complex.png"/> </p>
+ * <p> The image shows a node without any transformation and its {@code boundsInLocal}:
+ * <p> <img src="doc-files/boundsLocal.png"/> </p>
+ * If we rotate the image by 20 degrees we get following result:
+ * <p> <img src="doc-files/boundsParent.png"/> </p>
+ * The red rectangle represents {@code boundsInParent} in the
+ * coordinate space of the Node's parent. The {@code boundsInLocal} stays the same
+ * as in the first image, the green rectangle in this image represents {@code boundsInLocal}
+ * in the coordinate space of the Node. </p>
  *
  * <p> The images show a filled and stroked rectangle and their bounds. The
  * first rectangle {@code [x:10.0 y:10.0 width:100.0 height:100.0 strokeWidth:0]}
@@ -721,6 +724,11 @@ public abstract class Node implements EventTarget, Styleable {
                         // See the comments there, also.
                         //
                         impl_reapplyCSS();
+                    } else {
+                        // RT-31168: reset CssFlag to clean so css will be reapplied if the node is added back later.
+                        // If flag is REAPPLY, then impl_reapplyCSS() will just return and the call to
+                        // notifyParentsOfInvalidatedCSS() will be skipped thus leaving the node un-styled.
+                        cssFlag = CssFlags.CLEAN;
                     }
                     updateTreeVisible();
                     oldParent = newParent;
@@ -4874,7 +4882,7 @@ public abstract class Node implements EventTarget, Styleable {
         final double minDistance = pickRay.getNearClip();
         final double maxDistance = pickRay.getFarClip();
         if (tmin < minDistance) {
-            if (tmax >= minDistance && tmax <= maxDistance) {
+            if (tmax >= minDistance) {
                 // we are inside bounds
                 return 0.0;
             } else {
