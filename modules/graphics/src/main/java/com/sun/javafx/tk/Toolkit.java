@@ -612,6 +612,8 @@ public abstract class Toolkit {
 
     public boolean isSupported(ConditionalFeature feature) { return false; }
 
+    public boolean isAntiAliasingSupported() { return false; }
+
     public abstract ScreenConfigurationAccessor setScreenConfigurationListener(TKScreenConfigurationListener listener);
 
     public abstract Object getPrimaryScreen();
