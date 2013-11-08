@@ -31,82 +31,116 @@
  */
 package ensemble.samplepage;
 
-
+import ensemble.EnsembleApp;
 import ensemble.SampleInfo;
 import ensemble.SampleInfo.URL;
 import ensemble.generated.Samples;
-import static ensemble.samplepage.FrontPage.*;
-import static ensemble.samplepage.SamplePage.*;
-import ensemble.util.FeatureChecker;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
-import javafx.scene.control.Hyperlink;
-import javafx.scene.control.Label;
-import javafx.scene.control.LabelBuilder;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.ScrollPaneBuilder;
-import javafx.scene.layout.ColumnConstraintsBuilder;
+import javafx.geometry.Insets;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.GridPaneBuilder;
 import javafx.scene.layout.VBox;
-import javafx.scene.layout.VBoxBuilder;
+import javafx.scene.text.Text;
 
+import static ensemble.samplepage.SamplePage.INDENT;
+import static ensemble.samplepage.SamplePageContent.title;
 
 /**
- *
+ * Description Section on Sample Page
  */
 public class Description extends VBox {
-    
+    private static final Image ORANGE_ARROW = new Image(EnsembleApp.class.getResource("images/orange-arrrow.png").toExternalForm());
     private final SamplePage samplePage;
-    private final SampleInfo sampleInfo;
-    private Label description;
+    private final Label description;
+    private final VBox relatedDocumentsList;
+    private final VBox relatedSamples;
     
     public Description(final SamplePage samplePage) {
-        super(INDENT);
         this.samplePage = samplePage;
-        this.sampleInfo = samplePage.sample;
         getStyleClass().add("sample-page-box");
-        VBox relatedDocumentsList = VBoxBuilder.create().build();
+
+        // Add Description
+        Text descriptionTitle = title("DESCRIPTION");
+        description = new Label();
+        description.setWrapText(true);
+        description.setMinHeight(Label.USE_PREF_SIZE);
+        description.setPadding(new Insets(8, 0, 8, 0));
+        getChildren().addAll(descriptionTitle,description);
+
+        // Add View Source Hyperlink
+        Hyperlink sourceBtn = new Hyperlink("VIEW SOURCE");
+        sourceBtn.getStyleClass().add("sample-page-box-title");
+        sourceBtn.setGraphic(new ImageView(ORANGE_ARROW));
+        sourceBtn.setContentDisplay(ContentDisplay.RIGHT);
+        sourceBtn.setOnAction(event -> {
+            samplePage.pageBrowser.goToPage(samplePage.getUrl().replaceFirst("sample://", "sample-src://"));
+        });
+        if (!EnsembleApp.IS_EMBEDDED) getChildren().add(sourceBtn);
+
+        // Setup Columns
+        GridPane gridPane = new GridPane();
+        getChildren().add(gridPane);
+        gridPane.setVgap(INDENT);
+        gridPane.setHgap(INDENT);
+        ColumnConstraints leftColumn = new ColumnConstraints();
+        leftColumn.setPercentWidth(50);
+        ColumnConstraints rightColumn = new ColumnConstraints();
+        rightColumn.setPercentWidth(50);
+        gridPane.getColumnConstraints().addAll(leftColumn, rightColumn);
+
+        // Add Related Documents
+        Text relatedDocumentsTitle = title("RELATED DOCUMENTS");
+        GridPane.setConstraints(relatedDocumentsTitle, 0, 0);
+        relatedDocumentsList = new VBox();
+        ScrollPane relatedDocumentsScrollPane = new ScrollPane(relatedDocumentsList);
+        relatedDocumentsScrollPane.setPrefSize(50,20);
+        GridPane.setConstraints(relatedDocumentsScrollPane, 0, 1);
+        relatedDocumentsScrollPane.setFitToHeight(true);
+        relatedDocumentsScrollPane.setFitToWidth(true);
+        relatedDocumentsScrollPane.prefHeightProperty().bind(heightProperty());
+        relatedDocumentsScrollPane.getStyleClass().clear();
+
+        // Add Related Samples
+        Text relatedSamplesTitle = title("RELATED SAMPLES");
+        GridPane.setConstraints(relatedSamplesTitle, 1, 0);
+        relatedSamples = new VBox();
+        GridPane.setConstraints(relatedSamples, 1, 1);
+
+        gridPane.getChildren().addAll(
+                relatedDocumentsTitle,
+                relatedDocumentsScrollPane,
+                relatedSamplesTitle,
+                relatedSamples);
+
+        // listen for when sample changes
+        samplePage.registerSampleInfoUpdater(sampleInfo -> {
+            update(sampleInfo);
+            return null;
+        });
+    }
+
+    private void update(SampleInfo sampleInfo) {
+        relatedDocumentsList.getChildren().clear();
         for (final URL docUrl : sampleInfo.getDocURLs()) {
             Hyperlink link = new Hyperlink(docUrl.getName());
-            link.setOnAction(new EventHandler<ActionEvent>() {
-                @Override
-                public void handle(ActionEvent t) {
-                    samplePage.pageBrowser.goToPage(docUrl.getURL());
-                }
+            link.setOnAction(t -> {
+                samplePage.pageBrowser.goToPage(docUrl.getURL());
             });
+            link.setTooltip(new Tooltip(docUrl.getName()));
             relatedDocumentsList.getChildren().add(link);
         }
         for (final String classpath : sampleInfo.apiClasspaths) {
             Hyperlink link = new Hyperlink(classpath.replace('$', '.'));
-            link.setOnAction(new EventHandler<ActionEvent>() {
-                @Override
-                public void handle(ActionEvent t) {
-                    samplePage.pageBrowser.goToPage(samplePage.apiClassToUrl(classpath));
-                }
+            link.setOnAction(t -> {
+                samplePage.pageBrowser.goToPage(samplePage.apiClassToUrl(classpath));
             });
             relatedDocumentsList.getChildren().add(link);
         }
-        ScrollPane relatedDocumentsScrollPane = ScrollPaneBuilder.create()
-                .content(relatedDocumentsList)
-                .fitToHeight(true)
-                .fitToWidth(true)
-                .pannable(true)
-                .build();
-        relatedDocumentsScrollPane.prefHeightProperty().bind(heightProperty());
-        relatedDocumentsScrollPane.getStyleClass().clear();
-        
-        VBox relatedDocuments = VBoxBuilder.create()
-                .children(
-                    title("RELATED DOCUMENTS"), 
-                    relatedDocumentsScrollPane
-                )
-                .build();
-        
-        VBox relatedSamples = VBoxBuilder.create()
-                .children(title("RELATED SAMPLES"))
-                .build();
-        
+        relatedSamples.getChildren().clear();
         for (final SampleInfo.URL sampleURL : sampleInfo.getRelatedSampleURLs()) {
             if (Samples.ROOT.sampleForPath(sampleURL.getURL()) != null) { //Check if sample exists
                 Hyperlink sampleLink = new Hyperlink(sampleURL.getName());
@@ -120,26 +154,7 @@ public class Description extends VBox {
                 relatedSamples.getChildren().add(sampleLink);
             }
         }
-        GridPane gridPane = GridPaneBuilder.create()
-                .columnConstraints(
-                    ColumnConstraintsBuilder.create()
-                        .percentWidth(50)
-                        .build(), 
-                    ColumnConstraintsBuilder.create()
-                        .percentWidth(50)
-                        .build()
-                )
-                .build();
-        gridPane.addRow(0, relatedDocuments, relatedSamples);
-        
-        description = LabelBuilder.create()
-                .text(sampleInfo.description)
-                .wrapText(true)
-                .minHeight(Label.USE_PREF_SIZE)
-                .build();
-        
-        getChildren().addAll(
-                title("DESCRIPTION"), description, 
-                gridPane);
+        description.setText(sampleInfo.description);
     }
+
 }

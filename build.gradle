@@ -338,6 +338,10 @@ ext.IS_FULL_TEST = Boolean.parseBoolean(FULL_TEST);
 defineProperty("USE_ROBOT", "true")
 ext.IS_USE_ROBOT = Boolean.parseBoolean(USE_ROBOT);
 
+// Specifies whether to run system tests that depend on AWT (only used when FULL_TEST is also enabled)
+defineProperty("AWT_TEST", "true")
+ext.IS_AWT_TEST = Boolean.parseBoolean(AWT_TEST);
+
 // Specify the build configuration (Release, Debug, or DebugNative)
 defineProperty("CONF", "Debug")
 ext.IS_DEBUG_JAVA = CONF == "Debug" || CONF == "DebugNative"
@@ -1424,6 +1428,18 @@ project(":designTime") {
     }
 }
 
+project(":jmx") {
+    dependencies {
+        compile project(":base")
+        compile project(":graphics")
+        compile project(":swing")
+        compile project(":media")
+    }
+
+    // Tests are disabled until RT-33926 can be fixed
+    test.enabled = false
+}
+
 // This project is for system tests that need to run with a full SDK.
 // Most of them display a stage or do other things that preclude running
 // them in a shared JVM or as part of the "smoke test" run (which must
@@ -1439,6 +1455,11 @@ project(":systemTests") {
             exclude("**/javafx/embed/swing/*.*");
             exclude("**/javafx/scene/layout/*.*");
             exclude("**/test3d/*.*");
+        }
+        if (!IS_AWT_TEST) {
+            // Disable all AWT-based tests
+            exclude("**/javafx/embed/swing/*.*");
+            exclude("**/com/sun/javafx/application/Swing*.*");
         }
         forkEvery = 1
         classpath = files("$sdkDir/rt/lib/ext/jfxrt.jar") + classpath
@@ -2158,7 +2179,9 @@ task javadoc(type: Javadoc) {
         project.sourceSets.main.output
     });
     exclude("com/**/*", "javafx/scene/ParentDesignInfo*", "Compile*", "javafx/builder/**/*");
-    options.windowTitle("JavaFX ${RELEASE_NAME}")
+    options.windowTitle("${javadocTitle}")
+    options.header("${javadocHeader}")
+    options.bottom("${javadocBottom}")
     options.links(JDK_DOCS);
     options.addBooleanOption("XDignore.symbol.file").setValue(true);
     options.addBooleanOption("Xdoclint:none").setValue(!IS_DOC_LINT);
@@ -2379,6 +2402,16 @@ compileTargets { t ->
     }
     jfxrt.dependsOn(jfxswtIndexTask)
 
+    def jmxTask = task ("jmx${t.capital}", type: Jar) {
+        group = "Basic"
+        description = "Creates the javafx-mx.jar"
+        archiveName = "build/${t.name}-sdk/lib/javafx-mx.jar";
+        includeEmptyDirs = false
+        from "modules/jmx/build/classes/main"
+        from "modules/jmx/build/resources/main"
+        dependsOn project(":jmx").assemble
+    }
+
     // The 'sdk' task will build the rest of the SDK, and depends on the 'jfxrtTask' task. After
     // executing this task the sdk bundle for the current COMPILE_TARGETS will be fully created.
     def sdkTask = task("sdk$t.capital") {
@@ -2491,6 +2524,7 @@ compileTargets { t ->
                 }
             }
         }
+        dependsOn(jmxTask);
         dependsOn(jfxrtTask)
         dependsOn(javadoc)
         dependsOn(src)

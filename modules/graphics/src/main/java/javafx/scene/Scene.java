@@ -1813,7 +1813,7 @@ public class Scene implements EventTarget {
      */
     Node test_pick(double x, double y) {
         inMousePick = true;
-        PickResult result = mouseHandler.pickNode(new PickRay(x, y,
+        PickResult result = mouseHandler.pickNode(new PickRay(x, y, 1,
                 Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY));
         inMousePick = false;
         if (result != null) {
@@ -2347,6 +2347,8 @@ public class Scene implements EventTarget {
                 PerformanceTracker.logEvent("Scene - first repaint");
             }
 
+            focusCleanup();
+
             if (PULSE_LOGGING_ENABLED) {
                 long start = System.currentTimeMillis();
                 Scene.this.doCSSPass();
@@ -2404,8 +2406,6 @@ public class Scene implements EventTarget {
 
             // required for image cursor created from animated image
             Scene.this.mouseHandler.updateCursorFrame();
-
-            focusCleanup();
 
             if (firstPulse) {
                 if (PerformanceTracker.isLoggingEnabled()) {
@@ -3865,6 +3865,18 @@ public class Scene implements EventTarget {
 
     class KeyHandler {
         private void setFocusOwner(final Node value) {
+            // Cancel IM composition if there is one in progress.
+            // This needs to be done before the focus owner is switched as it
+            // generates event that needs to be delivered to the old focus owner.
+            if (oldFocusOwner != null) {
+                final Scene s = oldFocusOwner.getScene();
+                if (s != null) {
+                    final TKScene peer = s.impl_getPeer();
+                    if (peer != null) {
+                        peer.finishInputMethodComposition();
+                    }
+                }
+            }
             focusOwner.set(value);
         }
 

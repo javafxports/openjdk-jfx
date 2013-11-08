@@ -34,6 +34,8 @@ import javafx.scene.layout.BackgroundRepeat;
 import javafx.scene.layout.BackgroundSize;
 import javafx.scene.layout.BorderStrokeStyle;
 import javafx.scene.layout.BorderWidths;
+import javafx.scene.layout.CornerRadii;
+import javafx.scene.layout.CornerRadiiConverter;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.CycleMethod;
 import javafx.scene.paint.Paint;
@@ -58,7 +60,6 @@ import com.sun.javafx.css.SimpleSelector;
 import com.sun.javafx.css.Size;
 import com.sun.javafx.css.SizeUnits;
 import com.sun.javafx.css.StyleManager;
-import javafx.css.Styleable;
 import com.sun.javafx.css.Stylesheet;
 import com.sun.javafx.css.converters.BooleanConverter;
 import com.sun.javafx.css.converters.EffectConverter;
@@ -719,7 +720,7 @@ final public class CSSParser {
         } else if ("-fx-background-position".equals(prop)) {
              return parseBackgroundPositionLayers(root);
         } else if ("-fx-background-radius".equals(prop)) {
-             return parseInsetsLayers(root);
+            return parseCornerRadius(root);
         } else if ("-fx-background-repeat".equals(prop)) {
              return parseBackgroundRepeatStyleLayers(root);
         } else if ("-fx-background-size".equals(prop)) {
@@ -729,7 +730,7 @@ final public class CSSParser {
         } else if ("-fx-border-insets".equals(prop)) {
              return parseInsetsLayers(root);
         } else if ("-fx-border-radius".equals(prop)) {
-             return parseMarginsLayers(root);
+             return parseCornerRadius(root);
         } else if ("-fx-border-style".equals(prop)) {
              return parseBorderStyleLayers(root);
         } else if ("-fx-border-width".equals(prop)) {
@@ -877,6 +878,8 @@ final public class CSSParser {
             break;
         case CSSLexer.FUNCTION:
             return  parseFunction(root);
+        case CSSLexer.URL:
+            return parseURI(root);
         default:
             final String msg = "Unknown token type: \'" + ttype + "\'";
             error(root, msg);
@@ -1383,8 +1386,6 @@ final public class CSSParser {
             return parseLadder(root);
         } else if ("region".regionMatches(true, 0, fcn, 0, 6)) {
             return parseRegion(root);
-        } else if ("url".regionMatches(true, 0, fcn, 0, 3)) {
-            return parseURI(root);
         } else {
             error(root, "Unexpected function \'" + fcn + "\'");
         }
@@ -2387,6 +2388,121 @@ final public class CSSParser {
         return new ParsedValueImpl<ParsedValue<ParsedValue[],Margins>[], Margins[]>(layers, Margins.SequenceConverter.getInstance());
     }
 
+
+    // http://www.w3.org/TR/css3-background/#the-border-radius
+    // <size>{1,4} [ '/' <size>{1,4}]? [',' <size>{1,4} [ '/' <size>{1,4}]?]?
+    private ParsedValueImpl<ParsedValue<ParsedValue<?,Size>[][],CornerRadii>[], CornerRadii[]> parseCornerRadius(Term root)
+            throws ParseException {
+
+
+        int nLayers = numberOfLayers(root);
+
+        Term term = root;
+        int layer = 0;
+        ParsedValueImpl<ParsedValue<?,Size>[][],CornerRadii>[] layers = new ParsedValueImpl[nLayers];
+
+        while(term != null) {
+
+            int nHorizontalTerms = 0;
+            Term temp = term;
+            while (temp != null) {
+                if (temp.token.getType() == CSSLexer.SOLIDUS) {
+                    temp = temp.nextInSeries;
+                    break;
+                }
+                nHorizontalTerms += 1;
+                temp = temp.nextInSeries;
+            };
+
+            int nVerticalTerms = 0;
+            while (temp != null) {
+                if (temp.token.getType() == CSSLexer.SOLIDUS) {
+                    error(temp, "unexpected SOLIDUS");
+                    break;
+                }
+                nVerticalTerms += 1;
+                temp = temp.nextInSeries;
+            }
+
+            if ((nHorizontalTerms == 0 || nHorizontalTerms > 4) || nVerticalTerms > 4) {
+                error(root, "expected [<length>|<percentage>]{1,4} [/ [<length>|<percentage>]{1,4}]?");
+            }
+
+            // used as index into margins[]. horizontal = 0, vertical = 1
+            int orientation = 0;
+
+            // at most, there should be four radii in the horizontal orientation and four in the vertical.
+            ParsedValueImpl<?,Size>[][] radii = new ParsedValueImpl[2][4];
+
+            ParsedValueImpl<?,Size> zero = new ParsedValueImpl<Size,Size>(new Size(0,SizeUnits.PX), null);
+            for (int r=0; r<4; r++) { radii[0][r] = zero; radii[1][r] = zero; }
+
+            int hr = 0;
+            int vr = 0;
+
+            Term lastTerm = term;
+            while ((hr <= 4) && (vr <= 4) && (term != null)) {
+
+                if (term.token.getType() == CSSLexer.SOLIDUS) {
+                    orientation += 1;
+                } else  {
+                    ParsedValueImpl<?,Size> parsedValue = parseSize(term);
+                    if (orientation == 0) {
+                        radii[orientation][hr++] = parsedValue;
+                    } else {
+                        radii[orientation][vr++] = parsedValue;
+                    }
+                }
+                lastTerm = term;
+                term = term.nextInSeries;
+            }
+
+            //
+            // http://www.w3.org/TR/css3-background/#the-border-radius
+            // The four values for each radii are given in the order top-left, top-right, bottom-right, bottom-left.
+            // If bottom-left is omitted it is the same as top-right.
+            // If bottom-right is omitted it is the same as top-left.
+            // If top-right is omitted it is the same as top-left.
+            //
+            // If there is no vertical component, then set both equally.
+            // If either is zero, then both are zero.
+            //
+
+            // if hr == 0, then there were no horizontal radii (which would be an error caught above)
+            if (hr != 0) {
+                if (hr < 2) radii[0][1] = radii[0][0]; // top-right = top-left
+                if (hr < 3) radii[0][2] = radii[0][0]; // bottom-right = top-left
+                if (hr < 4) radii[0][3] = radii[0][1]; // bottom-left = top-right
+            } else {
+                assert(false);
+            }
+
+            // if vr == 0, then there were no vertical radii
+            if (vr != 0) {
+                if (vr < 2) radii[1][1] = radii[1][0]; // top-right = top-left
+                if (vr < 3) radii[1][2] = radii[1][0]; // bottom-right = top-left
+                if (vr < 4) radii[1][3] = radii[1][1]; // bottom-left = top-right
+            } else {
+                // if no vertical, the vertical value is same as horizontal
+                radii[1][0] = radii[0][0];
+                radii[1][1] = radii[0][1];
+                radii[1][2] = radii[0][2];
+                radii[1][3] = radii[0][3];
+            }
+
+            // if either is zero, both are zero
+            if (zero.equals(radii[0][0]) || zero.equals(radii[1][0])) { radii[1][0] = radii[0][0] = zero; }
+            if (zero.equals(radii[0][1]) || zero.equals(radii[1][1])) { radii[1][1] = radii[0][1] = zero; }
+            if (zero.equals(radii[0][2]) || zero.equals(radii[1][2])) { radii[1][2] = radii[0][2] = zero; }
+            if (zero.equals(radii[0][3]) || zero.equals(radii[1][3])) { radii[1][3] = radii[0][3] = zero; }
+
+            layers[layer++] = new ParsedValueImpl<ParsedValue<?,Size>[][],CornerRadii>(radii, null);
+
+            term = nextLayer(lastTerm);
+        }
+        return new ParsedValueImpl<ParsedValue<ParsedValue<?,Size>[][],CornerRadii>[], CornerRadii[]>(layers, CornerRadiiConverter.getInstance());
+    }
+
     /* Constant for background position */
     private final static ParsedValueImpl<Size,Size> ZERO_PERCENT =
             new ParsedValueImpl<Size,Size>(new Size(0f, SizeUnits.PERCENT), null);
@@ -3387,26 +3503,18 @@ final public class CSSParser {
         return new ParsedValueImpl<String,String>(styleClassOrId, StringConverter.getInstance());
     }
 
-    // parse a URI value
-    // i.e., url("<uri>")
+    // url("<uri>") is tokenized by the lexer, so the root arg should be a URL token.
     private ParsedValueImpl<ParsedValue[],String> parseURI(Term root)
             throws ParseException {
 
-        // first term in the chain is the function name...
-        final String fn = (root.token != null) ? root.token.getText() : null;
-        if (!"url".regionMatches(true, 0, fn, 0, 3)) {
-            error(root,"Expected \'url\'");
-        }
+        if (root == null) error(root, "Expected \'url(\"<uri-string>\")\'");
 
-        Term arg = root.firstArg;
-        if (arg == null) error(root, "Expected \'url(\"<uri-string>\")\'");
+        if (root.token == null ||
+            root.token.getType() != CSSLexer.URL ||
+            root.token.getText() == null ||
+            root.token.getText().isEmpty()) error(root, "Expected \'url(\"<uri-string>\")\'");
 
-        if (arg.token == null ||
-            arg.token.getType() != CSSLexer.STRING ||
-            arg.token.getText() == null ||
-            arg.token.getText().isEmpty()) error(arg, "Expected \'url(\"<uri-string>\")\'");
-
-        final String uri = arg.token.getText();
+        final String uri = root.token.getText();
         ParsedValueImpl[] uriValues = new ParsedValueImpl[] {
             new ParsedValueImpl<String,String>(uri, StringConverter.getInstance()),
             null // placeholder for Stylesheet URL
@@ -3763,77 +3871,68 @@ final public class CSSParser {
                             if (currentToken.getType() == CSSLexer.IDENT) {
                                 // simple reference to other font-family
                                 sources.add(new FontFace.FontFaceSrc(FontFace.FontFaceSrcType.REFERENCE,currentToken.getText()));
-                            } else if (currentToken.getType() == CSSLexer.FUNCTION) {
-                                if ("url(".equalsIgnoreCase(currentToken.getText())) {
-                                    // consume the function token
-                                    currentToken = nextToken(lexer);
-                                    // parse function contents
-                                    final StringBuilder urlSb = new StringBuilder();
-                                    while(true) {
-                                        if((currentToken != null) && (currentToken.getType() != CSSLexer.RPAREN) &&
-                                                (currentToken.getType() != Token.EOF)) {
-                                            urlSb.append(currentToken.getText());
-                                        } else {
-                                            break;
-                                        }
-                                        currentToken = nextToken(lexer);
+
+                            } else if (currentToken.getType() == CSSLexer.URL) {
+
+                                // let URLConverter do the conversion
+                                ParsedValueImpl[] uriValues = new ParsedValueImpl[] {
+                                        new ParsedValueImpl<String,String>(currentToken.getText(), StringConverter.getInstance()),
+                                        new ParsedValueImpl<String,String>(sourceOfStylesheet, null)
+                                };
+                                ParsedValue<ParsedValue[], String> parsedValue =
+                                        new ParsedValueImpl<ParsedValue[], String>(uriValues, URLConverter.getInstance());
+                                String urlStr = parsedValue.convert(null);
+
+                                URL url = null;
+                                try {
+                                    URI fontUri = new URI(urlStr);
+                                    url = fontUri.toURL();
+                                } catch (URISyntaxException |  MalformedURLException malf) {
+
+                                    final int line = currentToken.getLine();
+                                    final int pos = currentToken.getOffset();
+                                    final String msg = MessageFormat.format("Could not resolve @font-face url [{2}] at [{0,number,#},{1,number,#}]",line,pos,urlStr);
+                                    CssError error = createError(msg);
+                                    if (LOGGER.isLoggable(Level.WARNING)) {
+                                        LOGGER.warning(error.toString());
                                     }
-                                    int start = 0, end = urlSb.length();
-                                    if (urlSb.charAt(start) == '\'' || urlSb.charAt(start) == '\"') start ++;
-                                    if (urlSb.charAt(start) == '/' || urlSb.charAt(start) == '\\') start ++;
-                                    if (urlSb.charAt(end-1) == '\'' || urlSb.charAt(end-1) == '\"') end --;
-                                    final String urlStr = urlSb.substring(start,end);
+                                    reportError(error);
 
-                                    URL url = null;
-                                    Exception exception = null;
-                                    try {
-                                        URI stylesheetUri = new URI(sourceOfStylesheet);
-                                        URI fontUri = stylesheetUri.resolve(urlStr);
-                                        url = fontUri.toURL();
-                                    } catch (URISyntaxException |  MalformedURLException malf) {
-
-                                        final int line = currentToken.getLine();
-                                        final int pos = currentToken.getOffset();
-                                        final String msg = MessageFormat.format("Could not resolve @font-face url [{2}] at [{0,number,#},{1,number,#}]",line,pos,urlStr);
-                                        CssError error = createError(msg);
-                                        if (LOGGER.isLoggable(Level.WARNING)) {
-                                            LOGGER.warning(error.toString());
-                                        }
-                                        reportError(error);
-
-                                        // skip the rest.
-                                        while(currentToken != null) {
-                                            int ttype = currentToken.getType();
-                                            if (ttype == CSSLexer.RPAREN ||
+                                    // skip the rest.
+                                    while(currentToken != null) {
+                                        int ttype = currentToken.getType();
+                                        if (ttype == CSSLexer.RBRACE ||
                                                 ttype == Token.EOF) {
-                                                return null;
-                                            }
-                                            currentToken = nextToken(lexer);
+                                            return null;
                                         }
-                                    }
-                                    String format = null;
-                                    while(true) {
                                         currentToken = nextToken(lexer);
-                                        final int ttype = (currentToken != null) ? currentToken.getType() : Token.EOF;
-                                        if (ttype == CSSLexer.FUNCTION) {
-                                            if ("format(".equalsIgnoreCase(currentToken.getText())) {
-                                                continue;
-                                            } else {
-                                                break;
-                                            }
-                                        } else if (ttype == CSSLexer.IDENT ||
-                                                ttype == CSSLexer.STRING) {
+                                    }
+                                }
 
-                                            format = Utils.stripQuotes(currentToken.getText());
-                                        } else if (ttype == CSSLexer.RPAREN) {
+                                String format = null;
+                                while(true) {
+                                    currentToken = nextToken(lexer);
+                                    final int ttype = (currentToken != null) ? currentToken.getType() : Token.EOF;
+                                    if (ttype == CSSLexer.FUNCTION) {
+                                        if ("format(".equalsIgnoreCase(currentToken.getText())) {
                                             continue;
                                         } else {
                                             break;
                                         }
-                                    }
+                                    } else if (ttype == CSSLexer.IDENT ||
+                                            ttype == CSSLexer.STRING) {
 
-                                    sources.add(new FontFace.FontFaceSrc(FontFace.FontFaceSrcType.URL,url.toExternalForm(), format));
-                                } else if ("local(".equalsIgnoreCase(currentToken.getText())) {
+                                        format = Utils.stripQuotes(currentToken.getText());
+                                    } else if (ttype == CSSLexer.RPAREN) {
+                                        continue;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                                sources.add(new FontFace.FontFaceSrc(FontFace.FontFaceSrcType.URL,url.toExternalForm(), format));
+
+                            } else if (currentToken.getType() == CSSLexer.FUNCTION) {
+                                if ("local(".equalsIgnoreCase(currentToken.getText())) {
                                     // consume the function token
                                     currentToken = nextToken(lexer);
                                     // parse function contents
@@ -4387,6 +4486,12 @@ final public class CSSParser {
                     }
 
                 }
+
+            case CSSLexer.URL:
+                break;
+
+            case CSSLexer.SOLIDUS:
+                break;
 
             default:
                 final int line = currentToken != null ? currentToken.getLine() : -1;

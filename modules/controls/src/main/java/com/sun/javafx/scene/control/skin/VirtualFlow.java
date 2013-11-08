@@ -1365,7 +1365,39 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
         
         double breadthBarLength = snapSize(isVertical ? hbar.prefHeight(-1) : vbar.prefWidth(-1));
         double lengthBarBreadth = snapSize(isVertical ? vbar.prefWidth(-1) : hbar.prefHeight(-1));
-        
+
+        // Update cell positions.
+        // When rebuilding the cells, we add the cells and along the way compute
+        // the maxPrefBreadth. Based on the computed value, we may add
+        // the breadth scrollbar which changes viewport length, so we need
+        // to re-position the cells.
+        if (!cells.isEmpty()) {
+            final double currOffset = -computeViewportOffset(getPosition());
+            final int currIndex = computeCurrentIndex() - cells.getFirst().getIndex();
+            final int size = cells.size();
+
+            // position leading cells
+            double offset = currOffset;
+            boolean first = true;
+            for (int i = currIndex; i >= 0 && i < size; i--) {
+                final T cell = cells.get(i);
+
+                offset -= first ? 0.0 : getCellLength(cell);
+                first = false;
+
+                positionCell(cell, offset);
+            }
+
+            // position trailing cells
+            offset = currOffset;
+            for (int i = currIndex; i >= 0 && i < size; i++) {
+                final T cell = cells.get(i);
+                positionCell(cell, offset);
+
+                offset += getCellLength(cell);
+            }
+        }
+
         // Now that we've laid out the cells, we may need to adjust the scroll
         // bars and update the viewport dimensions based on the bars
         // We have to do the following work twice because the first pass
@@ -1469,34 +1501,34 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
                 breadthBar.setVisibleAmount((viewportBreadth / getMaxPrefBreadth()) * newMax);
             }
         }
-
-        if (lengthBar.isVisible()) {
-            // determine how many cells there are on screen so that the scrollbar
-            // thumb can be appropriately sized
-            if (recreate) {
-                int numCellsVisibleOnScreen = 0;
-                for (int i = 0, max = cells.size(); i < max; i++) {
-                    T cell = cells.get(i);
-                    if (cell != null && ! cell.isEmpty()) {
-                        sumCellLength += (isVertical ? cell.getHeight() : cell.getWidth());
-                        if (sumCellLength > flowLength) {
-                            break;
-                        }
-
-                        numCellsVisibleOnScreen++;
+        
+        // determine how many cells there are on screen so that the scrollbar
+        // thumb can be appropriately sized
+        if (recreate && (lengthBar.isVisible() || BehaviorSkinBase.IS_TOUCH_SUPPORTED)) {
+            int numCellsVisibleOnScreen = 0;
+            for (int i = 0, max = cells.size(); i < max; i++) {
+                T cell = cells.get(i);
+                if (cell != null && !cell.isEmpty()) {
+                    sumCellLength += (isVertical ? cell.getHeight() : cell.getWidth());
+                    if (sumCellLength > flowLength) {
+                        break;
                     }
-                }
 
-                lengthBar.setMax(1);
-                if (numCellsVisibleOnScreen == 0 && cellCount == 1) {
-                    // special case to help resolve RT-17701 and the case where we have
-                    // only a single row and it is bigger than the viewport
-                    lengthBar.setVisibleAmount(flowLength / sumCellLength);
-                } else {
-                    lengthBar.setVisibleAmount(numCellsVisibleOnScreen / (float) cellCount);
+                    numCellsVisibleOnScreen++;
                 }
             }
 
+            lengthBar.setMax(1);
+            if (numCellsVisibleOnScreen == 0 && cellCount == 1) {
+                    // special case to help resolve RT-17701 and the case where we have
+                // only a single row and it is bigger than the viewport
+                lengthBar.setVisibleAmount(flowLength / sumCellLength);
+            } else {
+                lengthBar.setVisibleAmount(numCellsVisibleOnScreen / (float) cellCount);
+            }
+        }
+
+        if (lengthBar.isVisible()) {
             // Fix for RT-11873. If this isn't here, we can have a situation where
             // the scrollbar scrolls endlessly. This is possible when the cell
             // count grows as the user hits the maximal position on the scrollbar
