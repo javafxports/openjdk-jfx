@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef GLASS_KEY_H
-#define        GLASS_KEY_H
 
-#include <jni.h>
+package com.sun.javafx.embed;
 
-#include <gtk/gtk.h>
+import javafx.scene.input.TransferMode;
 
-jint gdk_keyval_to_glass(guint keyval);
-jint get_glass_key(GdkEventKey* e);
-jint glass_key_to_modifier(jint glassKey);
-jint gdk_modifier_mask_to_glass(guint mask);
-gint find_gdk_keyval_for_glass_keycode(jint code);
-
-#endif        /* GLASS_KEY_H */
-
+/*
+ * Interface, which is implemented by the host UI toolkit to track,
+ * when DnD is started in embedded FX scene.
+ */
+public interface HostDragStartListener {
+    public void dragStarted(EmbeddedSceneDSInterface dragSource, TransferMode dragAction);
+}

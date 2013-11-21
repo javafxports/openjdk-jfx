@@ -29,9 +29,6 @@
 #import "com_sun_glass_events_MouseEvent.h"
 #import "com_sun_glass_ui_View_Capability.h"
 #import "com_sun_glass_ui_mac_MacGestureSupport.h"
-
-#import <JavaRuntimeSupport/JavaRuntimeSupport.h>
-
 #import "GlassMacros.h"
 #import "GlassView3D.h"
 #import "GlassLayer3D.h"
@@ -757,9 +754,9 @@
 
 - (NSRect) firstRectForCharacterRange:(NSRange)theRange actualRange:(NSRangePointer)actualRange
 {
-    IMLOG("firstRectForCharacterRange called %lu %lu", 
-            (unsigned long)theRange.location, (unsigned long)theRange.length);    
-    NSRect result = [self->_delegate getInputMethodCandidatePosRequest:(int)theRange.length];
+    IMLOG("firstRectForCharacterRange called %lu %lu",
+          (unsigned long)theRange.location, (unsigned long)theRange.length);
+    NSRect result = [self->_delegate getInputMethodCandidatePosRequest:0];
     NSRect screenFrame = [[NSScreen mainScreen] frame];
     result.origin.y = screenFrame.size.height - result.origin.y;
     return result;

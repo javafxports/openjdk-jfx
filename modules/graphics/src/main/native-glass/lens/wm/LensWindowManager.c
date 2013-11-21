@@ -41,7 +41,6 @@ static pthread_mutex_t renderMutex = PTHREAD_MUTEX_INITIALIZER;
 static int _mousePosX;
 static int _mousePosY;
 
-static jboolean _mousePressed = JNI_FALSE;
 static jboolean _onDraggingAction = JNI_FALSE;
 static NativeWindow _dragGrabbingWindow = NULL;
 static int _mousePressedButton = com_sun_glass_events_MouseEvent_BUTTON_NONE;
@@ -78,6 +77,11 @@ static void lens_wm_windowMaximize(JNIEnv *env,
                                    NativeWindow window);
 static void lens_wm_windowEnterFullscreen(JNIEnv *env,
                                           NativeWindow window);
+
+
+static void lens_wm_notifyEnterExitEvents(JNIEnv *env, 
+                                          NativeWindow *windowFound,
+                                          int *relX, int *relY);
 
 jboolean lens_wm_initialize(JNIEnv *env) {
 
@@ -1007,8 +1011,15 @@ void lens_wm_notifyButtonEvent(JNIEnv *env,
     //cache new coordinates
     _mousePosX = xabs;
     _mousePosY = yabs;
-    window = glass_window_findWindowAtLocation(xabs, yabs,
-                          &relX, &relY);
+
+    //in case this function was called due to a mouse event, lens_wm_notifyEnterExitEvents()
+    // will have no effect as the ENTER/EXIST were already notified from prior mouse motion events.
+    //in case this function was called due to a touch event, lens_wm_notifyEnterExitEvents() 
+    //will guarantee we have the proper window's view state  
+    lens_wm_notifyEnterExitEvents(env, &window, &relX, &relY);
+
+    //save current window
+    lens_wm_setMouseWindow(window);  
 
     GLASS_LOG_FINEST("button event on window %d[%p], pressed %s, button %d, abs (%d,%d) rel (%d,%d)",
                                       window?window->id:-1,
@@ -1088,74 +1099,36 @@ void lens_wm_notifyMultiTouchEvent(JNIEnv *env,
     jboolean allReleased;    
 
     //set the touch window on first touch event
-    if (touchWindow == NULL && primaryPointIndex >= 0) {
+    if (touchWindow == NULL && primaryPointIndex >= 0 && !_onDraggingAction) {
         //find the touch window for first event
         touchWindow = glass_window_findWindowAtLocation(xabs[primaryPointIndex],
                                                         yabs[primaryPointIndex],
                                                         &relX, &relY);
-        if (touchWindow) {
-            //As this is the first time we find a window to report to, we need to
-            //transform all points states to 'press' and ignore release events, as 
-            //the input driver state calculation is done without a window context.
-            //An example for a wrong state -  tapping on an 'open space' and then
-            //dragging the finger over a window. The touch events will be 
-            //reported as move, from the input driver, but the window expect them to be
-            //pressed event as it the first time it get a notification for those
-            //points
-
-            GLASS_LOG_FINEST("[touch window] window %d[%p] own the touch sequence",
-                             touchWindow->id,
-                             touchWindow);
-
-            int actualCount = 0;
-            for (i = 0; i < count; i++) {
-                if (states[i] == com_sun_glass_events_TouchEvent_TOUCH_RELEASED) {
-                    //skip and drop release events
-                    GLASS_LOG_FINEST("[touch window] Dropping touch point (index %d id %d)",
-                                     i,
-                                     (int)ids[i]);
-                    continue;
-                } else {
-                    //copy 
-                    ids[actualCount] = ids[i];
-                    states[actualCount] = com_sun_glass_events_TouchEvent_TOUCH_PRESSED;
-                    xabs[actualCount] = xabs[i];
-                    yabs[actualCount] = yabs[i];
-
-                    //update the index of the primary point 
-                    if (primaryPointIndex == i) {
-                        primaryPointIndex = actualCount;
-                    }
-
-                    actualCount ++;
-                }
-            }
-
-            GLASS_IF_LOG_FINEST {
-                if (count != actualCount) {                    
-                    GLASS_LOG_FINEST("[touch window] points array have been updated to:");
-                        for (i = 0; i < actualCount; i++) {
-                            const char *isPrimary = primaryPointIndex == i?
-                                                    "[Primary]":
-                                                    "";
-                            GLASS_LOG_FINEST("[touch window] point %d / %d id=%d state=%d, x=%d y=%d %s",
-                                             i+1,
-                                             actualCount,
-                                             (int)ids[i],
-                                             states[i],
-                                             xabs[i], yabs[i],
-                                             isPrimary);
-                        }
-                        GLASS_LOG_FINEST(" "); //make it easier to read the log
-                }
-
-            }
-            //update count
-            count = actualCount;
-
-            lens_wm_setMouseWindow(touchWindow);
-        }
         
+        if (touchWindow) {
+            GLASS_IF_LOG_FINEST("[touch event -> window] touch event on window %d[%p]",
+                                touchWindow->id,
+                                touchWindow);
+            //we have a touch point over a window, we need to check that its the
+            //starting point of the touch event sequence (all points pressed and
+            // we are not in the a middle of a drag), if not ignore the event.
+            //
+            //example scenario - touch outside a window and drag the finger
+            //into the window - same as press with a mouse outside a window, hold the
+            //button and drag mouse into the window
+
+
+            for (i = 0; i < count; i++) {
+                if (states[i] != com_sun_glass_events_TouchEvent_TOUCH_PRESSED) {
+                    GLASS_IF_LOG_FINEST("[touch event -> window] in middle of touch sequance (states[%d]=%d) - ignore",
+                                        i,
+                                        states[i]);
+                    touchWindow = NULL;
+                    break;
+                }
+            }
+        }
+
     }
 
     GLASS_LOG_FINEST("touch window %d, indexPoint = %d",
@@ -1234,93 +1207,28 @@ void lens_wm_notifyMotionEvent(JNIEnv *env, int mousePosX, int mousePosY) {
     //cache new coordinates
     _mousePosX = mousePosX;
     _mousePosY = mousePosY;
+    NativeWindow window = NULL;
 
     fbCursorSetPosition(mousePosX, mousePosY);
     
-    if (_mousePressed && !_onDraggingAction && !isDnDStarted) {
-        GLASS_LOG_FINE("Starting native mouse drag");
+    if (_mousePressedButton != com_sun_glass_events_MouseEvent_BUTTON_NONE &&
+         !_onDraggingAction && !isDnDStarted) {
         _onDraggingAction = JNI_TRUE;
         _dragGrabbingWindow = lens_wm_getMouseWindow();
+        GLASS_LOG_FINE("Starting native mouse drag on windown %d[%p]",
+                       _dragGrabbingWindow?_dragGrabbingWindow->id : -1,
+                       _dragGrabbingWindow);
     }
-    NativeWindow window = glass_window_findWindowAtLocation(_mousePosX, _mousePosY,
-                                                            &relX, &relY);
+    
+
+    lens_wm_notifyEnterExitEvents(env, &window, &relX, &relY);
 
     GLASS_LOG_FINER("Motion event on window %i[%p] absX=%i absY=%i, relX=%i, relY=%i",
                     (window)?window->id:-1,
                     window,
                     _mousePosX, _mousePosY, relX, relY);
 
-
-    NativeWindow lastMouseWindow = lens_wm_getMouseWindow();
-
-    GLASS_LOG_FINER("lastMouseWindow = %i[%p]",
-                    (lastMouseWindow)?lastMouseWindow->id:-1,
-                    lastMouseWindow);
-
-    //Send EXIT/ENTER events
-    if (_onDraggingAction && _dragGrabbingWindow != NULL) {
-        if (window != _dragGrabbingWindow &&
-                _dragGrabbingWindow == lastMouseWindow) {
-            relX = _mousePosX - _dragGrabbingWindow->currentBounds.x;
-            relY = _mousePosY - _dragGrabbingWindow->currentBounds.y;
-            GLASS_LOG_FINER("MouseEvent_EXIT on dragGrabbingWindow %i[%p]",
-                            (_dragGrabbingWindow)?_dragGrabbingWindow->id:-1,
-                            _dragGrabbingWindow);
-
-            glass_application_notifyMouseEvent(env,
-                                               _dragGrabbingWindow,
-                                               com_sun_glass_events_MouseEvent_EXIT,
-                                               relX, relY, _mousePosX, _mousePosY,
-                                               com_sun_glass_events_MouseEvent_BUTTON_NONE);
-        }
-
-        if (window == _dragGrabbingWindow &&
-                window != lastMouseWindow) {
-            GLASS_LOG_FINER("MouseEvent_ENTER on dragGrabbingWindow %i[%p]",
-                            (_dragGrabbingWindow)?_dragGrabbingWindow->id:-1,
-                            _dragGrabbingWindow);
-            glass_application_notifyMouseEvent(env,
-                                               _dragGrabbingWindow,
-                                               com_sun_glass_events_MouseEvent_ENTER,
-                                               relX, relY, _mousePosX, _mousePosY,
-                                               com_sun_glass_events_MouseEvent_BUTTON_NONE);
-        }
-    }
-
-    if (!_onDraggingAction) {
-        if (window != lastMouseWindow) {
-            if (lastMouseWindow) {
-                // Exited from lastMouseWindow
-                relX = _mousePosX - lastMouseWindow->currentBounds.x;
-                relY = _mousePosY - lastMouseWindow->currentBounds.y;
-
-                GLASS_LOG_FINER("MouseEvent_EXIT on lastMouseWindow %i[%p]",
-                               (lastMouseWindow)?lastMouseWindow->id:-1,
-                               lastMouseWindow);
-
-                glass_application_notifyMouseEvent(env,
-                                                   lastMouseWindow,
-                                                   com_sun_glass_events_MouseEvent_EXIT,
-                                                   relX, relY, _mousePosX, _mousePosY,
-                                                   com_sun_glass_events_MouseEvent_BUTTON_NONE);
-            }
-            if (window) {
-                // Enter into window
-                GLASS_LOG_FINER("MouseEvent_ENTER on window %i[%p]",
-                               (window)?window->id:-1,
-                               window);
-
-                glass_application_notifyMouseEvent(env,
-                                                   window,
-                                                   com_sun_glass_events_MouseEvent_ENTER,
-                                                   relX, relY, _mousePosX, _mousePosY,
-                                                   com_sun_glass_events_MouseEvent_BUTTON_NONE);
-
-            }
-
-        }
-    }
-
+    //save current window
     lens_wm_setMouseWindow(window);
 
     //Send the move event
@@ -1354,7 +1262,110 @@ void lens_wm_notifyMotionEvent(JNIEnv *env, int mousePosX, int mousePosY) {
 
 }
 
+/**
+ * This function will search for a window using current mouse 
+ * location (_mousePosX, _mousePosY) and report the current and 
+ * last window's view for MouseEvent.ENTER and MouseEvent.EXIT 
+ * events as needed. 
+ *  
+ * The window's params will be saved in the supplied pointers 
+ * according to the information returned from 
+ * glass_window_findWindowAtLocation()
+ * 
+ *  
+ * 
+ * @param windowFound the NativeWindow as was found by 
+ *                    glass_window_findWindowAtLocation().
+ *                    pointer must not be NULL
+ * @param relX the relative coordinate X on the found window as found by 
+ *                    glass_window_findWindowAtLocation().
+ *                    pointer must not be NULL
+ * @param relY the relative coordinate Y on the found window as 
+ *                    found by
+ *                    glass_window_findWindowAtLocation().
+ *                    pointer must not be NULL
+ */
+static void lens_wm_notifyEnterExitEvents(JNIEnv *env,
+                                          NativeWindow *windowFound,
+                                          int *relX, int *relY) {
+    *windowFound = glass_window_findWindowAtLocation(_mousePosX, _mousePosY,
+                                                            relX, relY);
+    NativeWindow window = *windowFound;
+   
+    NativeWindow lastMouseWindow = lens_wm_getMouseWindow();
 
+    GLASS_LOG_FINER("_dragGrabbingWindow = %i[%p], windowFound = %i[%p] lastMouseWindow = %i[%p]",
+                    (_dragGrabbingWindow)?_dragGrabbingWindow->id:-1,
+                    _dragGrabbingWindow,
+                    (*windowFound)?(*windowFound)->id:-1,
+                    *windowFound,
+                    (lastMouseWindow)?lastMouseWindow->id:-1,
+                    lastMouseWindow);
+
+    //Send EXIT/ENTER events
+    if (_onDraggingAction && _dragGrabbingWindow != NULL) {
+        if (window != _dragGrabbingWindow &&
+                _dragGrabbingWindow == lastMouseWindow) {
+            *relX = _mousePosX - _dragGrabbingWindow->currentBounds.x;
+            *relY = _mousePosY - _dragGrabbingWindow->currentBounds.y;
+            GLASS_LOG_FINER("MouseEvent_EXIT on dragGrabbingWindow %i[%p]",
+                            (_dragGrabbingWindow)?_dragGrabbingWindow->id:-1,
+                            _dragGrabbingWindow);
+
+            glass_application_notifyMouseEvent(env,
+                                               _dragGrabbingWindow,
+                                               com_sun_glass_events_MouseEvent_EXIT,
+                                               *relX, *relY, _mousePosX, _mousePosY,
+                                               com_sun_glass_events_MouseEvent_BUTTON_NONE);
+        }
+
+        if (window == _dragGrabbingWindow &&
+                window != lastMouseWindow) {
+            GLASS_LOG_FINER("MouseEvent_ENTER on dragGrabbingWindow %i[%p]",
+                            (_dragGrabbingWindow)?_dragGrabbingWindow->id:-1,
+                            _dragGrabbingWindow);
+            glass_application_notifyMouseEvent(env,
+                                               _dragGrabbingWindow,
+                                               com_sun_glass_events_MouseEvent_ENTER,
+                                               *relX, *relY, _mousePosX, _mousePosY,
+                                               com_sun_glass_events_MouseEvent_BUTTON_NONE);
+        }
+    }
+
+    if (!_onDraggingAction) {
+        if (window != lastMouseWindow) {
+            if (lastMouseWindow) {
+                // Exited from lastMouseWindow
+                int _relX = _mousePosX - lastMouseWindow->currentBounds.x;
+                int _relY = _mousePosY - lastMouseWindow->currentBounds.y;
+
+                GLASS_LOG_FINER("MouseEvent_EXIT on lastMouseWindow %i[%p]",
+                               (lastMouseWindow)?lastMouseWindow->id:-1,
+                               lastMouseWindow);
+
+                glass_application_notifyMouseEvent(env,
+                                                   lastMouseWindow,
+                                                   com_sun_glass_events_MouseEvent_EXIT,
+                                                   _relX, _relY, _mousePosX, _mousePosY,
+                                                   com_sun_glass_events_MouseEvent_BUTTON_NONE);
+            }
+            if (window) {
+                // Enter into window
+                GLASS_LOG_FINER("MouseEvent_ENTER on window %i[%p]",
+                               (window)?window->id:-1,
+                               window);
+
+                glass_application_notifyMouseEvent(env,
+                                                   window,
+                                                   com_sun_glass_events_MouseEvent_ENTER,
+                                                   *relX, *relY, _mousePosX, _mousePosY,
+                                                   com_sun_glass_events_MouseEvent_BUTTON_NONE);
+
+            }
+
+        }
+    }    
+}
 
 
 /*

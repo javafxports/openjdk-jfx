@@ -35,6 +35,7 @@ import javafx.application.ConditionalFeature;
 import javafx.application.Platform;
 import javafx.beans.DefaultProperty;
 import javafx.beans.InvalidationListener;
+import javafx.beans.NamedArg;
 import javafx.beans.Observable;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ObjectPropertyBase;
@@ -111,7 +112,6 @@ import java.util.Set;
 
 import com.sun.javafx.Logging;
 import com.sun.javafx.Utils;
-import com.sun.javafx.beans.annotations.Default;
 import com.sun.javafx.collections.TrackableObservableList;
 import com.sun.javafx.css.StyleManager;
 import com.sun.javafx.cursor.CursorFrame;
@@ -223,7 +223,7 @@ public class Scene implements EventTarget {
      * other than the JavaFX Application Thread.
      * @throws NullPointerException if root is null
      */
-    public Scene(Parent root) {
+    public Scene(@NamedArg("root") Parent root) {
         this(root, -1, -1, Color.WHITE, false, SceneAntialiasing.DISABLED);
     }
 
@@ -254,7 +254,7 @@ public class Scene implements EventTarget {
      * other than the JavaFX Application Thread.
      * @throws NullPointerException if root is null
      */
-    public Scene(Parent root, double width, double height) {
+    public Scene(@NamedArg("root") Parent root, @NamedArg("width") double width, @NamedArg("height") double height) {
         this(root, width, height, Color.WHITE, false, SceneAntialiasing.DISABLED);
     }
 
@@ -268,7 +268,7 @@ public class Scene implements EventTarget {
      * other than the JavaFX Application Thread.
      * @throws NullPointerException if root is null
      */
-    public Scene(Parent root, @Default("javafx.scene.paint.Color.WHITE") Paint fill) {
+    public Scene(@NamedArg("root") Parent root, @NamedArg(value="fill", defaultValue="WHITE") Paint fill) {
         this(root, -1, -1, fill, false, SceneAntialiasing.DISABLED);
     }
 
@@ -284,8 +284,8 @@ public class Scene implements EventTarget {
      * other than the JavaFX Application Thread.
      * @throws NullPointerException if root is null
      */
-    public Scene(Parent root, double width, double height,
-            @Default("javafx.scene.paint.Color.WHITE") Paint fill) {
+    public Scene(@NamedArg("root") Parent root, @NamedArg("width") double width, @NamedArg("height") double height,
+            @NamedArg(value="fill", defaultValue="WHITE") Paint fill) {
         this(root, width, height, fill, false, SceneAntialiasing.DISABLED);
     }
 
@@ -309,7 +309,7 @@ public class Scene implements EventTarget {
      *
      * @see javafx.scene.Node#setDepthTest(DepthTest)
      */
-    public Scene(Parent root, @Default("-1") double width, @Default("-1") double height, boolean depthBuffer) {
+    public Scene(@NamedArg("root") Parent root, @NamedArg(value="width", defaultValue="-1") double width, @NamedArg(value="height", defaultValue="-1") double height, @NamedArg("depthBuffer") boolean depthBuffer) {
         this(root, width, height, Color.WHITE, depthBuffer, SceneAntialiasing.DISABLED);
     }
 
@@ -337,9 +337,9 @@ public class Scene implements EventTarget {
      * @see javafx.scene.Node#setDepthTest(DepthTest)
      * @since JavaFX 8.0
      */
-    public Scene(Parent root, @Default("-1") double width, @Default("-1") double height,
-            boolean depthBuffer,
-            @Default("javafx.scene.SceneAntialiasing.DISABLED") SceneAntialiasing antiAliasing) {
+    public Scene(@NamedArg("root") Parent root, @NamedArg(value="width", defaultValue="-1") double width, @NamedArg(value="height", defaultValue="-1") double height,
+            @NamedArg("depthBuffer") boolean depthBuffer,
+            @NamedArg(value="antiAliasing", defaultValue="DISABLED") SceneAntialiasing antiAliasing) {
         this(root, width, height, Color.WHITE, depthBuffer, antiAliasing);
 
         if (antiAliasing != null && antiAliasing != SceneAntialiasing.DISABLED &&
@@ -351,8 +351,7 @@ public class Scene implements EventTarget {
         }
     }
 
-    private Scene(Parent root, double width, double height,
-            @Default("javafx.scene.paint.Color.WHITE") Paint fill,
+    private Scene(Parent root, double width, double height, Paint fill,
             boolean depthBuffer, SceneAntialiasing antiAliasing) {
         this.depthBuffer = depthBuffer;
         this.antiAliasing = antiAliasing;
@@ -3091,6 +3090,11 @@ public class Scene implements EventTarget {
         }
 
         private void processTargetExit(DragEvent de) {
+            if (dragboard == null) {
+                // dragboard should have been created in processTargetEnterOver()
+                throw new NullPointerException("dragboard is null in processTargetExit()");
+            }
+
             if (currentTargets.size() > 0) {
                 potentialTarget = null;
                 tmpTargetWrapper.clear();
@@ -3108,7 +3112,8 @@ public class Scene implements EventTarget {
                     acceptedTransferMode, source, potentialTarget, de.getPickResult());
 
             if (dragboard == null) {
-                dragboard = createDragboard(de, false);
+                // dragboard should have been created in processTargetEnterOver()
+                throw new NullPointerException("dragboard is null in processTargetDrop()");
             }
 
             handleExitEnter(de, tmpTargetWrapper);
@@ -5706,24 +5711,19 @@ public class Scene implements EventTarget {
     }
 
 
-    Dragboard startDragAndDrop(EventTarget source,
-            TransferMode... transferModes) {
-
-        if (dndGesture.dragDetected != DragDetectedState.PROCESSING) {
+    Dragboard startDragAndDrop(EventTarget source, TransferMode... transferModes) {
+        if (dndGesture == null ||
+            (dndGesture.dragDetected != DragDetectedState.PROCESSING))
+        {
             throw new IllegalStateException("Cannot start drag and drop " +
                     "outside of DRAG_DETECTED event handler");
         }
 
-        if (dndGesture != null) {
-            Set<TransferMode> set = EnumSet.noneOf(TransferMode.class);
-            for (TransferMode tm : InputEventUtils.safeTransferModes(transferModes)) {
-                set.add(tm);
-            }
-            return dndGesture.startDrag(source, set);
+        Set<TransferMode> set = EnumSet.noneOf(TransferMode.class);
+        for (TransferMode tm : InputEventUtils.safeTransferModes(transferModes)) {
+            set.add(tm);
         }
-
-        throw new IllegalStateException("Cannot start drag and drop when "
-                + "mouse button is not pressed");
+        return dndGesture.startDrag(source, set);
     }
 
     void startFullDrag(EventTarget source) {

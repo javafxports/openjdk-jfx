@@ -23,24 +23,42 @@
  * questions.
  */
 
-package com.sun.javafx.embed;
+package javafx.fxml;
 
-import javafx.scene.input.TransferMode;
+import java.io.IOException;
+import org.junit.Assert;
+import org.junit.Test;
 
-/**
- * Embedded FX drop target.
- */
-public interface EmbeddedSceneDropTargetInterface {
+public final class RT_34146Test {
+    @Test
+    public void testCanCallAbstractMethodFromPrivateClass() throws IOException {
+        final FXMLLoader fxmlLoader =
+                new FXMLLoader(getClass().getResource("rt_34146.fxml"));
+        
+        final ConcreteController concreteController =
+                new ConcreteController();
+        fxmlLoader.setController(concreteController);
+        final Widget widget = fxmlLoader.<Widget>load();
+        widget.fire();
 
-    public TransferMode handleDragEnter(int x, int y, int xAbs, int yAbs,
-                                        TransferMode recommendedDropAction,
-                                        EmbeddedSceneDragSourceInterface dragSource);
+        Assert.assertTrue(concreteController.getActionHandlerCalled());
+    }
 
-    public void handleDragLeave();
+    private static abstract class AbstractController {
+        @FXML
+        protected abstract void actionHandler();
+    }
 
-    public TransferMode handleDragDrop(int x, int y, int xAbs, int yAbs,
-                                       TransferMode recommendedDropAction);
+    private static final class ConcreteController extends AbstractController {
+        private boolean actionHandlerCalled;
 
-    public TransferMode handleDragOver(int x, int y, int xAbs, int yAbs,
-                                       TransferMode recommendedDropAction);
+        @Override
+        protected void actionHandler() {
+            actionHandlerCalled = true;
+        }
+
+        boolean getActionHandlerCalled() {
+            return actionHandlerCalled;
+        }
+    }
 }
