@@ -78,6 +78,7 @@ class D3DContext extends BaseShaderContext {
     // Temp. variables (Not Thread Safe)
     private static GeneralTransform3D tempTx = new GeneralTransform3D();
     private static Vec3d tempVec3d = new Vec3d();
+    private static double[] tempAdjustClipSpaceMat = new double[16];
 
     private State state;
     private boolean isLost = false;
@@ -170,12 +171,10 @@ class D3DContext extends BaseShaderContext {
         return hr == D3D_OK;
     }
 
-
     /**
      * Validates result of present operation,
      * sets the context lost status if necessary
      */
-
     boolean validatePresent(int res) {
         if (res == D3DERR_DEVICELOST || res == D3DERR_DEVICENOTRESET) {
             setLost();
@@ -184,6 +183,20 @@ class D3DContext extends BaseShaderContext {
         }
 
         return res == D3D_OK;
+    }
+
+    /**
+     * OpenGL projection transform use z-range of [-1, 1] while D3D expects it
+     * to be [0, 1], so we need to adjust the matrix, see RT-32880.
+     */
+    private GeneralTransform3D adjustClipSpace(GeneralTransform3D projViewTx) {
+        double[] m = projViewTx.get(tempAdjustClipSpaceMat);
+        m[8] = (m[8] + m[12])/2;
+        m[9] = (m[9] + m[13])/2;
+        m[10] = (m[10] + m[14])/2;
+        m[11] = (m[11] + m[15])/2; 
+        projViewTx.set(m);
+        return projViewTx;
     }
 
     @Override
@@ -209,7 +222,7 @@ class D3DContext extends BaseShaderContext {
         }
 
         // Set projection view matrix
-        tempTx = camera.getProjViewTx(tempTx);
+        tempTx = adjustClipSpace(camera.getProjViewTx(tempTx));
         res = nSetProjViewMatrix(pContext, depthTest,
             tempTx.get(0),  tempTx.get(1),  tempTx.get(2),  tempTx.get(3),
             tempTx.get(4),  tempTx.get(5),  tempTx.get(6),  tempTx.get(7),
@@ -375,10 +388,12 @@ class D3DContext extends BaseShaderContext {
             float[] vertexBuffer, int vertexBufferLength, int[] indexBuffer, int indexBufferLength);
     private static native long nCreateD3DPhongMaterial(long pContext);
     private static native void nReleaseD3DPhongMaterial(long pContext, long nativeHandle);
-    private static native void nSetSolidColor(long pContext, long nativePhongMaterial,
+    private static native void nSetDiffuseColor(long pContext, long nativePhongMaterial,
             float r, float g, float b, float a);
+    private static native void nSetSpecularColor(long pContext, long nativePhongMaterial,
+            boolean set, float r, float g, float b, float a);
     private static native void nSetMap(long pContext, long nativePhongMaterial,
-            int mapType, long texID, boolean isSpecularAlpha, boolean isBumpAlpha);
+            int mapType, long texID);
     private static native long nCreateD3DMeshView(long pContext, long nativeMesh);
     private static native void nReleaseD3DMeshView(long pContext, long nativeHandle);
     private static native void nSetCullingMode(long pContext, long nativeMeshView,
@@ -466,14 +481,16 @@ class D3DContext extends BaseShaderContext {
         nReleaseD3DPhongMaterial(pContext, nativeHandle);
     }
 
-    void setSolidColor(long nativePhongMaterial, float r, float g, float b, float a) {
-        nSetSolidColor(pContext, nativePhongMaterial, r, g, b, a);
+    void setDiffuseColor(long nativePhongMaterial, float r, float g, float b, float a) {
+        nSetDiffuseColor(pContext, nativePhongMaterial, r, g, b, a);
     }
 
-    void setMap(long nativePhongMaterial, int mapType, long nativeTexture,
-            boolean isSpecularAlpha, boolean isBumpAlpha) {
-        nSetMap(pContext, nativePhongMaterial, mapType, nativeTexture,
-                isSpecularAlpha, isBumpAlpha);
+    void setSpecularColor(long nativePhongMaterial, boolean set, float r, float g, float b, float a) {
+        nSetSpecularColor(pContext, nativePhongMaterial, set, r, g, b, a);
+    }
+
+    void setMap(long nativePhongMaterial, int mapType, long nativeTexture) {
+        nSetMap(pContext, nativePhongMaterial, mapType, nativeTexture);
     }
 
     long createD3DMeshView(long nativeMesh) {
