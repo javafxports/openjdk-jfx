@@ -32,12 +32,13 @@
 package com.oracle.javafx.scenebuilder.kit.editor.panel.content.mode;
 
 import com.oracle.javafx.scenebuilder.kit.editor.EditorController;
-import com.oracle.javafx.scenebuilder.kit.editor.EditorController.EditAction;
 import com.oracle.javafx.scenebuilder.kit.editor.drag.DragController;
 import com.oracle.javafx.scenebuilder.kit.editor.drag.target.AbstractDropTarget;
 import com.oracle.javafx.scenebuilder.kit.editor.drag.target.GridPaneDropTarget;
 import com.oracle.javafx.scenebuilder.kit.editor.drag.target.RootDropTarget;
 import com.oracle.javafx.scenebuilder.kit.editor.job.ModifyObjectJob;
+import com.oracle.javafx.scenebuilder.kit.editor.job.RelocateSelectionJob;
+import com.oracle.javafx.scenebuilder.kit.editor.messagelog.MessageLog;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.content.AbstractDecoration;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.content.ContentPanelController;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.content.driver.AbstractDriver;
@@ -51,6 +52,7 @@ import com.oracle.javafx.scenebuilder.kit.editor.panel.content.gesture.DragGestu
 import com.oracle.javafx.scenebuilder.kit.editor.panel.content.gesture.mouse.SelectAndMoveGesture;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.content.gesture.mouse.SelectWithMarqueeGesture;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.content.gesture.ZoomGesture;
+import com.oracle.javafx.scenebuilder.kit.editor.panel.content.gesture.key.MoveWithKeyGesture;
 import com.oracle.javafx.scenebuilder.kit.editor.util.InlineEditController;
 import com.oracle.javafx.scenebuilder.kit.editor.selection.GridSelectionGroup;
 import com.oracle.javafx.scenebuilder.kit.editor.selection.ObjectSelectionGroup;
@@ -70,10 +72,10 @@ import java.util.Set;
 import javafx.event.EventHandler;
 import javafx.scene.Group;
 import javafx.scene.Node;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextInputControl;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.InputEvent;
-import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
@@ -183,6 +185,10 @@ implements AbstractGesture.Observer {
     public void fxomDocumentDidRefreshSceneGraph() {
         updateParentRing();
         updateHandles();
+        
+        // Object below the mouse may have changed : current glass gesture
+        // must searched again.
+        this.glassGesture = null;
     }
 
     @Override
@@ -211,29 +217,35 @@ implements AbstractGesture.Observer {
      * Private (pring)
      */
     private void updateParentRing() {
-        final Selection selection = contentPanelController.getEditorController().getSelection();
         final AbstractPring<?> newPring;
         
-        if ((pring == null) || (pring.getFxomObject() != selection.getAncestor())) {
-            if (selection.getAncestor() != null) {
-                newPring = makePring(selection.getAncestor());
+        if (contentPanelController.isContentDisplayable()) {
+            final Selection selection 
+                    = contentPanelController.getEditorController().getSelection();
+            if ((pring == null) || (pring.getFxomObject() != selection.getAncestor())) {
+                if (selection.getAncestor() != null) {
+                    newPring = makePring(selection.getAncestor());
+                } else {
+                    newPring = null;
+                }
             } else {
-                newPring = null;
+                switch(pring.getState()) {
+                    default:
+                    case CLEAN:
+                        newPring = pring;
+                        break;
+                    case NEEDS_RECONCILE:
+                        newPring = pring;
+                        pring.reconcile();;
+                        break;
+                    case NEEDS_REPLACE:
+                        newPring = makePring(pring.getFxomObject());
+                        break;
+                }
             }
         } else {
-            switch(pring.getState()) {
-                default:
-                case CLEAN:
-                    newPring = pring;
-                    break;
-                case NEEDS_RECONCILE:
-                    newPring = pring;
-                    pring.reconcile();;
-                    break;
-                case NEEDS_REPLACE:
-                    newPring = makePring(pring.getFxomObject());
-                    break;
-            }
+            // Document content cannot be displayed in content panel
+            newPring = null;
         }
         
         if (newPring != pring) {
@@ -275,7 +287,8 @@ implements AbstractGesture.Observer {
                 = contentPanelController.getEditorController().getDragController();
         final AbstractTring<?> newTring;
         
-        if (dragController.isDropAccepted()) {
+        if (dragController.isDropAccepted()
+                && contentPanelController.isContentDisplayable()) {
             final AbstractDropTarget dropTarget = dragController.getDropTarget();
             if ((tring instanceof GridPaneTring) && (dropTarget instanceof GridPaneDropTarget)) {
                 // Let's reuse the GridPaneTring (because it's costly)
@@ -354,7 +367,9 @@ implements AbstractGesture.Observer {
         final List<FXOMObject> incomingObjects = new ArrayList<>();
         
         // Collects fxom objects from selection
-        incomingObjects.addAll(osg.getItems());
+        if (contentPanelController.isContentDisplayable()) {
+            incomingObjects.addAll(osg.getItems());
+        }
         
         // Collects obsolete handles
         for (AbstractHandles<?> h : handles) {
@@ -413,24 +428,30 @@ implements AbstractGesture.Observer {
         final List<AbstractHandles<?>> obsoleteHandles = new ArrayList<>();
         
         // Collects obsolete handles
-        for (AbstractHandles<?> h : handles) {
-            if (h.getFxomObject() == gsg.getParentObject()) {
-                assert h instanceof GridPaneHandles;
-                
-                if (h.getState() == AbstractDecoration.State.NEEDS_RECONCILE) {
-                    // scene graph associated to h has changed but h is still compatible
-                    h.reconcile();
+        if (contentPanelController.isContentDisplayable()) {
+            for (AbstractHandles<?> h : handles) {
+                if (h.getFxomObject() == gsg.getParentObject()) {
+                    assert h instanceof GridPaneHandles;
+
+                    if (h.getState() == AbstractDecoration.State.NEEDS_RECONCILE) {
+                        // scene graph associated to h has changed but h is still compatible
+                        h.reconcile();
+                    } else {
+                        assert h.getState() == AbstractDecoration.State.CLEAN;
+                    }
+
+                    final GridPaneHandles gph = (GridPaneHandles) h;
+                    gph.updateColumnRowSelection(gsg);
                 } else {
-                    assert h.getState() == AbstractDecoration.State.CLEAN;
+                    // FXOM object associated to these handles is no longer selected
+                    // => handles become obsolete
+                    obsoleteHandles.add(h);
                 }
-                
-                final GridPaneHandles gph = (GridPaneHandles) h;
-                gph.updateColumnRowSelection(gsg);
-            } else {
-                // FXOM object associated to these handles is no longer selected
-                // => handles become obsolete
-                obsoleteHandles.add(h);
             }
+        } else {
+            // Document content is not displayed (because its root is not a node)
+            // => all handles are obsoletes
+            obsoleteHandles.addAll(handles);
         }
         
         // Let's create new handles for the incoming objects
@@ -596,7 +617,6 @@ implements AbstractGesture.Observer {
     
     private void mouseExitedGlassLayer(MouseEvent e) {
         assert activeGesture == null : "activateGesture=" + activeGesture;
-        assert glassGesture != null;
         glassGesture = null;
     }
     
@@ -660,10 +680,15 @@ implements AbstractGesture.Observer {
         /*
          * At that point, is expected that a "mouse entered" or "mouse moved" 
          * event was received before and that this.glassGesture is setup.
-         * However, on Linux, this is not always true.
+         * 
+         * However this is no always the case. It may be null in two cases:
+         * 1) on Linux, mouse entered/moved events are not always delivered
+         *    before mouse pressed event (see DTL-5956).
+         * 2) while the mouse is immobile, fxomDocumentDidRefreshSceneGraph()
+         *    method may have been invoked and reset this.glassGesture.
+         * 
          * That is why we test this.glassGesture and manually invoke
-         * mouseMovedOnGlassLayer().
-         * See DTL-5956.
+         * mouseMovedOnGlassLayer() here.
          */
         if (glassGesture == null) {
             mouseMovedOnGlassLayer(e);
@@ -674,9 +699,15 @@ implements AbstractGesture.Observer {
             case 1:
                 if (e.getButton() == MouseButton.SECONDARY) {
                     // Update the selection (see spec detailed in DTL-5640)
+                    final FXOMObject hitObject;
+                    if (glassGesture == selectAndMoveGesture) {
+                        hitObject = selectAndMoveGesture.getHitObject();
+                    } else {
+                        assert glassGesture == selectWithMarqueeGesture;
+                        hitObject = selectWithMarqueeGesture.getHitObject();
+                    }
                     final Selection selection
                             = contentPanelController.getEditorController().getSelection();
-                    final FXOMObject hitObject = selectAndMoveGesture.getHitObject();
                     if (hitObject != null && selection.isSelected(hitObject) == false) {
                         selection.select(hitObject);
                     }
@@ -706,7 +737,17 @@ implements AbstractGesture.Observer {
         
         if (glassGesture == selectAndMoveGesture) {
             assert selectAndMoveGesture.getHitObject() instanceof FXOMInstance;
-            handleInlineEditing((FXOMInstance)selectAndMoveGesture.getHitObject());
+            final FXOMInstance hitObject
+                    = (FXOMInstance) selectAndMoveGesture.getHitObject();
+            final DesignHierarchyMask m
+                    = new DesignHierarchyMask(hitObject);
+            // Do not allow inline editing of the I18N value
+            if (m.isResourceKey() == false) {
+                handleInlineEditing((FXOMInstance) selectAndMoveGesture.getHitObject());
+            } else {
+                final MessageLog ml = contentPanelController.getEditorController().getMessageLog();
+                ml.logWarningMessage("log.warning.inline.edit.internationalized.strings");
+            }
         }
     }
     
@@ -716,7 +757,7 @@ implements AbstractGesture.Observer {
         assert inlineEditedObject == null;
         inlineEditedObject = hitObject;
         
-        final AbstractDriver driver 
+        final AbstractDriver driver
                 = contentPanelController.lookupDriver(inlineEditedObject);
 
         final Node inlineEditingBounds
@@ -724,20 +765,27 @@ implements AbstractGesture.Observer {
         if (inlineEditingBounds != null) {
             final InlineEditController inlineEditController = 
                     contentPanelController.getEditorController().getInlineEditController();
-            final DesignHierarchyMask m 
+            final DesignHierarchyMask m
                     = new DesignHierarchyMask(inlineEditedObject);
-            final TextInputControl inlineEditor 
+            final String text = m.getDescription();
+            final InlineEditController.Type type;
+            if (inlineEditingBounds instanceof TextArea
+                    || DesignHierarchyMask.containsLineFeed(text)) {
+                type = InlineEditController.Type.TEXT_AREA;
+            } else {
+                type = InlineEditController.Type.TEXT_FIELD;
+            }
+            final TextInputControl inlineEditor
                     = inlineEditController.createTextInputControl(
-                            InlineEditController.Type.TEXT_FIELD, 
-                            inlineEditingBounds, m.getDescription());
-            final Callback<String, Boolean> requestCommit 
+                            type, inlineEditingBounds, text);
+            final Callback<String, Boolean> requestCommit
                     = new Callback<String, Boolean>() {
                         @Override
                         public Boolean call(String value) {
                             return inlineEditingDidRequestCommit(value);
                         }
                     };
-            inlineEditController.startEditingSession(inlineEditor, 
+            inlineEditController.startEditingSession(inlineEditor,
                     inlineEditingBounds, requestCommit);
         } else {
             System.out.println("Beep");
@@ -771,18 +819,21 @@ implements AbstractGesture.Observer {
     
     private void keyPressedOnGlassLayer(KeyEvent e) {
         assert activeGesture == null : "activateGesture=" + activeGesture;
-        final KeyCode kc = e.getCode();
-        if ((kc == KeyCode.DELETE) || (kc == KeyCode.BACK_SPACE)) {
-            final EditorController editorController
-                    = contentPanelController.getEditorController();
-
-            if (editorController.canPerformEditAction(EditAction.DELETE)) {
-                editorController.performEditAction(EditAction.DELETE);
-            } else {
-                System.out.println("Beep... :(");
-            }
-
-            e.consume();
+        switch(e.getCode()) {
+            case UP:
+            case DOWN:
+            case LEFT:
+            case RIGHT:
+                if (RelocateSelectionJob.isSelectionMovable(contentPanelController.getEditorController())) {
+                    activateGesture(new MoveWithKeyGesture(contentPanelController), e);
+                } else {
+                    System.out.println("Selection is not movable");
+                }
+                e.consume();
+                break;
+            default:
+                // We let other key events flow up in the scene graph
+                break;
         }
     }
     
@@ -841,10 +892,14 @@ implements AbstractGesture.Observer {
         assert gesture != null;
         
         /*
-         * Before activating the gesture, we test if a text session is on-going
-         * and can be completed cleanly. If not, we do not activate the gesture.
+         * Before activating the gesture, we check:
+         *   - that there is a document attached to the editor controller
+         *   - if a text session is on-going and can be completed cleanly. 
+         * If not, we do not activate the gesture.
          */
-        if (contentPanelController.getEditorController().canGetFxmlText()) {
+        final EditorController editorController
+                = contentPanelController.getEditorController();
+        if ((editorController.getFxomDocument() != null) && editorController.canGetFxmlText()) {
             
             contentPanelController.beginInteraction();
             

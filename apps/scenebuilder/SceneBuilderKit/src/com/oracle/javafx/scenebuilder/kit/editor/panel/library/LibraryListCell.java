@@ -35,6 +35,7 @@ import com.oracle.javafx.scenebuilder.kit.editor.EditorController;
 import com.oracle.javafx.scenebuilder.kit.editor.drag.source.LibraryDragSource;
 import com.oracle.javafx.scenebuilder.kit.editor.images.ImageUtils;
 import com.oracle.javafx.scenebuilder.kit.fxom.FXOMDocument;
+import com.oracle.javafx.scenebuilder.kit.library.BuiltinLibrary;
 import com.oracle.javafx.scenebuilder.kit.library.LibraryItem;
 import java.net.URL;
 import javafx.event.EventHandler;
@@ -66,7 +67,7 @@ class LibraryListCell extends ListCell<LibraryListItem> {
     private final Label qualifierLabel = new Label();
     private final Label sectionLabel = new Label();
     private final URL missingIconURL = ImageUtils.getNodeIconURL("MissingIcon.png"); //NOI18N
-    private static final String FX8_QUALIFIER = " (FX8)"; //NOI18N
+    private static final String EMPTY_QUALIFIER_ID = " (empty)"; //NOI18N
     
     public LibraryListCell(final EditorController ec) {
         super();
@@ -117,15 +118,6 @@ class LibraryListCell extends ListCell<LibraryListItem> {
                 }
             }
         });
-        
-        // Never seen this one called
-//        setOnDragDone(new EventHandler<DragEvent>() {
-//
-//            @Override
-//            public void handle(DragEvent t) {
-//                System.out.println("LibraryListCell - setOnDragDone.handle");
-//            }
-//        });
     }
 
     @Override
@@ -136,11 +128,17 @@ class LibraryListCell extends ListCell<LibraryListItem> {
         if (!empty && item != null) {
             updateLayout(item);
             if (item.getLibItem() != null) {
-                // The qualifier is kept in ID value when it is used for orientation
-                // in order to discriminate the item.
+                // A qualifier needed to discriminate items is kept in the ID:
+                // this applies to orientation as well as empty qualifiers.
+                // FX8 qualifier is not kept as there's no ambiguity there.
                 String id = item.getLibItem().getName();
-                if (id.contains(FX8_QUALIFIER)) {
-                    id = id.substring(0, id.indexOf(FX8_QUALIFIER));
+                if (id.contains(BuiltinLibrary.getFX8Qualifier())) {
+                    id = id.substring(0, id.indexOf(BuiltinLibrary.getFX8Qualifier()));
+                }
+                // If QE were about to test a localized version the ID should
+                // remain unchanged.
+                if (id.contains(BuiltinLibrary.getEmptyQualifier())) {
+                    id = id.replace(BuiltinLibrary.getEmptyQualifier(), EMPTY_QUALIFIER_ID);
                 }
                 graphic.setId(id); // for QE
             }
@@ -250,7 +248,7 @@ class LibraryListCell extends ListCell<LibraryListItem> {
     }
     
     private String getClassName(String input) {
-        if (input.indexOf(" ") == -1) { //NOI18N
+        if (!input.contains(" ")) { //NOI18N
             return input;
         } else {
             return input.substring(0, input.lastIndexOf(" ")); //NOI18N
@@ -258,7 +256,7 @@ class LibraryListCell extends ListCell<LibraryListItem> {
     }
     
     private String getQualifier(String input) {
-        if (input.indexOf(" ") == -1) { //NOI18N
+        if (!input.contains(" ")) { //NOI18N
             return ""; //NOI18N
         } else {
             return input.substring(input.indexOf(" "), input.length()); //NOI18N

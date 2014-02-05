@@ -39,6 +39,7 @@ import com.oracle.javafx.scenebuilder.kit.metadata.Metadata;
 import com.oracle.javafx.scenebuilder.kit.metadata.klass.ComponentClassMetadata;
 import com.oracle.javafx.scenebuilder.kit.metadata.property.PropertyMetadata;
 import com.oracle.javafx.scenebuilder.kit.metadata.property.ValuePropertyMetadata;
+import com.oracle.javafx.scenebuilder.kit.metadata.util.PrefixedValue;
 import com.oracle.javafx.scenebuilder.kit.metadata.util.PropertyName;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -60,10 +61,8 @@ import javafx.geometry.Bounds;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Control;
 import javafx.scene.control.MenuButton;
-import javafx.scene.control.MenuItem;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -71,7 +70,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.RowConstraints;
-
+        
 /**
  * Utility class for property editors.
  *
@@ -423,15 +422,14 @@ public class EditorUtils {
         propNameStr = propNameStr.substring(0, 1).toUpperCase(Locale.ENGLISH) + propNameStr.substring(1);
         String methodName;
         if (propMeta.getValueClass() == Boolean.class) {
-            methodName = "is" + propNameStr + "()"; //NOI18N
+            methodName = "is" + propNameStr + "--"; //NOI18N
         } else if (propMeta.isStaticProperty()) {
-            methodName = "get" + propNameStr + "(" + Node.class.getName() + ")"; //NOI18N
+            methodName = "get" + propNameStr + "-" + Node.class.getName() + "-"; //NOI18N
         } else {
-            methodName = "get" + propNameStr + "()"; //NOI18N
+            methodName = "get" + propNameStr + "--"; //NOI18N
         }
 
-        // http pointer to set on fx 8 when publicly available
-        String url = "http://docs.oracle.com/javafx/2/api/" + clazz.getName().replaceAll("\\.", "/") + ".html"; //NOI18N
+        String url = EditorPlatform.JAVADOC_HOME + clazz.getName().replaceAll("\\.", "/") + ".html"; //NOI18N
         url += "#" + methodName; //NOI18N
         EditorPlatform.open(url);
     }
@@ -479,6 +477,7 @@ public class EditorUtils {
         try {
             url = new URL(urlStr);
         } catch (MalformedURLException ex) {
+            System.err.println("Invalid URL: " + urlStr); //NOI18N
             assert false;
             return null;
         }
@@ -495,6 +494,32 @@ public class EditorUtils {
             return false;
         }
         return true;
+    }
+
+    public static URL getUrl(String suffix, PrefixedValue.Type type, URL fxmlFileLocation) {
+        String prefixedString;
+        if (suffix.isEmpty()) {
+            prefixedString = ""; //NOI18N
+        } else {
+            prefixedString = (new PrefixedValue(type, suffix)).toString();
+        }
+        return getUrl(prefixedString, fxmlFileLocation);
+    }
+    
+    // Get the URL corresponding to a PrefixedValue string
+    public static URL getUrl(String prefixedString, URL fxmlFileLocation) {
+        PrefixedValue prefixedValue = new PrefixedValue(prefixedString);
+        URL url = null;
+        if (prefixedValue.getType() == PrefixedValue.Type.DOCUMENT_RELATIVE_PATH) {
+            url = prefixedValue.resolveDocumentRelativePath(fxmlFileLocation);
+        } else if (prefixedValue.getType() == PrefixedValue.Type.PLAIN_STRING) {
+            try {
+                url = new URL(prefixedValue.getSuffix());
+            } catch (MalformedURLException ex) {
+                // May happen. nothing to do.
+            }
+        }
+        return url;
     }
 
 }

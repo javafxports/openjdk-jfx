@@ -100,11 +100,20 @@ public abstract class AutoSuggestEditor extends PropertyEditor {
     }
 
     public AutoSuggestEditor(String name, String defaultValue, List<String> suggestedList) {
-        this(name, defaultValue, suggestedList, true);
+        this(name, defaultValue, suggestedList, Type.ALPHA, true);
+    }
+    
+    public AutoSuggestEditor(String name, String defaultValue, List<String> suggestedList, Type type) {
+        this(name, defaultValue, suggestedList, type, true);
     }
     
     public AutoSuggestEditor(String name, String defaultValue, List<String> suggestedList, boolean showMenuButton) {
+        this(name, defaultValue, suggestedList, Type.ALPHA, showMenuButton);
+    }
+    
+    public AutoSuggestEditor(String name, String defaultValue, List<String> suggestedList, Type type, boolean showMenuButton) {
         super(name, defaultValue);
+        this.type = type;
         this.showMenuButton = showMenuButton;
         preInit(suggestedList);
     }
@@ -206,12 +215,16 @@ public abstract class AutoSuggestEditor extends PropertyEditor {
         updateMenuButtonIfNeeded();
         entryField.setPromptText(null);
     }
+    
+    protected List<String> getSuggestedList() {
+        return suggestedList;
+    }
 
     protected Parent getRoot() {
         return root;
     }
 
-    protected TextField getTextField() {
+    public TextField getTextField() {
         return entryField;
     }
 
@@ -291,9 +304,7 @@ public abstract class AutoSuggestEditor extends PropertyEditor {
             return suggestedList;
         }
         // We don't want to be case sensitive
-        assert filter != null;
         filter = filter.toLowerCase(Locale.ROOT);
-        assert currentValue != null;
         currentValue = currentValue.toLowerCase(Locale.ROOT);
         for (String suggestItem : suggestedList) {
             String suggestItemLower = suggestItem.toLowerCase(Locale.ROOT);
@@ -356,6 +367,7 @@ public abstract class AutoSuggestEditor extends PropertyEditor {
         menuButton.getItems().clear();
         for (String suggestItem : suggestedList) {
             MenuItem menuItem = new MenuItem(suggestItem);
+//            MenuItem menuItem = new MenuItem();
             menuItem.setMnemonicParsing(false);
             menuItem.setOnAction(new EventHandler<ActionEvent>() {
 
@@ -367,6 +379,10 @@ public abstract class AutoSuggestEditor extends PropertyEditor {
                     }
                 }
             });
+            // Set the font on each item. Should be done from the FontEditor
+//            Text graphic = new Text(suggestItem);
+//            graphic.setFont(new Font(suggestItem, 14));
+//            menuItem.setGraphic(graphic);
             menuButton.getItems().add(menuItem);
         }
     }

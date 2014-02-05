@@ -70,6 +70,13 @@ public class EditorPlatform {
     public static final String DOCUMENTATION_URL = "http://docs.oracle.com/javafx/index.html"; //NOI18N
 
     /**
+     * Javadoc home (for Inspector and CSS Analyzer properties)
+     */
+    // Should be set to docs.oracle.com when available (see DTL-6412)
+    public final static String JAVADOC_HOME = "http://download.java.net/jdk8/jfxdocs/"; //NOI18N
+    
+
+    /**
      * Themes supported by Scene Builder Kit.
      */
     public enum Theme {
@@ -109,40 +116,35 @@ public class EditorPlatform {
     public static List<URL> getThemeStylesheetURLs(Theme theme) {
         final List<URL> result = new ArrayList<>();
 
+        // In all modena cases below we do not add to the result the modenaThemeUrl
+        // because it is already the default, set on top of the scenegraph
+        // (it is an FX 8 platform built-in behavior).
         switch (theme) {
             default:
                 break;
             case MODENA:
-                result.add(modenaThemeUrl);
                 break;
             case MODENA_TOUCH:
-                result.add(modenaThemeUrl);
                 result.add(modenaTouchThemeUrl);
                 break;
             case MODENA_HIGH_CONTRAST_BLACK_ON_WHITE:
-                result.add(modenaThemeUrl);
                 result.add(modenaHighContrastBlackonwhiteThemeUrl);
                 break;
             case MODENA_HIGH_CONTRAST_WHITE_ON_BLACK:
-                result.add(modenaThemeUrl);
                 result.add(modenaHighContrastWhiteonblackThemeUrl);
                 break;
             case MODENA_HIGH_CONTRAST_YELLOW_ON_BLACK:
-                result.add(modenaThemeUrl);
                 result.add(modenaHighContrastYellowonblackThemeUrl);
                 break;
             case MODENA_TOUCH_HIGH_CONTRAST_BLACK_ON_WHITE:
-                result.add(modenaThemeUrl);
                 result.add(modenaTouchThemeUrl);
                 result.add(modenaHighContrastBlackonwhiteThemeUrl);
                 break;
             case MODENA_TOUCH_HIGH_CONTRAST_WHITE_ON_BLACK:
-                result.add(modenaThemeUrl);
                 result.add(modenaTouchThemeUrl);
                 result.add(modenaHighContrastWhiteonblackThemeUrl);
                 break;
             case MODENA_TOUCH_HIGH_CONTRAST_YELLOW_ON_BLACK:
-                result.add(modenaThemeUrl);
                 result.add(modenaTouchThemeUrl);
                 result.add(modenaHighContrastYellowonblackThemeUrl);
                 break;
@@ -174,9 +176,17 @@ public class EditorPlatform {
                 result.add(caspianHighContrastThemeUrl);
                 break;
         }
-        assert !result.isEmpty() : "Missing logic for " + theme;
+        
+        if (!theme.equals(Theme.MODENA)) {
+            assert !result.isEmpty() : "Missing logic for " + theme;
+        }
 
         return result;
+    }
+    
+    public static URL getPlatformThemeStylesheetURL() {
+        // Return USER_AGENT css, which is Modena for fx 8.0
+        return modenaThemeUrl;
     }
     
     public static boolean isModena(Theme theme) {
@@ -185,33 +195,33 @@ public class EditorPlatform {
     
     public static boolean isModenaBlackonwhite(Theme theme) {
         return isModena(theme)
-                && theme.toString().indexOf("BLACK_ON_WHITE") != -1;
+                && theme.toString().contains("BLACK_ON_WHITE");
     }
     
     public static boolean isModenaWhiteonblack(Theme theme) {
         return isModena(theme)
-                && theme.toString().indexOf("WHITE_ON_BLACK") != -1;
+                && theme.toString().contains("WHITE_ON_BLACK");
     }
     
     public static boolean isModenaYellowonblack(Theme theme) {
         return isModena(theme)
-                && theme.toString().indexOf("YELLOW_ON_BLACK") != -1;
+                && theme.toString().contains("YELLOW_ON_BLACK");
     }
     
     public static boolean isModenaHighContrast(Theme theme) {
         return isModena(theme)
-                && theme.toString().indexOf("HIGH_CONTRAST") != -1;
+                && theme.toString().contains("HIGH_CONTRAST");
     }
     
     public static boolean isModenaTouch(Theme theme) {
         return isModena(theme)
-                && theme.toString().indexOf("TOUCH") != -1;
+                && theme.toString().contains("TOUCH");
     }
     
     public static boolean isModenaTouchHighContrast(Theme theme) {
         return isModena(theme)
-                && theme.toString().indexOf("HIGH_CONTRAST") != -1
-                && theme.toString().indexOf("TOUCH") != -1;
+                && theme.toString().contains("HIGH_CONTRAST")
+                && theme.toString().contains("TOUCH");
     }
     
     public static boolean isCaspian(Theme theme) {
@@ -235,7 +245,7 @@ public class EditorPlatform {
             args.add("/c"); //NOI18N
             args.add("start"); //NOI18N
 
-            if (path.indexOf(" ") != -1) { //NOI18N
+            if (path.contains(" ")) { //NOI18N
                 args.add("\"html\""); //NOI18N
             }
 
@@ -324,6 +334,7 @@ public class EditorPlatform {
      *
      * @return true if the jvm is running with assertions enabled.
      */
+    @SuppressWarnings("AssertWithSideEffects")
     public static boolean isAssertionEnabled() {
         boolean result = false;
         assert result = true;
