@@ -1480,11 +1480,15 @@ public class TreeTableView<S> extends Control {
         // normalize the requested row based on whether showRoot is set
         final int _row = isShowRoot() ? row : (row + 1);
 
-        if (treeItemCacheMap.containsKey(_row)) {
-            SoftReference<TreeItem<S>> treeItemRef = treeItemCacheMap.get(_row);
-            TreeItem<S> treeItem = treeItemRef.get();
-            if (treeItem != null) {
-                return treeItem;
+        if (expandedItemCountDirty) {
+            updateExpandedItemCount(getRoot());
+        } else {
+            if (treeItemCacheMap.containsKey(_row)) {
+                SoftReference<TreeItem<S>> treeItemRef = treeItemCacheMap.get(_row);
+                TreeItem<S> treeItem = treeItemRef.get();
+                if (treeItem != null) {
+                    return treeItem;
+                }
             }
         }
 
@@ -2338,6 +2342,8 @@ public class TreeTableView<S> extends Control {
         }
 
         @Override public void clearAndSelect(int row, TableColumnBase<TreeItem<S>,?> column) {
+            if (row < 0 || row >= getItemCount()) return;
+
             // RT-33558 if this method has been called with a given row/column
             // intersection, and that row/column intersection is the only
             // selection currently, then this method becomes a no-op.
@@ -2538,8 +2544,11 @@ public class TreeTableView<S> extends Control {
                 
                 int focusedIndex = getFocusedIndex();
                 if (focusedIndex == -1) {
-                    select(getItemCount() - 1);
-                    focus(indices.get(indices.size() - 1));
+                    final int itemCount = getItemCount();
+                    if (itemCount > 0) {
+                        select(itemCount - 1);
+                        focus(indices.get(indices.size() - 1));
+                    }
                 } else {
                     select(focusedIndex);
                     focus(focusedIndex);

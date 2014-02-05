@@ -56,7 +56,7 @@ public class TouchState {
 
     private Point[] points = new Point[1];
     private int pointCount = 0;
-    private int primaryID = 0;
+    private int primaryID = -1;
     private MonocleWindow window;
 
     /** Returns the Glass window on which this event state is located.
@@ -69,8 +69,8 @@ public class TouchState {
     MonocleWindow getWindow(boolean recalculateCache, MonocleWindow fallback) {
         if (window == null || recalculateCache) {
             window = fallback;
-            if (primaryID > 0) {
-                Point p = getPointForID(primaryID, false);
+            if (primaryID >= 0) {
+                Point p = getPointForID(primaryID);
                 if (p != null) {
                     window = (MonocleWindow)
                             MonocleWindowManager.getInstance()
@@ -85,25 +85,17 @@ public class TouchState {
         return points[index];
     }
 
-    /** Gets the Point matching the given ID, optionally reinstating the point
-     * from the previous touch state.
-     * @param id The Point ID to match. A value or zero matches any Point.
-     * @return a matching Point, or a new Point if there was no match and
-     * reinstatement was requested; null otherwise
+    /** Gets the Point matching the given ID. if available
+     * @param id The Point ID to match. A value of -1 matches any Point.
+     * @return a matching Point, or null if there is no point with that ID.
      */
-    public Point getPointForID(int id, boolean reinstate) {
+    public Point getPointForID(int id) {
         for (int i = 0; i < pointCount; i++) {
-            if (id == 0 || points[i].id == id) {
+            if (id == -1 || points[i].id == id) {
                 return points[i];
             }
         }
-        if (reinstate) {
-            Point p = addPoint(TouchInput.getInstance().getPointForID(id));
-            p.id = id;
-            return p;
-        } else {
-            return null;
-        }
+        return null;
     }
 
     int getPrimaryID() {
@@ -170,7 +162,7 @@ public class TouchState {
     public void copyTo(TouchState target) {
         target.clear();
         for (int i = 0; i < pointCount; i++) {
-            target.addPoint(points[0]);
+            target.addPoint(points[i]);
         }
         target.primaryID = primaryID;
         target.window = window;
@@ -186,7 +178,7 @@ public class TouchState {
         return sb.toString();
     }
 
-    void sortPointsByID() {
+    public void sortPointsByID() {
         Arrays.sort(points, 0, pointCount, pointIdComparator);
     }
 
@@ -206,6 +198,27 @@ public class TouchState {
         } else {
             return false;
         }
+    }
+
+    /** Finds out whether two non-null states are identical in everything but
+     * their touch point coordinates
+     *
+     * @param ts the TouchState to compare to
+     * @param ignoreIDs if true, ignore IDs when comparing points
+     */
+    public boolean canBeFoldedWith(TouchState ts, boolean ignoreIDs) {
+        if (ts.pointCount != pointCount) {
+            return false;
+        }
+        if (ignoreIDs) {
+            return true;
+        }
+        for (int i = 0; i < pointCount; i++) {
+            if (ts.points[i].id != points[i].id) {
+                return false;
+            }
+        }
+        return true;
     }
 
 }

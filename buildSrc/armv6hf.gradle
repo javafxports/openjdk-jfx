@@ -72,9 +72,6 @@ if (!ARMV6HF.canBuild) {
 // Lambda for naming the generated libs
 ARMV6HF.library = { name -> return "lib${name}.so" as String }
 
-// alias for this platform in legacy artifacts
-ARMV6HF.artifactsName = "armv6hf-vfp"
-
 ARMV6HF.compileSwing = false;
 ARMV6HF.compileSWT = false;
 ARMV6HF.compileFXPackager = false;
@@ -310,8 +307,8 @@ setupTools("armv6hf_pango_tools",
     }
 )
 
-def freetypeCCFlags = [ext.COMPILE_PANGO ? "-D_ENABLE_PANGO" : 
-                       ext.COMPILE_HARFBUZZ ? "-D_ENABLE_HARFBUZZ" : ""]
+def freetypeCCFlags = [ext.IS_COMPILE_PANGO ? "-D_ENABLE_PANGO" :
+                       ext.IS_COMPILE_HARFBUZZ ? "-D_ENABLE_HARFBUZZ" : ""]
 def freetypeLinkFlags = []
 setupTools("armv6hf_freetype_tools",
     { propFile ->

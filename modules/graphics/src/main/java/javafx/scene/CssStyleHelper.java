@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1316,22 +1316,33 @@ final class CssStyleHelper {
 
         StringBuilder sbuf = new StringBuilder();
         sbuf.append("Caught ")
-            .append(e.toString())
-            .append("'")
-            .append(" while calculating value for '")
-            .append(cssMetaData.getProperty())
-            .append("'");
+            .append(String.valueOf(e));
 
-        final Rule rule = style != null ? style.getDeclaration().getRule(): null;
-        final Stylesheet stylesheet = rule != null ? rule.getStylesheet() : null;
-        final String url = stylesheet != null ? stylesheet.getUrl() : null;
-        if (url != null) {
-            sbuf.append(" from rule '")
-                .append(style.getSelector())
-                .append("' in stylesheet ").append(url);
-        } else if (stylesheet != null && StyleOrigin.INLINE == stylesheet.getOrigin()) {
-            sbuf.append(" from inline style on " )
-                .append(styleable.toString());
+        if (cssMetaData != null) {
+            sbuf.append("'")
+                .append(" while calculating value for '")
+                .append(cssMetaData.getProperty())
+                .append("'");
+        }
+
+        if (style != null) {
+
+            final Rule rule = style.getDeclaration().getRule();
+            final Stylesheet stylesheet = rule != null ? rule.getStylesheet() : null;
+            final String url = stylesheet != null ? stylesheet.getUrl() : null;
+
+            if (url != null) {
+                sbuf.append(" from rule '")
+                        .append(style.getSelector())
+                        .append("' in stylesheet ").append(url);
+            } else if (styleable != null && stylesheet != null && StyleOrigin.INLINE == stylesheet.getOrigin()) {
+                sbuf.append(" from inline style on " )
+                        .append(styleable.toString());
+            } else {
+                sbuf.append(" from style '")
+                    .append(String.valueOf(style))
+                    .append("'");
+            }
         }
 
         return sbuf.toString();
@@ -1347,7 +1358,7 @@ final class CssStyleHelper {
             final CalculatedValue fontFromCacheEntry) {
 
         final ParsedValueImpl cssValue = style.getParsedValueImpl();
-        if (cssValue != null && !("null").equals(cssValue.getValue())) {
+        if (cssValue != null && !("null".equals(cssValue.getValue()) || "none".equals(cssValue.getValue()))) {
 
             ParsedValueImpl resolved = null;
             try {
@@ -1476,7 +1487,7 @@ final class CssStyleHelper {
             }
 
         }
-        // either cssValue was null or cssValue's value was "null"
+        // either cssValue was null or cssValue's value was "null" or "none"
         return new CalculatedValue(null, style.getOrigin(), false);
 
     }
@@ -2053,14 +2064,14 @@ final class CssStyleHelper {
                 Styleable parent = node;
                 do {
 
-                    StyleMap styleMap = getStyleMap(parent);
-                    if (styleMap == null || styleMap.isEmpty()) continue;
-
                     final Node _parent = parent instanceof Node ? (Node)parent : null;
                     final CssStyleHelper helper = _parent != null
                             ? _parent.styleHelper
                             : null;
                     if (helper != null) {
+
+                        StyleMap styleMap = helper.getStyleMap(parent);
+                        if (styleMap == null || styleMap.isEmpty()) continue;
 
                         final int start = styleList.size();
 

@@ -110,7 +110,9 @@ public class TableColumnHeader extends Region {
     private boolean isSizeDirty = false;
 
     boolean isLastVisibleColumn = false;
-    private int columnIndex = -1;
+
+    // package for testing
+    int columnIndex = -1;
 
     private int newColumnPos;
 
@@ -552,7 +554,7 @@ public class TableColumnHeader extends Region {
         int visibleLeafIndex = skin.getVisibleLeafIndex(getTableColumn());
         if (visibleLeafIndex == -1) return;
         
-        final int sortColumnCount = getSortColumnCount();
+        final int sortColumnCount = getVisibleSortOrderColumnCount();
         boolean showSortOrderDots = sortPos <= 3 && sortColumnCount > 1;
         
         Node _sortArrow = null;
@@ -636,7 +638,7 @@ public class TableColumnHeader extends Region {
         }
         
         sortOrderDots.getChildren().clear();
-        
+
         for (int i = 0; i <= sortPos; i++) {
             Region r = new Region();
             r.getStyleClass().add("sort-order-dot");
@@ -662,28 +664,42 @@ public class TableColumnHeader extends Region {
         sortOrderDots.setAlignment(Pos.TOP_CENTER);
         sortOrderDots.setMaxWidth(arrowWidth);
     }
-    
-    private void moveColumn(TableColumnBase column, int newColumnPos) {
+
+    // Package for testing purposes only
+    void moveColumn(TableColumnBase column, int newColumnPos) {
         if (column == null || newColumnPos < 0) return;
 
         ObservableList<TableColumnBase> columns = column.getParentColumn() == null ?
             getTableViewSkin().getColumns() :
             column.getParentColumn().getColumns();
-        
-        int currentPos = columns.indexOf(column);
-        if (newColumnPos == currentPos) return;
 
-        if (newColumnPos >= columns.size()) {
-            newColumnPos = columns.size() - 1;
+        final int columnsCount = columns.size();
+        final int currentPos = columns.indexOf(column);
+
+        // Fix for RT-35141: We need to account for hidden columns
+        for (int i = 0; i <= newColumnPos && i < columnsCount; i++) {
+            newColumnPos += columns.get(i).isVisible() ? 0 : 1;
+        }
+        for (int i = newColumnPos + 1; i <= currentPos && i < columnsCount; i++) {
+            newColumnPos += columns.get(i).isVisible() ? 0 : -1;
+        }
+        // --- end of RT-35141 fix
+
+        if (newColumnPos >= columnsCount) {
+            newColumnPos = columnsCount - 1;
+        } else if (newColumnPos < 0) {
+            newColumnPos = 0;
         }
 
-        List<TableColumnBase> tempList = new ArrayList<TableColumnBase>(columns);
+        if (newColumnPos == currentPos) return;
+
+        List<TableColumnBase> tempList = new ArrayList<>(columns);
         tempList.remove(column);
         tempList.add(newColumnPos, column);
         
         columns.setAll(tempList);
     }
-    
+
     private void updateColumnIndex() {
 //        TableView tv = getTableView();
         TableViewSkinBase skin = getTableViewSkin();
@@ -771,14 +787,10 @@ public class TableColumnHeader extends Region {
             return -1;
         }
 
-        final ObservableList<TableColumnBase> sortOrder = getTableViewSkin().getSortOrder();
-
+        final List<TableColumnBase> sortOrder = getVisibleSortOrderColumns();
         int pos = 0;
         for (int i = 0; i < sortOrder.size(); i++) {
             TableColumnBase _tc = sortOrder.get(i);
-            if (_tc == null || ! _tc.isSortable() || ! _tc.isVisible()) {
-                continue;
-            }
 
             if (column.equals(_tc)) {
                 return pos;
@@ -786,25 +798,31 @@ public class TableColumnHeader extends Region {
 
             pos++;
         }
+
         return -1;
+    }
+
+    private List<TableColumnBase> getVisibleSortOrderColumns() {
+        final ObservableList<TableColumnBase> sortOrder = getTableViewSkin().getSortOrder();
+
+        List<TableColumnBase> visibleSortOrderColumns = new ArrayList<>();
+        for (int i = 0; i < sortOrder.size(); i++) {
+            TableColumnBase _tc = sortOrder.get(i);
+            if (_tc == null || ! _tc.isSortable() || ! _tc.isVisible()) {
+                continue;
+            }
+
+            visibleSortOrderColumns.add(_tc);
+        }
+
+        return visibleSortOrderColumns;
     }
 
     // as with getSortPosition above, this method iterates through the sortOrder
     // list ignoring the null and non-sortable columns, so that we get the correct
     // number of columns in the sortOrder list.
-    private int getSortColumnCount() {
-        final ObservableList<TableColumnBase> sortOrder = getTableViewSkin().getSortOrder();
-
-        int pos = 0;
-        for (int i = 0; i < sortOrder.size(); i++) {
-            TableColumnBase _tc = sortOrder.get(i);
-            if (_tc == null || ! _tc.isSortable()) {
-                continue;
-            }
-
-            pos++;
-        }
-        return pos;
+    private int getVisibleSortOrderColumnCount() {
+        return getVisibleSortOrderColumns().size();
     }
 
 

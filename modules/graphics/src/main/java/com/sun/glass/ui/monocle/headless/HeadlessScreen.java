@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2014 Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,19 +26,34 @@
 package com.sun.glass.ui.monocle.headless;
 
 import com.sun.glass.ui.Pixels;
+import com.sun.glass.ui.monocle.Framebuffer;
 import com.sun.glass.ui.monocle.NativeScreen;
+import com.sun.glass.ui.monocle.AcceleratedScreen;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
 public class HeadlessScreen implements NativeScreen {
 
-    private int depth = 32;
-    private int width = 1280;
-    private int height = 800;
+    protected int depth;
+    protected int width;
+    protected int height;
+    protected Framebuffer fb;
 
     public HeadlessScreen() {
+        this(1280, 800, 32);
+    }
+
+    protected HeadlessScreen(int defaultWidth,
+                             int defaultHeight,
+                             int defaultDepth) {
+        this.width = defaultWidth;
+        this.height = defaultHeight;
+        this.depth = defaultDepth;
         String geometry = AccessController.doPrivileged(new PrivilegedAction<String>() {
             @Override
             public String run() {
@@ -49,17 +64,26 @@ public class HeadlessScreen implements NativeScreen {
             try {
                 int i = geometry.indexOf("x");
                 width = Integer.parseInt(geometry.substring(0, i));
-                height = Integer.parseInt(geometry.substring(i + 1));
+                int j = geometry.indexOf("-", i + 1);
+                if (j > 0) {
+                    depth = Integer.parseInt(geometry.substring(j + 1));
+                } else {
+                    j = geometry.length();
+                }
+                height = Integer.parseInt(geometry.substring(i + 1, j));
             } catch (NumberFormatException e) {
                 System.err.println("Cannot parse geometry string: '"
                         + geometry + "'");
             }
         }
+        ByteBuffer bb = ByteBuffer.allocate(width * height * (depth >>> 3));
+        bb.order(ByteOrder.nativeOrder());
+        fb = new Framebuffer(bb, width, height, depth, true);
     }
 
     @Override
     public int getDepth() {
-        return 32;
+        return depth;
     }
 
     @Override
@@ -92,11 +116,24 @@ public class HeadlessScreen implements NativeScreen {
     }
 
     @Override
-    public void uploadPixels(ByteBuffer b, int x, int y, int width, int height) {
+    public void uploadPixels(Buffer b,
+                             int x, int y, int width, int height,
+                             float alpha) {
+        fb.composePixels(b, x, y, width, height, alpha);
     }
 
     @Override
     public void swapBuffers() {
+        fb.reset();
     }
 
+    @Override
+    public IntBuffer getScreenCapture() {
+        return fb.getBuffer().asIntBuffer();
+    }
+
+    @Override
+    public AcceleratedScreen getAcceleratedScreen(int[] attributes) {
+        return null;
+    }
 }

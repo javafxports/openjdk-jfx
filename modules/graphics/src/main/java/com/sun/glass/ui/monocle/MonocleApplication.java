@@ -46,15 +46,12 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 
 final class MonocleApplication extends Application {
 
     private final NativePlatform platform =
             NativePlatformFactory.getNativePlatform();
-    private final ExecutorService executor = platform.getExecutor();
+    private final RunnableProcessor runnableProcessor = platform.getRunnableProcessor();
 
     /** Bit to indicate that a device has touch support */
     private static final int DEVICE_TOUCH = 0;
@@ -71,7 +68,16 @@ final class MonocleApplication extends Application {
     /** A running count of the numbers of devices with each device capability */
     private int[] deviceFlags = new int[DEVICE_MAX + 1];
 
+    private Runnable renderEndNotifier = new Runnable() {
+        public void run() {
+            platform.getScreen().swapBuffers();
+        }
+    };
+
     MonocleApplication() {
+        for (InputDevice device : platform.getInputDeviceRegistry().getInputDevices()) {
+            updateDeviceFlags(device, true);
+        }
         platform.getInputDeviceRegistry().getInputDevices().addListener(
                 new SetChangeListener<InputDevice>() {
             @Override
@@ -79,85 +85,60 @@ final class MonocleApplication extends Application {
                     Change<? extends InputDevice> change) {
                 if (change.wasAdded()) {
                     InputDevice device = change.getElementAdded();
-                    if (device.isTouch()) {
-                        deviceFlags[DEVICE_TOUCH] ++;
-                    }
-                    if (device.isMultiTouch()) {
-                        deviceFlags[DEVICE_MULTITOUCH] ++;
-                    }
-                    if (device.isRelative()) {
-                        deviceFlags[DEVICE_POINTER] ++;
-                    }
-                    if (device.isFullKeyboard()) {
-                        deviceFlags[DEVICE_PC_KEYBOARD] ++;
-                    }
-                    if (device.is5Way()) {
-                        deviceFlags[DEVICE_5WAY] ++;
-                    }
+                    updateDeviceFlags(device, true);
                 } else if (change.wasRemoved()) {
                     InputDevice device = change.getElementRemoved();
-                    if (device.isTouch()) {
-                        deviceFlags[DEVICE_TOUCH] --;
-                    }
-                    if (device.isMultiTouch()) {
-                        deviceFlags[DEVICE_MULTITOUCH] --;
-                    }
-                    if (device.isRelative()) {
-                        deviceFlags[DEVICE_POINTER] --;
-                    }
-                    if (device.isFullKeyboard()) {
-                        deviceFlags[DEVICE_PC_KEYBOARD] --;
-                    }
-                    if (device.is5Way()) {
-                        deviceFlags[DEVICE_5WAY] --;
-                    }
+                    updateDeviceFlags(device, false);
                 }
-            }
-        });
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override public void run() {
-                platform.shutdown();
             }
         });
     }
 
-    @Override
-    protected void runLoop(Runnable launchable) {
-        Application.setEventThread(platform.getExecutorThread());
-        executor.submit(launchable);
-    }
-
-    @Override
-    protected void _invokeAndWait(Runnable runnable) {
-        try {
-            executor.submit(new Callable<Void>() {
-                public Void call() {
-                    runnable.run();
-                    return null;
-                }
-            }).get();
-        } catch (InterruptedException e) {
-            // we are shutting down
-        } catch (ExecutionException e) {
-            e.printStackTrace();
+    private void updateDeviceFlags(InputDevice device, boolean added) {
+        int modifier = added ? 1 : -1;
+        if (device.isTouch()) {
+            deviceFlags[DEVICE_TOUCH] += modifier;
+        }
+        if (device.isMultiTouch()) {
+            deviceFlags[DEVICE_MULTITOUCH] += modifier;
+        }
+        if (device.isRelative()) {
+            deviceFlags[DEVICE_POINTER] += modifier;
+        }
+        if (device.isFullKeyboard()) {
+            deviceFlags[DEVICE_PC_KEYBOARD] += modifier;
+        }
+        if (device.is5Way()) {
+            deviceFlags[DEVICE_5WAY] += modifier;
         }
     }
 
     @Override
+    protected void runLoop(Runnable launchable) {
+        runnableProcessor.invokeLater(launchable);
+        Thread t = new Thread(runnableProcessor);
+        setEventThread(t);
+        t.start();
+    }
+
+    @Override
+    protected void _invokeAndWait(Runnable runnable) {
+        runnableProcessor.invokeAndWait(runnable);
+    }
+
+    @Override
     protected void _invokeLater(Runnable runnable) {
-        executor.submit(runnable);
+        runnableProcessor.invokeLater(runnable);
     }
 
     @Override
     protected Object _enterNestedEventLoop() {
-        Thread.dumpStack();
-        throw new UnsupportedOperationException();
+        return runnableProcessor.enterNestedEventLoop();
     }
 
     @Override
     protected void _leaveNestedEventLoop(Object retValue) {
-        Thread.dumpStack();
-        throw new UnsupportedOperationException();
+        runnableProcessor.leaveNestedEventLoop(retValue);
     }
 
     @Override
@@ -360,6 +341,18 @@ final class MonocleApplication extends Application {
     @Override
     public boolean hasPointer() {
         return deviceFlags[DEVICE_POINTER] > 0;
+    }
+
+    @Override
+    public void notifyRenderingFinished() {
+        invokeLater(renderEndNotifier);
+    }
+
+    @Override
+    protected void finishTerminating() {
+        setEventThread(null);
+        platform.shutdown();
+        super.finishTerminating();
     }
 
 }

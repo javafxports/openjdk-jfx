@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,23 +27,29 @@ package com.sun.glass.ui.monocle.omap;
 
 import com.sun.glass.ui.monocle.linux.FBDevScreen;
 import com.sun.glass.ui.monocle.linux.SysFS;
+import com.sun.glass.ui.monocle.linux.LinuxSystem;
+import com.sun.glass.ui.monocle.AcceleratedScreen;
 
 import java.io.IOException;
 
 public class OMAPScreen extends FBDevScreen {
+    private AcceleratedScreen acceleratedScreen = null;
 
-    public OMAPScreen() {
-        try {
-            // OMAP can report a larger vertical screen size in
-            // /sys/class/graphics/fb0/virtual_size than the physical size. So
-            // we read the real size here.
-            int[] size = SysFS.readInts("/sys/devices/platform/omapdss/overlay0/input_size", 2);
-            width = size[0];
-            height = size[1];
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw (IllegalStateException)
-                    new IllegalStateException().initCause(e);
+    private long platformGetNativeDisplay() {
+        return 0L;
+    }
+
+    private long platformGetNativeWindow() {
+        return 0L;
+    }
+
+    @Override
+    public AcceleratedScreen getAcceleratedScreen(int[] attributes) {
+        if (acceleratedScreen == null) {
+            acceleratedScreen = new AcceleratedScreen(platformGetNativeDisplay(),
+                                                      platformGetNativeWindow(),
+                                                      attributes);
         }
+        return acceleratedScreen;
     }
 }

@@ -26,13 +26,17 @@
 package com.sun.glass.ui.monocle;
 
 import com.sun.glass.events.WindowEvent;
+import com.sun.glass.ui.Window;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public final class MonocleWindowManager {
 
-    static private MonocleWindowManager instance = new MonocleWindowManager();
+    private static MonocleWindowManager instance = new MonocleWindowManager();
 
+    /** The window stack. Windows are in Z-order, from back to front. */
     private MonocleWindow[] windows = new MonocleWindow[0];
     private int nextID = 1;
 
@@ -90,6 +94,16 @@ public final class MonocleWindowManager {
                              windows.length - index - 1);
             windows = Arrays.copyOf(windows, windows.length - 1);
         }
+        List<MonocleWindow> windowsToNotify = new ArrayList<MonocleWindow>();
+        for (MonocleWindow otherWindow : windows) {
+            if (otherWindow.getOwner() == window) {
+                windowsToNotify.add(otherWindow);
+            }
+        }
+        for (int i = 0; i < windowsToNotify.size(); i++) {
+            windowsToNotify.get(i).notifyClose();
+        }
+        window.notifyDestroy();
         return true;
 
     }
@@ -106,7 +120,7 @@ public final class MonocleWindowManager {
         int index = getWindowIndex(window);
         if (index != -1) {
             focusedWindow = window;
-            window._notifyFocus(WindowEvent.FOCUS_GAINED);
+            window.notifyFocus(WindowEvent.FOCUS_GAINED);
             return true;
         } else {
             return false;
@@ -122,7 +136,7 @@ public final class MonocleWindowManager {
     }
 
     public MonocleWindow getWindowForLocation(int x, int y) {
-        for (int i = 0; i < windows.length; i++) {
+        for (int i = windows.length - 1; i >=0 ; i--) {
             MonocleWindow w = windows[i];
             if (x >= w.getX() && y >= w.getY()
                    && x < w.getX() + w.getWidth()

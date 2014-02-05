@@ -28,8 +28,13 @@ package com.sun.glass.ui.monocle;
 import com.sun.glass.events.MouseEvent;
 import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.Robot;
+import com.sun.glass.ui.monocle.input.KeyInput;
+import com.sun.glass.ui.monocle.input.KeyState;
 import com.sun.glass.ui.monocle.input.MouseInput;
 import com.sun.glass.ui.monocle.input.MouseState;
+import javafx.application.Platform;
+
+import java.nio.IntBuffer;
 
 public class MonocleRobot extends Robot {
     @Override
@@ -42,58 +47,105 @@ public class MonocleRobot extends Robot {
 
     @Override
     protected void _keyPress(int code) {
-        // TODO: robot key press
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                KeyState state = new KeyState();
+                KeyInput.getInstance().getState(state);
+                state.pressKey(code);
+                KeyInput.getInstance().setState(state);
+            }
+        });
     }
 
     @Override
     protected void _keyRelease(int code) {
-        // TODO: robot key release
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                KeyState state = new KeyState();
+                KeyInput.getInstance().getState(state);
+                state.releaseKey(code);
+                KeyInput.getInstance().setState(state);
+            }
+        });
     }
 
     @Override
     protected void _mouseMove(int x, int y) {
-        MouseState state = new MouseState();
-        MouseInput.getInstance().getState(state);
-        state.setX(x);
-        state.setY(y);
-        MouseInput.getInstance().setState(state, false);
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                MouseState state = new MouseState();
+                MouseInput.getInstance().getState(state);
+                state.setX(x);
+                state.setY(y);
+                MouseInput.getInstance().setState(state, false);
+            }
+        });
     }
 
     @Override
     protected void _mousePress(int buttons) {
-        MouseState state = new MouseState();
-        MouseInput.getInstance().getState(state);
-        if ((buttons & MOUSE_LEFT_BTN) != 0) {
-            state.pressButton(MouseEvent.BUTTON_LEFT);
-        }
-        if ((buttons & MOUSE_MIDDLE_BTN) != 0) {
-            state.pressButton(MouseEvent.BUTTON_OTHER);
-        }
-        if ((buttons & MOUSE_RIGHT_BTN) != 0) {
-            state.pressButton(MouseEvent.BUTTON_RIGHT);
-        }
-        MouseInput.getInstance().setState(state, false);
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                MouseState state = new MouseState();
+                MouseInput.getInstance().getState(state);
+                if ((buttons & MOUSE_LEFT_BTN) != 0) {
+                    state.pressButton(MouseEvent.BUTTON_LEFT);
+                }
+                if ((buttons & MOUSE_MIDDLE_BTN) != 0) {
+                    state.pressButton(MouseEvent.BUTTON_OTHER);
+                }
+                if ((buttons & MOUSE_RIGHT_BTN) != 0) {
+                    state.pressButton(MouseEvent.BUTTON_RIGHT);
+                }
+                MouseInput.getInstance().setState(state, false);
+            }
+        });
     }
 
     @Override
     protected void _mouseRelease(int buttons) {
-        MouseState state = new MouseState();
-        MouseInput.getInstance().getState(state);
-        if ((buttons & MOUSE_LEFT_BTN) != 0) {
-            state.pressButton(MouseEvent.BUTTON_LEFT);
-        }
-        if ((buttons & MOUSE_MIDDLE_BTN) != 0) {
-            state.pressButton(MouseEvent.BUTTON_OTHER);
-        }
-        if ((buttons & MOUSE_RIGHT_BTN) != 0) {
-            state.pressButton(MouseEvent.BUTTON_RIGHT);
-        }
-        MouseInput.getInstance().setState(state, false);
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                MouseState state = new MouseState();
+                MouseInput.getInstance().getState(state);
+                if ((buttons & MOUSE_LEFT_BTN) != 0) {
+                    state.releaseButton(MouseEvent.BUTTON_LEFT);
+                }
+                if ((buttons & MOUSE_MIDDLE_BTN) != 0) {
+                    state.releaseButton(MouseEvent.BUTTON_OTHER);
+                }
+                if ((buttons & MOUSE_RIGHT_BTN) != 0) {
+                    state.releaseButton(MouseEvent.BUTTON_RIGHT);
+                }
+                MouseInput.getInstance().setState(state, false);
+            }
+        });
     }
 
     @Override
     protected void _mouseWheel(int wheelAmt) {
-        // TODO: Mouse wheel robot
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                MouseState state = new MouseState();
+                MouseInput mouse = MouseInput.getInstance();
+                mouse.getState(state);
+                int direction = wheelAmt < 0
+                                ? MouseState.WHEEL_DOWN
+                                : MouseState.WHEEL_UP;
+                for (int i = 0; i < Math.abs(wheelAmt); i++) {
+                    state.setWheel(direction);
+                    mouse.setState(state, false);
+                    state.setWheel(MouseState.WHEEL_NONE);
+                    mouse.setState(state, false);
+                }
+            }
+        });
     }
 
     @Override
@@ -112,13 +164,29 @@ public class MonocleRobot extends Robot {
 
     @Override
     protected int _getPixelColor(int x, int y) {
-        return 0;
+        NativeScreen screen = NativePlatformFactory.getNativePlatform().getScreen();
+        IntBuffer buffer = screen.getScreenCapture();
+        return buffer.get(x + y * screen.getWidth());
     }
 
     @Override
     protected Pixels _getScreenCapture(int x, int y, int width, int height,
                                        boolean isHiDPI) {
-        // TODO: screen capture
-        return null;
+        NativeScreen screen = NativePlatformFactory.getNativePlatform().getScreen();
+        IntBuffer buffer = screen.getScreenCapture();
+        buffer.clear();
+        if (x == 0 && y == 0 && width == screen.getWidth() && height == screen.getHeight()) {
+            return new MonoclePixels(width, height, buffer);
+        } else {
+            IntBuffer selection = IntBuffer.allocate(width * height);
+            for (int i = 0; i < height; i++) {
+                int srcPos = x + (y + i) * screen.getWidth();
+                buffer.position(srcPos);
+                buffer.limit(srcPos + width);
+                selection.put(buffer);
+            }
+            selection.clear();
+            return new MonoclePixels(width, height, selection);
+        }
     }
 }

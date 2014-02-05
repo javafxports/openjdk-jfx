@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013,2014 Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,8 @@
 
 package com.sun.glass.ui.monocle;
 
-import java.nio.ByteBuffer;
+import java.nio.Buffer;
+import java.nio.IntBuffer;
 
 public interface NativeScreen {
 
@@ -36,10 +37,12 @@ public interface NativeScreen {
     public int getDPI();
     public long getNativeHandle();
     public void shutdown();
-
-    public void uploadPixels(ByteBuffer b,
-                             int x, int y, int width, int height);
+    public AcceleratedScreen getAcceleratedScreen(int[] attributes);
+    public void uploadPixels(Buffer b,
+                             int x, int y, int width, int height, float alpha);
 
     public void swapBuffers();
+
+    public IntBuffer getScreenCapture();
 
 }

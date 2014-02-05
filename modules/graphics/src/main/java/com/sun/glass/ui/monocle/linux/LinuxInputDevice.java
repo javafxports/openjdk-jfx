@@ -27,24 +27,21 @@ package com.sun.glass.ui.monocle.linux;
 
 import com.sun.glass.ui.Application;
 import com.sun.glass.ui.monocle.NativePlatformFactory;
+import com.sun.glass.ui.monocle.RunnableProcessor;
 import com.sun.glass.ui.monocle.input.InputDevice;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.channels.ReadableByteChannel;
 import java.util.BitSet;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 
 /**
  * A LinuxInputDevice listens for events on a Linux
  * input device node, typically one of the files in /dev/input. When events are
  * waiting to be processed on the device it notifies its listener on a thread
- * provided by its executor object. The executor should be a single-threaded
- * ExecutorService that runs all tasks on the JavaFX application thread.
+ * provided by its runnable processor object.
  * <p>
  * Event lines are accumulated in a buffer until an event "EV_SYN EV_SYN_REPORT
  * 0" is received. At this point the listener is notified. The listener can then
@@ -58,16 +55,18 @@ public class LinuxInputDevice implements Runnable, InputDevice {
 
     private LinuxInputProcessor inputProcessor;
     private ReadableByteChannel in;
+    private long fd = -1;
     private File devNode;
     private File sysPath;
     private Map<String, BitSet> capabilities;
     private Map<Integer, AbsoluteInputCapabilities> absCaps;
     private Map<String, String> udevManifest;
-    private ByteBuffer event = ByteBuffer.allocate(LinuxEventBuffer.EVENT_STRUCT_SIZE);
-    private ExecutorService executor;
+    private ByteBuffer event = ByteBuffer.allocateDirect(LinuxEventBuffer.EVENT_STRUCT_SIZE);
+    private RunnableProcessor runnableProcessor;
     private EventProcessor processor = new EventProcessor();
     private LinuxEventBuffer buffer = new LinuxEventBuffer();
     private Map<String,String> uevent;
+    private static LinuxSystem system = LinuxSystem.getLinuxSystem();
 
     /**
      * Create a new com.sun.glass.ui.monocle.input.LinuxInputDevice on the given
@@ -87,8 +86,15 @@ public class LinuxInputDevice implements Runnable, InputDevice {
         this.capabilities = SysFS.readCapabilities(sysPath);
         this.absCaps = AbsoluteInputCapabilities.getCapabilities(
                 devNode, capabilities.get("abs"));
-        this.in = new FileInputStream(devNode).getChannel();
-        this.executor = NativePlatformFactory.getNativePlatform().getExecutor();
+        fd = system.open(devNode.getPath(), LinuxSystem.O_RDONLY);
+        if (fd == -1) {
+            throw new IOException(system.getErrorMessage() + " on " + devNode);
+        }
+        // attempt to grab the device. If the grab fails, keep going.
+        int EVIOCGRAB = system.IOW('E', 0x90, 4);
+        system.ioctl(fd, EVIOCGRAB, 1);
+        this.runnableProcessor = NativePlatformFactory.getNativePlatform()
+                .getRunnableProcessor();
         this.uevent = SysFS.readUEvent(sysPath);
     }
 
@@ -111,11 +117,26 @@ public class LinuxInputDevice implements Runnable, InputDevice {
         this.in = in;
         this.udevManifest = udevManifest;
         this.uevent = uevent;
-        this.executor = NativePlatformFactory.getNativePlatform().getExecutor();
+        this.runnableProcessor = NativePlatformFactory.getNativePlatform()
+                .getRunnableProcessor();
     }
 
     public void setInputProcessor(LinuxInputProcessor inputProcessor) {
         this.inputProcessor = inputProcessor;
+    }
+
+    private void readToEventBuffer() throws IOException {
+        if (in != null) {
+            in.read(event);
+        } else if (fd != -1) {
+            int position = event.position();
+            int bytesRead = (int) system.read(fd, event, position, event.limit());
+            if (bytesRead == -1) {
+                throw new IOException(system.getErrorMessage() + " on " + devNode);
+            } else {
+                event.position(position + bytesRead);
+            }
+        }
     }
 
     @Override
@@ -126,12 +147,12 @@ public class LinuxInputDevice implements Runnable, InputDevice {
         }
         while (true) {
             try {
-                in.read(event);
+                readToEventBuffer();
                 if (event.position() == event.limit()) {
                     event.flip();
                     synchronized (buffer) {
                         if (buffer.put(event) && !processor.scheduled) {
-                            executor.submit(processor);
+                            runnableProcessor.invokeLater(processor);
                             processor.scheduled = true;
                         }
                     }
@@ -146,7 +167,7 @@ public class LinuxInputDevice implements Runnable, InputDevice {
 
     /**
      * The EventProcessor is used to notify listeners of pending events. It runs
-     * on the executor thread.
+     * on the application thread.
      */
     class EventProcessor implements Runnable {
         boolean scheduled;
@@ -163,7 +184,7 @@ public class LinuxInputDevice implements Runnable, InputDevice {
             synchronized (buffer) {
                 if (buffer.hasNextEvent()) {
                     // a new event came in after the call to processEvents
-                    executor.submit(processor);
+                    runnableProcessor.invokeLater(processor);
                 } else {
                     processor.scheduled = false;
                 }
@@ -174,6 +195,16 @@ public class LinuxInputDevice implements Runnable, InputDevice {
 
     public LinuxEventBuffer getBuffer() {
         return buffer;
+    }
+
+    /** Asks whether the device is quiet. "Quiet" means that the event
+     * reader is blocked waiting for events, the buffer is empty and the event
+     * processor is not scheduled. Called on the application thread.
+     */
+    public boolean isQuiet() {
+        synchronized (buffer) {
+            return !processor.scheduled && !buffer.hasData();
+        }
     }
 
     /**

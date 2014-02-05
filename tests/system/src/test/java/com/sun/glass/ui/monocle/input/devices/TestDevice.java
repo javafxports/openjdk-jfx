@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,36 @@
  * questions.
  */
 
-package com.sun.javafx.font.freetype;
+package com.sun.glass.ui.monocle.input.devices;
 
-class PangoGlyphInfo {
-    int glyph;
-    /* Inline PangoGlyphGeometry */
-    int width;
-    int x_offset;
-    int y_offset;
+import com.sun.glass.ui.monocle.input.UInput;
+
+public abstract class TestDevice {
+
+    protected UInput ui;
+
+    public abstract void create();
+
+    public void destroy() {
+        if (ui != null) {
+            try {
+                ui.waitForQuiet();
+            } catch (InterruptedException e) {
+            }
+            try {
+                ui.processLine("DESTROY");
+            } catch (RuntimeException e) {
+            }
+            try {
+                ui.processLine("CLOSE");
+            } catch (RuntimeException e) {
+            }
+            ui.dispose();
+        }
+    }
+
+    public void sync() {
+        ui.processLine("EV_SYN SYN_REPORT 0");
+    }
+
 }
