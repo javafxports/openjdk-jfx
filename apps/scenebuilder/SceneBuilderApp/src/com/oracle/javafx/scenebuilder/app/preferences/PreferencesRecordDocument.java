@@ -36,7 +36,8 @@ import com.oracle.javafx.scenebuilder.app.SplitController;
 import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.BOTTOM_DIVIDER_VPOS;
 import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.BOTTOM_VISIBLE;
 import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.DOCUMENT_VISIBLE;
-import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.HEIGHT;
+import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.I18N_RESOURCE;
+import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.STAGE_HEIGHT;
 import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.INSPECTOR_SECTION_ID;
 import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.LEFT_VISIBLE;
 import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.LEFT_DIVIDER_HPOS;
@@ -45,24 +46,29 @@ import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesControll
 import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.PATH;
 import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.RIGHT_DIVIDER_HPOS;
 import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.RIGHT_VISIBLE;
-import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.WIDTH;
+import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.SCENE_STYLE_SHEETS;
+import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.STAGE_WIDTH;
 import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.X_POS;
 import static com.oracle.javafx.scenebuilder.app.preferences.PreferencesController.Y_POS;
+import com.oracle.javafx.scenebuilder.kit.editor.EditorController;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.inspector.InspectorPanelController;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.inspector.InspectorPanelController.SectionId;
-import com.oracle.javafx.scenebuilder.kit.fxom.FXOMDocument;
 import java.io.File;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
-import javafx.scene.Parent;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.scene.control.Accordion;
 import javafx.scene.control.TitledPane;
-import javafx.scene.layout.Region;
 import javafx.stage.Stage;
 
 /**
@@ -75,8 +81,8 @@ public class PreferencesRecordDocument {
     // Default values
     private static final double DEFAULT_X_POS = UNDEFINED_POS;
     private static final double DEFAULT_Y_POS = UNDEFINED_POS;
-    private static final double DEFAULT_HEIGHT = 800;
-    private static final double DEFAULT_WIDTH = 1200;
+    private static final double DEFAULT_STAGE_HEIGHT = 800;
+    private static final double DEFAULT_STAGE_WIDTH = 1240;
     private static final boolean DEFAULT_BOTTOM_VISIBLE = false;
     private static final boolean DEFAULT_LEFT_VISIBLE = true;
     private static final boolean DEFAULT_RIGHT_VISIBLE = true;
@@ -92,8 +98,8 @@ public class PreferencesRecordDocument {
     private String path = null;
     private double xPos = DEFAULT_X_POS;
     private double yPos = DEFAULT_Y_POS;
-    private double height = DEFAULT_HEIGHT;
-    private double width = DEFAULT_WIDTH;
+    private double stageHeight = DEFAULT_STAGE_HEIGHT;
+    private double stageWidth = DEFAULT_STAGE_WIDTH;
     private boolean bottomVisible = DEFAULT_BOTTOM_VISIBLE;
     private boolean leftVisible = DEFAULT_LEFT_VISIBLE;
     private boolean rightVisible = DEFAULT_RIGHT_VISIBLE;
@@ -104,6 +110,8 @@ public class PreferencesRecordDocument {
     private double rightDividerHPos = DEFAULT_RIGHT_DIVIDER_HPOS;
     private double bottomDividerVPos = DEFAULT_BOTTOM_DIVIDER_VPOS;
     private double leftDividerVPos = DEFAULT_LEFT_DIVIDER_VPOS;
+    private final List<String> sceneStyleSheets = new ArrayList<>();
+    private String I18NResource = null;
 
     private Preferences documentPreferences;
     private final Preferences documentsRootPreferences; // preference root node for all documents records
@@ -133,12 +141,19 @@ public class PreferencesRecordDocument {
             setLeftDividerVPos(t1.doubleValue());
         }
     };
+    private final ChangeListener<ObservableList<File>> sceneStyleSheetsListener = new ChangeListener<ObservableList<File>>() {
+
+        @Override
+        public void changed(ObservableValue<? extends ObservableList<File>> ov, ObservableList<File> t, ObservableList<File> t1) {
+            setSceneStyleSheets(t1);
+        }
+    };
 
     public PreferencesRecordDocument(Preferences documentsRootPreferences, DocumentWindowController dwc) {
         this.documentWindowController = dwc;
         this.documentsRootPreferences = documentsRootPreferences;
 
-        // Add document X and Y listeners
+        // Add stage X and Y listeners
         final Stage stage = documentWindowController.getStage();
         assert stage != null;
         stage.xProperty().addListener(new ChangeListener<Number>() {
@@ -156,22 +171,19 @@ public class PreferencesRecordDocument {
             }
         });
 
-        // Add document height and width listeners
-        final Parent root = documentWindowController.getRoot();
-        assert root instanceof Region;
-        final Region sceneGraphRootNode = (Region) root;
-        sceneGraphRootNode.heightProperty().addListener(new ChangeListener<Number>() {
+        // Add stage height and width listeners
+        stage.heightProperty().addListener(new ChangeListener<Number>() {
 
             @Override
             public void changed(ObservableValue<? extends Number> ov, Number t, Number t1) {
-                setHeight(t1.doubleValue());
+                setStageHeight(t1.doubleValue());
             }
         });
-        sceneGraphRootNode.widthProperty().addListener(new ChangeListener<Number>() {
+        stage.widthProperty().addListener(new ChangeListener<Number>() {
 
             @Override
             public void changed(ObservableValue<? extends Number> ov, Number t, Number t1) {
-                setWidth(t1.doubleValue());
+                setStageWidth(t1.doubleValue());
             }
         });
 
@@ -197,6 +209,14 @@ public class PreferencesRecordDocument {
         bvsc.position().addListener(bottomDividerVListener);
         final SplitController lvsc = documentWindowController.getLibrarySplitController();
         lvsc.position().addListener(leftDividerVListener);
+
+        // Add scene style sheets listener
+        final EditorController ec = documentWindowController.getEditorController();
+        ec.sceneStyleSheetProperty().addListener(sceneStyleSheetsListener);
+    }
+    
+    public void resetDocumentPreferences() {
+        this.documentPreferences = null;
     }
 
     public String getPath() {
@@ -223,20 +243,20 @@ public class PreferencesRecordDocument {
         yPos = value;
     }
 
-    public double getHeight() {
-        return height;
+    public double getStageHeight() {
+        return stageHeight;
     }
 
-    public void setHeight(double value) {
-        height = value;
+    public void setStageHeight(double value) {
+        stageHeight = value;
     }
 
-    public double getWidth() {
-        return width;
+    public double getStageWidth() {
+        return stageWidth;
     }
 
-    public void setWidth(double value) {
-        width = value;
+    public void setStageWidth(double value) {
+        stageWidth = value;
     }
 
     public boolean getBottomVisible() {
@@ -319,6 +339,42 @@ public class PreferencesRecordDocument {
         leftDividerVPos = value;
     }
 
+    public List<String> getSceneStyleSheets() {
+        return sceneStyleSheets;
+    }
+
+    public void setSceneStyleSheets(ObservableList<File> files) {
+        sceneStyleSheets.clear();
+        for (File file : files) {
+            final String filePath = file.getPath();
+            sceneStyleSheets.add(filePath);
+        }
+    }
+
+    public void removeSceneStyleSheet(String filePath) {
+        sceneStyleSheets.remove(filePath);
+    }
+
+    public void removeSceneStyleSheet(List<String> filePaths) {
+        for (String filePath : filePaths) {
+            removeSceneStyleSheet(filePath);
+        }
+    }
+
+    public String getI18NResource() {
+        return I18NResource;
+    }
+
+    public void setI18NResource(String value) {
+        I18NResource = value;
+    }
+
+    public void setI18NResourceFile(File file) {
+        if (file != null) {
+            I18NResource = file.getPath();
+        }
+    }
+
     public void refreshXPos() {
         if (xPos != UNDEFINED_POS) {
             documentWindowController.getStage().setX(xPos);
@@ -331,18 +387,12 @@ public class PreferencesRecordDocument {
         }
     }
 
-    public void refreshHeight() {
-        final Parent root = documentWindowController.getRoot();
-        assert root instanceof Region;
-        final Region sceneGraphRootNode = (Region) root;
-        sceneGraphRootNode.setPrefHeight(height);
+    public void refreshStageHeight() {
+        documentWindowController.getStage().setHeight(stageHeight);
     }
 
-    public void refreshWidth() {
-        final Parent root = documentWindowController.getRoot();
-        assert root instanceof Region;
-        final Region sceneGraphRootNode = (Region) root;
-        sceneGraphRootNode.setPrefWidth(width);
+    public void refreshStageWidth() {
+        documentWindowController.getStage().setWidth(stageWidth);
     }
 
     public void refreshInspectorSectionId() {
@@ -403,11 +453,45 @@ public class PreferencesRecordDocument {
         }
     }
 
+    public void refreshSceneStyleSheets() {
+        if (sceneStyleSheets.isEmpty() == false) {
+            final ObservableList<File> files = FXCollections.observableArrayList();
+            final List<String> filePathsToRemove = new ArrayList<>();
+            for (String sceneStyleSheet : sceneStyleSheets) {
+                final File file = new File(sceneStyleSheet);
+                if (file.exists()) {
+                    files.add(file);
+                } else {
+                    // File is still in preferences DB but has been removed from disk
+                    filePathsToRemove.add(sceneStyleSheet);
+                }
+            }
+            final EditorController ec = documentWindowController.getEditorController();
+            ec.setSceneStyleSheets(files);
+            // Cleanup style sheets preferences if needed
+            if (filePathsToRemove.isEmpty() == false) {
+                removeSceneStyleSheet(filePathsToRemove);
+            }
+        }
+    }
+
+    public void refreshI18NResource() {
+        if (I18NResource != null) {
+            final File file = new File(I18NResource);
+            if (file.exists()) {
+                documentWindowController.setResourceFile(file);
+            } else {
+                // File is still in preferences DB but has been removed from disk
+                setI18NResource(null);
+            }
+        }
+    }
+
     public void refresh() {
         refreshXPos();
         refreshYPos();
-        refreshHeight();
-        refreshWidth();
+        refreshStageHeight();
+        refreshStageWidth();
         refreshInspectorSectionId();
         refreshBottomVisible();
         refreshLeftVisible();
@@ -418,6 +502,8 @@ public class PreferencesRecordDocument {
         refreshRightDividerHPos();
         refreshBottomDividerVPos();
         refreshLeftDividerVPos();
+        refreshSceneStyleSheets();
+        refreshI18NResource();
     }
 
     /**
@@ -435,13 +521,14 @@ public class PreferencesRecordDocument {
 
         // Check if there is some preferences for this document
         try {
-            final String fxmlPath = fxmlLocation.getPath();
+            final File fxmlFile = new File(fxmlLocation.toURI());
+            final String filePath = fxmlFile.getPath();
             final String[] childrenNames = documentsRootPreferences.childrenNames();
             for (String child : childrenNames) {
                 final Preferences pref = documentsRootPreferences.node(child);
                 final String nodePath = pref.get(PATH, null);
                 assert nodePath != null && nodePath.isEmpty() == false; // Each document node defines a path
-                if (fxmlPath.equals(nodePath)) {
+                if (filePath.equals(nodePath)) {
                     documentPreferences = pref;
                     break;
                 }
@@ -449,6 +536,8 @@ public class PreferencesRecordDocument {
         } catch (BackingStoreException ex) {
             Logger.getLogger(PreferencesRecordDocument.class.getName()).log(Level.SEVERE, null, ex);
             return;
+        } catch (URISyntaxException ex) {
+            Logger.getLogger(PreferencesRecordDocument.class.getName()).log(Level.SEVERE, null, ex);
         }
 
         // There is no preferences for this document in the Java preferences DB
@@ -464,10 +553,10 @@ public class PreferencesRecordDocument {
         setYPos(ypos);
 
         // Window size
-        final double h = documentPreferences.getDouble(HEIGHT, DEFAULT_HEIGHT);
-        setHeight(h);
-        final double w = documentPreferences.getDouble(WIDTH, DEFAULT_WIDTH);
-        setWidth(w);
+        final double h = documentPreferences.getDouble(STAGE_HEIGHT, DEFAULT_STAGE_HEIGHT);
+        setStageHeight(h);
+        final double w = documentPreferences.getDouble(STAGE_WIDTH, DEFAULT_STAGE_WIDTH);
+        setStageWidth(w);
 
         // Panel visibility
         final boolean bv = documentPreferences.getBoolean(BOTTOM_VISIBLE,
@@ -481,10 +570,16 @@ public class PreferencesRecordDocument {
         setRightVisible(rv);
         final boolean libv = documentPreferences.getBoolean(LIBRARY_VISIBLE,
                 DEFAULT_LIBRARY_VISIBLE);
-        setLibraryVisible(libv);
+        // Since SB 2.0 b11, the visibility of Library and Document was handled
+        // independently from the Left visibility.
+        // Starting from SB 2.0 b12, the visibility of Library and Document is
+        // linked to the Left visibility. 
+        // We need to handle new preferences as well as old ones :
+        // hence the value set for Library and Document visible property.
+        setLibraryVisible(lv && libv);
         final boolean docv = documentPreferences.getBoolean(DOCUMENT_VISIBLE,
                 DEFAULT_DOCUMENT_VISIBLE);
-        setDocumentVisible(docv);
+        setDocumentVisible(lv && docv);
 
         // Inspector expanded TitledPane
         final String sectionId = documentPreferences.get(INSPECTOR_SECTION_ID,
@@ -504,6 +599,17 @@ public class PreferencesRecordDocument {
         final double ldvp = documentPreferences.getDouble(LEFT_DIVIDER_VPOS,
                 DEFAULT_LEFT_DIVIDER_VPOS);
         setLeftDividerVPos(ldvp);
+
+        // Scene style sheets
+        final String items = documentPreferences.get(SCENE_STYLE_SHEETS, null);
+        if (items != null) {
+            final String[] itemsArray = items.split("\\" + File.pathSeparator); //NOI18N
+            sceneStyleSheets.addAll(Arrays.asList(itemsArray));
+        }
+
+        // I18NResource
+        final String resource = documentPreferences.get(I18N_RESOURCE, null); //NOI18N
+        setI18NResource(resource);
     }
 
     /**
@@ -522,18 +628,19 @@ public class PreferencesRecordDocument {
         // => create a new preference node
         if (documentPreferences == null) {
             try {
-                final FXOMDocument fxomDocument
-                        = documentWindowController.getEditorController().getFxomDocument();
-                final File fxmlFile = new File(fxomDocument.getLocation().getPath());
+                final File fxmlFile = new File(fxmlLocation.toURI());
+                final String filePath = fxmlFile.getPath();
                 final String key = generateKey(fxmlFile.getName());
                 assert documentsRootPreferences.nodeExists(key) == false;
                 // Create a new document preference node under the document root node
                 documentPreferences = documentsRootPreferences.node(key);
                 // Document path
-                documentPreferences.put(PATH, fxmlFile.getAbsolutePath());
+                documentPreferences.put(PATH, filePath);
             } catch (BackingStoreException ex) {
                 Logger.getLogger(PreferencesRecordDocument.class.getName()).log(Level.SEVERE, null, ex);
                 return;
+            } catch (URISyntaxException ex) {
+                Logger.getLogger(PreferencesRecordDocument.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
 
@@ -544,8 +651,8 @@ public class PreferencesRecordDocument {
         documentPreferences.putDouble(Y_POS, getYPos());
 
         // Window size
-        documentPreferences.putDouble(HEIGHT, getHeight());
-        documentPreferences.putDouble(WIDTH, getWidth());
+        documentPreferences.putDouble(STAGE_HEIGHT, getStageHeight());
+        documentPreferences.putDouble(STAGE_WIDTH, getStageWidth());
 
         // Panel visibility
         documentPreferences.putBoolean(BOTTOM_VISIBLE, getBottomVisible());
@@ -562,6 +669,22 @@ public class PreferencesRecordDocument {
         documentPreferences.putDouble(RIGHT_DIVIDER_HPOS, getRightDividerHPos());
         documentPreferences.putDouble(BOTTOM_DIVIDER_VPOS, getBottomDividerVPos());
         documentPreferences.putDouble(LEFT_DIVIDER_VPOS, getLeftividerVPos());
+
+        // Scene style sheets
+        final StringBuilder sb = new StringBuilder();
+        for (String sceneStyleSheet : getSceneStyleSheets()) {
+            sb.append(sceneStyleSheet);
+            sb.append(File.pathSeparator);
+        }
+        documentPreferences.put(SCENE_STYLE_SHEETS, sb.toString());
+
+        // I18NResource
+        final String resource = getI18NResource();
+        if (resource != null) {
+            documentPreferences.put(I18N_RESOURCE, resource);
+        } else {
+            documentPreferences.remove(I18N_RESOURCE);
+        }
     }
 
     /**

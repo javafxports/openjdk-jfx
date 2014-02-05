@@ -38,7 +38,6 @@ import com.oracle.javafx.scenebuilder.kit.editor.i18n.I18N;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.util.AbstractFxmlPanelController;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.util.dialog.AbstractModalDialog.ButtonID;
 import com.oracle.javafx.scenebuilder.kit.fxom.FXOMDocument;
-import com.oracle.javafx.scenebuilder.kit.library.BuiltinLibrary;
 import com.oracle.javafx.scenebuilder.kit.library.Library;
 import com.oracle.javafx.scenebuilder.kit.library.LibraryItem;
 import com.oracle.javafx.scenebuilder.kit.library.LibraryItemNameComparator;
@@ -69,6 +68,7 @@ import javafx.collections.ListChangeListener;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.control.Accordion;
+import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TitledPane;
@@ -104,7 +104,8 @@ public class LibraryPanelController extends AbstractFxmlPanelController {
 
     @FXML
     private Accordion libAccordion;
-    
+    @FXML
+    Label noSearchResults;
     @FXML ListView<LibraryListItem> libSearchList;
     
     @FXML ListView<LibraryListItem> libList = new ListView<>();
@@ -183,6 +184,13 @@ public class LibraryPanelController extends AbstractFxmlPanelController {
     }
 
     /**
+     * @treatAsPrivate User scene graph did change.
+     */
+    @Override
+    protected void cssRevisionDidChange() {
+    }
+
+    /**
      * @treatAsPrivate Job manager revision did change.
      */
     @Override
@@ -210,6 +218,8 @@ public class LibraryPanelController extends AbstractFxmlPanelController {
         assert libAccordion != null;
         assert libPane != null;
         assert libList != null;
+        assert noSearchResults != null;
+        assert libSearchList != null;
         
         startListeningToDrop();
         setDisplayMode(DISPLAY_MODE.SECTIONS);
@@ -224,10 +234,31 @@ public class LibraryPanelController extends AbstractFxmlPanelController {
      * The display mode of the Library panel is used to choose how items
      * are rendered within the panel.
      */
-    public enum DISPLAY_MODE {SECTIONS, SEARCH, LIST};
+    public enum DISPLAY_MODE {
+
+        SECTIONS {
+
+                    @Override
+                    public String toString() {
+                        return I18N.getString("library.panel.menu.view.sections");
+                    }
+                },
+        SEARCH,
+        LIST {
+
+                    @Override
+                    public String toString() {
+                        return I18N.getString("library.panel.menu.view.list");
+                    }
+                }
+    };
     
     private DISPLAY_MODE currentDisplayMode;
     private DISPLAY_MODE previousDisplayMode = DISPLAY_MODE.SECTIONS;
+    
+    public void setPreviousDisplayMode(DISPLAY_MODE displayMode) {
+        this.previousDisplayMode = displayMode;
+    }
     
     public void setDisplayMode(DISPLAY_MODE displayMode) {
         this.currentDisplayMode = displayMode;
@@ -236,6 +267,8 @@ public class LibraryPanelController extends AbstractFxmlPanelController {
             case SECTIONS:
                 libAccordion.setVisible(true);
                 libAccordion.setManaged(true);
+                noSearchResults.setVisible(false);
+                noSearchResults.setManaged(false);
                 libSearchList.setVisible(false);
                 libSearchList.setManaged(false);
                 libList.setVisible(false);
@@ -244,14 +277,25 @@ public class LibraryPanelController extends AbstractFxmlPanelController {
             case SEARCH:
                 libAccordion.setVisible(false);
                 libAccordion.setManaged(false);
-                libSearchList.setVisible(true);
-                libSearchList.setManaged(true);
+                if (libSearchList.getItems().isEmpty()) {
+                    noSearchResults.setVisible(true);
+                    noSearchResults.setManaged(true);
+                    libSearchList.setVisible(false);
+                    libSearchList.setManaged(false);
+                } else {
+                    noSearchResults.setVisible(false);
+                    noSearchResults.setManaged(false);
+                    libSearchList.setVisible(true);
+                    libSearchList.setManaged(true);
+                }
                 libList.setVisible(false);
                 libList.setManaged(false);
                 break;
             case LIST:
                 libAccordion.setVisible(false);
                 libAccordion.setManaged(false);
+                noSearchResults.setVisible(false);
+                noSearchResults.setManaged(false);
                 libSearchList.setVisible(false);
                 libSearchList.setManaged(false);
                 libList.setVisible(true);
@@ -260,6 +304,10 @@ public class LibraryPanelController extends AbstractFxmlPanelController {
             default:
                 break;
         }
+    }
+    
+    public DISPLAY_MODE getDisplayMode() {
+        return currentDisplayMode;
     }
     
     private final ChangeListener<Library> libraryListener = new ChangeListener<Library>() {
@@ -352,59 +400,61 @@ public class LibraryPanelController extends AbstractFxmlPanelController {
         
         searchData.clear();
         libList.getItems().clear();
-
-        // Construct a sorted set of all lib section names.
-        for (LibraryItem item : getEditorController().getLibrary().getItems()) {
-            sectionNames.add(item.getSection());
-        }
-
-        // Create a sorted set of lib elements for each section.
-        for (String sectionName : sectionNames) {
-            libData.put(sectionName, new ArrayList<>());
-        }
-
-        // Add each LibraryItem to the appropriate set.
-        for (LibraryItem item : getEditorController().getLibrary().getItems()) {
-            libData.get(item.getSection()).add(item);
-        }
-
-        // Parse our lib data structure and populate the Accordion accordingly.
-        for (String sectionName : sectionNames) {
-            ListView<LibraryListItem> itemsList = new ListView<>();
-            itemsList.setId(sectionName + "List"); // for QE //NOI18N
-            itemsList.setCellFactory(cb);
-            itemsList.addEventHandler(KeyEvent.KEY_RELEASED, keyEventHandler);
-            Collections.sort(libData.get(sectionName), new LibraryItemNameComparator());
-            for (LibraryItem item : libData.get(sectionName)) {
-                itemsList.getItems().add(new LibraryListItem(item));
+        
+        if (getEditorController().getLibrary().getItems().size() > 0) {
+            // Construct a sorted set of all lib section names.
+            for (LibraryItem item : getEditorController().getLibrary().getItems()) {
+                sectionNames.add(item.getSection());
             }
-            TitledPane sectionPane = new TitledPane(sectionName, itemsList);
-            sectionPane.setId(sectionName); // for QE
-            sectionPane.setAnimated(true);
-            panes.add(sectionPane);
-            
-            searchData.addAll(libData.get(sectionName));
-            
-            libList.getItems().add(new LibraryListItem(sectionName));
-            for (LibraryItem item : libData.get(sectionName)) {
-                libList.getItems().add(new LibraryListItem(item));
+
+            // Create a sorted set of lib elements for each section.
+            for (String sectionName : sectionNames) {
+                libData.put(sectionName, new ArrayList<>());
             }
+
+            // Add each LibraryItem to the appropriate set.
+            for (LibraryItem item : getEditorController().getLibrary().getItems()) {
+                libData.get(item.getSection()).add(item);
+            }
+
+            // Parse our lib data structure and populate the Accordion accordingly.
+            for (String sectionName : sectionNames) {
+                ListView<LibraryListItem> itemsList = new ListView<>();
+                itemsList.setId(sectionName + "List"); // for QE //NOI18N
+                itemsList.setCellFactory(cb);
+                itemsList.addEventHandler(KeyEvent.KEY_RELEASED, keyEventHandler);
+                Collections.sort(libData.get(sectionName), new LibraryItemNameComparator());
+                for (LibraryItem item : libData.get(sectionName)) {
+                    itemsList.getItems().add(new LibraryListItem(item));
+                }
+                TitledPane sectionPane = new TitledPane(sectionName, itemsList);
+                sectionPane.setId(sectionName); // for QE
+                sectionPane.setAnimated(true);
+                panes.add(sectionPane);
+
+                searchData.addAll(libData.get(sectionName));
+
+                libList.getItems().add(new LibraryListItem(sectionName));
+                for (LibraryItem item : libData.get(sectionName)) {
+                    libList.getItems().add(new LibraryListItem(item));
+                }
+            }
+
+            if (libAccordion.getPanes().size() >= 1) {
+                libAccordion.setExpandedPane(panes.get(0));
+            }
+
+            if (libSearchList.getCellFactory() == null) {
+                libSearchList.setCellFactory(cb);
+            }
+
+            if (libList.getCellFactory() == null) {
+                libList.setCellFactory(cb);
+            }
+
+            libSearchList.addEventHandler(KeyEvent.KEY_RELEASED, keyEventHandler);
+            libList.addEventHandler(KeyEvent.KEY_RELEASED, keyEventHandler);
         }
-        
-        if (libAccordion.getPanes().size() >= 1) {
-            libAccordion.setExpandedPane(panes.get(0));
-        }
-        
-        if (libSearchList.getCellFactory() == null) {
-            libSearchList.setCellFactory(cb);
-        }
-        
-        if (libList.getCellFactory() == null) {
-            libList.setCellFactory(cb);
-        }
-        
-        libSearchList.addEventHandler(KeyEvent.KEY_RELEASED, keyEventHandler);
-        libList.addEventHandler(KeyEvent.KEY_RELEASED, keyEventHandler);
     }
     
     // We first try to open a section whose name matches the given one, then we
@@ -444,12 +494,12 @@ public class LibraryPanelController extends AbstractFxmlPanelController {
     
     private void searchPatternDidChange() {
         if (searchPattern == null || searchPattern.isEmpty()) {
-            setDisplayMode(previousDisplayMode);
+            currentDisplayMode = previousDisplayMode;
         } else {
             if (currentDisplayMode != DISPLAY_MODE.SEARCH) {
                 previousDisplayMode = currentDisplayMode;
+                currentDisplayMode = DISPLAY_MODE.SEARCH;
             }
-            setDisplayMode(DISPLAY_MODE.SEARCH);
         }
         
         // The filtering is done by ignoring case, and by retaining any item that
@@ -476,6 +526,8 @@ public class LibraryPanelController extends AbstractFxmlPanelController {
             }
             rawFilteredItem.clear();
         }
+        
+        setDisplayMode(currentDisplayMode);
     }
     
     // Key events listened onto the ListView
@@ -634,7 +686,6 @@ public class LibraryPanelController extends AbstractFxmlPanelController {
         String userLibraryPathString = ((UserLibrary) getEditorController().getLibrary()).getPath();
         Path libPath = Paths.get(userLibraryPathString);
         ((UserLibrary) getEditorController().getLibrary()).stopWatching();
-        getEditorController().setLibrary(BuiltinLibrary.getLibrary());
         
         try {
             // The selection can be multiple, in which case each asset is processed
@@ -656,7 +707,6 @@ public class LibraryPanelController extends AbstractFxmlPanelController {
                 writeFxmlFile(fxmlFile, fxmlText, libPath);
             }
         } finally {
-            getEditorController().setLibrary(new UserLibrary(userLibraryPathString));
             ((UserLibrary) getEditorController().getLibrary()).startWatching();
         }
     }
@@ -799,7 +849,6 @@ public class LibraryPanelController extends AbstractFxmlPanelController {
         // Here we deactivate the UserLib so that it unlocks the files contained
         // in the lib dir in the file system meaning (especially on Windows).
         ((UserLibrary) getEditorController().getLibrary()).stopWatching();
-        getEditorController().setLibrary(BuiltinLibrary.getLibrary());
         
         try {
             for (File file : files) {
@@ -824,7 +873,6 @@ public class LibraryPanelController extends AbstractFxmlPanelController {
             }
         }
 
-        getEditorController().setLibrary(new UserLibrary(userLibraryPath));
         ((UserLibrary) getEditorController().getLibrary()).startWatching();
 
         if (errorCount > 0) {

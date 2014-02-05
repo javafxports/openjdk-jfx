@@ -489,6 +489,14 @@ public abstract class AbstractHierarchyPanelController extends AbstractFxmlPanel
         }
     }
 
+    /**
+     * @treatAsPrivate
+     */
+    @Override
+    protected void cssRevisionDidChange() {
+        // Ignored
+    }
+
     private void updateTreeItemsExpandedMap(TreeItem<HierarchyItem> treeItem) {
         assert treeItem != null;
         final HierarchyItem item = treeItem.getValue();
@@ -728,38 +736,6 @@ public abstract class AbstractHierarchyPanelController extends AbstractFxmlPanel
         final DesignHierarchyMask mask = treeItem.getValue().getMask();
         assert mask != null;
 
-        // Sub components
-        //---------------------------------
-        if (mask.isAcceptingSubComponent()) {
-            for (int i = 0, count = mask.getSubComponentCount(); i < count; i++) {
-                final FXOMObject value = mask.getSubComponentAtIndex(i);
-                treeItem.getChildren().add(makeTreeItem(value));
-            }
-        }
-
-        // Positionning
-        //---------------------------------
-        for (Accessory accessory : new Accessory[]{
-            Accessory.TOP,
-            Accessory.LEFT,
-            Accessory.CENTER,
-            Accessory.RIGHT,
-            Accessory.BOTTOM}) {
-            if (mask.isAcceptingAccessory(accessory)) {
-                final FXOMObject value = mask.getAccessory(accessory);
-                treeItem.getChildren().add(makeTreeItemBorderPane(mask, value, accessory));
-            }
-        }
-
-        // Content (ScrollPane, Tab...)
-        //---------------------------------
-        if (mask.isAcceptingAccessory(Accessory.CONTENT)) {
-            final FXOMObject value = mask.getAccessory(Accessory.CONTENT);
-            if (value != null) {
-                treeItem.getChildren().add(makeTreeItem(value));
-            }
-        }
-
         // Graphic (displayed at first position)
         //---------------------------------
         if (mask.isAcceptingAccessory(Accessory.GRAPHIC)) {
@@ -783,6 +759,53 @@ public abstract class AbstractHierarchyPanelController extends AbstractFxmlPanel
         if (mask.isAcceptingAccessory(Accessory.CONTEXT_MENU)) {
             final FXOMObject value = mask.getAccessory(Accessory.CONTEXT_MENU);
             if (value != null) {
+                treeItem.getChildren().add(makeTreeItem(value));
+            }
+        }
+
+        // Axis (chart)
+        //---------------------------------
+        if (mask.isAcceptingAccessory(Accessory.XAXIS)) {
+            final FXOMObject value = mask.getAccessory(Accessory.XAXIS);
+            if (value != null) {
+                treeItem.getChildren().add(makeTreeItem(value));
+            }
+        }
+        if (mask.isAcceptingAccessory(Accessory.YAXIS)) {
+            final FXOMObject value = mask.getAccessory(Accessory.YAXIS);
+            if (value != null) {
+                treeItem.getChildren().add(makeTreeItem(value));
+            }
+        }
+        
+        // Content (ScrollPane, Tab...)
+        //---------------------------------
+        if (mask.isAcceptingAccessory(Accessory.CONTENT)) {
+            final FXOMObject value = mask.getAccessory(Accessory.CONTENT);
+            if (value != null) {
+                treeItem.getChildren().add(makeTreeItem(value));
+            }
+        }
+
+        // Positionning
+        //---------------------------------
+        for (Accessory accessory : new Accessory[]{
+            Accessory.TOP,
+            Accessory.LEFT,
+            Accessory.CENTER,
+            Accessory.RIGHT,
+            Accessory.BOTTOM}) {
+            if (mask.isAcceptingAccessory(accessory)) {
+                final FXOMObject value = mask.getAccessory(accessory);
+                treeItem.getChildren().add(makeTreeItemBorderPane(mask, value, accessory));
+            }
+        }
+
+        // Sub components
+        //---------------------------------
+        if (mask.isAcceptingSubComponent()) {
+            for (int i = 0, count = mask.getSubComponentCount(); i < count; i++) {
+                final FXOMObject value = mask.getSubComponentAtIndex(i);
                 treeItem.getChildren().add(makeTreeItem(value));
             }
         }

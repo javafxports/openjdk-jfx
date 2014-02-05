@@ -33,7 +33,6 @@ package com.oracle.javafx.scenebuilder.kit.util.control.paintpicker.slider;
 
 import com.oracle.javafx.scenebuilder.kit.util.control.paintpicker.gradientpicker.GradientPicker;
 import java.io.IOException;
-import java.text.DecimalFormat;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javafx.beans.value.ChangeListener;
@@ -55,6 +54,7 @@ public class SliderControl extends GridPane {
     private Label slider_label;
     @FXML
     private TextField slider_textfield;
+    private final int roundingFactor = 100; // 2 decimals rounding
 
     public SliderControl(String text, double min, double max, double initVal) {
         initialize(text, min, max, initVal);
@@ -87,13 +87,14 @@ public class SliderControl extends GridPane {
         slider_slider.setMin(min);
         slider_slider.setMax(max);
         slider_slider.setValue(initVal);
-        slider_textfield.setText("" + initVal); //NOI18N
+        slider_textfield.setText(Double.toString(initVal));
 
         slider_slider.valueProperty().addListener(new ChangeListener<Number>() {
 
             @Override
             public void changed(ObservableValue<? extends Number> ov, Number oldValue, Number newValue) {
-                slider_textfield.setText("" + newValue); //NOI18N
+                double rounded = round(newValue.doubleValue(), roundingFactor);
+                slider_textfield.setText(Double.toString(rounded));
             }
         });
     }
@@ -101,14 +102,15 @@ public class SliderControl extends GridPane {
     @FXML
     void sliderAction(ActionEvent event) {
         double value = Double.valueOf(slider_textfield.getText());
-        slider_slider.setValue(value);
-        if (value > slider_slider.getMax()) {
-            value = slider_slider.getMax();
-            slider_textfield.setText("" + value); //NOI18N
+        double rounded = round(value, roundingFactor);
+        slider_slider.setValue(rounded);
+        if (rounded > slider_slider.getMax()) {
+            rounded = slider_slider.getMax();
+            slider_textfield.setText(Double.toString(rounded));
         }
-        if (value < slider_slider.getMin()) {
-            value = slider_slider.getMin();
-            slider_textfield.setText("" + value); //NOI18N
+        if (rounded < slider_slider.getMin()) {
+            rounded = slider_slider.getMin();
+            slider_textfield.setText(Double.toString(rounded));
         }
         slider_textfield.selectAll();
     }
@@ -133,10 +135,10 @@ public class SliderControl extends GridPane {
             return; // check it's a textField
         }        // increment or decrement the value
         final TextField tf = (TextField) e.getSource();
-        final String s = tf.getText();
-        final Double d = (Double.valueOf(s) + x);
-        final DecimalFormat df = new DecimalFormat("0.###"); //NOI18N
-        tf.setText(df.format(d));
+        final Double newValue = Double.valueOf(tf.getText()) + x;
+        double rounded = round(newValue, roundingFactor);
+        slider_slider.setValue(rounded);
+        tf.setText(Double.toString(newValue));
         // Avoid using runLater
         // This should be done somewhere else (need to investigate)
 //        Platform.runLater(new Runnable() {
@@ -146,5 +148,10 @@ public class SliderControl extends GridPane {
 //                tf.positionCaret(tf.getText().length());
 //            }
 //        });
+    }
+
+    private double round(double value, int roundingFactor) {
+        double doubleRounded = Math.round(value * roundingFactor);
+        return doubleRounded / roundingFactor;
     }
 }

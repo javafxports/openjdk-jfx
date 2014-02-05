@@ -33,7 +33,6 @@ package com.oracle.javafx.scenebuilder.kit.util.control.paintpicker.rotator;
 
 import com.oracle.javafx.scenebuilder.kit.util.control.paintpicker.gradientpicker.GradientPicker;
 import java.io.IOException;
-import java.text.DecimalFormat;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javafx.beans.property.DoubleProperty;
@@ -60,6 +59,7 @@ public class RotatorControl extends GridPane {
     private Button rotator_handle;
     @FXML
     private Label rotator_label;
+    private final int roundingFactor = 100; // 2 decimals rounding
 
     private final DoubleProperty rotation = new SimpleDoubleProperty();
 
@@ -100,7 +100,9 @@ public class RotatorControl extends GridPane {
 
     @FXML
     void rotatorAction(ActionEvent event) {
-        rotate(Double.valueOf(rotator_textfield.getText()));
+        double value = Double.valueOf(rotator_textfield.getText());
+        double rounded = round(value, roundingFactor);
+        rotate(rounded);
         rotator_textfield.selectAll();
     }
 
@@ -123,14 +125,15 @@ public class RotatorControl extends GridPane {
         rotate(Math.toDegrees(radians));
     }
 
-    private void rotate(Double degrees) {
-        rotation.set(degrees);
-        rotator_handle.setRotate(degrees);
-        rotatePrint(degrees);
+    private void rotate(Double value) {
+        double rounded = round(value, roundingFactor);
+        rotation.set(rounded);
+        rotator_handle.setRotate(rounded);
+        rotator_textfield.setText(Double.toString(rounded));
     }
 
-    private void rotatePrint(Double r) {
-        final DecimalFormat df = new DecimalFormat("#.#"); //NOI18N
-        rotator_textfield.setText(String.valueOf(df.format(r)));
+    private double round(double value, int roundingFactor) {
+        double doubleRounded = Math.round(value * roundingFactor);
+        return doubleRounded / roundingFactor;
     }
 }

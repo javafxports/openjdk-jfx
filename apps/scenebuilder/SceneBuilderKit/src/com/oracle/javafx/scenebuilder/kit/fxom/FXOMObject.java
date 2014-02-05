@@ -91,7 +91,9 @@ public abstract class FXOMObject extends FXOMNode {
         if (parentProperty != null) {
             if (parentProperty.getValues().size() == 1) {
                 // it's the last value -> we remove the whole property
-                parentProperty.removeFromParentInstance();
+                if (parentProperty.getParentInstance() != null) {
+                    parentProperty.removeFromParentInstance();
+                }
             } else {
                 removeFromParentProperty();
             }
@@ -104,6 +106,10 @@ public abstract class FXOMObject extends FXOMNode {
         
         final GlueElement newParentElement = parentProperty.getGlueElement();
         glueElement.addToParent(index, newParentElement);
+        
+        // May be this object was a root : properties like fx:controller must
+        // be reset to preserve FXML validity.
+        resetRootProperties();
     }
     
     public void removeFromParentProperty() {
@@ -150,6 +156,10 @@ public abstract class FXOMObject extends FXOMNode {
         
         final GlueElement newParentElement = parentCollection.getGlueElement();
         glueElement.addToParent(index, newParentElement);
+        
+        // May be this object was a root : properties like fx:controller must
+        // be reset to preserve FXML validity.
+        resetRootProperties();
     }
     
     public void removeFromParentCollection() {
@@ -428,6 +438,22 @@ public abstract class FXOMObject extends FXOMNode {
         return result;
     }
     
+    public void removeFromParentObject() {
+        if (parentProperty != null) {
+            if (parentProperty.getValues().size() == 1) {
+                // This object is the last value of its parent property
+                // We remove the property from the parent instance
+                if (parentProperty.getParentInstance() != null) {
+                    parentProperty.removeFromParentInstance();
+                }
+            } else {
+                removeFromParentProperty();
+            }
+        } else if (parentCollection != null) {
+            removeFromParentCollection();
+       }
+    }
+    
     public abstract List<FXOMObject> getChildObjects();
     
     public boolean isDescendantOf(FXOMObject other) {
@@ -636,6 +662,12 @@ public abstract class FXOMObject extends FXOMNode {
     
     
     /*
-     * Private (fx:id)
+     * Private
      */
+    
+    private void resetRootProperties() {
+        setFxController(null);
+        setNameSpaceFX(null);
+        setNameSpaceFXML(null);
+    }
 }

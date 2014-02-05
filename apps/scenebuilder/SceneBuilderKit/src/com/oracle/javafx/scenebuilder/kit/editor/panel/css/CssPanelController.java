@@ -135,7 +135,7 @@ public class CssPanelController extends AbstractFxmlPanelController {
     @FXML
     private VBox root;
     @FXML
-    private VBox header;
+    private HBox header;
     @FXML
     WebView textPane;
     @FXML
@@ -161,8 +161,6 @@ public class CssPanelController extends AbstractFxmlPanelController {
     private StackPane message;
 
     private String searchPattern;
-    private static final Image cogIcon = new Image(
-            InspectorPanelController.class.getResource("images/cog.png").toExternalForm()); //NOI18N
     private static final Image lookups = new Image(
             CssPanelController.class.getResource("images/css-lookup-icon.png").toExternalForm()); //NOI18N
     private static final Image pickImg = new Image(
@@ -207,6 +205,14 @@ public class CssPanelController extends AbstractFxmlPanelController {
     @Override
     protected void sceneGraphRevisionDidChange() {
         // System.out.println("CssPanelController.sceneGraphRevisionDidChange() called!");
+        if (isCssPanelLoaded() && hasFxomDocument()) {
+            refresh();
+        }
+    }
+
+    @Override
+    protected void cssRevisionDidChange() {
+        // System.out.println("CssPanelController.cssRevisionDidChange() called!");
         if (isCssPanelLoaded() && hasFxomDocument()) {
             refresh();
         }
@@ -536,6 +542,9 @@ public class CssPanelController extends AbstractFxmlPanelController {
 
     public void showStyledOnly() {
         styledOnly = !styledOnly;
+        if (model == null) {
+            return;
+        }
         showStyled(model);
     }
 
@@ -903,7 +912,8 @@ public class CssPanelController extends AbstractFxmlPanelController {
             try {
                 // XXX jfdenise, for now can't do better than opening the file, no Anchor per property...
                 // Retrieve defining class
-                EditorPlatform.open("http://docs.oracle.com/javafx/2/api/javafx/scene/doc-files/cssref.html#" + //NOI18N
+                EditorPlatform.open(EditorPlatform.JAVADOC_HOME + 
+                        "javafx/scene/doc-files/cssref.html#" + //NOI18N
                         item.getTarget().getClass().getSimpleName().toLowerCase(Locale.ROOT));
             } catch (IOException ex) {
                 System.out.println(ex.getMessage());
@@ -1151,7 +1161,6 @@ public class CssPanelController extends AbstractFxmlPanelController {
             navigationMenuButton.setPrefWidth(5);
             navigationMenuButton.setMinWidth(5);
             navigationMenuButton.setOpacity(0);
-            navigationMenuButton.setGraphic(new ImageView(cogIcon));
             navigationMenuButton.getStyleClass().addAll("cog-button"); //NOI18N
             fadeTransition = new FadeTransition(Duration.millis(500), navigationMenuButton);
         }
