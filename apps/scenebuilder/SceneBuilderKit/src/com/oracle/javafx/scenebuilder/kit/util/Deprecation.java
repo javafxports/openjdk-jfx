@@ -35,7 +35,9 @@ import com.sun.glass.ui.Application;
 import com.sun.glass.ui.Application.EventHandler;
 import com.sun.javafx.css.Style;
 import com.sun.javafx.css.StyleManager;
+import com.sun.javafx.geom.PickRay;
 import com.sun.javafx.scene.control.skin.MenuBarSkin;
+import com.sun.javafx.scene.input.PickResultChooser;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
@@ -46,6 +48,7 @@ import javafx.css.StyleableProperty;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.JavaFXBuilderFactory;
 import javafx.geometry.Bounds;
+import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -96,14 +99,19 @@ public class Deprecation {
     // Retrieve the node of the Styleable.
     public static Node getNode(Styleable styleable) {
         // Nodes are styleable treated differently.
-        if (styleable instanceof MenuItem) {
-            return ((MenuItem) styleable).impl_styleableGetNode();
-        } else if (styleable instanceof PopupControl) {
-            return ((PopupControl) styleable).impl_styleableGetNode();
-        } else if (styleable instanceof TableColumn) {
-            return ((TableColumn) styleable).impl_styleableGetNode();
-        } else if (styleable instanceof TreeTableColumn) {
-            return ((TreeTableColumn) styleable).impl_styleableGetNode();
+        try {
+            if (styleable instanceof MenuItem) {
+                return ((MenuItem) styleable).impl_styleableGetNode();
+            } else if (styleable instanceof PopupControl) {
+                return ((PopupControl) styleable).impl_styleableGetNode();
+            } else if (styleable instanceof TableColumn) {
+                return ((TableColumn) styleable).impl_styleableGetNode();
+            } else if (styleable instanceof TreeTableColumn) {
+                return ((TreeTableColumn) styleable).impl_styleableGetNode();
+            }
+        } catch (Exception ex) {
+            // May happen, e.g if TableColumn as root
+            return null;
         }
         return null;
     }
@@ -141,6 +149,15 @@ public class Deprecation {
     // RT-21228 : Promote setLoadListener to public API
     public static void setLoadListener(FXMLLoader loader, com.sun.javafx.fxml.LoadListener loadListener) {
         loader.impl_setLoadListener(loadListener);
+    }
+
+    // RT-20184 : FX should provide a Parent.pick() routine
+    public static Node pick(Node node, double sceneX, double sceneY) {
+        final Point2D p = node.sceneToLocal(sceneX, sceneY);
+        final PickRay pickRay = new PickRay(p.getX(), p.getY(), 1.0, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
+        final PickResultChooser prc = new PickResultChooser();
+        node.impl_pickNode(pickRay, prc);
+        return prc.getIntersectedNode();
     }
 
     // RT-19857 : Keeping menu in the Mac menu bar when there is no more stage

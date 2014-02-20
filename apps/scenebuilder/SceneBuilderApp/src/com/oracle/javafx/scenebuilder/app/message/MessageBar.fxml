@@ -33,13 +33,11 @@
 -->
 
 <?import java.lang.*?>
-<?import java.net.*?>
 <?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
-<?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
 
-<StackPane minHeight="30.0" prefHeight="-1.0" prefWidth="458.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
+<StackPane minHeight="30.0" prefHeight="-1.0" prefWidth="458.0" stylesheets="@../css/MessageBar.css" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
   <children>
     <HBox fx:id="messageBox" alignment="CENTER" spacing="5.0" styleClass="message-bar">
       <children>
@@ -47,21 +45,14 @@
         <HBox fx:id="messagePart" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
           <children>
             <Label fx:id="messageLabel" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mouseTransparent="true" style="&#10;" text="Message" HBox.hgrow="ALWAYS" />
-            <HBox id="messageBox" alignment="CENTER_RIGHT" fillHeight="true" minWidth="-Infinity" prefHeight="-1.0" prefWidth="-1.0" spacing="0.0" HBox.hgrow="NEVER">
+            <HBox fx:id="iconsHbox" alignment="CENTER_RIGHT" fillHeight="true" minWidth="-Infinity" prefHeight="-1.0" prefWidth="-1.0" spacing="0.0" HBox.hgrow="NEVER">
              <children>
-                <Button fx:id="messageButton" alignment="CENTER" maxHeight="1.7976931348623157E308" minHeight="-1.0" minWidth="20.0" mnemonicParsing="false" onAction="#onOpenCloseAction" text="">
-                  <graphic>
-                    <ImageView id="warning" pickOnBounds="true" visible="true">
-                      <image>
-                        <Image preserveRatio="true" smooth="true" url="@warning.png" />
-                      </image>
-                    </ImageView>
-                  </graphic>
+                <Button fx:id="messageButton" alignment="CENTER" maxHeight="1.7976931348623157E308" minHeight="-1.0" minWidth="20.0" mnemonicParsing="false" onAction="#onOpenCloseAction" styleClass="warning-button" text="">
                   <tooltip>
                       <Tooltip text="%message.bar.details" />
                   </tooltip>
                 </Button>
-                <Label fx:id="statusLabel" contentDisplay="CENTER" focusTraversable="false" graphicTextGap="0.0" maxHeight="1.7976931348623157E308" minWidth="30.0" prefWidth="30.0" text="">
+                <Label fx:id="statusLabel" contentDisplay="CENTER" focusTraversable="false" graphicTextGap="0.0" maxHeight="1.7976931348623157E308" text="">
                   <tooltip>
                     <Tooltip text="%message.bar.file.dirty" />
                   </tooltip>
@@ -76,7 +67,4 @@
       </children>
     </HBox>
   </children>
-  <stylesheets>
-    <URL value="@MessageBar.css" />
-  </stylesheets>
 </StackPane>

@@ -403,7 +403,9 @@ public class ContentPanelController extends AbstractFxmlPanelController
     public FXOMObject pick(double sceneX, double sceneY, Set<FXOMObject> excludes) {
         final FXOMDocument fxomDocument = getEditorController().getFxomDocument();
         final FXOMObject result;
-        if ((fxomDocument == null) || (fxomDocument.getFxomRoot() == null)) {
+        if ((fxomDocument == null) 
+                || (fxomDocument.getFxomRoot() == null)
+                || excludes.contains(fxomDocument.getFxomRoot())) {
             result = null;
         } else {
             result = pick(fxomDocument.getFxomRoot(), sceneX, sceneY, excludes);
@@ -924,9 +926,9 @@ public class ContentPanelController extends AbstractFxmlPanelController
     private void setupEventTracingFilter() {
         if (glassLayer != null) {
             if (tracingEvents) {
-                glassLayer.addEventFilter(InputEvent.ANY, eventTracingFiler);
+                glassLayer.addEventFilter(InputEvent.ANY, eventTracingFilter);
             } else {
-                glassLayer.removeEventFilter(InputEvent.ANY, eventTracingFiler);
+                glassLayer.removeEventFilter(InputEvent.ANY, eventTracingFilter);
             }
         }
     }
@@ -947,7 +949,7 @@ public class ContentPanelController extends AbstractFxmlPanelController
         System.out.println(sb.toString());
     }
     
-    private final EventHandler<Event> eventTracingFiler
+    private final EventHandler<Event> eventTracingFilter
             = new EventHandler<Event>() {
         @Override
         public void handle(Event e) {
