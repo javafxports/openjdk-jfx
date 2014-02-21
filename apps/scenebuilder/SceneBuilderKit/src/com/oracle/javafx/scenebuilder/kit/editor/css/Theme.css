@@ -41,8 +41,9 @@
     -sb-dark: derive(-sb-base, -25%);
     -sb-content-text: derive(-sb-base, -50%); 
     -sb-content-text-dimmed: derive(-sb-base, -20%);
-    -sb-header-text: derive(-sb-base, -80%);
+    -sb-header-text: derive(-sb-base, -70%);
     -sb-header-text-dimmed: derive(-sb-base, -30%);
+    -sb-header-height: 32;
     -sb-grad-hi: derive(-sb-base, 110%);
     -sb-sharp-edge-hi: derive(-sb-base, 90%);
     -sb-flat: derive(-sb-base, 60%);
@@ -52,7 +53,11 @@
     -sb-scrollbar-thumb: derive(-sb-base, 60%);
     -sb-selected-bar-color: rgb(75, 155, 210);
     -sb-selected-bar-unfocused-color: derive(-sb-panel-background, -15%);
+    -sb-line-art: derive(-sb-base, 40%);
+    -sb-line-art-accent: red;
     -sb-css-winner-color: rgb(210, 240, 255);
+    -sb-warning-panel: rgb(230, 225, 140);
+    -sb-message-panel: rgb(185, 220, 240);   
 }
 
 /*******************************************************************************
@@ -65,33 +70,17 @@
  * Common UI Styling - Controls                                                *
  ******************************************************************************/
 
+.context-menu {
+    -fx-background-color: -sb-sharp-edge-lo, white;
+    -fx-background-insets: 0, 1;
+    -fx-background-radius: 0;
+}
+.custom-menu-item {
+    -fx-padding: 4 8 4 8;
+}
 .custom-menu-item:focused {
-     -fx-background: white;
-}
-
-.table-view,
-.table-view:focused {
-    -fx-padding: 0;
-}
-.table-view .column-header .label {
-    -fx-text-fill: -sb-content-text;
-    -fx-font-size: 0.875em;
-    -fx-font-weight: normal;
-    -fx-alignment: CENTER_LEFT;
-    -fx-padding: 0 0 0 5;
-}
-.table-view .hyperlink {
-    -fx-font-size: 0.875em;
-    -fx-padding: 0 0 0 4;
-}
-.table-view .label {
-    -fx-font-size: 0.875em;
-    -fx-padding: 0 0 0 4;
-}
-.table-view:focused > .virtual-flow > .clipped-container > .sheet > .table-row-cell:filled:selected,
-.table-view:focused > .virtual-flow > .clipped-container > .sheet > .table-row-cell .table-cell:selected {
     -fx-background: white;
-    -fx-table-cell-border-color: white;
+    -fx-background-color: -fx-background;
 }
 
 /*******************************************************************************
@@ -133,6 +122,9 @@
     -fx-alignment: center-right;
     -fx-effect: dropshadow( two-pass-box, rgba(0, 0, 0, 0.2), 5, 0.0, 0, 1 );
 }
+.accordion > .titled-pane > .title > .text {
+    -fx-fill: -sb-header-text;
+}
 .accordion > .first-titled-pane > .title {
     -fx-background-insets: 0 0 -1 0, 0, 1 0 1 0, 2 0 0 0;
 }
@@ -153,11 +145,9 @@
  ******************************************************************************/
 
 .accordion > .titled-pane > .content, 
-.scroll-pane, 
-.scroll-pane .viewport, 
+.property-sheet, 
 .search-pane-background, 
-.tree-view, 
-.tree-table-view {
+.tree-view {
     -fx-border-color: null;
     -fx-border-width: 0;
     -fx-background-color: -sb-panel-background;
@@ -169,25 +159,15 @@
  * Common UI Styling - Split Panes                                             *
  ******************************************************************************/
 
-.split-pane {
-    -fx-background-color: -sb-dark;
-    -fx-background-insets: 0;
-    -fx-padding: 0;
-}
-.split-pane > .split-pane-divider {
-    -fx-background-color: -sb-dark;
-    -fx-padding: 0 0.5 0 0;
-}
-.split-pane:horizontal .split-pane-divider .horizontal-grabber,
-.split-pane:vertical .split-pane-divider .vertical-grabber {
-    -fx-padding: 0;
-    -fx-shape: "";
-}
 .SBKIT-inspector-panel.split-pane > .split-pane-divider {
     -fx-background-color: transparent;
     -fx-background-insets: -1 0 -3 0;
     -fx-border-width: 0;
     -fx-padding: 0;
+}
+.SBKIT-inspector-panel.split-pane > .split-pane-divider .split-pane-divider {
+    -fx-padding: 3;
+    -fx-shape: "";
 }
 
 /*******************************************************************************
@@ -203,7 +183,7 @@
 }
 .scroll-bar:horizontal > .decrement-button,
 .scroll-bar:horizontal > .increment-button {
-    -fx-padding: 0.769em 0.077em 0.769em 0.077em;
+    -fx-padding: 0.692em 0.077em 0.692em 0.077em;
 }
 .scroll-bar .increment-arrow, 
 .scroll-bar .decrement-arrow {
@@ -211,7 +191,7 @@
 }
 .scroll-bar:vertical {
     -fx-background-color: -sb-sharp-edge-lo, -sb-panel-background;
-    -fx-background-insets: 1 0 0 0, 1 0 0 1;
+    -fx-background-insets: 0 0 0 0, 0 0 0 1;
 }
 .scroll-bar:horizontal {
     -fx-background-color: -sb-sharp-edge-lo, -sb-panel-background;
@@ -227,6 +207,21 @@
 .scroll-bar:horizontal .thumb {
     -fx-background-insets: 4 3 4 3, 5 4 5 4;
 }
+.scroll-pane .corner,
+.tree-view .virtual-flow .corner {
+    -fx-background-color: -sb-sharp-edge-lo, -sb-panel-background;
+    -fx-background-insets: 0 -1 -1 0, 1 -1 -1 1;
+}
+
+.text-area .scroll-pane .scroll-bar:horizontal {
+    -fx-background-insets: 0 1 1 1, 1 1 1 1;
+}
+.text-area .scroll-pane .scroll-bar:vertical {
+    -fx-background-insets: 1 1 1 0, 1 1 1 1;
+}
+.text-area .scroll-pane .corner {
+    -fx-background-insets: 0 1 1 0, 1 1 1 1;
+}
 
 /*******************************************************************************
  *                                                                             *
@@ -240,64 +235,81 @@
  *                                                                             *
  ******************************************************************************/
 
-.list-view {
+.SBKIT-library-panel .list-view {
     -fx-background-color: transparent;
 }
-
-.list-view .list-cell .text {
+.SBKIT-library-panel .list-view .list-cell .text {
     -fx-fill: -sb-content-text;
 }
-
-.list-view .list-cell {
+.SBKIT-library-panel .list-view .list-cell {
     -fx-background-color: transparent;
-    -fx-background-insets: 2 0 1 0;
     -fx-cell-size: 1.7em;
+    -fx-background-insets: 2 0 -2 0;
+    -fx-padding: 2 0 0 4;
 }
-
-.list-view .list-cell:filled:hover {
+.SBKIT-library-panel .list-view .list-cell:filled:hover {
     -fx-background-color: null; /* no hover effect on list view */
 }
-
-.list-view:focused .list-cell:filled:selected {
+.SBKIT-library-panel .list-view:focused .list-cell:filled:selected {
     -fx-background-color: -sb-selected-bar-color;
 }
-
-.list-view .list-cell:filled:selected {
+.SBKIT-library-panel .list-view .list-cell:filled:selected {
     /* When the ListView is not focused there is no need to highlight
     the selected item */
     -fx-background-color: null;
 }
-
-.list-view .scroll-bar {    
+.SBKIT-library-panel .list-view .scroll-bar {    
     /* Cursor may dynamically change when working in library / hierarchy.
        Set back the cursor to its default. */
     -fx-cursor: default;
 }
 
 /* ListCell graphic is an HBox */
-.list-cell-graphic {
+.SBKIT-library-panel .list-cell-graphic {
     -fx-alignment: center-left;
     -fx-padding: 0 2 0 2;
     -fx-spacing: 4;
 }
 
-.library-no-results-label {
+.SBKIT-library-panel .library-no-results-label {
     -fx-text-fill: -sb-content-text-dimmed;
     -fx-font-size: 0.875em;
     -fx-padding: 6 0 0 10;
 }
 
-.library-classname-label {
+.SBKIT-library-panel .library-classname-label {
     -fx-text-fill: black;
 }
 
-.library-qualifier-label {
+.SBKIT-library-panel .library-qualifier-label {
     -fx-text-fill: lightslategray;
 }
 
-.library-section-label {
+.SBKIT-library-panel .library-section-label {
     -fx-text-fill: black;
     -fx-font-weight: bold;
+}
+
+/*******************************************************************************
+ * Library Panel - Jar import dialog                                           *
+ ******************************************************************************/
+
+.jar-import-preview-label {
+    -fx-text-fill: -sb-content-text-dimmed;
+    -fx-font-size : 0.875em;
+}
+
+.jar-import-preview {
+    -fx-background-color: azure;
+}
+
+.jar-import-num-of-items-label {
+    -fx-font-size : 0.875em;
+}
+
+.jar-import-class-name-label {
+    -fx-text-fill: -sb-content-text-dimmed;
+    -fx-font-size : 0.875em;
 }
 
 /*******************************************************************************
@@ -311,27 +323,29 @@
  ******************************************************************************/
 
 .tree-cell {
-    -fx-background: transparent;
-    -fx-background-color: -fx-background;
-    -fx-background-insets: 2 0 1 0;
-    -fx-text-fill: pink;
+    -fx-background-color: transparent;
     -fx-padding: 1 0 1 0;
+    -fx-background-insets: 0 0 0 0;
 }
-.tree-cell .text {
-    -fx-fill: -sb-content-text;
+.tree-cell .label {
+    -fx-text-fill: -sb-content-text;
+}
+.hierarchy-first-cell {
+    -fx-padding: 4 0 0 1; 
+    -fx-background-insets: 4 0 0 0;
 }
 
 /* Selected rows */
 .tree-view:focused > .virtual-flow > .clipped-container > .sheet > .tree-cell:filled:selected,
 .tree-table-view:focused > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled:selected,
 .tree-table-view:focused > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell .tree-table-cell:selected {
-    -fx-background: -sb-selected-bar-color;
+    -fx-background-color: -sb-selected-bar-color;
 }
 /* Selected rows when control is not focused */
 .tree-cell:filled:selected,
 .tree-table-row-cell:filled:selected,
 .tree-table-row-cell:filled > .tree-table-cell:selected {
-    -fx-background: -sb-selected-bar-unfocused-color;
+    -fx-background-color: -sb-selected-bar-unfocused-color;
 }
 
 /*******************************************************************************
@@ -341,7 +355,7 @@
 /* TreeCell graphic is a HBox */
 .tree-cell-graphic {
     -fx-alignment: center-left;
-    -fx-padding: 0 2 0 2;
+    -fx-padding: 0 2 0 0;
     -fx-spacing: 2;
 }
 
@@ -374,13 +388,14 @@
 /* editable label on node in hierarchy (info / node id / fx:id) */
 .hierarchy-readwrite-label {
     -fx-border-color: transparent;
+    -fx-border-insets: 0 1 0 0;
 }
 .hierarchy-readwrite-label:hover {
     -fx-border-color: -sb-sharp-edge-hi;
     -fx-cursor: text;
 }
 .hierarchy-readwrite-label .text {
-    -fx-fill: derive(-sb-content-text, -20%);
+    -fx-fill: -sb-content-text-dimmed;
 }
 .hierarchy-readwrite-label:hover .text {
     -fx-fill: -sb-content-text;
@@ -420,6 +435,13 @@
 .selection-handles {
     -fx-fill: white;
     -fx-stroke: blue;
+    -fx-stroke-width: 1;
+    -fx-stroke-type: inside;
+}
+
+.selection-handles-dim {
+    -fx-fill: white;
+    -fx-stroke: gray;
     -fx-stroke-width: 1;
     -fx-stroke-type: inside;
 }
@@ -630,6 +652,17 @@
     -fx-fill: rgba(0,0,0,0.01);
 }
 
+
+/*******************************************************************************
+ *                                                                             *
+ * Inspector Panel                                                             *
+ *                                                                             *
+ ******************************************************************************/
+
+.SBKIT-inspector-panel .secondary-section-title {
+    -fx-text-fill: -sb-header-text-dimmed;
+}
+
 /*******************************************************************************
  *                                                                             *
  * Property Sheet Panels (Inspector, Controller)                               *
@@ -644,19 +677,13 @@
     -fx-font-size: 0.875em;
 }
 
-.property-sheet .small-label {
-    -fx-font-size: 0.750em; /* 9 */
-    -fx-text-fill: -sb-content-text-dimmed;
-    -fx-padding: 0;
+.property-sheet .label {
+    -fx-text-fill: -sb-content-text;
+    -fx-padding: 4 0 3 0;
 }
 
 .property-sheet .check-box .box {
     -fx-background-radius: 0;
-}
-
-.property-sheet .label {
-    -fx-text-fill: -sb-content-text;
-    -fx-padding: 4 0 3 0;
 }
 
 .property-sheet .hyperlink, .hyperlink:visited {
@@ -705,6 +732,33 @@
     -fx-padding: 0.154em 0.308em 0.154em 0.231em;  /* 2 4 2 3 */
 }
 
+.property-sheet .table-view .column-header .label {
+    -fx-text-fill: -sb-content-text;
+    -fx-font-size: 0.875em;
+    -fx-font-weight: normal;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 0 4 0 4;
+}
+.property-sheet .table-view > .virtual-flow > .clipped-container > .sheet > .table-row-cell .table-cell {
+    -fx-padding: 4 5 2 5;
+}
+.property-sheet .table-view:focused > .virtual-flow > .clipped-container > .sheet > .table-row-cell:filled:selected,
+.property-sheet .table-view:focused > .virtual-flow > .clipped-container > .sheet > .table-row-cell .table-cell:selected {
+    -fx-background: -sb-selected-bar-color;
+    -fx-table-cell-border-color: -sb-selected-bar-color;
+}
+
+.property-sheet .small-label {
+    -fx-font-size: 0.750em; /* 9 */
+    -fx-text-fill: -sb-content-text-dimmed;
+    -fx-padding: 0;
+}
+
+.inspector-message .text {
+    /* Used for 'No Selection' and 'No Results' messages */
+    -fx-fill: -sb-content-text-dimmed;
+}
+
 .property-sheet .cog-menubutton {
     -fx-background-color: -sb-panel-background;
     -fx-background-radius: 0;
@@ -728,11 +782,6 @@
 .property-sheet .cog-menubutton > .arrow {
     -fx-shape: null;
     -fx-padding: 0;
-}
-
-.inspector-message .text {
-    /* Used for 'No Selection' and 'No Results' messages */
-    -fx-fill: -sb-content-text-dimmed;
 }
 
 /*******************************************************************************
@@ -828,36 +877,30 @@
  ******************************************************************************/
 
 .ap-constraints-outer-border {
-    -fx-border-color: #cccccc;
+    -fx-border-color: -sb-line-art;
     -fx-border-insets: -1;
 }
 .ap-constraints-inner-border {
-    -fx-border-color: #cccccc;
+    -fx-border-color: -sb-line-art;
 }
-.ap-constraints-toggle-h, .ap-constraints-toggle-v {
-    -fx-background-color: null;
+.ap-constraints-shape {
+    -fx-background-color: -sb-line-art;
+}
+.ap-constraints-toggle:selected .ap-constraints-shape {
+    -fx-background-color: -sb-line-art-accent;
+}
+.ap-constraints-toggle {
+    -fx-background-color: transparent;
     -fx-padding: 3;
 }
-.ap-constraints-toggle-h:focused, .ap-constraints-toggle-v:focused {
-    -fx-background-color: -fx-focus-color, -fx-inner-border, -fx-base, -fx-faint-focus-color, -fx-base;
-    -fx-background-insets: -0.2, 1, 2, -1.4, 2.6;
-}
-.ap-constraints-toggle-h:hover, .ap-constraints-toggle-v:hover {
+.ap-constraints-toggle:hover {
     -fx-cursor: hand;
     -fx-background-color: #cccccc, -fx-base;
     -fx-background-insets: 1, 2;
 }
-.ap-constraints-toggle-h {
-    -fx-graphic: url("../cssimages/ap-constraint-h-off.png");
-}
-.ap-constraints-toggle-v {
-    -fx-graphic: url("../cssimages/ap-constraint-v-off.png");
-}
-.ap-constraints-toggle-h:selected {
-    -fx-graphic: url("../cssimages/ap-constraint-h-on.png");
-}
-.ap-constraints-toggle-v:selected {
-    -fx-graphic: url("../cssimages/ap-constraint-v-on.png");
+.ap-constraints-toggle:focused {
+    -fx-background-color: -fx-focus-color, -fx-inner-border, -fx-base, -fx-faint-focus-color, -fx-base;
+    -fx-background-insets: -0.2, 1, 2, -1.4, 2.6;
 }
 
 /*******************************************************************************
@@ -890,15 +933,44 @@
  * Property Sheet Panels - Suggestive ListView                                 *
  ******************************************************************************/
 
-.suggested-list {
-    -fx-font-size: 0.875em;
- }
+.property-sheet .auto-suggest-popup {
+    -fx-padding: 0;
+}
+.property-sheet .auto-suggest-popup .custom-menu-item .list-view {
+    -fx-background-color: -sb-sharp-edge-lo, white;
+    -fx-background-insets: 0, 1;
+}
 
 /*******************************************************************************
  *                                                                             *
  * CSS Panel                                                                   *
  *                                                                             *
  ******************************************************************************/
+
+.SBKIT-css-panel .table-view,
+.SBKIT-css-panel .table-view:focused {
+    -fx-padding: 0;
+}
+.SBKIT-css-panel .table-view .column-header .label {
+    -fx-text-fill: -sb-content-text;
+    -fx-font-size: 0.875em;
+    -fx-font-weight: normal;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 0 0 0 5;
+}
+.SBKIT-css-panel .table-view .hyperlink {
+    -fx-font-size: 0.875em;
+    -fx-padding: 0 0 0 4;
+}
+.SBKIT-css-panel .table-view .label {
+    -fx-font-size: 0.875em;
+    -fx-padding: 0 0 0 4;
+}
+.SBKIT-css-panel .table-view:focused > .virtual-flow > .clipped-container > .sheet > .table-row-cell:filled:selected,
+.SBKIT-css-panel .table-view:focused > .virtual-flow > .clipped-container > .sheet > .table-row-cell .table-cell:selected {
+    -fx-background: white;
+    -fx-table-cell-border-color: white;
+}
 
 .notAppliedStyleLine .line {
     -fx-border-width: 0;
@@ -998,17 +1070,25 @@
     -fx-padding: 0 0 0 0;
 }
 .styleable-path .button {
-    -fx-background-color: derive( -fx-base, 50% );
+    -fx-background-color: -sb-sharp-edge-lo, derive(-sb-sharp-edge-hi, 10%);
+    -fx-background-insets: 0, 1;
     -fx-background-radius: 100;
-    -fx-margin: 0 30 0 30;
-    -fx-padding: 1 5 1 6;
-    /*-fx-effect: dropshadow( one-pass-box , derive( -fx-base, -55% ), 3, 0.0 , 0 , 0 );*/
-    -fx-graphic: url("../cssimages/css-styleable-path-button.png");
+    -fx-min-width: 16;
+    -fx-max-width: 16;
+    -fx-min-height: 16;
+    -fx-max-height: 16;
 }
 .styleable-path .button:hover {
-    -fx-background-color: derive( -fx-base, 100% );
+    -fx-background-color: derive(-sb-sharp-edge-lo, -10%), derive(-sb-sharp-edge-hi, 40%);
 }
-
+.styleable-path-button-shape {
+    -fx-shape: "M 0 -3.5 v 7 l 4 -3.5 z";
+    -fx-background-color: -sb-content-text;
+    -fx-min-width: 5;
+    -fx-max-width: 5;
+    -fx-min-height: 6;
+    -fx-max-height: 6;
+}
 .styleable-path-optional-label .text {
     -fx-fill: -sb-header-text-dimmed;
 }

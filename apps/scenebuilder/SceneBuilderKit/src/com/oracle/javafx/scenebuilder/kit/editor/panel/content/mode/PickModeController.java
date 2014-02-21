@@ -33,11 +33,13 @@ package com.oracle.javafx.scenebuilder.kit.editor.panel.content.mode;
 
 import com.oracle.javafx.scenebuilder.kit.editor.images.ImageUtils;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.content.ContentPanelController;
+import com.oracle.javafx.scenebuilder.kit.editor.panel.content.driver.AbstractDriver;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.content.driver.pring.AbstractPring;
 import com.oracle.javafx.scenebuilder.kit.editor.selection.ObjectSelectionGroup;
 import com.oracle.javafx.scenebuilder.kit.editor.selection.Selection;
 import com.oracle.javafx.scenebuilder.kit.fxom.FXOMDocument;
 import com.oracle.javafx.scenebuilder.kit.fxom.FXOMObject;
+import com.oracle.javafx.scenebuilder.kit.util.Deprecation;
 import java.util.Objects;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
@@ -137,7 +139,7 @@ public class PickModeController extends AbstractModeController {
         final Selection selection 
                 = contentPanelController.getEditorController().getSelection();
         final FXOMObject hitObject 
-                = contentPanelController.pick(e.getSceneX(), e.getSceneY());
+                = pick(e.getSceneX(), e.getSceneY());
         
         if (hitObject == null) {
             selection.clear();
@@ -216,7 +218,34 @@ public class PickModeController extends AbstractModeController {
         
         assert hitItem != null;
         
-        result = new HitNodeChrome(contentPanelController, hitItem, hitPoint);
+        /*
+         * In some cases, we cannot make a chrome for some hitItem
+         * 
+         *  MenuButton          <= OK
+         *      CustomMenuItem  <= KO because MenuItem are not displayable (case #1)
+         *          CheckBox    <= KO because this CheckBox is in a separate scene (Case #2)
+         */
+        
+        final AbstractDriver driver = contentPanelController.lookupDriver(hitItem);
+        if (driver == null) {
+            // Case #1 above
+            result = null;
+        } else {
+            final FXOMObject closestNodeObject = hitItem.getClosestNode();
+            if (closestNodeObject == null) {
+                // Document content is not displayable in content panel
+                result = null;
+            } else {
+                assert closestNodeObject.getSceneGraphObject() instanceof Node;
+                final Node closestNode = (Node)closestNodeObject.getSceneGraphObject();
+                if (closestNode.getScene() == contentPanelController.getPanelRoot().getScene()) {
+                    result = new HitNodeChrome(contentPanelController, hitItem, hitPoint);
+                } else {
+                    // Case #2 above
+                    result = null;
+                }
+            }
+        }
         
         return result;
     }
@@ -228,5 +257,33 @@ public class PickModeController extends AbstractModeController {
             rudderLayer.getChildren().remove(hitNodeChrome.getRootNode());
             hitNodeChrome = null;
         }
+    }
+    
+    
+    private FXOMObject pick(double sceneX, double sceneY) {
+        final FXOMObject result;
+        
+        final FXOMDocument fxomDocument
+                = contentPanelController.getEditorController().getFxomDocument();
+        
+        if ((fxomDocument == null) || (fxomDocument.getFxomRoot() == null)) {
+            result = null;
+        } else {
+            final FXOMObject fxomRoot = fxomDocument.getFxomRoot();
+            final Object sceneGraphRoot = fxomRoot.getSceneGraphObject();
+            if (sceneGraphRoot instanceof Node) {
+                Node hitNode = Deprecation.pick((Node)sceneGraphRoot, sceneX, sceneY);
+                FXOMObject fxomObject = null;
+                while ((fxomObject == null) && (hitNode != null)) {
+                    fxomObject = fxomRoot.searchWithSceneGraphObject(hitNode);
+                    hitNode = hitNode.getParent();
+                }
+                result = fxomObject;
+            } else {
+                result = null;
+            }
+        }
+        
+        return result;
     }
 }

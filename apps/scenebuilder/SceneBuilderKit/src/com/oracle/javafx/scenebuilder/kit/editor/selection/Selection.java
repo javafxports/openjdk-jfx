@@ -32,6 +32,7 @@
 package com.oracle.javafx.scenebuilder.kit.editor.selection;
 
 import com.oracle.javafx.scenebuilder.kit.editor.selection.GridSelectionGroup.Type;
+import com.oracle.javafx.scenebuilder.kit.fxom.FXOMDocument;
 import com.oracle.javafx.scenebuilder.kit.fxom.FXOMInstance;
 import com.oracle.javafx.scenebuilder.kit.fxom.FXOMObject;
 import java.util.Collection;
@@ -87,7 +88,7 @@ public class Selection {
     public void select(FXOMObject fxomObject) {
         assert fxomObject != null;
         
-        select(fxomObject, null);
+        select(fxomObject, (Point2D)null);
     }
     
     /**
@@ -98,10 +99,18 @@ public class Selection {
      * @param hitPoint null or the point hit by the mouse during selection
      */
     public void select(FXOMObject fxomObject, Point2D hitPoint) {
-        
-        assert fxomObject != null;
-        
         select(new ObjectSelectionGroup(fxomObject, hitPoint));
+    }
+    
+    /**
+     * Replaces the selected items by the specified fxom object and hit node.
+     * This routine adds +1 to the revision number.
+     * 
+     * @param fxomObject the object to be selected
+     * @param hitNode null or the node hit by the mouse during selection
+     */
+    public void select(FXOMObject fxomObject, Node hitNode) {
+        select(new ObjectSelectionGroup(fxomObject, hitNode));
     }
     
     /**
@@ -316,7 +325,7 @@ public class Selection {
                     if (indexes.size() == 1) {
                         // featureIndex is the last selected index
                         // GridSelectionGroup -> ObjectSelectionGroup
-                        newGroup = new ObjectSelectionGroup(gridPaneObject, null);
+                        newGroup = new ObjectSelectionGroup(gridPaneObject, (Point2D)null);
                     } else {
                         final Set<Integer> newIndexes = new HashSet<>();
                         newIndexes.addAll(indexes);
@@ -491,6 +500,26 @@ public class Selection {
         return result;
     }
 
+    /**
+     * Returns true if the selected objects are all connected to the 
+     * specified documents.
+     * 
+     * @param fxomDocument an fxom document (not null)
+     * @return true if the selected objects are all connected to the 
+     * specified documents.
+     */
+    public boolean isValid(FXOMDocument fxomDocument) {
+        assert fxomDocument != null;
+        
+        final boolean result;
+        if (group == null) {
+            result = true;
+        } else {
+            result = group.isValid(fxomDocument);
+        }
+        
+        return result;
+    }
     
     /*
      * Private

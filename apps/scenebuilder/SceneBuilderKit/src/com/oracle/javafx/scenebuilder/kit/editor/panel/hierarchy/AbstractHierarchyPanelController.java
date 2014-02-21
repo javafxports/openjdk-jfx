@@ -42,6 +42,7 @@ import com.oracle.javafx.scenebuilder.kit.editor.selection.ObjectSelectionGroup;
 import com.oracle.javafx.scenebuilder.kit.editor.selection.Selection;
 import com.oracle.javafx.scenebuilder.kit.editor.util.ContextMenuController;
 import com.oracle.javafx.scenebuilder.kit.fxom.FXOMDocument;
+import com.oracle.javafx.scenebuilder.kit.fxom.FXOMIntrinsic;
 import com.oracle.javafx.scenebuilder.kit.fxom.FXOMObject;
 import com.oracle.javafx.scenebuilder.kit.metadata.util.DesignHierarchyMask;
 import com.oracle.javafx.scenebuilder.kit.metadata.util.DesignHierarchyMask.Accessory;
@@ -1034,16 +1035,17 @@ public abstract class AbstractHierarchyPanelController extends AbstractFxmlPanel
             if (selection.getGroup() instanceof ObjectSelectionGroup) {
                 // A set of regular component (ie fxom objects) are selected
                 final ObjectSelectionGroup osg = (ObjectSelectionGroup) selection.getGroup();
-                // Abort dragging root 
-                final FXOMObject rootObject = getEditorController().getFxomDocument().getFxomRoot();
-                assert rootObject != null; // Because of (1)
-                if (selection.isSelected(rootObject)) {
-                    return;
-                }
+                
                 // Abort dragging an empty place holder
                 for (TreeItem<HierarchyItem> selectedTreeItem : selectedTreeItems) {
                     final HierarchyItem item = selectedTreeItem.getValue();
                     if (item.isEmpty()) {
+                        return;
+                    }
+                }
+                // Abort dragging FXML include
+                for (FXOMObject fxomObject : osg.getItems()) {
+                    if (fxomObject instanceof FXOMIntrinsic) {
                         return;
                     }
                 }
