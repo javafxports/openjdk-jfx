@@ -183,8 +183,8 @@ public class ContainerXYDropTarget extends AbstractDropTarget {
                 assert draggedObject instanceof FXOMInstance;
                 final Point2D dxy = layoutDXY.get(draggedObject);
                 assert dxy != null;
-                final double newLayoutX = targetOriginX + dxy.getX();
-                final double newLayoutY = targetOriginY + dxy.getY();
+                final double newLayoutX = Math.round(targetOriginX + dxy.getX());
+                final double newLayoutY = Math.round(targetOriginY + dxy.getY());
                 result.addSubJob(new RelocateNodeJob((FXOMInstance)draggedObject, 
                         newLayoutX, newLayoutY, editorController));
             }
@@ -193,6 +193,11 @@ public class ContainerXYDropTarget extends AbstractDropTarget {
         assert result.isExecutable();
         
         return result;
+    }
+    
+    @Override
+    public boolean isSelectRequiredAfterDrop() {
+        return true;
     }
     
     /*

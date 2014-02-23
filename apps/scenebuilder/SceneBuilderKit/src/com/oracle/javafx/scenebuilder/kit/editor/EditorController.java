@@ -35,6 +35,7 @@ import com.oracle.javafx.scenebuilder.kit.editor.EditorPlatform.Theme;
 import com.oracle.javafx.scenebuilder.kit.editor.drag.DragController;
 import com.oracle.javafx.scenebuilder.kit.editor.i18n.I18N;
 import com.oracle.javafx.scenebuilder.kit.editor.job.BatchJob;
+import com.oracle.javafx.scenebuilder.kit.editor.job.BatchModifySelectionJob;
 import com.oracle.javafx.scenebuilder.kit.editor.job.BringForwardJob;
 import com.oracle.javafx.scenebuilder.kit.editor.job.BringToFrontJob;
 import com.oracle.javafx.scenebuilder.kit.editor.job.CutSelectionJob;
@@ -44,7 +45,6 @@ import com.oracle.javafx.scenebuilder.kit.editor.job.FitToParentSelectionJob;
 import com.oracle.javafx.scenebuilder.kit.editor.job.InsertAsAccessoryJob;
 import com.oracle.javafx.scenebuilder.kit.editor.job.InsertAsSubComponentJob;
 import com.oracle.javafx.scenebuilder.kit.editor.job.Job;
-import com.oracle.javafx.scenebuilder.kit.editor.job.ModifySelectionJob;
 import com.oracle.javafx.scenebuilder.kit.editor.job.PasteIntoJob;
 import com.oracle.javafx.scenebuilder.kit.editor.job.PasteJob;
 import com.oracle.javafx.scenebuilder.kit.editor.job.SendBackwardJob;
@@ -107,6 +107,7 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableListValue;
 import javafx.beans.value.ObservableValue;
@@ -256,8 +257,13 @@ public class EditorController {
             = new SimpleBooleanProperty(false);
     private final BooleanProperty sampleDataEnabledProperty
             = new SimpleBooleanProperty(false);
+    private final SimpleStringProperty toolStylesheetProperty
+            = new SimpleStringProperty(getBuiltinToolStylesheet());
     
     private Callback<Void, Boolean> requestTextEditingSessionEnd;
+    
+    private static String builtinToolStylesheet;
+    
     
     /**
      * Creates an empty editor controller (ie it has no associated fxom document).
@@ -271,18 +277,38 @@ public class EditorController {
         });
     }
 
+    /**
+     * Get the width to use by default for the root container.
+     *
+     * @return default width for the root container.
+     */
     public double getDefaultRootContainerWidth() {
         return defaultRootContainerWidth;
     }
 
+    /**
+     * Set the width to use by default for the root container.
+     *
+     * @param defaultRootContainerWidth the new root container's default width.
+     */
     public void setDefaultRootContainerWidth(double defaultRootContainerWidth) {
         this.defaultRootContainerWidth = defaultRootContainerWidth;
     }
 
+    /**
+     * Get the height to use by default for the root container.
+     *
+     * @return default height for the root container.
+     */
     public double getDefaultRootContainerHeight() {
         return defaultRootContainerHeight;
     }
 
+    /**
+     * Set the height to use by default for the root container.
+     * 
+     * @param defaultRootContainerHeight the new root container's default height.
+     */
     public void setDefaultRootContainerHeight(double defaultRootContainerHeight) {
         this.defaultRootContainerHeight = defaultRootContainerHeight;
     }
@@ -306,10 +332,18 @@ public class EditorController {
     public String getFxmlText() {
         final String result;
         
-        if (getFxomDocument() == null) {
+        final FXOMDocument fxomDocument = getFxomDocument();
+        if (fxomDocument == null) {
             result = null;
         } else {
-            result = getFxomDocument().getFxmlText();
+            final boolean sampleDataEnabled = fxomDocument.isSampleDataEnabled();
+            if (sampleDataEnabled) {
+                fxomDocument.setSampleDataEnabled(false);
+            }
+            result = fxomDocument.getFxmlText();
+            if (sampleDataEnabled) {
+                fxomDocument.setSampleDataEnabled(true);
+            }
         }
         
         return result;
@@ -652,6 +686,51 @@ public class EditorController {
      */
     public FXOMDocument getFxomDocument() {
         return fxomDocumentProperty.getValue();
+    }
+    
+    /**
+     * Returns the tool stylesheet associated to this editor controller.
+     * Its default value equals to getBuiltinToolStylesheet().
+     * 
+     * @return the tool stylesheet associated to this editor controller (never null)
+     */
+    public String getToolStylesheet() {
+        return toolStylesheetProperty.getValue();
+    }
+    
+    /**
+     * Sets the tool stylesheet associated to this editor controller.
+     * Each panel connected to this editor controller will install this style
+     * sheet in its root object.
+     * 
+     * @param stylesheet the tool stylesheet associated to this editor controller (never null)
+     */
+    public void setToolStylesheet(String stylesheet) {
+        assert stylesheet != null;
+        toolStylesheetProperty.setValue(stylesheet);
+    }
+    
+    /**
+     * The property holding tool stylesheet associated to this editor controller.
+     * @return the property holding tool stylesheet associated to this editor controller.
+     */
+    public ObservableValue<String> toolStylesheetProperty() {
+        return toolStylesheetProperty;
+    }
+    
+    /**
+     * Returns the builtin tool stylesheet.
+     * This is the default value for EditorController#toolStylesheet property.
+     * 
+     * @return the builtin tool stylesheet.
+     */
+    public static synchronized String getBuiltinToolStylesheet() {
+        if (builtinToolStylesheet == null) {
+            final URL url = EditorController.class.getResource("css/Theme.css"); //NOI18N
+            assert url != null;
+            builtinToolStylesheet = url.toExternalForm();
+        }
+        return builtinToolStylesheet;
     }
     
     /**
@@ -2090,7 +2169,7 @@ public class EditorController {
                 = Metadata.getMetadata().queryProperty(Node.class, pn);
         assert pm instanceof ValuePropertyMetadata;
         final ValuePropertyMetadata vpm = (ValuePropertyMetadata) pm;
-        final ModifySelectionJob job = new ModifySelectionJob(vpm, effect, this);
+        final BatchModifySelectionJob job = new BatchModifySelectionJob(vpm, effect, this);
         getJobManager().push(job);
     }
 

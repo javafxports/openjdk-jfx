@@ -29,47 +29,45 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package com.oracle.javafx.scenebuilder.kit.metadata.property.value.effect;
 
-.list-view .list-cell {
-    -fx-background-color: null;
-    -fx-cell-size: 1.7em;
-}
+import com.oracle.javafx.scenebuilder.kit.fxom.FXOMDocument;
+import com.oracle.javafx.scenebuilder.kit.fxom.FXOMInstance;
+import com.oracle.javafx.scenebuilder.kit.metadata.property.value.ComplexPropertyMetadata;
+import com.oracle.javafx.scenebuilder.kit.metadata.property.value.IntegerPropertyMetadata;
+import com.oracle.javafx.scenebuilder.kit.metadata.util.InspectorPath;
+import com.oracle.javafx.scenebuilder.kit.metadata.util.PropertyName;
+import javafx.scene.effect.FloatMap;
 
-.list-view, .list-view:focused {
-    -fx-background-color: null;
-    -fx-padding: 0px;
-}
+/**
+ *
+ */
+public class FloatMapPropertyMetadata extends ComplexPropertyMetadata<FloatMap> {
+    
+    private final IntegerPropertyMetadata widthMetadata
+            = new IntegerPropertyMetadata(new PropertyName("width"), //NOI18N
+            true, 1, InspectorPath.UNUSED);
+    private final IntegerPropertyMetadata heightMetadata
+            = new IntegerPropertyMetadata(new PropertyName("height"), //NOI18N
+            true, 1, InspectorPath.UNUSED);
+    
+    public FloatMapPropertyMetadata(PropertyName name, boolean readWrite, 
+            FloatMap defaultValue, InspectorPath inspectorPath) {
+        super(name, FloatMap.class, readWrite, defaultValue, inspectorPath);
+    }
 
-.list-view .list-cell:filled:hover {
-    -fx-background-color: null; /* no hover effect on list view */
-}
+    /*
+     * ComplexPropertyMetadata
+     */
+    
+    @Override
+    public FXOMInstance makeFxomInstanceFromValue(FloatMap value, FXOMDocument fxomDocument) {
+        final FXOMInstance result = new FXOMInstance(fxomDocument, getValueClass());
+        
+        widthMetadata.setValue(result, value.getWidth());
+        heightMetadata.setValue(result, value.getHeight());
 
-.list-view:focused .list-cell:filled:selected {
-    -fx-background-color: #c6e6f0;
-}
-
-/* When the ListView is _not_ focused, we show alternate selection colors */
-.list-view .list-cell:filled:selected {
-    -fx-background-color: null;
-}
-
-.import-preview-label {
-    -fx-text-fill: silver;
-    -fx-font-size : 0.9em;
-}
-
-.import-preview {
-    -fx-background-color: azure;
-}
-
-.import-select-toggle {
-}
-
-.import-num-of-items-label {
-    -fx-font-size : 0.8em;
-}
-
-.import-class-name-label {
-    -fx-text-fill: grey;
-    -fx-font-size : 0.8em;
+        return result;
+    }
+    
 }

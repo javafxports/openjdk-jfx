@@ -32,6 +32,7 @@
 package com.oracle.javafx.scenebuilder.kit.editor.selection;
 
 import com.oracle.javafx.scenebuilder.kit.editor.panel.content.util.Picker;
+import com.oracle.javafx.scenebuilder.kit.fxom.FXOMDocument;
 import com.oracle.javafx.scenebuilder.kit.fxom.FXOMNodes;
 import com.oracle.javafx.scenebuilder.kit.fxom.FXOMObject;
 import com.oracle.javafx.scenebuilder.kit.metadata.util.DesignHierarchyPath;
@@ -41,6 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
 
@@ -68,6 +70,15 @@ public class ObjectSelectionGroup extends AbstractSelectionGroup {
         this.items.addAll(fxomObjects);
         this.hitItem = hitItem;
         this.hitPoint = hitPoint;
+    }
+    
+    ObjectSelectionGroup(FXOMObject fxomObject, Node hitNode) {
+        assert fxomObject != null;
+        assert (hitNode == null) || (hitNode.getScene() != null);
+        
+        this.items.add(fxomObject);
+        this.hitItem = fxomObject;
+        this.hitPoint = computeHitPoint(hitNode);
     }
     
     public Set<FXOMObject> getItems() {
@@ -175,6 +186,28 @@ public class ObjectSelectionGroup extends AbstractSelectionGroup {
         
         return result;
     }
+
+    @Override
+    public boolean isValid(FXOMDocument fxomDocument) {
+        assert fxomDocument != null;
+        
+        boolean result;
+        final FXOMObject fxomRoot = fxomDocument.getFxomRoot();
+        if (fxomRoot == null) {
+            result = false;
+        } else {
+            result = true;
+            for (FXOMObject i : items) {
+                final boolean ok = (i == fxomRoot) || i.isDescendantOf(fxomRoot);
+                if (ok == false) {
+                    result = false;
+                    break;
+                }
+            }
+        }
+        
+        return result;
+    }
     
     
     /*
@@ -219,5 +252,33 @@ public class ObjectSelectionGroup extends AbstractSelectionGroup {
         return true;
     }
     
+    /*
+     * Private
+     */
     
+    private Point2D computeHitPoint(Node hitNode) {
+        final Point2D result;
+        
+        if (hitNode == null) {
+            result = null;
+        } else {
+            final FXOMObject nodeObject = hitItem.getClosestNode();
+            if (nodeObject == null) {
+                result = null;
+            } else {
+                final Node closestNode = (Node)nodeObject.getSceneGraphObject();
+                final Bounds hnb = hitNode.getLayoutBounds();
+                final double midX = (hnb.getMinX() + hnb.getMaxX()) / 2.0;
+                final double midY = (hnb.getMinY() + hnb.getMaxY()) / 2.0;
+                if (hitNode == closestNode) {
+                    result = new Point2D(midX, midY);
+                } else {
+                    result = closestNode.sceneToLocal(hitNode.localToScene(midX, midY));
+                }
+                assert findHitNode() == hitNode;
+            }
+        }
+        
+        return result;
+    }
 }

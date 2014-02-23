@@ -31,6 +31,7 @@
  */
 package com.oracle.javafx.scenebuilder.kit.editor.selection;
 
+import com.oracle.javafx.scenebuilder.kit.fxom.FXOMDocument;
 import com.oracle.javafx.scenebuilder.kit.fxom.FXOMObject;
 
 /**
@@ -40,6 +41,7 @@ import com.oracle.javafx.scenebuilder.kit.fxom.FXOMObject;
 public abstract class AbstractSelectionGroup implements Cloneable {
     
     public abstract FXOMObject getAncestor();
+    public abstract boolean isValid(FXOMDocument fxomDocument);
     
     @Override
     public AbstractSelectionGroup clone() throws CloneNotSupportedException

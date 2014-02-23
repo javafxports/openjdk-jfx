@@ -91,9 +91,13 @@ public class RootDropTarget extends AbstractDropTarget {
         if ((resizeJob != null) && resizeJob.isExecutable()) {
             result.addSubJob(resizeJob);
         }
-        result.addSubJob(new UpdateSelectionJob(newRoot, editorController));
         
         return result ;
+    }
+    
+    @Override
+    public boolean isSelectRequiredAfterDrop() {
+        return true;
     }
     
 }

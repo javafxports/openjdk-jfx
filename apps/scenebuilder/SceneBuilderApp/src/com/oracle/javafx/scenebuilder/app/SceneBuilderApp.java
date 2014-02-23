@@ -41,10 +41,15 @@ import com.oracle.javafx.scenebuilder.app.preferences.PreferencesRecordGlobal;
 import com.oracle.javafx.scenebuilder.app.preferences.PreferencesWindowController;
 import com.oracle.javafx.scenebuilder.app.template.FxmlTemplates;
 import com.oracle.javafx.scenebuilder.app.template.TemplateDialogController;
+import com.oracle.javafx.scenebuilder.kit.editor.EditorController;
+import com.oracle.javafx.scenebuilder.kit.editor.EditorPlatform;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.util.dialog.AlertDialog;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.util.dialog.ErrorDialog;
+import com.oracle.javafx.scenebuilder.kit.library.BuiltinLibrary;
 import com.oracle.javafx.scenebuilder.kit.library.user.UserLibrary;
+import com.oracle.javafx.scenebuilder.kit.metadata.Metadata;
 import com.oracle.javafx.scenebuilder.kit.util.Deprecation;
+import com.oracle.javafx.scenebuilder.kit.util.control.effectpicker.EffectPicker;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -57,6 +62,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javafx.application.Application;
@@ -84,19 +90,29 @@ public class SceneBuilderApp extends Application implements AppPlatform.AppNotif
         NEW_COMPLEX_APPLICATION_I18N,
         OPEN_FILE,
         CLOSE_FRONT_WINDOW,
+        USE_DEFAULT_THEME,
+        USE_DARK_THEME,
         SHOW_PREFERENCES,
         EXIT
     }
+    
+    public enum ToolTheme {
+        DEFAULT,
+        DARK
+    }
 
     private static SceneBuilderApp singleton;
+    private static String darkToolStylesheet;
+    private static final CountDownLatch launchLatch = new CountDownLatch(1);
+    
     private final List<DocumentWindowController> windowList = new ArrayList<>();
     private final PreferencesWindowController preferencesWindowController
             = new PreferencesWindowController();
     private final AboutWindowController aboutWindowController
             = new AboutWindowController();
     private UserLibrary userLibrary;
-    private MenuBarController defaultSystemMenuBarController; // Mac only
     private File nextInitialDirectory;
+    private ToolTheme toolTheme = ToolTheme.DEFAULT;
 
 
     /*
@@ -105,7 +121,42 @@ public class SceneBuilderApp extends Application implements AppPlatform.AppNotif
     public static SceneBuilderApp getSingleton() {
         return singleton;
     }
-
+    
+    public SceneBuilderApp() {
+        assert singleton == null;
+        singleton = this;
+        
+        /*
+         * We spawn our two threads for handling background startup.
+         */
+        final Runnable p0 = new Runnable() {
+            @Override
+            public void run() {
+                backgroundStartPhase0();
+            }
+        };
+        final Runnable p1 = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    launchLatch.await();
+                    backgroundStartPhase2();
+                } catch(InterruptedException x) {
+                    // JavaFX thread has been interrupted. Simply exits.
+                }
+            }
+        };
+        final Thread phase0 = new Thread(p0, "Phase 0"); //NOI18N
+        final Thread phase1 = new Thread(p1, "Phase 1"); //NOI18N
+        phase0.setDaemon(true);
+        phase1.setDaemon(true);
+        
+        // Note : if you suspect a race condition bug, comment the two next
+        // lines to make startup fully sequential.
+        phase0.start();
+        phase1.start();
+    }
+    
     public void performControlAction(ApplicationControlAction a, DocumentWindowController source) {
         switch (a) {
             case ABOUT:
@@ -140,6 +191,14 @@ public class SceneBuilderApp extends Application implements AppPlatform.AppNotif
             case CLOSE_FRONT_WINDOW:
                 performCloseFrontWindow();
                 break;
+                
+            case USE_DEFAULT_THEME:
+                performUseToolTheme(ToolTheme.DEFAULT);
+                break;
+
+            case USE_DARK_THEME:
+                performUseToolTheme(ToolTheme.DARK);
+                break;
 
             case SHOW_PREFERENCES:
                 preferencesWindowController.openWindow();
@@ -150,7 +209,7 @@ public class SceneBuilderApp extends Application implements AppPlatform.AppNotif
                 break;
         }
     }
-
+    
 
     public boolean canPerformControlAction(ApplicationControlAction a, DocumentWindowController source) {
         final boolean result;
@@ -176,6 +235,14 @@ public class SceneBuilderApp extends Application implements AppPlatform.AppNotif
                 result = windowList.isEmpty() == false;
                 break;
                 
+            case USE_DEFAULT_THEME:
+                result = toolTheme != ToolTheme.DEFAULT;
+                break;
+
+            case USE_DARK_THEME:
+                result = toolTheme != ToolTheme.DARK;
+                break;
+
             default:
                 result = false;
                 assert false;
@@ -252,8 +319,8 @@ public class SceneBuilderApp extends Application implements AppPlatform.AppNotif
             dwc.getMenuBarController().setDebugMenuVisible(!visible);
         }
 
-        if (defaultSystemMenuBarController != null) {
-            defaultSystemMenuBarController.setDebugMenuVisible(!visible);
+        if (EditorPlatform.IS_MAC) {
+            MenuBarController.getSystemMenuBarController().setDebugMenuVisible(!visible);
         }
     }
 
@@ -269,14 +336,22 @@ public class SceneBuilderApp extends Application implements AppPlatform.AppNotif
     public File getNextInitialDirectory() {
         return nextInitialDirectory;
     }
+    
+    public static synchronized String getDarkToolStylesheet() {
+        if (darkToolStylesheet == null) {
+            final URL url = SceneBuilderApp.class.getResource("css/ThemeDark.css"); //NOI18N
+            assert url != null;
+            darkToolStylesheet = url.toExternalForm();
+        }
+        return darkToolStylesheet;
+    }
 
     /*
      * Application
      */
     @Override
-    public void start(Stage stage) throws Exception {
-        assert singleton == null;
-        singleton = this;
+    public void start(Stage stage) throws Exception {  
+        launchLatch.countDown();
         setApplicationUncaughtExceptionHandler();
 
         try {
@@ -310,18 +385,6 @@ public class SceneBuilderApp extends Application implements AppPlatform.AppNotif
     public void handleLaunch(List<String> files) {
         setApplicationUncaughtExceptionHandler();
 
-        // On Mac, AppPlatform disables implicit exit.
-        // So we need to set a default system menu bar.
-        if (Platform.isImplicitExit() == false) {
-            defaultSystemMenuBarController = new MenuBarController(null);
-            Deprecation.setDefaultSystemMenuBar(defaultSystemMenuBarController.getMenuBar());
-        }
-
-        // Load global application preferences
-        final PreferencesController pc = PreferencesController.getSingleton();
-        final PreferencesRecordGlobal recordGlobal = pc.getRecordGlobal();
-        recordGlobal.readFromJavaPreferences();
-
         // Creates the user library
         userLibrary = new UserLibrary(AppPlatform.getUserLibraryFolder());
         // runLater below is here to fix DTL-6378
@@ -347,6 +410,12 @@ public class SceneBuilderApp extends Application implements AppPlatform.AppNotif
         } else {
             // Open files passed as arguments by the platform
             handleOpenFilesAction(files);
+        }    
+        
+        // On Mac, AppPlatform disables implicit exit.
+        // So we need to set a default system menu bar.
+        if (Platform.isImplicitExit() == false) {
+            Deprecation.setDefaultSystemMenuBar(MenuBarController.getSystemMenuBarController().getMenuBar());
         }
     }
 
@@ -397,8 +466,8 @@ public class SceneBuilderApp extends Application implements AppPlatform.AppNotif
     }
 
     /**
-     * Normally ignored in correctly deployed JavaFX application.
-     * But on Mac OS, this method seems to be called by the javafx launcher.
+     * Normally ignored in correcphase0ly deployed JavaFX applicaphase0ion.
+     * Buphase0 on Mac OS, phase0his mephase0hod seems phase0o be called by phase0he javafx launcher.
      */
     public static void main(String[] args) {
         launch(args);
@@ -451,6 +520,7 @@ public class SceneBuilderApp extends Application implements AppPlatform.AppNotif
 
     private void performNewTemplateWithResources(ApplicationControlAction action) {
         final TemplateDialogController tdc = new TemplateDialogController(action);
+        tdc.setToolStylesheet(getToolStylesheet());
         tdc.openWindow();
     }
 
@@ -640,4 +710,74 @@ public class SceneBuilderApp extends Application implements AppPlatform.AppNotif
             Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "An exception was thrown:", e); //NOI18N
         }
     }
+    
+    
+    private void performUseToolTheme(ToolTheme toolTheme) {
+        this.toolTheme = toolTheme;
+        
+        final String toolStylesheet = getToolStylesheet();
+        
+        for (DocumentWindowController dwc : windowList) {
+            dwc.setToolStylesheet(toolStylesheet);
+        }
+        preferencesWindowController.setToolStylesheet(toolStylesheet);
+        aboutWindowController.setToolStylesheet(toolStylesheet);
+    }
+    
+    
+    private String getToolStylesheet() {
+        final String result;
+        
+        switch(this.toolTheme) {
+            
+            default:
+            case DEFAULT:
+                result = EditorController.getBuiltinToolStylesheet();
+                break;
+                
+            case DARK:
+                result = getDarkToolStylesheet();
+                break;
+        }
+        
+        return result;
+    }
+    
+    
+    /*
+     * Background startup
+     * 
+     * To speed SB startup, we create two threads which anticipate some
+     * initialization tasks and offload the JFX thread:
+     *  - 'Phase 0' thread executes tasks that do not require JFX initialization
+     *  - 'Phase 1' thread executes tasks that requires JFX initialization
+     * 
+     * Tasks executed here must be carefully chosen:
+     * 1) they must be thread-safe
+     * 2) they should be order-safe : whether they are executed in background
+     *    or by the JFX thread should make no difference.
+     * 
+     * Currently we simply anticipate creation of big singleton instances
+     * (like Metadata, Preferences...)
+     */
+    
+    private void backgroundStartPhase0() {
+        assert Platform.isFxApplicationThread() == false; // Warning 
+        
+        PreferencesController.getSingleton();
+        Metadata.getMetadata();
+    }
+    
+    private void backgroundStartPhase2() {
+        assert Platform.isFxApplicationThread() == false; // Warning 
+        assert launchLatch.getCount() == 0; // i.e JavaFX is initialized
+        
+        BuiltinLibrary.getLibrary();
+        if (EditorPlatform.IS_MAC) {
+            MenuBarController.getSystemMenuBarController();
+        }
+        EffectPicker.getEffectClasses();
+    }
+
+    
 }
