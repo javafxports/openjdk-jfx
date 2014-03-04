@@ -1,26 +1,33 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ * Copyright (c) 2013, 2014 Oracle and/or its affiliates.
+ * All rights reserved. Use is subject to license terms.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * This file is available and licensed under the following license:
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *  - Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  - Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the distribution.
+ *  - Neither the name of Oracle Corporation nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.javafx.experiments.jfx3dviewer;
 
@@ -32,13 +39,10 @@ import java.io.Reader;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javafx.beans.InvalidationListener;
-import javafx.beans.Observable;
+
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ObjectProperty;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.scene.control.Accordion;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.ToggleGroup;
@@ -77,14 +81,14 @@ public class SessionManager {
             props.load(reader);
         } catch (FileNotFoundException ignored) {
         } catch (IOException ex) {
-            Logger.getLogger(OldTestViewer.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
             try {
                 if (reader != null) {
                     reader.close();
                 }
             } catch (IOException ex) {
-                Logger.getLogger(OldTestViewer.class.getName()).
+                Logger.getLogger(SessionManager.class.getName()).
                         log(Level.SEVERE, null, ex);
             }
         }
@@ -95,7 +99,7 @@ public class SessionManager {
             try {
                 props.store(new FileWriter(SESSION_PROPERTIES_FILENAME), name + " session properties");
             } catch (IOException ex) {
-                Logger.getLogger(OldTestViewer.class.getName()).
+                Logger.getLogger(SessionManager.class.getName()).
                         log(Level.SEVERE, null, ex);
             }
         }
@@ -104,37 +108,19 @@ public class SessionManager {
     public void bind(final BooleanProperty property, final String propertyName) {
         String value = props.getProperty(propertyName);
         if (value != null) property.set(Boolean.valueOf(value));
-        property.addListener(new InvalidationListener() {
-
-            @Override
-            public void invalidated(Observable o) {
-                props.setProperty(propertyName, property.getValue().toString());
-            }
-        });
+        property.addListener(o -> props.setProperty(propertyName, property.getValue().toString()));
     }
 
     public void bind(final ObjectProperty<Color> property, final String propertyName) {
         String value = props.getProperty(propertyName);
         if (value != null) property.set(Color.valueOf(value));
-        property.addListener(new InvalidationListener() {
-
-            @Override
-            public void invalidated(Observable o) {
-                props.setProperty(propertyName, property.getValue().toString());
-            }
-        });
+        property.addListener(o -> props.setProperty(propertyName, property.getValue().toString()));
     }
 
     public void bind(final DoubleProperty property, final String propertyName) {
         String value = props.getProperty(propertyName);
         if (value != null) property.set(Double.valueOf(value));
-        property.addListener(new InvalidationListener() {
-
-            @Override
-            public void invalidated(Observable o) {
-                props.setProperty(propertyName, property.getValue().toString());
-            }
-        });
+        property.addListener(o -> props.setProperty(propertyName, property.getValue().toString()));
     }
 
     public void bind(final ToggleGroup toggleGroup, final String propertyName) {
@@ -146,15 +132,11 @@ public class SessionManager {
             }
         } catch (Exception ignored) {
         }
-        toggleGroup.selectedToggleProperty().addListener(new InvalidationListener() {
-
-            @Override
-            public void invalidated(Observable o) {
-                if (toggleGroup.getSelectedToggle() == null) {
-                    props.remove(propertyName);
-                } else {
-                    props.setProperty(propertyName, Integer.toString(toggleGroup.getToggles().indexOf(toggleGroup.getSelectedToggle())));
-                }
+        toggleGroup.selectedToggleProperty().addListener(o -> {
+            if (toggleGroup.getSelectedToggle() == null) {
+                props.remove(propertyName);
+            } else {
+                props.setProperty(propertyName, Integer.toString(toggleGroup.getToggles().indexOf(toggleGroup.getSelectedToggle())));
             }
         });
     }
@@ -167,13 +149,9 @@ public class SessionManager {
                 break;
             }
         }
-        accordion.expandedPaneProperty().addListener(new ChangeListener<TitledPane>() {
-
-            @Override
-            public void changed(ObservableValue<? extends TitledPane> ov, TitledPane t, TitledPane expandedPane) {
-                if (expandedPane != null) {
-                    props.setProperty(propertyName, expandedPane.getText());
-                }
+        accordion.expandedPaneProperty().addListener((ov, t, expandedPane) -> {
+            if (expandedPane != null) {
+                props.setProperty(propertyName, expandedPane.getText());
             }
         });
     }
