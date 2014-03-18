@@ -25,6 +25,7 @@
 
 package com.sun.javafx.scene.control.behavior;
 
+import javafx.geometry.NodeOrientation;
 import javafx.scene.Node;
 import javafx.scene.control.DateCell;
 import java.time.LocalDate;
@@ -50,7 +51,8 @@ import static javafx.scene.input.KeyEvent.*;
  * that subclasses implement so that CellSkinBase has API to call.
  *
  */
-public class DateCellBehavior extends CellBehaviorBase<DateCell> {
+public class DateCellBehavior extends BehaviorBase<DateCell> {
+
     /**************************************************************************
      *                          Setup KeyBindings                             *
      *************************************************************************/
@@ -84,6 +86,8 @@ public class DateCellBehavior extends CellBehaviorBase<DateCell> {
     }
 
     @Override public void traverse(final Node node, final Direction dir) {
+        boolean rtl = (node.getEffectiveNodeOrientation() == NodeOrientation.RIGHT_TO_LEFT);
+
         switch (dir) {
           case UP:
           case DOWN:
@@ -96,8 +100,8 @@ public class DateCellBehavior extends CellBehaviorBase<DateCell> {
                       switch (dir) {
                         case UP:    dpc.goToDayCell(cell, -1, WEEKS, true); break;
                         case DOWN:  dpc.goToDayCell(cell, +1, WEEKS, true); break;
-                        case LEFT:  dpc.goToDayCell(cell, -1, DAYS,  true); break;
-                        case RIGHT: dpc.goToDayCell(cell, +1, DAYS,  true); break;
+                        case LEFT:  dpc.goToDayCell(cell, rtl ? +1 : -1, DAYS,  true); break;
+                        case RIGHT: dpc.goToDayCell(cell, rtl ? -1 : +1, DAYS,  true); break;
                       }
                       return;
                   }
