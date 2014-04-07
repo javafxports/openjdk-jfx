@@ -34,6 +34,7 @@ import javafx.scene.accessibility.Accessible;
 import javafx.scene.accessibility.Action;
 import javafx.scene.accessibility.Attribute;
 import javafx.scene.accessibility.Role;
+import javafx.scene.input.KeyCombination;
 import com.sun.glass.ui.PlatformAccessible;
 import com.sun.glass.ui.View;
 import static javafx.scene.accessibility.Attribute.*;
@@ -187,6 +188,11 @@ final class WinAccessible extends PlatformAccessible {
     /* Scroll */
     private static final int UIA_ScrollPatternNoScroll          = -1;
 
+    /* ToggleState */
+    private static final int ToggleState_Off                    = 0;
+    private static final int ToggleState_On                     = 1;
+    private static final int ToggleState_Indeterminate          = 2;
+
     /* Other constants */
     private static final int UiaAppendRuntimeId                  = 3;
 
@@ -245,9 +251,25 @@ final class WinAccessible extends PlatformAccessible {
         switch (notification) {
             case FOCUS_NODE:
                 if (getView() != null) {
+                    // This is a Scene
                     long focus = GetFocus();
                     if (focus != 0) {
                         UiaRaiseAutomationEvent(focus, UIA_AutomationFocusChangedEventId);
+                    }
+                } else {
+                    // This is a Scene.transientFocusContainer
+                    Node node = (Node)getAttribute(FOCUS_NODE);
+                    if (node != null) {
+                        UiaRaiseAutomationEvent(getAccessible(node), UIA_AutomationFocusChangedEventId);
+                    } else {
+                        // Delegate back to the Scene if the transient focus owner is null
+                        Scene scene = (Scene)getAttribute(SCENE);
+                        if (scene != null) {
+                            Accessible acc = scene.getAccessible();
+                            if (acc != null) {
+                                acc.sendNotification(FOCUS_NODE);
+                            }
+                        }
                     }
                 }
                 break;
@@ -299,7 +321,18 @@ final class WinAccessible extends PlatformAccessible {
                 }
                 break;
             }
+            case INDETERMINATE: {
+                if (getAttribute(ROLE) == Role.CHECKBOX) {
+                    notifyToggleState();
+                }
+                break;
+            }
             case SELECTED: {
+                Object role = getAttribute(ROLE); 
+                if (role == Role.CHECKBOX || role == Role.RADIO_BUTTON) {
+                    notifyToggleState();
+                    break;
+                }
                 Boolean selected = (Boolean)getAttribute(SELECTED);
                 if (selected != null) {
                     if (selected) {
@@ -347,19 +380,6 @@ final class WinAccessible extends PlatformAccessible {
                 documentRangeValid = false;
                 selectionRangeValid = false;
                 break;
-            case TOGGLE_STATE: {
-                Integer state = (Integer)getAttribute(TOGGLE_STATE);
-                if (state != null) {
-                    WinVariant vo = new WinVariant();
-                    vo.vt = WinVariant.VT_I4;
-                    vo.lVal = (Integer)state;
-                    WinVariant vn = new WinVariant();
-                    vn.vt = WinVariant.VT_I4;
-                    vn.lVal = (Integer)state;
-                    UiaRaiseAutomationPropertyChangedEvent(peer, UIA_ToggleToggleStatePropertyId, vo, vn);
-                }
-                break;
-            }
             case EXPANDED: {
                 Boolean expanded = (Boolean)getAttribute(EXPANDED);
                 if (expanded != null) {
@@ -376,6 +396,17 @@ final class WinAccessible extends PlatformAccessible {
             default:
                 UiaRaiseAutomationEvent(peer, UIA_AutomationPropertyChangedEventId);
         }
+    }
+
+    void notifyToggleState() {
+        int state = get_ToggleState();
+        WinVariant vo = new WinVariant();
+        vo.vt = WinVariant.VT_I4;
+        vo.lVal = state;
+        WinVariant vn = new WinVariant();
+        vn.vt = WinVariant.VT_I4;
+        vn.lVal = state;
+        UiaRaiseAutomationPropertyChangedEvent(peer, UIA_ToggleToggleStatePropertyId, vo, vn);
     }
 
     @Override
@@ -427,7 +458,6 @@ final class WinAccessible extends PlatformAccessible {
             case TEXT_FIELD:
             case PASSWORD_FIELD:
             case TEXT_AREA: return UIA_TextControlTypeId;
-            case TREE_TABLE_VIEW:
             case TABLE_VIEW: return UIA_TableControlTypeId;
             case LIST_VIEW: return UIA_ListControlTypeId;
             case TREE_TABLE_CELL:
@@ -438,6 +468,7 @@ final class WinAccessible extends PlatformAccessible {
             case CHECKBOX: return UIA_CheckBoxControlTypeId;
             case COMBOBOX: return UIA_ComboBoxControlTypeId;
             case HYPERLINK: return UIA_HyperlinkControlTypeId;
+            case TREE_TABLE_VIEW:
             case TREE_VIEW: return UIA_TreeControlTypeId;
             case TREE_TABLE_ITEM:
             case TREE_ITEM: return UIA_TreeItemControlTypeId;
@@ -448,6 +479,7 @@ final class WinAccessible extends PlatformAccessible {
             case SCROLL_PANE: return UIA_PaneControlTypeId;
             case SCROLL_BAR: return UIA_ScrollBarControlTypeId;
             case THUMB: return UIA_ThumbControlTypeId;
+            case MENU_BAR: return UIA_MenuBarControlTypeId;
             default: return 0;
         }
     }
@@ -462,8 +494,16 @@ final class WinAccessible extends PlatformAccessible {
         switch (role) {
             case MENU_ITEM:
                 impl = patternId == UIA_InvokePatternId;
-//                       patternId == UIA_ExpandCollapsePatternId ||
-//                       patternId == UIA_TogglePatternId;
+                if (!impl) {
+                    Object type = getAttribute(MENU_ITEM_TYPE);
+                    if (type == Role.CONTEXT_MENU) {
+                        impl |= patternId == UIA_ExpandCollapsePatternId;
+                    }
+                    if (type == Role.CHECKBOX || type == Role.RADIO_BUTTON) {
+                        impl |= patternId == UIA_TogglePatternId;
+                    }
+                }
+                break;
             case HYPERLINK:
             case BUTTON:
             case INCREMENT_BUTTON:
@@ -619,6 +659,12 @@ final class WinAccessible extends PlatformAccessible {
                          */
                     default:
                         name = (String)getAttribute(TITLE);
+                        if (name != null && name.length() != 0) {
+                            KeyCombination kc = (KeyCombination)getAttribute(ACCELERATOR);
+                            if (kc != null) {
+                                name += "\t" + kc.toString();
+                            }
+                        }
                 }
 
                 if (name == null || name.length() == 0) {
@@ -657,7 +703,7 @@ final class WinAccessible extends PlatformAccessible {
                  * Windows won't work correctly unless the accessible returned in GetFocus() 
                  * answer TRUE in UIA_HasKeyboardFocusPropertyId.
                  * Note that UIA_HasKeyboardFocusPropertyId reports true for the main parent
-                 * of a 'focus item', but that doesn't seen to cause problems.
+                 * of a 'focus item', but that doesn't seem to cause problems.
                  */
                 if (Boolean.FALSE.equals(focus)) {
                     Scene scene = (Scene)getAttribute(SCENE);
@@ -1210,6 +1256,7 @@ final class WinAccessible extends PlatformAccessible {
                 case TABLE_ROW:
                 case TABLE_CELL: return getContainer(Role.TABLE_VIEW);
                 case LIST_ITEM: return getContainer(Role.LIST_VIEW);
+                case TREE_TABLE_ITEM:
                 case TREE_TABLE_CELL: return getContainer(Role.TREE_TABLE_VIEW);
                 default:
             }
@@ -1223,8 +1270,9 @@ final class WinAccessible extends PlatformAccessible {
         Role role = (Role) getAttribute(ROLE);
         if (role != null) {
             switch (role) {
-                case TABLE_ROW:
+                case TREE_TABLE_ITEM:
                 case TREE_TABLE_CELL:
+                case TABLE_ROW:
                 case TABLE_CELL: result = (Integer)getAttribute(ROW_INDEX); break;
                 case LIST_ITEM: result = (Integer)getAttribute(INDEX); break;
                 default:
@@ -1297,8 +1345,11 @@ final class WinAccessible extends PlatformAccessible {
 
     int get_ToggleState() {
         if (isDisposed()) return 0;
-        Integer state = (Integer)getAttribute(TOGGLE_STATE);
-        return state != null ? state : 0;
+        if (Boolean.TRUE.equals(getAttribute(INDETERMINATE))) {
+            return ToggleState_Indeterminate;
+        }
+        boolean selected = Boolean.TRUE.equals(getAttribute(SELECTED));
+        return selected ? ToggleState_On : ToggleState_Off;
     }
 
     /***********************************************/

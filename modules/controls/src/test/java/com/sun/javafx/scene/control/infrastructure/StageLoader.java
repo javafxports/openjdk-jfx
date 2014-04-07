@@ -24,6 +24,7 @@
  */
 package com.sun.javafx.scene.control.infrastructure;
 
+import com.sun.javafx.tk.Toolkit;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -45,6 +46,7 @@ public class StageLoader {
         stage = new Stage();
         stage.setScene(scene);
         stage.show();
+        Toolkit.getToolkit().firePulse();
     }
     
     public StageLoader(Scene scene) {
@@ -52,16 +54,30 @@ public class StageLoader {
         stage.setScene(scene);
         stage.show();
     }
-    
+
+    // bad I know, but this is better than having unit tests running out of memory
+    // and stalling. If this isn't done we leave all stages in memory as they
+    // are collected in a static list (Stage.stages). The alternative is to
+    // expect all users of StageLoader (i.e. ui controls unit tests) to always
+    // properly clean up after themselves.
+    @Override protected void finalize() throws Throwable {
+        dispose();
+        super.finalize();
+    }
+
     public Stage getStage() {
         return stage;
     }
     
     public void dispose() {
-        stage.hide();
-        group.getChildren().clear();
-        group = null;
-        scene = null;
-        stage = null;
+        if (group != null) {
+            group.getChildren().clear();
+            group = null;
+        }
+        if (stage != null) {
+            stage.hide();
+            scene = null;
+            stage = null;
+        }
     }
 }
