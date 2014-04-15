@@ -65,6 +65,7 @@ class WindowStage extends GlassStage {
     private StageStyle style;
     private GlassStage owner = null;
     private Modality modality = Modality.NONE;
+    private final boolean securityDialog;
 
     private OverlayWarning warning = null;
     private boolean rtl = false;
@@ -101,10 +102,11 @@ class WindowStage extends GlassStage {
                                  ".QuantumMessagesBundle", LOCALE);
 
 
-    public WindowStage(javafx.stage.Window peerWindow, final StageStyle stageStyle, Modality modality, TKStage owner) {
+    public WindowStage(javafx.stage.Window peerWindow, boolean securityDialog, final StageStyle stageStyle, Modality modality, TKStage owner) {
         this.style = stageStyle;
         this.owner = (GlassStage)owner;
         this.modality = modality;
+        this.securityDialog = securityDialog;
 
         if (peerWindow instanceof javafx.stage.Stage) {
             fxStage = (Stage)peerWindow;
@@ -130,6 +132,10 @@ class WindowStage extends GlassStage {
 
     final void setIsPopup() {
         isPopupStage = true;
+    }
+
+    final boolean isSecurityDialog() {
+        return securityDialog;
     }
 
     // Called by QuantumToolkit, so we can override initPlatformWindow in subclasses
@@ -187,6 +193,9 @@ class WindowStage extends GlassStage {
                         app.createWindow(ownerWindow, Screen.getMainScreen(), windowMask);
                 platformWindow.setResizable(resizable);
                 platformWindow.setFocusable(focusable);
+                if (securityDialog) {
+                    platformWindow.setLevel(Window.Level.FLOATING);
+                }
             }
         }
         platformWindows.put(platformWindow, this);
@@ -493,6 +502,9 @@ class WindowStage extends GlassStage {
 
     @Override
     public void setAlwaysOnTop(boolean alwaysOnTop) {
+        // The securityDialog flag takes precedence over alwaysOnTop
+        if (securityDialog) return;
+
         if (alwaysOnTop) {
             if (hasPermission(alwaysOnTopPermission)) {
                 platformWindow.setLevel(Level.FLOATING);
