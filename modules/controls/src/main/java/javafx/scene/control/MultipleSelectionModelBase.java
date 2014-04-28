@@ -35,8 +35,6 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 
-import javafx.beans.InvalidationListener;
-import javafx.beans.Observable;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.ListChangeListener.Change;
@@ -384,7 +382,7 @@ abstract class MultipleSelectionModelBase<T> extends MultipleSelectionModel<T> {
     }
 
     @Override public void selectIndices(int row, int... rows) {
-        if (rows == null) {
+        if (rows == null || rows.length == 0) {
             select(row);
             return;
         }

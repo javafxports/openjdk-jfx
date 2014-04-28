@@ -32,9 +32,7 @@ import com.sun.javafx.scene.control.Logging;
 import com.sun.javafx.scene.control.SelectedCellsMap;
 import javafx.beans.DefaultProperty;
 import javafx.beans.InvalidationListener;
-import javafx.beans.Observable;
 import javafx.beans.WeakInvalidationListener;
-import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ObjectProperty;
@@ -44,9 +42,6 @@ import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
-import javafx.beans.value.WeakChangeListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.MapChangeListener;
@@ -693,13 +688,20 @@ public class TableView<S> extends Control {
         // RT-25679 - we select the first item in the control if there is no
         // current selection or focus on any other cell
         List<S> items = getItems();
-        MultipleSelectionModel<S> sm = getSelectionModel();
+        TableSelectionModel<S> sm = getSelectionModel();
         FocusModel<S> fm = getFocusModel();
 
         if (items != null && items.size() > 0 &&
                 sm != null && sm.isEmpty() &&
-                fm != null && fm.getFocusedIndex() == -1) {
-            sm.select(0);
+                fm != null && fm.getFocusedItem() == null) {
+            if (sm.isCellSelectionEnabled()) {
+                TableColumn<S,?> firstVisibleColumn = getVisibleLeafColumn(0);
+                if (firstVisibleColumn != null) {
+                    sm.select(0, firstVisibleColumn);
+                }
+            } else {
+                sm.select(0);
+            }
         }
     };
 
@@ -2247,7 +2249,7 @@ public class TableView<S> extends Control {
 
             // fire off a single add/remove/replace notification (rather than
             // individual remove and add notifications) - see RT-33324
-            int changeIndex = selectedCellsSeq.indexOf(new TablePosition(getTableView(), row, column));
+            int changeIndex = selectedCellsSeq.indexOf(new TablePosition<>(getTableView(), row, column));
             ListChangeListener.Change change = new NonIterableChange.GenericAddRemoveChange<TablePosition<S,?>>(
                     changeIndex, changeIndex+1, previousSelection, selectedCellsSeq);
             handleSelectedCellsListChangeEvent(change);
@@ -2468,8 +2470,8 @@ public class TableView<S> extends Control {
             updateSelectedIndex(maxRow);
             focus(maxRow, (TableColumn<S,?>)maxColumn);
 
-            final int startChangeIndex = selectedCellsMap.indexOf(new TablePosition(tableView, minRow, (TableColumn<S,?>)minColumn));
-            final int endChangeIndex = selectedCellsMap.indexOf(new TablePosition(tableView, maxRow, (TableColumn<S,?>)maxColumn));
+            final int startChangeIndex = selectedCellsMap.indexOf(new TablePosition<>(tableView, minRow, (TableColumn<S,?>)minColumn));
+            final int endChangeIndex = selectedCellsMap.indexOf(new TablePosition<>(tableView, maxRow, (TableColumn<S,?>)maxColumn));
             handleSelectedCellsListChangeEvent(new NonIterableChange.SimpleAddChange<>(startChangeIndex, endChangeIndex + 1, selectedCellsSeq));
         }
 

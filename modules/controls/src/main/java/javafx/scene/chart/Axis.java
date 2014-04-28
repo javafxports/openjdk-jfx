@@ -83,6 +83,7 @@ public abstract class Axis<T> extends Region {
 
     Text measure = new Text();
     private Orientation effectiveOrientation;
+    private double effectiveTickLabelRotation = Double.NaN;
     private Label axisLabel = new Label();
     private final Path tickMarkPath = new Path();
     private double oldLength = 0;
@@ -731,6 +732,7 @@ public abstract class Axis<T> extends Region {
         // clear tick mark path elements as we will recreate
         tickMarkPath.getElements().clear();
         // do layout of axis label, tick mark lines and text
+        double effectiveLabelRotation = getEffectiveTickLabelRotation();
         if (Side.LEFT.equals(side)) {
             // offset path to make strokes snap to pixel
             tickMarkPath.setLayoutX(-0.5);
@@ -746,7 +748,7 @@ public abstract class Axis<T> extends Region {
             for (TickMark<T> tick : tickMarks) {
                 tick.setPosition(getDisplayPosition(tick.getValue()));
                 positionTextNode(tick.textNode, width - getTickLabelGap() - tickMarkLength,
-                                 tick.getPosition(),getTickLabelRotation(),side);
+                                 tick.getPosition(), effectiveLabelRotation,side);
 
                 // check if position is inside bounds
                 if(tick.getPosition() >= 0 && tick.getPosition() <= Math.ceil(length)) {
@@ -771,7 +773,7 @@ public abstract class Axis<T> extends Region {
             for (TickMark<T> tick : tickMarks) {
                 tick.setPosition(getDisplayPosition(tick.getValue()));
                 positionTextNode(tick.textNode, getTickLabelGap() + tickMarkLength,
-                                 tick.getPosition(),getTickLabelRotation(),side);
+                                 tick.getPosition(), effectiveLabelRotation,side);
                 // check if position is inside bounds
                 if(tick.getPosition() >= 0 && tick.getPosition() <= Math.ceil(length)) {
                     if (isTickLabelsVisible()) {
@@ -809,7 +811,7 @@ public abstract class Axis<T> extends Region {
             for (TickMark<T> tick : tickMarks) {
                 tick.setPosition(getDisplayPosition(tick.getValue()));
                 positionTextNode(tick.textNode, tick.getPosition(), height - tickMarkLength - getTickLabelGap(),
-                        getTickLabelRotation(), side);
+                        effectiveLabelRotation, side);
                 // check if position is inside bounds
                 if(tick.getPosition() >= 0 && tick.getPosition() <= Math.ceil(length)) {
                     if (isTickLabelsVisible()) {
@@ -836,7 +838,7 @@ public abstract class Axis<T> extends Region {
                 tick.setPosition(xPos);
 //                System.out.println("tick pos at : "+tickIndex+" = "+xPos);
                 positionTextNode(tick.textNode,xPos, tickMarkLength + getTickLabelGap(),
-                                getTickLabelRotation(),side);
+                        effectiveLabelRotation,side);
                 // check if position is inside bounds
                 if(xPos >= 0 && xPos <= Math.ceil(length)) {
                     if (isTickLabelsVisible()) {
@@ -934,7 +936,19 @@ public abstract class Axis<T> extends Region {
      * @return size of tick mark label for given value
      */
     protected Dimension2D measureTickMarkSize(T value, Object range) {
-        return measureTickMarkSize(value,getTickLabelRotation());
+        return measureTickMarkSize(value, getEffectiveTickLabelRotation());
+    }
+
+    final double getEffectiveTickLabelRotation() {
+        return Double.isNaN(effectiveTickLabelRotation) ? getTickLabelRotation() : effectiveTickLabelRotation;
+    }
+
+    /**
+     *
+     * @param rotation NaN for using the tickLabelRotationProperty()
+     */
+    final void setEffectiveTickLabelRotation(double rotation) {
+        effectiveTickLabelRotation = rotation;
     }
 
     // -------------- TICKMARK INNER CLASS -----------------------------------------------------------------------------
@@ -1040,13 +1054,13 @@ public abstract class Axis<T> extends Region {
                 new EnumConverter<Side>(Side.class)) {
 
             @Override
-            public boolean isSettable(Axis n) {
+            public boolean isSettable(Axis<?> n) {
                 return n.side == null || !n.side.isBound();
             }
 
             @SuppressWarnings("unchecked") // sideProperty() is StyleableProperty<Side>              
             @Override
-            public StyleableProperty<Side> getStyleableProperty(Axis n) {
+            public StyleableProperty<Side> getStyleableProperty(Axis<?> n) {
                 return (StyleableProperty<Side>)n.sideProperty();
             }
         };
@@ -1056,7 +1070,7 @@ public abstract class Axis<T> extends Region {
                 SizeConverter.getInstance(), 8.0) {
 
             @Override
-            public boolean isSettable(Axis n) {
+            public boolean isSettable(Axis<?> n) {
                 return n.tickLength == null || !n.tickLength.isBound();
             }
 
@@ -1071,13 +1085,13 @@ public abstract class Axis<T> extends Region {
                 Font.font("system", 8.0)) {
 
             @Override
-            public boolean isSettable(Axis n) {
+            public boolean isSettable(Axis<?> n) {
                 return n.tickLabelFont == null || !n.tickLabelFont.isBound();
             }
 
             @SuppressWarnings("unchecked") // tickLabelFontProperty() is StyleableProperty<Font>              
             @Override
-            public StyleableProperty<Font> getStyleableProperty(Axis n) {
+            public StyleableProperty<Font> getStyleableProperty(Axis<?> n) {
                 return (StyleableProperty<Font>)n.tickLabelFontProperty();
             }
         };
@@ -1087,13 +1101,13 @@ public abstract class Axis<T> extends Region {
                 PaintConverter.getInstance(), Color.BLACK) {
 
             @Override
-            public boolean isSettable(Axis n) {
+            public boolean isSettable(Axis<?> n) {
                 return n.tickLabelFill == null | !n.tickLabelFill.isBound();
             }
 
             @SuppressWarnings("unchecked") // tickLabelFillProperty() is StyleableProperty<Paint>            
             @Override
-            public StyleableProperty<Paint> getStyleableProperty(Axis n) {
+            public StyleableProperty<Paint> getStyleableProperty(Axis<?> n) {
                 return (StyleableProperty<Paint>)n.tickLabelFillProperty();
             }
         };
@@ -1103,12 +1117,12 @@ public abstract class Axis<T> extends Region {
                 SizeConverter.getInstance(), 3.0) {
 
             @Override
-            public boolean isSettable(Axis n) {
+            public boolean isSettable(Axis<?> n) {
                 return n.tickLabelGap == null || !n.tickLabelGap.isBound();
             }
 
             @Override
-            public StyleableProperty<Number> getStyleableProperty(Axis n) {
+            public StyleableProperty<Number> getStyleableProperty(Axis<?> n) {
                 return (StyleableProperty<Number>)n.tickLabelGapProperty();
             }
         };
@@ -1118,12 +1132,12 @@ public abstract class Axis<T> extends Region {
                 BooleanConverter.getInstance(), Boolean.TRUE) {
 
             @Override
-            public boolean isSettable(Axis n) {
+            public boolean isSettable(Axis<?> n) {
                 return n.tickMarkVisible == null || !n.tickMarkVisible.isBound();
             }
 
             @Override
-            public StyleableProperty<Boolean> getStyleableProperty(Axis n) {
+            public StyleableProperty<Boolean> getStyleableProperty(Axis<?> n) {
                 return (StyleableProperty<Boolean>)n.tickMarkVisibleProperty();
             }
         };
@@ -1133,12 +1147,12 @@ public abstract class Axis<T> extends Region {
                 BooleanConverter.getInstance(), Boolean.TRUE) {
 
             @Override
-            public boolean isSettable(Axis n) {
+            public boolean isSettable(Axis<?> n) {
                 return n.tickLabelsVisible == null || !n.tickLabelsVisible.isBound();
             }
 
             @Override
-            public StyleableProperty<Boolean> getStyleableProperty(Axis n) {
+            public StyleableProperty<Boolean> getStyleableProperty(Axis<?> n) {
                 return (StyleableProperty<Boolean>)n.tickLabelsVisibleProperty();
             }
         };
