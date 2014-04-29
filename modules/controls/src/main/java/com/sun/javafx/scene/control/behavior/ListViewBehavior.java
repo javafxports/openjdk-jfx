@@ -466,6 +466,8 @@ public class ListViewBehavior<T> extends BehaviorBase<ListView<T>> {
         
         if (isShiftDown && getAnchor() != -1) {
             int newRow = fm.getFocusedIndex() - 1;
+            if (newRow < 0) return;
+
             int anchor = getAnchor();
             
             if (! hasAnchor()) {
@@ -689,7 +691,7 @@ public class ListViewBehavior<T> extends BehaviorBase<ListView<T>> {
     
     private void selectAllToFocus(boolean setAnchorToFocusIndex) {
         // Fix for RT-31241
-        final ListView listView = getControl();
+        final ListView<T> listView = getControl();
         if (listView.getEditingIndex() >= 0) return;
 
         MultipleSelectionModel<T> sm = listView.getSelectionModel();

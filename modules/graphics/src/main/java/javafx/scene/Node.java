@@ -494,7 +494,11 @@ public abstract class Node implements EventTarget, Styleable {
     @Deprecated
     public final void impl_syncPeer() {
         // Do not synchronize invisible nodes unless their visibility has changed
-        if (!impl_isDirtyEmpty() && (treeVisible || impl_isDirty(DirtyBits.NODE_VISIBLE))) {
+        // or they have requested a forced synchronization
+        if (!impl_isDirtyEmpty() && (treeVisible
+                                     || impl_isDirty(DirtyBits.NODE_VISIBLE)
+                                     || impl_isDirty(DirtyBits.NODE_FORCE_SYNC)))
+        {
             impl_updatePeer();
             clearDirty();
         }
@@ -8757,6 +8761,13 @@ public abstract class Node implements EventTarget, Styleable {
                     Node child = children.get(n);
                     child.impl_reapplyCSS();
                 }
+            }
+
+        } else if (this instanceof SubScene) {
+
+            final Parent subSceneRoot = ((SubScene)this).getRoot();
+            if (subSceneRoot != null) {
+                subSceneRoot.impl_reapplyCSS();
             }
 
         } else if (styleHelper == null) {
