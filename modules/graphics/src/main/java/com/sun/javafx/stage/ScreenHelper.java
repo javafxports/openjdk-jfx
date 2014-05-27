@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,53 +23,30 @@
  * questions.
  */
 
-package com.sun.javafx.css;
+package com.sun.javafx.stage;
 
-import javafx.scene.paint.Paint;
+import javafx.stage.Screen;
 
+/**
+ * Utility class used for accessing certain implementation-specific
+ * runtime functionality.
+ */
+public final class ScreenHelper {
 
+    private static ScreenAccessor screenAccessor;
 
-final public class BorderPaint {
-    private final Paint top;
-    private final Paint right;
-    private final Paint bottom;
-    private final Paint left;
-    
-    public final Paint getTop() {
-        return top;
+    public static interface ScreenAccessor {
+        public float getScale(Screen screen);
     }
 
-    public Paint getRight() {
-        return right;
+    public static void setScreenAccessor(ScreenAccessor a) {
+        if (screenAccessor != null) {
+            throw new IllegalStateException();
+        }
+        screenAccessor = a;
     }
 
-    public Paint getBottom() {
-        return bottom;
-    }
-
-    public Paint getLeft() {
-        return left;
-    }
-
-    public BorderPaint(final Paint top, final Paint right,
-                       final Paint bottom, final Paint left) {
-        this.top = top;
-        this.right = right;
-        this.bottom = bottom;
-        this.left = left;
-    }
-
-    @Override public String toString() {
-        StringBuilder sbuf = new StringBuilder();
-        sbuf.append("top: ");
-        sbuf.append(getTop());
-        sbuf.append(", right: ");
-        sbuf.append(getRight());
-        sbuf.append(", bottom: ");
-        sbuf.append(getBottom());
-        sbuf.append(", left: ");
-        sbuf.append(getLeft());
-        return sbuf.toString();
+    public static ScreenAccessor getScreenAccessor() {
+        return screenAccessor;
     }
 }
-

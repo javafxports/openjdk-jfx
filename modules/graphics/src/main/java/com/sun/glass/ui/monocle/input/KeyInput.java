@@ -27,8 +27,11 @@ package com.sun.glass.ui.monocle.input;
 
 import com.sun.glass.events.KeyEvent;
 import com.sun.glass.ui.Application;
+import com.sun.glass.ui.monocle.MonocleSettings;
+import com.sun.glass.ui.monocle.MonocleTrace;
 import com.sun.glass.ui.monocle.MonocleView;
 import com.sun.glass.ui.monocle.MonocleWindow;
+import com.sun.glass.ui.monocle.RunnableProcessor;
 import com.sun.glass.ui.monocle.util.IntSet;
 
 import java.security.AccessController;
@@ -57,6 +60,9 @@ public class KeyInput {
     }
 
     public void setState(KeyState newState) {
+        if (MonocleSettings.settings.traceEvents) {
+            MonocleTrace.traceEvent("Set %s", newState);
+        }
         newState.getWindow(true);
         // send release events
         state.getKeysPressed().difference(keys, newState.getKeysPressed());
@@ -101,26 +107,24 @@ public class KeyInput {
             return;
         }
         char[] chars = getKeyChars(ks, key);
-        try {
-           view.notifyKey(type, key, chars, ks.getModifiers());
-        } catch (RuntimeException e) {
-            Application.reportException(e);
-        }
+        int modifiers = ks.getModifiers();
+        RunnableProcessor.runLater(() -> {
+            view.notifyKey(type, key, chars, modifiers);
+        });
         if (type == KeyEvent.PRESS && chars.length > 0) {
-            try {
-                view.notifyKey(KeyEvent.TYPED, key, chars, ks.getModifiers());
-            } catch (RuntimeException e) {
-                Application.reportException(e);
-            }
+            RunnableProcessor.runLater(() -> {
+                view.notifyKey(KeyEvent.TYPED, key, chars, modifiers);
+            });
         }
     }
 
     private char[] getKeyChars(KeyState state, int key) {
         char c = '\000';
-        boolean shifted = state.isShiftPressed() ^ capsLock;
+        boolean shifted = state.isShiftPressed();
         // TODO: implement configurable keyboard mappings.
         // The following is only for US keyboards
         if (key >= KeyEvent.VK_A && key <= KeyEvent.VK_Z) {
+            shifted ^= capsLock;
             if (shifted) {
                 c = (char) (key - KeyEvent.VK_A + 'A');
             } else {
