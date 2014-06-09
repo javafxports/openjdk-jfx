@@ -68,6 +68,10 @@ public class MacAppBundlerTest {
         // only run on mac
         Assume.assumeTrue(System.getProperty("os.name").toLowerCase().contains("os x"));
 
+        // and only if we have the correct JRE settings
+        String jre = System.getProperty("java.home").toLowerCase();
+        Assume.assumeTrue(jre.endsWith("/contents/home/jre") || jre.endsWith("/contents/home/jre"));
+
         Log.setLogger(new Log.Logger(true));
 
         retain = Boolean.parseBoolean(System.getProperty("RETAIN_PACKAGER_TESTS"));
@@ -219,6 +223,25 @@ public class MacAppBundlerTest {
         System.err.println("Bundle at - " + output);
         assertNotNull(output);
         assertTrue(output.exists());
+    }
+
+
+    /**
+     * Test a misconfiguration where the runtime is misconfigured.
+     */
+    @Test(expected = ConfigException.class)
+    public void runtimeBad() throws IOException, ConfigException, UnsupportedPlatformException {
+        Bundler bundler = new MacAppBundler();
+
+        Map<String, Object> bundleParams = new HashMap<>();
+
+        bundleParams.put(BUILD_ROOT.getID(), tmpBase);
+        bundleParams.put(VERBOSE.getID(), true);
+
+        bundleParams.put(APP_RESOURCES.getID(), new RelativeFileSet(appResourcesDir, appResources));
+        bundleParams.put(MAC_RUNTIME.getID(), APP_RESOURCES.fetchFrom(bundleParams));
+
+        bundler.validate(bundleParams);
     }
 
     @Test

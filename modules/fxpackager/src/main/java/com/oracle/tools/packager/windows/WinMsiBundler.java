@@ -117,6 +117,16 @@ public class WinMsiBundler  extends AbstractBundler {
             );
 
 
+    public static final StandardBundlerParam<String> PRODUCT_VERSION =
+            new StandardBundlerParam<>(
+                    I18N.getString("param.product-version.name"),
+                    I18N.getString("param.product-version.description"),
+                    "win.msi.productVersion",
+                    String.class,
+                    VERSION::fetchFrom,
+                    (s, p) -> s
+            );
+
     public static final BundlerParamInfo<UUID> UPGRADE_UUID = new WindowsBundlerParam<>(
             I18N.getString("param.upgrade-uuid.name"),
             I18N.getString("param.upgrade-uuid.description"),
@@ -201,6 +211,7 @@ public class WinMsiBundler  extends AbstractBundler {
                 DESCRIPTION,
                 MENU_GROUP,
                 MENU_HINT,
+                PRODUCT_VERSION,
 //                RUN_AT_STARTUP,
                 SHORTCUT_HINT,
 //                SERVICE_HINT,
@@ -302,11 +313,11 @@ public class WinMsiBundler  extends AbstractBundler {
 
             /********* validate bundle parameters *************/
 
-            String version = VERSION.fetchFrom(p);
+            String version = PRODUCT_VERSION.fetchFrom(p);
             if (!isVersionStringValid(version)) {
                 throw new ConfigException(
                         MessageFormat.format(I18N.getString("error.version-string-wrong-format"), version),
-                        I18N.getString("error.version-string-wrong-format.advice"));
+                        MessageFormat.format(I18N.getString("error.version-string-wrong-format.advice"), PRODUCT_VERSION.getID()));
             }
 
             return true;
@@ -462,7 +473,7 @@ public class WinMsiBundler  extends AbstractBundler {
     //name of post-image script
     private File getConfig_Script(Map<String, ? super Object> params) {
         return new File(CONFIG_ROOT.fetchFrom(params),
-                APP_NAME.fetchFrom(params) + "-post-image.wsf");
+                APP_FS_NAME.fetchFrom(params) + "-post-image.wsf");
     }
 
     private boolean prepareBasicProjectConfig(Map<String, ? super Object> params) throws IOException {
@@ -496,7 +507,7 @@ public class WinMsiBundler  extends AbstractBundler {
         data.put("APPLICATION_NAME", APP_NAME.fetchFrom(params));
         data.put("APPLICATION_DESCRIPTION", DESCRIPTION.fetchFrom(params));
         data.put("APPLICATION_VENDOR", VENDOR.fetchFrom(params));
-        data.put("APPLICATION_VERSION", VERSION.fetchFrom(params));
+        data.put("APPLICATION_VERSION", PRODUCT_VERSION.fetchFrom(params));
 
         //WinAppBundler will add application folder again => step out
         File imageRootDir = WIN_APP_IMAGE.fetchFrom(params);
@@ -664,15 +675,15 @@ public class WinMsiBundler  extends AbstractBundler {
                     + (BIT_ARCH_64.fetchFrom(params) ? " ProcessorArchitecture=\"x64\"" : "")
                     + " KeyPath=\"yes\">");
             out.println(prefix + "   </File>");
-            out.println(prefix + "   <ServiceInstall Id=\"" + APP_NAME.fetchFrom(params) + "\""
+            out.println(prefix + "   <ServiceInstall Id=\"" + APP_FS_NAME.fetchFrom(params) + "\""
                     + " Name=\"" + APP_NAME.fetchFrom(params) + "\""
                     + " Description=\"" + DESCRIPTION.fetchFrom(params) + "\""
                     + " ErrorControl=\"normal\""
                     + " Start=\"" + (RUN_AT_STARTUP.fetchFrom(params) ? "auto" : "demand") + "\""
                     + " Type=\"ownProcess\" Vital=\"yes\" Account=\"LocalSystem\""
-                    + " Arguments=\"-mainExe " + launcherFile.getName() + "\"/>");
+                    + " Arguments='-mainExe \"" + launcherFile.getName() + "\"'/>");
 
-            out.println(prefix + "   <ServiceControl Id=\""+ APP_NAME.fetchFrom(params) + "\""
+            out.println(prefix + "   <ServiceControl Id=\""+ APP_FS_NAME.fetchFrom(params) + "\""
                     + " Name=\"" + APP_NAME.fetchFrom(params) + "\""
                     + (START_ON_INSTALL.fetchFrom(params) ? " Start=\"install\"" : "")
                     + (STOP_ON_UNINSTALL.fetchFrom(params) ? " Stop=\"uninstall\"" : "")

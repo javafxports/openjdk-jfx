@@ -1185,6 +1185,7 @@ allprojects {
         options.addBooleanOption("XDignore.symbol.file").setValue(true);
         options.addBooleanOption("Xdoclint:none").setValue(!IS_DOC_LINT);
         options.addBooleanOption("javafx").setValue(true);
+        options.addBooleanOption("use").setValue(true);
         // All doc-files are located in src/main/docs because Gradle's javadoc doesn't copy
         // over the doc-files if they are embedded with the sources. I find this arrangement
         // somewhat cleaner anyway (never was a fan of mixing javadoc files with the sources)
@@ -1908,16 +1909,16 @@ project(":fxpackager") {
         task buildJavaPackager(group: "Build") {
             enabled = COMPILE_FXPACKAGER
             doLast {
-	            copy {
-    	            from "src/main/native/javapackager/shell"
-        		    into "$buildDir/javapackager"
-                	fileMode = 0755
+                copy {
+                    from "src/main/native/javapackager/shell"
+                    into "$buildDir/javapackager"
+                    fileMode = 0755
                 }
-	            copy {
-    	            from "src/main/native/javapackager/shell"
-        		    into "$buildDir/javapackager"
+                copy {
+                    from "src/main/native/javapackager/shell"
+                    into "$buildDir/javapackager"
                     rename ('javapackager', 'javafxpackager')
-                	fileMode = 0755
+                    fileMode = 0755
                 }
             }
         }
@@ -2540,6 +2541,7 @@ task javadoc(type: Javadoc) {
     options.addBooleanOption("XDignore.symbol.file").setValue(true);
     options.addBooleanOption("Xdoclint:none").setValue(!IS_DOC_LINT);
     options.addBooleanOption("javafx").setValue(true);
+    options.addBooleanOption("use").setValue(true);
     doLast {
         projectsToDocument.each { p ->
             copy {
@@ -2749,7 +2751,7 @@ compileTargets { t ->
                      "com/sun/prism/es2/IOS*"
                      )
         }
-        if (t.name != 'android') {
+        if (t.name != 'android' && t.name != 'dalvik') {
             exclude ("com/sun/glass/ui/android/*")
         }
 

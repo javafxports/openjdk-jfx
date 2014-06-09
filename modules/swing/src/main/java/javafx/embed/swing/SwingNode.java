@@ -786,8 +786,7 @@ public class SwingNode extends Node {
                 mouseClickedAllowed.remove(event.getButton());
             }
             int swingModifiers = SwingEvents.fxMouseModsToMouseMods(event);
-            // TODO: popupTrigger
-            boolean swingPopupTrigger = event.getButton() == MouseButton.SECONDARY;
+            boolean swingPopupTrigger = event.isPopupTrigger();
             int swingButton = SwingEvents.fxMouseButtonToMouseButton(event);
             long swingWhen = System.currentTimeMillis();
             java.awt.event.MouseEvent mouseEvent =
@@ -854,6 +853,8 @@ public class SwingNode extends Node {
             // Don't let Arrows, Tab, Shift+Tab traverse focus out.
             if (event.getCode() == KeyCode.LEFT  ||
                 event.getCode() == KeyCode.RIGHT ||
+                event.getCode() == KeyCode.UP ||
+                event.getCode() == KeyCode.DOWN ||
                 event.getCode() == KeyCode.TAB)
             {
                 event.consume();
