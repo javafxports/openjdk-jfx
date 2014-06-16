@@ -36,6 +36,7 @@ import com.sun.glass.ui.Timer;
 import com.sun.glass.ui.View;
 import com.sun.glass.ui.Window;
 import com.sun.glass.ui.monocle.input.InputDevice;
+import com.sun.glass.ui.monocle.input.KeyInput;
 import com.sun.glass.ui.monocle.input.MouseInput;
 import com.sun.glass.ui.monocle.input.MouseState;
 import javafx.collections.SetChangeListener;
@@ -370,6 +371,11 @@ public final class MonocleApplication extends Application {
 
     public void leaveDndEventLoop() {
         _leaveNestedEventLoop(null);
+    }
+
+    @Override
+    protected int _getKeyCodeForChar(char c) {
+        return KeyInput.getInstance().getKeyCodeForChar(c);
     }
 
 }

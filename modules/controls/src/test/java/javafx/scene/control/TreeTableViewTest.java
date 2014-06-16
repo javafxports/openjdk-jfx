@@ -2343,7 +2343,7 @@ public class TreeTableViewTest {
 
         // now test to ensure that CCC is still the only selected item, but now
         // located in index 1 (as the first child of the root)
-        assertTrue(sm.isSelected(1));
+        assertTrue(debug(), sm.isSelected(1));
         assertEquals(1, sm.getSelectedIndex());
         assertEquals(1, sm.getSelectedIndices().size());
         assertTrue(sm.getSelectedIndices().contains(1));
@@ -3604,6 +3604,170 @@ public class TreeTableViewTest {
         assertEquals(1, rt_37395_item_addCount);
         assertEquals(0, rt_37395_item_permutationCount);
 
+        sl.dispose();
+    }
+
+    @Test public void test_rt_37429() {
+        // get the current exception handler before replacing with our own,
+        // as ListListenerHelp intercepts the exception otherwise
+        final Thread.UncaughtExceptionHandler exceptionHandler = Thread.currentThread().getUncaughtExceptionHandler();
+        Thread.currentThread().setUncaughtExceptionHandler((t, e) -> {
+            e.printStackTrace();
+            fail("We don't expect any exceptions in this test!");
+        });
+
+        // table items - 3 items, 2nd item has 2 children
+        TreeItem<String> root = new TreeItem<>();
+
+        TreeItem<String> two = new TreeItem<>("two");
+        two.getChildren().add(new TreeItem<>("childOne"));
+        two.getChildren().add(new TreeItem<>("childTwo"));
+        two.setExpanded(true);
+
+        root.getChildren().add(new TreeItem<>("one"));
+        root.getChildren().add(two);
+        root.getChildren().add(new TreeItem<>("three"));
+
+        // table columns - 1 column; name
+        TreeTableColumn<String, String> nameColumn = new TreeTableColumn<>("name");
+        nameColumn.setCellValueFactory(param -> new ReadOnlyObjectWrapper(param.getValue().getValue()));
+        nameColumn.setPrefWidth(200);
+
+        // table
+        TreeTableView<String> table = new TreeTableView<>();
+        table.setShowRoot(false);
+        table.setRoot(root);
+        table.getColumns().addAll(nameColumn);
+
+        table.getSelectionModel().getSelectedItems().addListener((ListChangeListener<TreeItem<String>>) c -> {
+            while (c.next()) {
+                if(c.wasRemoved()) {
+                    // The removed list of items must be iterated or the AIOOBE will
+                    // not be thrown when getAddedSubList is called.
+                    c.getRemoved().forEach(item -> {});
+                }
+
+                if (c.wasAdded()) {
+                    c.getAddedSubList();
+                }
+            }
+        });
+
+        StageLoader sl = new StageLoader(table);
+
+        table.getSelectionModel().select(0);
+        table.getSortOrder().add(nameColumn);
+
+        sl.dispose();
+
+        // reset the exception handler
+        Thread.currentThread().setUncaughtExceptionHandler(exceptionHandler);
+    }
+
+    private int rt_37429_items_change_count = 0;
+    private int rt_37429_cells_change_count = 0;
+    @Test public void test_rt_37429_sortEventsShouldNotFireExtraChangeEvents() {
+        // table items - 3 items, 2nd item has 2 children
+        TreeItem<String> root = new TreeItem<>();
+
+        root.getChildren().add(new TreeItem<>("a"));
+        root.getChildren().add(new TreeItem<>("c"));
+        root.getChildren().add(new TreeItem<>("b"));
+
+        // table columns - 1 column; name
+        TreeTableColumn<String, String> nameColumn = new TreeTableColumn<>("name");
+        nameColumn.setCellValueFactory(param -> new ReadOnlyObjectWrapper(param.getValue().getValue()));
+        nameColumn.setPrefWidth(200);
+
+        // table
+        TreeTableView<String> table = new TreeTableView<>();
+        table.setShowRoot(false);
+        table.setRoot(root);
+        table.getColumns().addAll(nameColumn);
+
+        table.getSelectionModel().getSelectedItems().addListener((ListChangeListener<TreeItem<String>>) c -> {
+            while (c.next()) {
+                rt_37429_items_change_count++;
+            }
+        });
+        table.getSelectionModel().getSelectedCells().addListener((ListChangeListener<TreeTablePosition<String, ?>>) c -> {
+            while (c.next()) {
+                rt_37429_cells_change_count++;
+            }
+        });
+
+        StageLoader sl = new StageLoader(table);
+
+        assertEquals(0, rt_37429_items_change_count);
+        assertEquals(0, rt_37429_cells_change_count);
+
+        table.getSelectionModel().select(0);
+        assertEquals(1, rt_37429_items_change_count);
+        assertEquals(1, rt_37429_cells_change_count);
+
+        table.getSortOrder().add(nameColumn);
+        assertEquals(1, rt_37429_items_change_count);
+        assertEquals(1, rt_37429_cells_change_count);
+
+        nameColumn.setSortType(TreeTableColumn.SortType.DESCENDING);
+        assertEquals(1, rt_37429_items_change_count);
+        assertEquals(2, rt_37429_cells_change_count);
+
+        nameColumn.setSortType(TreeTableColumn.SortType.ASCENDING);
+        assertEquals(1, rt_37429_items_change_count);
+        assertEquals(3, rt_37429_cells_change_count);
+
+        sl.dispose();
+    }
+
+    private int rt_37538_count = 0;
+    @Test public void test_rt_37538_noCNextCall() {
+        test_rt_37538(false, false);
+    }
+
+    @Test public void test_rt_37538_callCNextOnce() {
+        test_rt_37538(true, false);
+    }
+
+    @Test public void test_rt_37538_callCNextInLoop() {
+        test_rt_37538(false, true);
+    }
+
+    private void test_rt_37538(boolean callCNextOnce, boolean callCNextInLoop) {
+        // create table with a bunch of rows and 1 column...
+        TreeItem<Integer> root = new TreeItem<>(0);
+        root.setExpanded(true);
+        for (int i = 1; i <= 50; i++) {
+            root.getChildren().add(new TreeItem<>(i));
+        }
+
+        final TreeTableColumn<Integer, Integer> column = new TreeTableColumn<>("Column");
+        column.setCellValueFactory( cdf -> new ReadOnlyObjectWrapper<Integer>(cdf.getValue().getValue()));
+
+        final TreeTableView<Integer> table = new TreeTableView<>(root);
+        table.getColumns().add( column );
+
+        table.getSelectionModel().getSelectedItems().addListener((ListChangeListener.Change<? extends TreeItem<Integer>> c) -> {
+            if (callCNextOnce) {
+                c.next();
+            } else if (callCNextInLoop) {
+                while (c.next()) {
+                    // no-op
+                }
+            }
+
+            if (rt_37538_count >= 1) {
+                Thread.dumpStack();
+                fail("This method should only be called once");
+            }
+
+            rt_37538_count++;
+        });
+
+        StageLoader sl = new StageLoader(table);
+        assertEquals(0, rt_37538_count);
+        table.getSelectionModel().select(0);
+        assertEquals(1, rt_37538_count);
         sl.dispose();
     }
 }

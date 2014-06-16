@@ -188,7 +188,7 @@ public class MacAppStoreBundler extends MacBaseInstallerBundler {
             ProcessBuilder pb;
 
             // create the final pkg file
-            File finalPKG = new File(outdir, INSTALLER_NAME.fetchFrom(p)+".pkg");
+            File finalPKG = new File(outdir, INSTALLER_NAME.fetchFrom(p)+"-MacAppStore.pkg");
             outdir.mkdirs();
 
             pb = new ProcessBuilder("productbuild",
@@ -230,7 +230,9 @@ public class MacAppStoreBundler extends MacBaseInstallerBundler {
         if (getConfig_Inherit_Entitlements(params) != null) {
             getConfig_Inherit_Entitlements(params).delete();
         }
-        APP_BUNDLER.fetchFrom(params).cleanupConfigFiles(params);
+        if (MAC_APP_IMAGE.fetchFrom(params) == null) {
+            APP_BUNDLER.fetchFrom(params).cleanupConfigFiles(params);
+        }
     }
 
     private File getConfig_Entitlements(Map<String, ? super Object> params) {
@@ -324,7 +326,7 @@ public class MacAppStoreBundler extends MacBaseInstallerBundler {
 
             //run basic validation to ensure requirements are met
             //we are not interested in return code, only possible exception
-            APP_BUNDLER.fetchFrom(params).doValidate(params);
+            validateAppImageAndBundeler(params);
 
             // make sure we have settings for signatures
             if (MAC_APP_STORE_APP_SIGNING_KEY.fetchFrom(params) == null) {

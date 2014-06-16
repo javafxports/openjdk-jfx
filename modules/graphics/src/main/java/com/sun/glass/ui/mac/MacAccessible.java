@@ -37,10 +37,10 @@ import javafx.geometry.Point2D;
 import javafx.geometry.Orientation;
 import javafx.scene.Scene;
 import javafx.scene.Node;
-import javafx.scene.accessibility.Accessible;
-import javafx.scene.accessibility.Action;
-import javafx.scene.accessibility.Attribute;
-import javafx.scene.accessibility.Role;
+import com.sun.javafx.scene.accessibility.Accessible;
+import com.sun.javafx.scene.accessibility.Action;
+import com.sun.javafx.scene.accessibility.Attribute;
+import com.sun.javafx.scene.accessibility.Role;
 import javafx.scene.input.KeyCharacterCombination;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
@@ -49,7 +49,7 @@ import javafx.scene.text.Font;
 import com.sun.glass.ui.PlatformAccessible;
 import com.sun.glass.ui.Screen;
 import com.sun.glass.ui.View;
-import static javafx.scene.accessibility.Attribute.*;
+import static com.sun.javafx.scene.accessibility.Attribute.*;
 
 /**
  * Native Interface - Implements NSAccessibility Protocol
@@ -60,28 +60,28 @@ final class MacAccessible extends PlatformAccessible {
     private native static void _initIDs();
     private native static boolean _initEnum(String enumName);
     static {
-        _initIDs();
-        if (!_initEnum("MacAttribute")) {
-            System.err.println("Fail linking MacAttribute");
-        }
-        if (!_initEnum("MacAction")) {
-            System.err.println("Fail linking MacAction");
-        }
-        if (!_initEnum("MacRole")) {
-            System.err.println("Fail linking MacRole");
-        }
-        if (!_initEnum("MacSubrole")) {
-            System.err.println("Fail linking MacSubrole");
-        }
-        if (!_initEnum("MacNotification")) {
-            System.err.println("Fail linking MacNotification");
-        }
-        if (!_initEnum("MacOrientation")) {
-            System.err.println("Fail linking MacOrientation");
-        }
-        if (!_initEnum("MacText")) {
-            System.err.println("Fail linking MacText");
-        }
+//        _initIDs();
+//        if (!_initEnum("MacAttribute")) {
+//            System.err.println("Fail linking MacAttribute");
+//        }
+//        if (!_initEnum("MacAction")) {
+//            System.err.println("Fail linking MacAction");
+//        }
+//        if (!_initEnum("MacRole")) {
+//            System.err.println("Fail linking MacRole");
+//        }
+//        if (!_initEnum("MacSubrole")) {
+//            System.err.println("Fail linking MacSubrole");
+//        }
+//        if (!_initEnum("MacNotification")) {
+//            System.err.println("Fail linking MacNotification");
+//        }
+//        if (!_initEnum("MacOrientation")) {
+//            System.err.println("Fail linking MacOrientation");
+//        }
+//        if (!_initEnum("MacText")) {
+//            System.err.println("Fail linking MacText");
+//        }
     }
 
     static enum MacAttribute {
@@ -255,20 +255,12 @@ final class MacAccessible extends PlatformAccessible {
             null,
             null
         ),
-        /* ProgressIndicator can be either a ProgressIndicatorRole or a BusyIndicatorRole (Based on INDETERMINATE) */
         NSAccessibilityProgressIndicatorRole(Role.PROGRESS_INDICATOR,
             new MacAttribute[] {
                 MacAttribute.NSAccessibilityOrientationAttribute,
                 MacAttribute.NSAccessibilityValueAttribute,
                 MacAttribute.NSAccessibilityMaxValueAttribute,
                 MacAttribute.NSAccessibilityMinValueAttribute,
-            },
-            null
-        ),
-        NSAccessibilityBusyIndicatorRole(Role.PROGRESS_INDICATOR,
-            new MacAttribute[] {
-                MacAttribute.NSAccessibilityOrientationAttribute,
-                MacAttribute.NSAccessibilityValueAttribute,
             },
             null
         ),
@@ -593,7 +585,8 @@ final class MacAccessible extends PlatformAccessible {
         ;long ptr; /* Initialized natively - treat as final */
     }
 
-    /* Do not access the following lists directly from the Mac enums.
+    /* 
+     * Do not access the following lists directly from the Mac enums.
      * It can cause the static initialization to happen in an unexpected order.
      */
     static final List<MacAttribute> baseAttributes = Arrays.asList(
@@ -657,10 +650,11 @@ final class MacAccessible extends PlatformAccessible {
     }
 
     static MacAccessible createAccessible(Accessible accessible) {
-        if (accessible == null) return null;
-        MacAccessible macAccessible = new MacAccessible(accessible);
-        if (macAccessible.peer == 0L) return null;
-        return macAccessible;
+//        if (accessible == null) return null;
+//        MacAccessible macAccessible = new MacAccessible(accessible);
+//        if (macAccessible.peer == 0L) return null;
+//        return macAccessible;
+        return null;
     }
 
     @Override
@@ -700,12 +694,13 @@ final class MacAccessible extends PlatformAccessible {
                 Node node = (Node)getAttribute(FOCUS_NODE);
                 View view = getView();
                 if (node == null && view == null) {
-                    /* The transientFocusContainer resigns focus.
+                    /* 
+                     * The transientFocusContainer resigns focus.
                      * Delegate to the scene.
                      */
                     Scene scene = (Scene)getAttribute(SCENE);
                     if (scene != null) {
-                        Accessible acc = scene.getAccessible();
+                        Accessible acc = null;//scene.getAccessible();
                         if (acc != null) {
                             node = (Node)acc.getAttribute(FOCUS_NODE);
                         }
@@ -714,10 +709,11 @@ final class MacAccessible extends PlatformAccessible {
 
                 long id = 0L;
                 if (node != null) {
-                    Node item = (Node)node.getAccessible().getAttribute(FOCUS_ITEM);
+                    Node item = null;//(Node)node.getAccessible().getAttribute(FOCUS_ITEM);
                     id = item != null ? getAccessible(item) : getAccessible(node);
                 } else {
-                    /* No focused element. Send the notification to the scene itself.
+                    /* 
+                     * No focused element. Send the notification to the scene itself.
                      * Note, the view is NULL when the FOCUS_NODE notification is sent
                      * by the transientFocusContainer.
                      */
@@ -761,11 +757,12 @@ final class MacAccessible extends PlatformAccessible {
                     } else {
                         macNotification = MacNotification.AXMenuClosed;
 
-                        /* When a submenu closes the focus is returned to the main
+                        /* 
+                         * When a submenu closes the focus is returned to the main
                          * window, as opposite of the previous menu.
                          * The work around is to look for a previous menu
                          * and send a close and open event for it.
-                         * */
+                         */
                         Node menuItemOwner = (Node)getAttribute(MENU_FOR);
                         long menu = getAccessible(getContainerNode(menuItemOwner, Role.CONTEXT_MENU));
                         if (menu != 0) {
@@ -776,6 +773,9 @@ final class MacAccessible extends PlatformAccessible {
                 }
                 break;
             }
+            case PARENT:
+                ignoreInnerText = null;
+                break;
             default:
                 macNotification = MacNotification.NSAccessibilityValueChangedNotification;
         }
@@ -794,7 +794,7 @@ final class MacAccessible extends PlatformAccessible {
     @SuppressWarnings("deprecation")
     private View getRootView(Scene scene) {
         if (scene == null) return null;
-        Accessible acc = scene.getAccessible();
+        Accessible acc = null;//scene.getAccessible();
         if (acc == null) return null;
         MacAccessible macAcc = (MacAccessible)acc.impl_getDelegate();
         if (macAcc == null || macAcc.isDisposed()) return null;
@@ -828,6 +828,40 @@ final class MacAccessible extends PlatformAccessible {
             inSlider = getContainerNode(Role.SLIDER) != null;
         }
         return inSlider;
+    }
+
+    Boolean ignoreInnerText;
+    boolean ignoreInnerText() {
+        if (ignoreInnerText != null) return ignoreInnerText;
+        /* 
+         * JavaFX controls are implemented by the skin by adding new nodes.
+         * In accessibility these nodes sometimes duplicate the data in the
+         * control. For example, a Label is implemented using a Text, creating a
+         * AXStaticText inside an AXStaticText. In order to  improve accessibility
+         * navigation to following code ignores these inner text for the most 
+         * common cases.
+         */
+        Role role = (Role)getAttribute(ROLE);
+        ignoreInnerText = false;
+        if (role == Role.TEXT) {
+            Node parent = (Node)getAttribute(PARENT);
+            if (parent == null) return ignoreInnerText;
+            Role parentRole = null;//(Role)parent.getAccessible().getAttribute(ROLE);
+            if (parentRole == null) return ignoreInnerText;
+            switch (parentRole) {
+                case BUTTON:
+                case TOGGLE_BUTTON:
+                case CHECKBOX:
+                case RADIO_BUTTON:
+                case COMBOBOX:
+                case TEXT:
+                case HYPERLINK:
+                case TAB_ITEM:
+                    ignoreInnerText = true;
+                default:
+            }
+        }
+        return ignoreInnerText;
     }
 
     private int getMenuItemCmdGlyph(KeyCode code) {
@@ -886,14 +920,7 @@ final class MacAccessible extends PlatformAccessible {
                 return MacRole.NSAccessibilityPopUpButtonRole;
             }
         }
-        MacRole macRole = MacRole.getRole(role);
-        if (macRole == MacRole.NSAccessibilityProgressIndicatorRole) {
-            Boolean state = (Boolean)getAttribute(INDETERMINATE);
-            if (Boolean.TRUE.equals(state)) {
-                macRole = MacRole.NSAccessibilityBusyIndicatorRole;
-            }
-        }
-        return macRole;
+        return MacRole.getRole(role);
     }
 
     private Bounds flipBounds(Bounds bounds) {
@@ -971,6 +998,13 @@ final class MacAccessible extends PlatformAccessible {
                 return count != null ? count : 1;
             }
             case NSAccessibilityChildrenAttribute: {
+                /*
+                 * The way VoiceOver identifies a menu item as having a sub menu is
+                 * by detecting an AXMenu child. It is important that the AXMenu
+                 * child be the actual sub menu so that navigation between menus
+                 * work.
+                 * Note: strictly the context menu is a child of the PopWindow.
+                 */
                 if (getAttribute(ROLE) == Role.MENU_ITEM) {
                     @SuppressWarnings("unchecked")
                     ObservableList<Node> children = (ObservableList<Node>)getAttribute(CHILDREN);
@@ -1135,26 +1169,26 @@ final class MacAccessible extends PlatformAccessible {
                     if (role == Role.CONTEXT_MENU) {
                         Scene scene = (Scene)getAttribute(SCENE);
                         if (scene != null) {
-                            Accessible acc = scene.getAccessible();
-                            if (acc != null) {
-                                Node focus = (Node)acc.getAttribute(FOCUS_NODE);
-                                if (focus != null && focus.getAccessible().getAttribute(ROLE) == Role.MENU_ITEM) {
-                                    long[] result = {getAccessible(focus)};
-                                    return attr.map.apply(result);
-                                } else {
-                                    return null;
-                                }
-                            }
+//                            Accessible acc = scene.getAccessible();
+//                            if (acc != null) {
+//                                Node focus = (Node)acc.getAttribute(FOCUS_NODE);
+//                                if (focus != null && focus.getAccessible().getAttribute(ROLE) == Role.MENU_ITEM) {
+//                                    long[] result = {getAccessible(focus)};
+//                                    return attr.map.apply(result);
+//                                } else {
+//                                    return null;
+//                                }
+//                            }
                         }
                     }
                     if (role == Role.MENU_BAR) {
                         Node focus = (Node)getAttribute(FOCUS_NODE);
-                        if (focus != null && focus.getAccessible().getAttribute(ROLE) == Role.MENU_ITEM) {
-                            long[] result = {getAccessible(focus)};
-                            return attr.map.apply(result);
-                        } else {
-                            return null;
-                        }
+//                        if (focus != null && focus.getAccessible().getAttribute(ROLE) == Role.MENU_ITEM) {
+//                            long[] result = {getAccessible(focus)};
+//                            return attr.map.apply(result);
+//                        } else {
+//                            return null;
+//                        }
                     }
                     return null;
                 }
@@ -1249,9 +1283,9 @@ final class MacAccessible extends PlatformAccessible {
                     if (role == Role.CONTEXT_MENU) {
                         Node menuItem = (Node)getAttribute(MENU_FOR);
                         if (menuItem != null) {
-                            if (menuItem.getAccessible().getAttribute(ROLE) == Role.MENU_ITEM) {
-                                result = menuItem;
-                            }
+//                            if (menuItem.getAccessible().getAttribute(ROLE) == Role.MENU_ITEM) {
+//                                result = menuItem;
+//                            }
                         }
                     }
                     result = getAccessible((Node)result);
@@ -1293,6 +1327,16 @@ final class MacAccessible extends PlatformAccessible {
                 result = flipBounds((Bounds)result);
                 break;
             }
+            case NSAccessibilityMaxValueAttribute: {
+                /* 
+                 * VoiceOver reports 'Indeterminate Progress Indicator' when
+                 * the max value is not specified.
+                 */
+                if (Boolean.TRUE.equals(getAttribute(INDETERMINATE))) {
+                    return null;
+                }
+                break;
+            }
             case NSAccessibilityTitleAttribute: {
                 /*
                  * Voice over sends title attributes in unexpected cases.
@@ -1313,17 +1357,17 @@ final class MacAccessible extends PlatformAccessible {
                          */
                         Node parent = (Node)getAttribute(PARENT);
                         if (parent == null) return null;
-                        Accessible acc = parent.getAccessible();
-                        if (acc.getAttribute(ROLE) == Role.TREE_TABLE_ITEM) {
-                            Stream<Node> children = ((List<Node>)acc.getAttribute(CHILDREN)).stream();
-
-                            result = children.map(n -> n.getAccessible())
-                                             .filter(a -> a.getAttribute(ROLE) == Role.TREE_TABLE_CELL)
-                                             .map(a -> (String)a.getAttribute(TITLE))
-                                             .filter(t -> t != null && !t.isEmpty()) //Consider reporting empty cells as "(blank)"
-                                             .reduce((s1, s2) -> s1 + " " + s2)
-                                             .orElse("");
-                        }
+//                        Accessible acc = parent.getAccessible();
+//                        if (acc.getAttribute(ROLE) == Role.TREE_TABLE_ITEM) {
+//                            Stream<Node> children = ((List<Node>)acc.getAttribute(CHILDREN)).stream();
+//
+//                            result = children.map(n -> n.getAccessible())
+//                                             .filter(a -> a.getAttribute(ROLE) == Role.TREE_TABLE_CELL)
+//                                             .map(a -> (String)a.getAttribute(TITLE))
+//                                             .filter(t -> t != null && !t.isEmpty()) //Consider reporting empty cells as "(blank)"
+//                                             .reduce((s1, s2) -> s1 + " " + s2)
+//                                             .orElse("");
+//                        }
                         break;
                     }
                     default:
@@ -1523,16 +1567,7 @@ final class MacAccessible extends PlatformAccessible {
     }
 
     long accessibilityIndexOfChild(long child) {
-        //TODO this method might not be necessary
-        ObservableList<Node> children = (ObservableList<Node>)getAttribute(CHILDREN);
-        if (children != null) {
-            for (int i = 0; i < children.size(); i++) {
-                Node node = children.get(i);
-                if (child == getAccessible(node)) {
-                    return i;
-                }
-            }
-        }
+        /* Forward to native code */
         return -1;
     }
 
@@ -1741,7 +1776,7 @@ final class MacAccessible extends PlatformAccessible {
         Node node = (Node)getAttribute(FOCUS_NODE);
         if (node == null) return 0L;
 
-        Node item = (Node)node.getAccessible().getAttribute(FOCUS_ITEM);
+        Node item = null;//(Node)node.getAccessible().getAttribute(FOCUS_ITEM);
         if (item != null) return getAccessible(item);
         return getAccessible(node);
     }
@@ -1749,7 +1784,8 @@ final class MacAccessible extends PlatformAccessible {
     boolean accessibilityIsIgnored() {
         if (isIgnored()) return true;
         if (isInSlider()) {
-            /* Ignoring the children within the slider, otherwise VoiceOver
+            /* 
+             * Ignoring the children within the slider, otherwise VoiceOver
              * reports 'multiple indicator slider' instead of the value.
              */
             return true;
@@ -1757,6 +1793,9 @@ final class MacAccessible extends PlatformAccessible {
         if (isInMenu()) {
             Role role = (Role)getAttribute(ROLE);
             return role != Role.CONTEXT_MENU && role != Role.MENU_ITEM && role != Role.MENU_BAR;
+        }
+        if (ignoreInnerText()) {
+            return true;
         }
         return false;
     }

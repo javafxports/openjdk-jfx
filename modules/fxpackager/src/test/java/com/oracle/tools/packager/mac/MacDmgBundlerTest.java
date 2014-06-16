@@ -50,9 +50,12 @@ import java.util.TreeMap;
 
 import static com.oracle.tools.packager.StandardBundlerParam.*;
 import static com.oracle.tools.packager.mac.MacAppBundler.*;
+import static com.oracle.tools.packager.mac.MacBaseInstallerBundler.MAC_APP_IMAGE;
 import static org.junit.Assert.*;
 
 public class MacDmgBundlerTest {
+
+    static final int MIN_SIZE=0x100000; // 1MiB
 
     static File tmpBase;
     static File workDir;
@@ -72,6 +75,7 @@ public class MacDmgBundlerTest {
         Assume.assumeTrue(jre.endsWith("/contents/home/jre") || jre.endsWith("/contents/home/jre"));
 
         Log.setLogger(new Log.Logger(true));
+        Log.setDebug(true);
 
         retain = Boolean.parseBoolean(System.getProperty("RETAIN_PACKAGER_TESTS"));
 
@@ -148,7 +152,7 @@ public class MacDmgBundlerTest {
                 new RelativeFileSet(fakeMainJar.getParentFile(),
                         new HashSet<>(Arrays.asList(fakeMainJar)))
         );
-        bundleParams.put(MAIN_JAR_CLASSPATH.getID(), fakeMainJar.toString());
+        bundleParams.put(CLASSPATH.getID(), fakeMainJar.toString());
         bundleParams.put(APP_RESOURCES.getID(), new RelativeFileSet(appResourcesDir, appResources));
         bundleParams.put(LICENSE_FILE.getID(), Arrays.asList("LICENSE", "LICENSE2"));
         bundleParams.put(VERBOSE.getID(), true);
@@ -160,6 +164,7 @@ public class MacDmgBundlerTest {
         System.err.println("Bundle at - " + result);
         assertNotNull(result);
         assertTrue(result.exists());
+        assertTrue(result.length() > MIN_SIZE);
     }
 
     /**
@@ -188,6 +193,84 @@ public class MacDmgBundlerTest {
         System.err.println("Bundle at - " + output);
         assertNotNull(output);
         assertTrue(output.exists());
+        assertTrue(output.length() > MIN_SIZE);
+    }
+
+    /**
+     * Create a DMG with an external app rather than a self-created one.
+     */
+    @Test
+    public void externalApp() throws IOException, ConfigException, UnsupportedPlatformException {
+        // only run with full tests
+        Assume.assumeTrue(Boolean.parseBoolean(System.getProperty("FULL_TEST")));
+
+        // first create the external app
+        Bundler appBundler = new MacAppBundler();
+
+        Map<String, Object> appBundleParams = new HashMap<>();
+
+        appBundleParams.put(BUILD_ROOT.getID(), tmpBase);
+
+        appBundleParams.put(APP_RESOURCES.getID(), new RelativeFileSet(appResourcesDir, appResources));
+        appBundleParams.put(APP_NAME.getID(), "External APP DMG Test");
+        appBundleParams.put(IDENTIFIER.getID(), "com.example.dmg.external");
+        appBundleParams.put(VERBOSE.getID(), true);
+
+        appBundler.validate(appBundleParams);
+        File appOutput = appBundler.execute(appBundleParams, new File(workDir, "DMGExternalApp1"));
+        System.err.println("App at - " + appOutput);
+        assertNotNull(appOutput);
+        assertTrue(appOutput.exists());
+
+        // now create the DMG referencing this external app
+        Bundler dmgBundler = new MacDmgBundler();
+
+        Map<String, Object> dmgBundleParams = new HashMap<>();
+
+        dmgBundleParams.put(BUILD_ROOT.getID(), tmpBase);
+
+        dmgBundleParams.put(MAC_APP_IMAGE.getID(), appOutput);
+        dmgBundleParams.put(APP_NAME.getID(), "External APP DMG Test");
+        dmgBundleParams.put(IDENTIFIER.getID(), "com.example.dmg.external");
+
+        dmgBundleParams.put(VERBOSE.getID(), true);
+
+        dmgBundler.validate(dmgBundleParams);
+        File dmgOutput = dmgBundler.execute(dmgBundleParams, new File(workDir, "DMGExternalApp2"));
+        System.err.println(".dmg at - " + dmgOutput);
+        assertNotNull(dmgOutput);
+        assertTrue(dmgOutput.exists());
+        assertTrue(dmgOutput.length() > MIN_SIZE);
+    }
+
+    @Test(expected = ConfigException.class)
+    public void externanNoAppName() throws ConfigException, UnsupportedPlatformException {
+        Bundler dmgBundler = new MacDmgBundler();
+
+        Map<String, Object> dmgBundleParams = new HashMap<>();
+
+        dmgBundleParams.put(BUILD_ROOT.getID(), tmpBase);
+
+        dmgBundleParams.put(MAC_APP_IMAGE.getID(), ".");
+        dmgBundleParams.put(IDENTIFIER.getID(), "net.example.bogus");
+        dmgBundleParams.put(VERBOSE.getID(), true);
+
+        dmgBundler.validate(dmgBundleParams);
+    }
+
+    @Test(expected = ConfigException.class)
+    public void externanNoID() throws ConfigException, UnsupportedPlatformException {
+        Bundler dmgBundler = new MacDmgBundler();
+
+        Map<String, Object> dmgBundleParams = new HashMap<>();
+
+        dmgBundleParams.put(BUILD_ROOT.getID(), tmpBase);
+
+        dmgBundleParams.put(MAC_APP_IMAGE.getID(), ".");
+        dmgBundleParams.put(APP_NAME.getID(), "Bogus App");
+        dmgBundleParams.put(VERBOSE.getID(), true);
+
+        dmgBundler.validate(dmgBundleParams);
     }
 
     @Test(expected = ConfigException.class)
@@ -223,7 +306,7 @@ public class MacDmgBundlerTest {
         bundleParams.put(MAC_RUNTIME.getID(), System.getProperty("java.home"));
         bundleParams.put(MAIN_CLASS.getID(), "hello.TestPackager");
         bundleParams.put(MAIN_JAR.getID(), "mainApp.jar");
-        bundleParams.put(MAIN_JAR_CLASSPATH.getID(), "mainApp.jar");
+        bundleParams.put(CLASSPATH.getID(), "mainApp.jar");
         bundleParams.put(PREFERENCES_ID.getID(), "everything.preferences.id");
         bundleParams.put(USER_JVM_OPTIONS.getID(), "-Xmx=256M\n");
         bundleParams.put(VERSION.getID(), "1.2.3.4");
@@ -267,5 +350,6 @@ public class MacDmgBundlerTest {
         System.err.println("Bundle at - " + result);
         assertNotNull(result);
         assertTrue(result.exists());
+        assertTrue(result.length() > MIN_SIZE);
     }
 }

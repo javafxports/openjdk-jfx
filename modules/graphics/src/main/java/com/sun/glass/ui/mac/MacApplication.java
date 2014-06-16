@@ -40,7 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javafx.scene.accessibility.Accessible;
+import com.sun.javafx.scene.accessibility.Accessible;
 
 final class MacApplication extends Application implements InvokeLaterDispatcher.InvokeLaterSubmitter {
 
@@ -332,4 +332,7 @@ final class MacApplication extends Application implements InvokeLaterDispatcher.
         }
         return baseDirectory + File.separator + name + File.separator;
     }
+
+    @Override
+    protected native int _getKeyCodeForChar(char c);
 }

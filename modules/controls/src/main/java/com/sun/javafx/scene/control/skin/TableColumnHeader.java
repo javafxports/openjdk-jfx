@@ -41,8 +41,8 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
-import javafx.scene.accessibility.Attribute;
-import javafx.scene.accessibility.Role;
+//import javafx.scene.accessibility.Attribute;
+//import javafx.scene.accessibility.Role;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
@@ -512,13 +512,6 @@ public class TableColumnHeader extends Region {
         label.setText(column.getText());
         label.setGraphic(column.getGraphic());
         label.setVisible(column.isVisible());
-
-        label.fontProperty().addListener((o, old, newValue) -> {
-            // The font has changed (probably due to CSS being applied), so we
-            // need to re-run the column resizing algorithm to ensure columns
-            // fit nicely based on their content and their header
-            doColumnAutoSize(column, 30);
-        });
 
         // ---- container for the sort arrow (which is not supported on embedded
         // platforms)
@@ -1031,15 +1024,15 @@ public class TableColumnHeader extends Region {
         return getClassCssMetaData();
     }
 
-    @Override
-    public Object accGetAttribute(Attribute attribute, Object... parameters) {
-        switch (attribute) {
-            /* Having TableColumn role parented by TableColumn causes VoiceOver to be unhappy */
-            case ROLE: return column != null ? Role.TABLE_COLUMN : super.accGetAttribute(attribute, parameters);
-            case INDEX: return getIndex(column);
-            case TITLE: return column != null ? column.getText() : null;
-            default: return super.accGetAttribute(attribute, parameters);
-        }
-    }
+//    @Override
+//    public Object accGetAttribute(Attribute attribute, Object... parameters) {
+//        switch (attribute) {
+//            /* Having TableColumn role parented by TableColumn causes VoiceOver to be unhappy */
+//            case ROLE: return column != null ? Role.TABLE_COLUMN : super.accGetAttribute(attribute, parameters);
+//            case INDEX: return getIndex(column);
+//            case TITLE: return column != null ? column.getText() : null;
+//            default: return super.accGetAttribute(attribute, parameters);
+//        }
+//    }
 
 }

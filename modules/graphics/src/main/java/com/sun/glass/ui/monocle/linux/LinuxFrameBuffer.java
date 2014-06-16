@@ -49,7 +49,7 @@ public class LinuxFrameBuffer {
     public LinuxFrameBuffer(String devNode) throws IOException {
         system = LinuxSystem.getLinuxSystem();
         FBIO_WAITFORVSYNC = system.IOW('F', 0x20, 4);
-        fd = system.open("/dev/fb0", LinuxSystem.O_RDWR);
+        fd = system.open(devNode, LinuxSystem.O_RDWR);
         if (fd == -1) {
             throw new IOException(system.getErrorMessage());
         }
@@ -93,6 +93,16 @@ public class LinuxFrameBuffer {
             offsetY1 = offsetY2 = offsetY;
             state = 1;
         }
+    }
+
+    public int getNativeOffset() {
+        int nativeOffsetX = screenInfo.getOffsetX(screenInfo.p);
+        int nativeOffsetY = screenInfo.getOffsetY(screenInfo.p);
+        if (system.ioctl(fd, LinuxSystem.FBIOGET_VSCREENINFO, screenInfo.p) == 0) {
+            nativeOffsetX = screenInfo.getOffsetX(screenInfo.p);
+            nativeOffsetY = screenInfo.getOffsetY(screenInfo.p);
+        }
+        return (nativeOffsetY * width) * byteDepth;
     }
 
     public int getNextAddress() {

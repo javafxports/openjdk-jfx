@@ -46,6 +46,7 @@ import static org.junit.Assert.assertEquals;
 
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -1935,6 +1936,104 @@ public class TreeViewTest {
         assertEquals(1, rt_37395_item_addCount);
         assertEquals(0, rt_37395_item_permutationCount);
 
+        sl.dispose();
+    }
+
+    @Test public void test_rt_37502() {
+        final TreeView<Long> tree = new TreeView<>(new NumberTreeItem(1));
+        tree.setCellFactory(new Callback<TreeView<Long>, TreeCell<Long>>() {
+            @Override
+            public TreeCell<Long> call(TreeView<Long> param) {
+                return new TreeCell<Long>() {
+                    @Override
+                    protected void updateItem(Long item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (!empty) {
+                            setText(item != null ? String.valueOf(item) : "");
+                        } else{
+                            setText(null);
+                        }
+                    }
+                };
+            }
+        });
+
+        StageLoader sl = new StageLoader(tree);
+
+        tree.getSelectionModel().select(0);
+        tree.getRoot().setExpanded(true);
+        Toolkit.getToolkit().firePulse();
+
+        sl.dispose();
+    }
+
+    private static class NumberTreeItem extends TreeItem<Long>{
+        private boolean loaded = false;
+
+        private NumberTreeItem(long value) {
+            super(value);
+        }
+
+        @Override public boolean isLeaf() {
+            return false;
+        }
+
+        @Override public ObservableList<TreeItem<Long>> getChildren() {
+            if(!loaded){
+                final ObservableList<TreeItem<Long>> children =  super.getChildren();
+                for (int i = 0; i < 10; i++) {
+                    children.add(new NumberTreeItem(10 * getValue() + i));
+                }
+                loaded = true;
+            }
+            return super.getChildren();
+        }
+    }
+
+    private int rt_37538_count = 0;
+    @Test public void test_rt_37538_noCNextCall() {
+        test_rt_37538(false, false);
+    }
+
+    @Test public void test_rt_37538_callCNextOnce() {
+        test_rt_37538(true, false);
+    }
+
+    @Test public void test_rt_37538_callCNextInLoop() {
+        test_rt_37538(false, true);
+    }
+
+    private void test_rt_37538(boolean callCNextOnce, boolean callCNextInLoop) {
+        // create table with a bunch of rows and 1 column...
+        TreeItem<Integer> root = new TreeItem<>(0);
+        root.setExpanded(true);
+        for (int i = 1; i <= 50; i++) {
+            root.getChildren().add(new TreeItem<>(i));
+        }
+
+        final TreeView<Integer> tree = new TreeView<>(root);
+
+        tree.getSelectionModel().getSelectedItems().addListener((ListChangeListener.Change<? extends TreeItem<Integer>> c) -> {
+            if (callCNextOnce) {
+                c.next();
+            } else if (callCNextInLoop) {
+                while (c.next()) {
+                    // no-op
+                }
+            }
+
+            if (rt_37538_count >= 1) {
+                Thread.dumpStack();
+                fail("This method should only be called once");
+            }
+
+            rt_37538_count++;
+        });
+
+        StageLoader sl = new StageLoader(tree);
+        assertEquals(0, rt_37538_count);
+        tree.getSelectionModel().select(0);
+        assertEquals(1, rt_37538_count);
         sl.dispose();
     }
 }
