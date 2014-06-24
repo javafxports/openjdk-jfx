@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -135,6 +135,18 @@ public class FilteredListTest {
         lo.checkAddRemove(0, filtered, Arrays.asList(createPerson("B")), 1, 1);
 
         assertEquals(Arrays.asList(createPerson("AA")), filtered);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testNullPredicate() {
+        filteredList.setPredicate(null);
+    }
+
+    @Test
+    public void testSingleArgConstructor() {
+        filteredList = new FilteredList<>(list);
+        assertEquals(list.size(), filteredList.size());
+        assertEquals(list, filteredList);
     }
 
     private Person createPerson(String name) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@ package com.sun.javafx.tk;
 
 import javafx.collections.ObservableList;
 import javafx.event.EventType;
-//import javafx.scene.accessibility.Accessible;
+import javafx.scene.accessibility.Accessible;
 import javafx.scene.input.*;
 
 /**
@@ -118,5 +118,5 @@ public interface TKSceneListener {
 
     public void touchEventEnd();
 
-//    public Accessible getSceneAccessible();
+    public Accessible getSceneAccessible();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
 import javafx.scene.Node;
-//import javafx.scene.accessibility.Attribute;
+import javafx.scene.accessibility.Attribute;
 import javafx.scene.control.ResizeFeaturesBase;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
@@ -290,25 +290,25 @@ public class TableViewSkin<T> extends TableViewSkinBase<T, T, TableView<T>, Tabl
         }
     }
     
-//    @Override
-//    public Object accGetAttribute(Attribute attribute, Object... parameters) {
-//        switch (attribute) {
-//            case SELECTED_CELLS: {
-//                List<Node> selection = new ArrayList<>();
-//                TableViewSelectionModel<T> sm = getSkinnable().getSelectionModel();
-//                for (TablePosition pos : sm.getSelectedCells()) {
-//                    TableRow<T> row = flow.getPrivateCell(pos.getRow());
-//                    if (row != null) selection.add(row);
-//                }
-//                return FXCollections.observableArrayList(selection);
-//            }
-//            case FOCUS_ITEM: // TableViewSkinBase
-//            case CELL_AT_ROW_COLUMN: // TableViewSkinBase
-//            case COLUMN_AT_INDEX: // TableViewSkinBase
-//            case HEADER: // TableViewSkinBase
-//            default: return super.accGetAttribute(attribute, parameters);
-//        }
-//    }
+    @Override
+    public Object accGetAttribute(Attribute attribute, Object... parameters) {
+        switch (attribute) {
+            case SELECTED_CELLS: {
+                List<Node> selection = new ArrayList<>();
+                TableViewSelectionModel<T> sm = getSkinnable().getSelectionModel();
+                for (TablePosition pos : sm.getSelectedCells()) {
+                    TableRow<T> row = flow.getPrivateCell(pos.getRow());
+                    if (row != null) selection.add(row);
+                }
+                return FXCollections.observableArrayList(selection);
+            }
+            case FOCUS_ITEM: // TableViewSkinBase
+            case CELL_AT_ROW_COLUMN: // TableViewSkinBase
+            case COLUMN_AT_INDEX: // TableViewSkinBase
+            case HEADER: // TableViewSkinBase
+            default: return super.accGetAttribute(attribute, parameters);
+        }
+    }
 
     /***************************************************************************
      *                                                                         *

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,8 +31,8 @@ import com.sun.javafx.scene.control.skin.RadioButtonSkin;
 
 import javafx.beans.value.WritableValue;
 import javafx.css.StyleableProperty;
-//import javafx.scene.accessibility.Attribute;
-//import javafx.scene.accessibility.Role;
+import javafx.scene.accessibility.Attribute;
+import javafx.scene.accessibility.Role;
 
 /**
  * <p>RadioButtons create a series of items where only one item can be
@@ -145,12 +145,12 @@ import javafx.css.StyleableProperty;
      *                                                                         *
      **************************************************************************/
 
-//    /** @treatAsPrivate */
-//    @Override public Object accGetAttribute(Attribute attribute, Object... parameters) {
-//        switch (attribute) {
-//            case ROLE: return Role.RADIO_BUTTON;
-//            case SELECTED: return isSelected();
-//            default: return super.accGetAttribute(attribute, parameters);
-//        }
-//    }
+    /** @treatAsPrivate */
+    @Override public Object accGetAttribute(Attribute attribute, Object... parameters) {
+        switch (attribute) {
+            case ROLE: return Role.RADIO_BUTTON;
+            case SELECTED: return isSelected();
+            default: return super.accGetAttribute(attribute, parameters);
+        }
+    }
 }

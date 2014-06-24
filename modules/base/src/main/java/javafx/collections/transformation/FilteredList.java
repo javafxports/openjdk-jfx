@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,17 +88,17 @@ public final class FilteredList<E> extends TransformationList<E, E>{
      * Elements not matching the predicate will be filtered-out.
      */
     private final ObjectProperty<Predicate<? super E>> predicate =
-            new ObjectPropertyBase<Predicate<? super E>>(ALWAYS_TRUE) {
+            new ObjectPropertyBase<Predicate<? super E>>() {
 
         @Override
         protected void invalidated() {
             if (get() == null) {
                 if (isBound()) {
                     unbind();
-                    set(ALWAYS_TRUE);
-                    throw new IllegalArgumentException("Predicate cannot be null.");
-
                 }
+                set(ALWAYS_TRUE);
+                throw new IllegalArgumentException("Predicate cannot be null.");
+
             }
             refilter();
         }
