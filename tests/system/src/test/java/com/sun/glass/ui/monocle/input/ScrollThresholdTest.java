@@ -26,6 +26,7 @@
 package com.sun.glass.ui.monocle.input;
 
 import com.sun.glass.ui.monocle.input.devices.TestTouchDevice;
+import com.sun.javafx.PlatformUtil;
 import org.junit.*;
 
 /**
@@ -53,6 +54,8 @@ public class ScrollThresholdTest extends ScrollTestBase {
         super.init();
         Assume.assumeTrue(device.getTapRadius() < getScrollThreshold());
         delta = getScrollThreshold() - 1;
+        Assume.assumeTrue(!PlatformUtil.isMac());
+        Assume.assumeTrue(!PlatformUtil.isWindows());
     }
 
     /**
@@ -63,6 +66,7 @@ public class ScrollThresholdTest extends ScrollTestBase {
         pressFirstFinger();
         moveOneFinger(0, -delta , 1, true);
         releaseFirstFinger();
+        tapToStopInertia();
     }
 
     /**
@@ -72,7 +76,8 @@ public class ScrollThresholdTest extends ScrollTestBase {
     @Test
     public void testMoveDownCheckThreshold() throws Exception {
         pressFirstFinger();
-        moveOneFinger(0, delta , 2, true);
+        moveOneFinger(0, delta , 3, true);
         releaseFirstFinger();
+        tapToStopInertia();
     }
 }

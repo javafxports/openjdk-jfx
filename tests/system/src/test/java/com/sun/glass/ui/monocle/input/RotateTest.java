@@ -27,6 +27,7 @@ package com.sun.glass.ui.monocle.input;
 
 import com.sun.glass.ui.monocle.input.devices.TestTouchDevice;
 import com.sun.glass.ui.monocle.input.devices.TestTouchDevices;
+import com.sun.javafx.PlatformUtil;
 import org.junit.*;
 import org.junit.runners.Parameterized;
 
@@ -59,6 +60,8 @@ public class RotateTest extends ParameterizedTestBase {
 
     @Before
     public void init() {
+        Assume.assumeTrue(!PlatformUtil.isMac());
+        Assume.assumeTrue(!PlatformUtil.isWindows());
         //Rotate tests should be run only on platforms that support current feature
         Assume.assumeTrue(Boolean.getBoolean("com.sun.javafx.gestures.rotate"));
         centerX = (int) Math.round(width * 0.5);
@@ -74,7 +77,6 @@ public class RotateTest extends ParameterizedTestBase {
             device.removePoint(p2);
             device.sync();
         }
-        Thread.sleep(2000);
     }
 
     private void updateNewTouchPoint(int angle, int radius, int centerX, int centerY) {
@@ -197,8 +199,14 @@ public class RotateTest extends ParameterizedTestBase {
                     + ", inertia value: false"));
         }
         if (TestLog.countLogContaining("Rotation finished") > 0) {
-            TestLog.waitForLogContaining("Rotation", "inertia value: true");
+            TestLog.waitForLogContainingSubstrings("Rotation", "inertia value: true");
         }
+        TestLog.reset();
+        p2 = device.addPoint(x2, y2);
+        device.sync();
+        device.removePoint(p2);
+        device.sync();
+        TestLog.waitForLogContaining("TouchPoint: RELEASED %d, %d", x2, y2);
     }
 
     private void Rotate(int radius, int x2, int y2, int angleStep,

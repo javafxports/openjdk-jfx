@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -115,7 +115,14 @@ public final class MonocleApplication extends Application {
     @Override
     protected void runLoop(Runnable launchable) {
         runnableProcessor.invokeLater(launchable);
-        Thread t = new Thread(runnableProcessor);
+        long stackSize = AccessController.doPrivileged(
+                (PrivilegedAction<Long>) 
+                        () -> Long.getLong("monocle.stackSize", 0));
+        Thread t = new Thread(
+                new ThreadGroup("Event"),
+                runnableProcessor,
+                "Event Thread",
+                stackSize);
         setEventThread(t);
         t.start();
         shutdownHookThread = new Thread("Monocle shutdown hook") {
@@ -173,11 +180,8 @@ public final class MonocleApplication extends Application {
 
     @Override
     protected void staticCursor_setVisible(boolean visible) {
-        if ((visible && deviceFlags[DEVICE_POINTER] >= 1) ||
-            (!visible && deviceFlags[DEVICE_POINTER] < 1)) {
-                NativeCursor cursor = NativePlatformFactory.getNativePlatform().getCursor();
-                cursor.setVisibility(visible);
-        }
+        NativeCursor cursor = NativePlatformFactory.getNativePlatform().getCursor();
+        cursor.setVisibility(deviceFlags[DEVICE_POINTER] >= 1 ? visible : false);
     }
 
     @Override
