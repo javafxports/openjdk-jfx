@@ -64,6 +64,7 @@ import com.sun.javafx.sg.prism.NGGroup;
 import com.sun.javafx.sg.prism.NGNode;
 import com.sun.javafx.tk.Toolkit;
 import com.sun.javafx.scene.LayoutFlags;
+import javafx.stage.Window;
 
 /**
  * The base class for all nodes that have children in the scene graph.
@@ -359,6 +360,13 @@ public abstract class Parent extends Node {
     }) {
         @Override
         protected void onProposedChange(final List<Node> newNodes, int[] toBeRemoved) {
+            final Scene scene = getScene();
+            if (scene != null) {
+                Window w = scene.getWindow();
+                if (w != null && w.impl_getPeer() != null) {
+                    Toolkit.getToolkit().checkFxUserThread();
+                }
+            }
             geomChanged = false;
 
             long newLength = children.size() + newNodes.size();
@@ -538,7 +546,8 @@ public abstract class Parent extends Node {
      * restored. An {@link IllegalArgumentException} is thrown in this case.
      *
      * <p>
-     * If this {@link Parent} node is attached to a {@link Scene}, then its
+     * If this {@link Parent} node is attached to a {@link Scene} attached to a {@link Window}
+     * that is showning ({@link javafx.stage.Window#isShowing()}), then its
      * list of children must only be modified on the JavaFX Application Thread.
      * An {@link IllegalStateException} is thrown if this restriction is
      * violated.
