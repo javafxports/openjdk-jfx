@@ -53,6 +53,7 @@ import com.sun.prism.CompositeMode;
 import com.sun.prism.Graphics;
 import com.sun.prism.GraphicsPipeline;
 import com.sun.prism.Image;
+import com.sun.prism.MaskTextureGraphics;
 import com.sun.prism.PrinterGraphics;
 import com.sun.prism.RTTexture;
 import com.sun.prism.ResourceFactory;
@@ -218,8 +219,7 @@ public class NGCanvas extends NGNode {
                     oldtex.dispose();
                 }
                 if (init_type == InitType.FILL_WHITE) {
-                    g.setPaint(Color.WHITE);
-                    g.fillRect(0, 0, tw, th);
+                    g.clear(Color.WHITE);
                 }
                 return true;
             } else {
@@ -238,18 +238,14 @@ public class NGCanvas extends NGNode {
                             savedPixelData.restore(g, tw, th);
                             g.setCompositeMode(CompositeMode.SRC_OVER);
                         } else if (init_type == InitType.FILL_WHITE) {
-                            g.setPaint(Color.WHITE);
-                            g.fillRect(0, 0, tw, th);
+                            g.clear(Color.WHITE);
                         }
                         return true;
                     }
                 }
             }
             if (init_type == InitType.CLEAR) {
-                g.setCompositeMode(CompositeMode.CLEAR);
-                g.setTransform(BaseTransform.IDENTITY_TRANSFORM);
-                g.fillRect(0, 0, tw, th);
-                g.setCompositeMode(CompositeMode.SRC_OVER);
+                g.clear();
             }
             return false;
         }
@@ -627,10 +623,9 @@ public class NGCanvas extends NGNode {
     }
 
     private void clearCanvas(int x, int y, int w, int h) {
-        cv.g.setCompositeMode(CompositeMode.SRC);
+        cv.g.setCompositeMode(CompositeMode.CLEAR);
         cv.g.setTransform(BaseTransform.IDENTITY_TRANSFORM);
-        cv.g.setPaint(Color.TRANSPARENT);
-        cv.g.fillRect(x, y, w, h);
+        cv.g.fillQuad(x, y, x+w, y+h);
         cv.g.setCompositeMode(CompositeMode.SRC_OVER);
     }
 
@@ -679,8 +674,14 @@ public class NGCanvas extends NGNode {
                     renderClip(new RoundRectangle2D(clipRect.x, clipRect.y,
                                                     clipRect.width, clipRect.height,
                                                     0, 0));
-                    clipRect = null;
                 }
+            }
+            shapebounds(clippath, TEMP_RECTBOUNDS, BaseTransform.IDENTITY_TRANSFORM);
+            TEMP_RECT.setBounds(TEMP_RECTBOUNDS);
+            if (clipRect == null) {
+                clipRect = new Rectangle(TEMP_RECT);
+            } else {
+                clipRect.intersectWith(TEMP_RECT);
             }
             renderClip(clippath);
         }
@@ -1024,12 +1025,11 @@ public class NGCanvas extends NGNode {
                         tempvalidated = true;
                         dest = temp;
                     } else if (blendmode != Blend.Mode.SRC_OVER) {
-                        clipvalidated = false;
                         temp.validate(cv.g, tw, th);
                         tempvalidated = true;
                         dest = temp;
                     } else {
-                        clipvalidated = tempvalidated = false;
+                        tempvalidated = false;
                         dest = cv;
                     }
                     if (effect != null) {
@@ -1082,8 +1082,24 @@ public class NGCanvas extends NGNode {
                             // assert: dest == temp;
                             compmode = CompositeMode.SRC;
                         }
-                        blendAthruBintoC(temp, Mode.SRC_IN, clip,
-                                         TEMP_RECTBOUNDS, compmode, dest);
+                        if (clipRect != null) {
+                            TEMP_RECTBOUNDS.intersectWith(clipRect);
+                        }
+                        if (!TEMP_RECTBOUNDS.isEmpty()) {
+                            if (dest == cv && cv.g instanceof MaskTextureGraphics) {
+                                MaskTextureGraphics mtg = (MaskTextureGraphics) cv.g;
+                                int dx = (int) Math.floor(TEMP_RECTBOUNDS.getMinX());
+                                int dy = (int) Math.floor(TEMP_RECTBOUNDS.getMinY());
+                                int dw = (int) Math.ceil(TEMP_RECTBOUNDS.getMaxX()) - dx;
+                                int dh = (int) Math.ceil(TEMP_RECTBOUNDS.getMaxY()) - dy;
+                                mtg.drawPixelsMasked(temp.tex, clip.tex,
+                                                     dx, dy, dw, dh,
+                                                     dx, dy, dx, dy);
+                            } else {
+                                blendAthruBintoC(temp, Mode.SRC_IN, clip,
+                                                 TEMP_RECTBOUNDS, compmode, dest);
+                            }
+                        }
                     }
                     if (blendmode != Blend.Mode.SRC_OVER) {
                         // We always use SRC mode here because the results of
@@ -1199,8 +1215,7 @@ public class NGCanvas extends NGNode {
                             gr.drawEllipse(x, y, w, h);
                             break;
                         case CLEAR_RECT:
-                            gr.setPaint(Color.TRANSPARENT);
-                            gr.setCompositeMode(CompositeMode.SRC);
+                            gr.setCompositeMode(CompositeMode.CLEAR);
                             gr.fillRect(x, y, w, h);
                             gr.setCompositeMode(CompositeMode.SRC_OVER);
                             break;

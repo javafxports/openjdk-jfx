@@ -54,8 +54,8 @@ import javafx.css.CssMetaData;
 import javafx.css.Styleable;
 import javafx.css.StyleableBooleanProperty;
 import javafx.css.StyleableProperty;
-import javafx.scene.accessibility.Attribute;
-import javafx.scene.accessibility.Role;
+import javafx.scene.AccessibleAttribute;
+import javafx.scene.AccessibleRole;
 import javafx.util.Callback;
 import javafx.util.StringConverter;
 
@@ -164,6 +164,7 @@ public class DatePicker extends ComboBoxBase<LocalDate> {
     public DatePicker(LocalDate localDate) {
         setValue(localDate);
         getStyleClass().add(DEFAULT_STYLE_CLASS);
+        setRole(AccessibleRole.DATE_PICKER);
         setEditable(true);
     }
 
@@ -547,12 +548,14 @@ public class DatePicker extends ComboBoxBase<LocalDate> {
      *                                                                         *
      **************************************************************************/
 
-    /** @treatAsPrivate */
-    @Override public Object accGetAttribute(Attribute attribute, Object... parameters) {
+    @Override
+    public Object queryAccessibleAttribute(AccessibleAttribute attribute, Object... parameters) {
         switch (attribute) {
-            case ROLE: return Role.DATE_PICKER;
             case DATE: return getValue();
             case TITLE: {
+                String accText = getAccessibleText();
+                if (accText != null && !accText.isEmpty()) return accText;
+
                 LocalDate date = getValue();
                 StringConverter<LocalDate> c = getConverter();
                 if (date != null && c != null) {
@@ -560,7 +563,7 @@ public class DatePicker extends ComboBoxBase<LocalDate> {
                 }
                 return "";
             }
-            default: return super.accGetAttribute(attribute, parameters);
+            default: return super.queryAccessibleAttribute(attribute, parameters);
         }
     }
 

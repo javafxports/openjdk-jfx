@@ -23,15 +23,12 @@
  * questions.
  */
 
-package javafx.scene.accessibility;
+package javafx.scene;
 
 import java.time.LocalDate;
 import javafx.collections.ObservableList;
 import javafx.geometry.Bounds;
 import javafx.geometry.Orientation;
-import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.text.Font;
 
@@ -40,7 +37,7 @@ import javafx.scene.text.Font;
  *
  * @treatAsPrivate
  */
-public enum Attribute {
+public enum AccessibleAttribute {
 
     /**
      * Returns the accelerator for the Node.
@@ -105,12 +102,6 @@ public enum Attribute {
      * Type: Node
      */
     CONTENTS("Contents", Node.class),
-
-    /**
-     * Returns the description for the Node.
-     * Type: String
-     */
-    DESCRIPTION("Description", String.class),
 
     /**
      * Returns true if the Node is disabled.
@@ -313,7 +304,13 @@ public enum Attribute {
      * Returns the role for the Node.
      * Type: Role
      */
-    ROLE("Role", Role.class),
+    ROLE("Role", AccessibleRole.class),
+
+    /**
+     * Returns the role description for the Node.
+     * Type: String
+     */
+    ROLE_DESCRIPTION("RoleDescription", String.class),
 
     /**
      * Returns the row at the given index
@@ -455,7 +452,7 @@ public enum Attribute {
     private String name;
     private Class<?> returnClass;
 
-    Attribute(String name, Class<?> returnClass) {
+    AccessibleAttribute(String name, Class<?> returnClass) {
         this.name = name;
         this.returnClass = returnClass;
     }

@@ -52,9 +52,9 @@ import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.event.EventType;
 import javafx.event.WeakEventHandler;
-import javafx.scene.accessibility.Action;
-import javafx.scene.accessibility.Attribute;
-import javafx.scene.accessibility.Role;
+import javafx.scene.AccessibleAction;
+import javafx.scene.AccessibleAttribute;
+import javafx.scene.AccessibleRole;
 import javafx.scene.control.TreeItem.TreeModificationEvent;
 import javafx.scene.layout.Region;
 import javafx.util.Callback;
@@ -321,6 +321,7 @@ public class TreeView<T> extends Control {
      */
     public TreeView(TreeItem<T> root) {
         getStyleClass().setAll(DEFAULT_STYLE_CLASS);
+        setRole(AccessibleRole.TREE_VIEW);
 
         setRoot(root);
         updateExpandedItemCount(root);
@@ -1110,10 +1111,9 @@ public class TreeView<T> extends Control {
      *                                                                         *
      **************************************************************************/
 
-    /** @treatAsPrivate */
-    @Override public Object accGetAttribute(Attribute attribute, Object... parameters) {
+    @Override
+    public Object queryAccessibleAttribute(AccessibleAttribute attribute, Object... parameters) {
         switch (attribute) {
-            case ROLE: return Role.TREE_VIEW;
             case MULTIPLE_SELECTION: {
                 MultipleSelectionModel<TreeItem<T>> sm = getSelectionModel();
                 return sm != null && sm.getSelectionMode() == SelectionMode.MULTIPLE;
@@ -1123,19 +1123,7 @@ public class TreeView<T> extends Control {
             case SELECTED_ROWS: //Skin
             case VERTICAL_SCROLLBAR: //Skin
             case HORIZONTAL_SCROLLBAR: // Skin
-            default: return super.accGetAttribute(attribute, parameters);
-        }
-    }
-
-    /** @treatAsPrivate */
-    @Override public void accExecuteAction(Action action, Object... parameters) {
-        switch (action) {
-            case SCROLL_TO_INDEX: {
-                int index = (int) parameters[0];
-                scrollTo(index);
-                break;
-            }
-            default: super.accExecuteAction(action, parameters);
+            default: return super.queryAccessibleAttribute(attribute, parameters);
         }
     }
 
@@ -1445,7 +1433,7 @@ public class TreeView<T> extends Control {
             }
 
             // FIXME this is not the correct location for fire selection events (and does not take into account multiple selection)
-            treeView.accSendNotification(Attribute.SELECTED_ROWS);
+            treeView.notifyAccessibleAttributeChanged(AccessibleAttribute.SELECTED_ROWS);
         }
 
         /** {@inheritDoc} */

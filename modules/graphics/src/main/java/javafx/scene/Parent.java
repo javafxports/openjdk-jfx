@@ -35,8 +35,6 @@ import javafx.beans.value.WritableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener.Change;
 import javafx.collections.ObservableList;
-import javafx.scene.accessibility.Attribute;
-import javafx.scene.accessibility.Role;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -1286,6 +1284,7 @@ public abstract class Parent extends Node {
      */
     protected Parent() {
         layoutFlag = LayoutFlags.NEEDS_LAYOUT;
+        setRole(AccessibleRole.PARENT);
     }
 
     /**
@@ -1779,13 +1778,11 @@ public abstract class Parent extends Node {
         return alg.processContainerNode(this, ctx);
     }
 
-    /** @treatAsPrivate */
     @Override
-    public Object accGetAttribute(Attribute attribute, Object... parameters) {
+    public Object queryAccessibleAttribute(AccessibleAttribute attribute, Object... parameters) {
         switch (attribute) {
-            case ROLE: return Role.PARENT;
             case CHILDREN: return getChildrenUnmodifiable();
-            default: return super.accGetAttribute(attribute, parameters);
+            default: return super.queryAccessibleAttribute(attribute, parameters);
         }
     }
 
