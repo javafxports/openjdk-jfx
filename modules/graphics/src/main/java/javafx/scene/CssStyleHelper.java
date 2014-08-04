@@ -1431,7 +1431,22 @@ final class CssStyleHelper {
                     }
                 }
 
-                if (resolved.getConverter() != null)
+                final StyleConverter cssMetaDataConverter = cssMetaData.getConverter();
+                // RT-37727 - handling of properties that are insets is wonky. If the property is -fx-inset, then
+                // there isn't an issue because the converter assigns the InsetsConverter to the ParsedValueImpl.
+                // But -my-insets will parse as an array of numbers and the parser will assign the Size sequence
+                // converter to it. So, if the CssMetaData says it uses InsetsConverter, use the InsetsConverter
+                // and not the parser assigned converter.
+                if (cssMetaDataConverter == StyleConverter.getInsetsConverter()) {
+                    if (resolved.getValue() instanceof ParsedValue) {
+                        // If you give the parser "-my-insets: 5;" you end up with a ParsedValueImpl<ParsedValue<?,Size>, Number>
+                        // and not a ParsedValueImpl<ParsedValue[], Number[]> so here we wrap the value into an array
+                        // to make the InsetsConverter happy.
+                        resolved = new ParsedValueImpl(new ParsedValue[] {(ParsedValue)resolved.getValue()}, null, false);
+                    }
+                    val = cssMetaDataConverter.convert(resolved, fontForFontRelativeSizes);
+                }
+                else if (resolved.getConverter() != null)
                     val = resolved.convert(fontForFontRelativeSizes);
                 else
                     val = cssMetaData.getConverter().convert(resolved, fontForFontRelativeSizes);
@@ -1649,6 +1664,7 @@ final class CssStyleHelper {
 
         CalculatedValue cvFont = cachedFont;
 
+
         Set<PseudoClass> states = styleable instanceof Node ? ((Node)styleable).pseudoClassStates : styleable.getPseudoClassStates();
 
         // RT-20145 - if looking for font size and the node has a font,
@@ -1658,10 +1674,10 @@ final class CssStyleHelper {
         if (cacheContainer.fontProp != null) {
             StyleableProperty<Font> styleableProp = cacheContainer.fontProp.getStyleableProperty(styleable);
             StyleOrigin fpOrigin = styleableProp.getStyleOrigin();
+            Font font = styleableProp.getValue();
+            if (font == null) font = Font.getDefault();
             if (fpOrigin == StyleOrigin.USER) {
                 origin = fpOrigin;
-                Font font = styleableProp.getValue();
-                if (font == null) font = Font.getDefault();
                 family = getFontFamily(font);
                 size = font.getSize();
                 weight = getFontWeight(font);
@@ -1669,6 +1685,9 @@ final class CssStyleHelper {
                 cvFont = new CalculatedValue(font, fpOrigin, false);
             }
         }
+
+        CalculatedValue parentCachedFont = getCachedFont(styleable.getStyleableParent());
+        if (parentCachedFont == null) parentCachedFont = new CalculatedValue(Font.getDefault(), null, false);
 
         //
         // Look up the font- properties
@@ -1722,7 +1741,7 @@ final class CssStyleHelper {
 
                 final CalculatedValue cv =
                         calculateValue(fontShorthand, styleable, dummyFontProperty,
-                                styleMap, states, styleable, cvFont);
+                                styleMap, states, styleable, parentCachedFont);
 
                 // cv could be SKIP
                 if (cv.getValue() instanceof Font) {
@@ -1761,9 +1780,10 @@ final class CssStyleHelper {
             // 1) a style matching this node and is more specific than the font shorthand or
             // 2) an inherited style that is more specific than the font shorthand
             // and, therefore, we can use the fontSize style
+
             final CalculatedValue cv =
                     calculateValue(fontSize, styleable, dummyFontProperty,
-                            styleMap, states, styleable, cvFont);
+                            styleMap, states, styleable, parentCachedFont);
 
             if (cv.getValue() instanceof Double) {
                 if (origin == null || origin.compareTo(fontSize.getOrigin()) <= 0) {
