@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates.
+ * Copyright (c) 2014, Oracle and/or its affiliates.
  * All rights reserved. Use is subject to license terms.
  *
  * This file is available and licensed under the following license:
@@ -32,69 +32,70 @@
 package com.oracle.javafx.scenebuilder.kit.editor.job;
 
 import com.oracle.javafx.scenebuilder.kit.editor.EditorController;
-import com.oracle.javafx.scenebuilder.kit.editor.job.togglegroup.AdjustAllToggleGroupJob;
 import com.oracle.javafx.scenebuilder.kit.fxom.FXOMDocument;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
- * Used for the Arrange menu items : Bring To Front / Bring Forward / Send To
- * Back / Send Backward.
+ * This Job updates the FXOM document at execution time. The selection is not
+ * updated.
+ *
+ * The sub jobs are FIRST all created, THEN executed.
  */
-public abstract class ArrangeZOrderJob extends Job {
+public abstract class BatchDocumentJob extends CompositeJob2 {
 
-    protected final List<ReIndexObjectJob> subJobs = new ArrayList<>();
-    protected String description; // final but initialized lazily
-    private AdjustAllToggleGroupJob adjustToggleGroups; // created by execute()
+    private List<Job> subJobs;
 
-    public ArrangeZOrderJob(EditorController editorController) {
+    public BatchDocumentJob(EditorController editorController) {
         super(editorController);
     }
 
-    /*
-     * Job
-     */
     @Override
-    public boolean isExecutable() {
-        return subJobs.isEmpty() == false;
+    public final List<Job> getSubJobs() {
+        if (subJobs == null) {
+            subJobs = Collections.unmodifiableList(makeSubJobs());
+            assert subJobs != null;
+        }
+        return subJobs;
     }
 
     @Override
-    public void execute() {
+    public final boolean isExecutable() {
+        return getSubJobs().isEmpty() == false;
+    }
+
+    @Override
+    public final void execute() {
         final FXOMDocument fxomDocument
                 = getEditorController().getFxomDocument();
         fxomDocument.beginUpdate();
-        for (ReIndexObjectJob subJob : subJobs) {
+        for (Job subJob : getSubJobs()) {
             subJob.execute();
         }
-        adjustToggleGroups = new AdjustAllToggleGroupJob(getEditorController());
-        adjustToggleGroups.execute();
         fxomDocument.endUpdate();
     }
 
     @Override
-    public void undo() {
+    public final void undo() {
         final FXOMDocument fxomDocument
                 = getEditorController().getFxomDocument();
         fxomDocument.beginUpdate();
-        assert adjustToggleGroups != null;
-        adjustToggleGroups.undo();
-        for (int i = subJobs.size() - 1; i >= 0; i--) {
-            subJobs.get(i).undo();
+        for (int i = getSubJobs().size() - 1; i >= 0; i--) {
+            getSubJobs().get(i).undo();
         }
         fxomDocument.endUpdate();
     }
 
     @Override
-    public void redo() {
+    public final void redo() {
         final FXOMDocument fxomDocument
                 = getEditorController().getFxomDocument();
         fxomDocument.beginUpdate();
-        for (ReIndexObjectJob subJob : subJobs) {
+        for (Job subJob : getSubJobs()) {
             subJob.redo();
         }
-        assert adjustToggleGroups != null;
-        adjustToggleGroups.redo();
         fxomDocument.endUpdate();
     }
+
+    protected abstract List<Job> makeSubJobs();
 }
