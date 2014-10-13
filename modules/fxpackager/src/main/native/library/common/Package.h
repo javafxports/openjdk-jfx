@@ -43,7 +43,7 @@
 #include <map>
 #include <list>
 
-class BootFields {
+class PackageBootFields {
 public:
     enum MemoryState {msManual, msAuto};
     
@@ -74,14 +74,13 @@ private:
     void operator=(Package const&); // Don't implement
 
 private:
-    BootFields* FBootFields;
+    PackageBootFields* FBootFields;
     
     bool FDebugging;
 
-    PropertyFile* FJVMUserConfig;
-
-    std::map<TString, TValueIndex> FDefaultJVMUserArgs;
-    std::map<TString, TValueIndex> FJVMUserArgs;
+    PropertyFile* FJVMUserConfig; // Contains JVM user overrides
+    std::map<TString, TValueIndex> FDefaultJVMUserArgs; // Contains JVM user defaults
+    std::map<TString, TValueIndex> FJVMUserArgs; // Contains a merge of JVM defaults and user overrides
 
 
     Package(void);
@@ -93,8 +92,7 @@ private:
 public:
     static Package& GetInstance();
     ~Package(void);
-    
-    void Shutdown();
+
     void FreeBootFields();
 
     void SetCommandLineArguments(int argc, TCHAR* argv[]);
@@ -121,7 +119,7 @@ public:
     TString GetCommandName();
     
     size_t GetMemorySize();
-    BootFields::MemoryState GetMemoryState();
+    PackageBootFields::MemoryState GetMemoryState();
 };
 
 #endif //PACKAGE_H

@@ -44,7 +44,7 @@ Package::Package(void) {
 void Package::Initialize() {
     Platform& platform = Platform::GetInstance();
 
-    FBootFields = new BootFields();
+    FBootFields = new PackageBootFields();
 
     FDebugging = false;
 
@@ -63,11 +63,11 @@ void Package::Initialize() {
     config->GetValue(keys[CONFIG_APP_MEMORY], temp);
     
     if (temp == _T("auto")) {
-        FBootFields->FMemoryState = BootFields::msAuto;
+        FBootFields->FMemoryState = PackageBootFields::msAuto;
         FBootFields->FMemorySize = platform.GetMemorySize();
     }
     else {
-        FBootFields->FMemoryState = BootFields::msManual;
+        FBootFields->FMemoryState = PackageBootFields::msManual;
         FBootFields->FMemorySize = 0;
     }
 
@@ -170,9 +170,7 @@ void Package::SetCommandLineArguments(int argc, TCHAR* argv[]) {
         std::list<TString> args;
 
         // Prepare app arguments. Skip value at index 0 - this is path to executable.
-        if (argc > 0) {
-            FBootFields->FCommandName = argv[0];
-        }
+        FBootFields->FCommandName = argv[0];
 
         // Path to .exe is at 0 index so start at index 1.
         for (int index = 1; index < argc; index++) {
@@ -190,7 +188,9 @@ void Package::SetCommandLineArguments(int argc, TCHAR* argv[]) {
                 Platform& platform = Platform::GetInstance();
 
                 if (platform.IsMainThread() == true) {
-                    printf("%s\n", arg.c_str()); //TODO remove
+#ifdef DEBUG
+                    printf("%s\n", arg.c_str());
+#endif //DEBUG
                     continue;
                 }
             }
@@ -212,20 +212,11 @@ void Package::SetCommandLineArguments(int argc, TCHAR* argv[]) {
 }
 
 Package& Package::GetInstance() {
-    Lock lock;
     static Package instance; // Guaranteed to be destroyed. Instantiated on first use.
     return instance;
 }
 
 Package::~Package(void) {
-}
-
-void Package::Shutdown() {
-    if (FJVMUserConfig->IsModified()) {
-        Platform& platform = Platform::GetInstance();
-        FJVMUserConfig->SaveToFile(platform.GetJVMUserArgsConfigFileName());
-    }
-
     delete FJVMUserConfig;
 }
 
@@ -269,6 +260,10 @@ void Package::SetJVMUserArgOverrides(std::map<TString, TValueIndex> Value) {
     }
 
     MergeJVMDefaultsWithOverrides();
+    if (FJVMUserConfig->IsModified()) {
+        Platform& platform = Platform::GetInstance();
+        FJVMUserConfig->SaveToFile(platform.GetJVMUserArgsConfigFileName());
+    }
 }
 
 std::map<TString, TValueIndex> Package::GetJVMUserArgs() {
@@ -373,6 +368,6 @@ size_t Package::GetMemorySize() {
     return FBootFields->FMemorySize;
 }
 
-BootFields::MemoryState Package::GetMemoryState() {
+PackageBootFields::MemoryState Package::GetMemoryState() {
     return FBootFields->FMemoryState;
 }

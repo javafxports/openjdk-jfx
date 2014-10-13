@@ -290,16 +290,57 @@ public class MacAppStoreBundlerTest {
     /**
      * User a JRE instead of a JDK
      */
-    @Test(expected = ConfigException.class)
+    @Test
     public void testJRE() throws IOException, ConfigException, UnsupportedPlatformException {
         String jre = runtimeJre == null ? "/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/" : runtimeJre;
         Assume.assumeTrue(new File(jre).isDirectory());
 
-        AbstractBundler bundler = new MacAppStoreBundler();
+        try {
+            AbstractBundler bundler = new MacAppStoreBundler();
+    
+            assertNotNull(bundler.getName());
+            assertNotNull(bundler.getID());
+            assertNotNull(bundler.getDescription());
+    
+            Map<String, Object> bundleParams = new HashMap<>();
+    
+            bundleParams.put(BUILD_ROOT.getID(), tmpBase);
+    
+            bundleParams.put(APP_NAME.getID(), "Smoke Test");
+            bundleParams.put(MAIN_CLASS.getID(), "hello.HelloRectangle");
+            bundleParams.put(PREFERENCES_ID.getID(), "the/really/long/preferences/id");
+            bundleParams.put(MAIN_JAR.getID(),
+                    new RelativeFileSet(fakeMainJar.getParentFile(),
+                            new HashSet<>(Arrays.asList(fakeMainJar)))
+            );
+            bundleParams.put(CLASSPATH.getID(), "mainApp.jar");
+            bundleParams.put(IDENTIFIER.getID(), "com.example.javapacakger.hello.TestPackager");
+            bundleParams.put(MacAppBundler.MAC_CATEGORY.getID(), "public.app-category.developer-tools");
+            bundleParams.put(APP_RESOURCES.getID(), new RelativeFileSet(appResourcesDir, appResources));
+            bundleParams.put(VERBOSE.getID(), true);
+            bundleParams.put(MAC_RUNTIME.getID(), jre);
+    
+            boolean valid = bundler.validate(bundleParams);
+            assertTrue(valid);
+    
+            File result = bundler.execute(bundleParams, new File(workDir, "jre"));
+            System.err.println("Bundle at - " + result);
+    
+            checkFiles(result);
 
-        assertNotNull(bundler.getName());
-        assertNotNull(bundler.getID());
-        assertNotNull(bundler.getDescription());
+            // if we get here we fail
+            assertTrue("ConfigException should have been thrown", false);
+        } catch (ConfigException ignore) {
+            // expected
+        }
+    }
+
+    /**
+     * Request no signature, should be a validaiton error
+     */
+    @Test(expected = ConfigException.class)
+    public void invalidDoNotSign() throws IOException, ConfigException, UnsupportedPlatformException {
+        AbstractBundler bundler = new MacAppStoreBundler();
 
         Map<String, Object> bundleParams = new HashMap<>();
 
@@ -317,14 +358,13 @@ public class MacAppStoreBundlerTest {
         bundleParams.put(MacAppBundler.MAC_CATEGORY.getID(), "public.app-category.developer-tools");
         bundleParams.put(APP_RESOURCES.getID(), new RelativeFileSet(appResourcesDir, appResources));
         bundleParams.put(VERBOSE.getID(), true);
-        bundleParams.put(MAC_RUNTIME.getID(), jre);
 
-        boolean valid = bundler.validate(bundleParams);
-        assertTrue(valid);
+        if (runtimeJdk != null) {
+            bundleParams.put(MAC_RUNTIME.getID(), runtimeJdk);
+        }
 
-        File result = bundler.execute(bundleParams, new File(workDir, "jre"));
-        System.err.println("Bundle at - " + result);
-
-        checkFiles(result);
+        bundleParams.put(SIGN_BUNDLE.getID(), false);
+        
+        bundler.validate(bundleParams);
     }
 }
