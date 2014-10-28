@@ -36,6 +36,7 @@
 #ifdef LINUX
 
 #include "LinuxPlatform.h"
+#include "PlatformString.h"
 
 
 #include <stdlib.h>
@@ -70,6 +71,16 @@ void LinuxPlatform::ShowError(TString description) {
     TString appname = GetModuleFileName();
     appname = FilePath::ExtractFileName(appname);
     ShowError(PlatformString(appname).toPlatformString(), PlatformString(description).toPlatformString());
+}
+
+TCHAR* LinuxPlatform::ConvertStringToFileSystemString(TCHAR* Source, bool &release) {
+    // Not Implemented.
+    return NULL;
+}
+
+TCHAR* LinuxPlatform::ConvertFileSystemStringToString(TCHAR* Source, bool &release) {
+    // Not Implemented.
+    return NULL;
 }
 
 TString LinuxPlatform::GetModuleFileName() {
@@ -816,7 +827,15 @@ static XMLAttribute* ParseXMLAttribute(void) {
     {
         /* We need to check this condition to avoid endless loop
            in case if an error happend during parsing. */
-        if (PrevPos == CurPos) return NULL;
+        if (PrevPos == CurPos) {
+            if (name != NULL) {
+                free(name);
+                name = NULL;
+            }
+
+            return NULL;
+        }
+
         PrevPos = CurPos;
 
         /* Skip whitespace etc. */
@@ -825,7 +844,15 @@ static XMLAttribute* ParseXMLAttribute(void) {
         /* Check if we are done witht this attribute section */
         if (CurPos[0] == '\0' ||
             CurPos[0] == '>' ||
-            CurPos[0] == '/' && CurPos[1] == '>') return NULL;
+            CurPos[0] == '/' && CurPos[1] == '>') {
+
+            if (name != NULL) {
+                free(name);
+                name = NULL;
+            }
+
+            return NULL;
+        }
 
         /* Find end of name */
         q = CurPos;

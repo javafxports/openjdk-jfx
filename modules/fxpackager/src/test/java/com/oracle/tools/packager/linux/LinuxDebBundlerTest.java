@@ -28,9 +28,11 @@ package com.oracle.tools.packager.linux;
 import com.oracle.tools.packager.AbstractBundler;
 import com.oracle.tools.packager.Bundler;
 import com.oracle.tools.packager.BundlerParamInfo;
+import com.oracle.tools.packager.BundlersTest;
 import com.oracle.tools.packager.ConfigException;
 import com.oracle.tools.packager.Log;
 import com.oracle.tools.packager.RelativeFileSet;
+import com.oracle.tools.packager.StandardBundlerParam;
 import com.oracle.tools.packager.UnsupportedPlatformException;
 import org.junit.After;
 import org.junit.Assume;
@@ -54,6 +56,7 @@ import static com.oracle.tools.packager.StandardBundlerParam.*;
 import static com.oracle.tools.packager.linux.LinuxDebBundler.BUNDLE_NAME;
 import static com.oracle.tools.packager.linux.LinuxDebBundler.EMAIL;
 import static org.junit.Assert.*;
+import static org.junit.Assume.assumeTrue;
 
 public class LinuxDebBundlerTest {
 
@@ -72,6 +75,7 @@ public class LinuxDebBundlerTest {
         Assume.assumeTrue(LinuxDebBundler.testTool(LinuxDebBundler.TOOL_DPKG, "1"));
 
         Log.setLogger(new Log.Logger(true));
+        Log.setDebug(true);
 
         retain = Boolean.parseBoolean(System.getProperty("RETAIN_PACKAGER_TESTS"));
 
@@ -120,6 +124,20 @@ public class LinuxDebBundlerTest {
         if (!success) {
             System.err.println("Could not clean up " + tmpBase.toString());
         }
+    }
+
+    @Test
+    public void testAppNameForDebBundler() {
+        // valid names for deb package
+        BundlersTest.testValidValueForBaseParam(StandardBundlerParam.APP_NAME, "test", LinuxDebBundler.BUNDLE_NAME);
+        BundlersTest.testValidValueForBaseParam(StandardBundlerParam.APP_NAME, "te", LinuxDebBundler.BUNDLE_NAME);
+
+        // invalid name with cyrillic characters
+        BundlersTest.testInvalidValueForBaseParam(StandardBundlerParam.APP_NAME, "\u0442\u0435\u0441\u0442", LinuxDebBundler.BUNDLE_NAME);
+        // invalid name that starts with digit
+        BundlersTest.testInvalidValueForBaseParam(StandardBundlerParam.APP_NAME, "1test", LinuxDebBundler.BUNDLE_NAME);
+        // invalid name that one character long
+        BundlersTest.testInvalidValueForBaseParam(StandardBundlerParam.APP_NAME, "t", LinuxDebBundler.BUNDLE_NAME);
     }
 
     /**
@@ -184,6 +202,54 @@ public class LinuxDebBundlerTest {
         System.err.println("Bundle at - " + output);
         assertNotNull(output);
         assertTrue(output.exists());
+    }
+
+    /**
+     * Test with unicode in places we expect it to be
+     */
+    @Test
+    public void unicodeConfig() throws IOException, ConfigException, UnsupportedPlatformException {
+        Bundler bundler = new LinuxDebBundler();
+
+        Map<String, Object> bundleParams = new HashMap<>();
+
+        bundleParams.put(BUILD_ROOT.getID(), tmpBase);
+
+        bundleParams.put(APP_RESOURCES.getID(), new RelativeFileSet(appResourcesDir, appResources));
+
+        bundleParams.put(APP_NAME.getID(), "хелловорлд");
+        bundleParams.put(TITLE.getID(), "ХеллоВорлд аппликейшн");
+        bundleParams.put(VENDOR.getID(), "Оракл девелопмент");
+        bundleParams.put(DESCRIPTION.getID(), "крайне большое описание со странными символами");
+        bundleParams.put(EMAIL.getID(), "вася@пупкин.ком");
+
+        // mandatory re-names
+        bundleParams.put(BUNDLE_NAME.getID(), "helloworld");
+        
+        bundler.validate(bundleParams);
+        
+        File output = bundler.execute(bundleParams, new File(workDir, "Unicode"));
+        System.err.println("Bundle at - " + output);
+        assertNotNull(output);
+        assertTrue(output.exists());
+    }
+
+    /**
+     * prove we fail when bundlename inherited from appname is bad
+     */
+    @Test(expected = ConfigException.class)
+    public void badUnicodeAppName() throws IOException, ConfigException, UnsupportedPlatformException {
+        Bundler bundler = new LinuxDebBundler();
+
+        Map<String, Object> bundleParams = new HashMap<>();
+
+        bundleParams.put(BUILD_ROOT.getID(), tmpBase);
+
+        bundleParams.put(APP_RESOURCES.getID(), new RelativeFileSet(appResourcesDir, appResources));
+
+        bundleParams.put(APP_NAME.getID(), "хелловорлд");
+
+        bundler.validate(bundleParams);
     }
 
     @Test(expected = ConfigException.class)
@@ -280,7 +346,7 @@ public class LinuxDebBundlerTest {
         bundleParams.put(STOP_ON_UNINSTALL.getID(), true);
         bundleParams.put(RUN_AT_STARTUP.getID(), true);
 
-        bundleParams.put(APP_NAME.getID(), "Java Packager Service Test #1");
+        bundleParams.put(APP_NAME.getID(), "Java Packager Service Test");
         bundleParams.put(BUNDLE_NAME.getID(), "j-p-daemon-test");
         bundleParams.put(APP_RESOURCES.getID(), new RelativeFileSet(appResourcesDir, appResources));
         bundleParams.put(MAIN_CLASS.getID(), "hello.HelloService");
@@ -373,7 +439,7 @@ public class LinuxDebBundlerTest {
     public void testFileAssociation()
         throws IOException, ConfigException, UnsupportedPlatformException
     {
-        testFileAssociation("Bogus File", "bogus", "application/x-vnd.test-bogus",
+        testFileAssociation("FASmoke 1", "Bogus File", "bogus", "application/x-vnd.test-bogus",
                             new File(appResourcesDir, "javalogo_white_48.png"));        
     }
 
@@ -382,11 +448,11 @@ public class LinuxDebBundlerTest {
         throws IOException, ConfigException, UnsupportedPlatformException
     {
         // association with no extension is still valid case (see RT-38625)
-        testFileAssociation("Bogus File", null, "application/x-vnd.test-bogus",
+        testFileAssociation("FASmoke null", "Bogus File", null, "application/x-vnd.test-bogus",
                             new File(appResourcesDir, "javalogo_white_48.png"));
     }
 
-    private void testFileAssociation(String description, String extensions,
+    private void testFileAssociation(String appName, String description, String extensions,
                                      String contentType, File icon)
         throws IOException, ConfigException, UnsupportedPlatformException
     {
@@ -401,7 +467,7 @@ public class LinuxDebBundlerTest {
 
         bundleParams.put(BUILD_ROOT.getID(), tmpBase);
 
-        bundleParams.put(APP_NAME.getID(), "File Association Test App");
+        bundleParams.put(APP_NAME.getID(), appName);
         bundleParams.put(MAIN_CLASS.getID(), "hello.HelloRectangle");
         bundleParams.put(MAIN_JAR.getID(),
                 new RelativeFileSet(fakeMainJar.getParentFile(),
@@ -424,7 +490,7 @@ public class LinuxDebBundlerTest {
         boolean valid = bundler.validate(bundleParams);
         assertTrue(valid);
 
-        File result = bundler.execute(bundleParams, new File(workDir, "FASmoke"));
+        File result = bundler.execute(bundleParams, new File(workDir, APP_FS_NAME.fetchFrom(bundleParams)));
         System.err.println("Bundle at - " + result);
         assertNotNull(result);
         assertTrue(result.exists());
