@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,37 +23,33 @@
  * questions.
  */
 
-/*
- * For cubic curves the expression we use is:
- *   v^3 - wt < 0
- * where:
- *   tc0.x = v
- *   tc0.y = w
- *   tc1.x = t
- *   tc1.y = inv (either 1 or -1)
- *
- * Based on the algorithm described in "Rendering Vector Art on the GPU"
- * (GPU Gems 3, Chapter 25).
- */
-float mask(float2 tc0, float2 tc1)
-{
-    float3 vwt = float3(tc0.x, tc0.y, tc1.x);
+package com.oracle.tools.packager;
 
-    // Gradients
-    float3 px = ddx(vwt);
-    float3 py = ddy(vwt);
+import org.junit.Test;
 
-    // Chain rule
-    float vsq = vwt.x * vwt.x;
-    float vsq3 = 3.0*vsq;
-    float fx = (vsq3*px.x) - (vwt.z*px.y) - (vwt.y*px.z);
-    float fy = (vsq3*py.x) - (vwt.z*py.y) - (vwt.y*py.z);
+import java.util.Map;
+import java.util.HashMap;
 
-    // Signed distance
-    float sd = tc1.y * (((vsq * vwt.x) - (vwt.y * vwt.z)) / sqrt(fx*fx + fy*fy));
+import static org.junit.Assert.*;
 
-    // Linear alpha
-    float alpha = 0.5 - sd;
+public class EnumeratedBundlerParamTest {
 
-    return clamp(alpha, 0.0, 1.0);
+    private static Map<String, String> getElements() {
+        Map<String, String> map = new HashMap<>();
+        map.put("key", "value");
+        return map;
+    }
+
+    @Test
+    public void testParam() {
+        EnumeratedBundlerParam param =
+                new EnumeratedBundlerParam("name", "description", "id", String.class,
+                        params -> null, (s, p) -> s, getElements(), false);
+
+        // key exists
+        assertEquals(param.getValueForDisplayableKey("key"), "value");
+
+        // key doesn't exist
+        assertEquals(param.getValueForDisplayableKey("no-mapping-key"), null);
+    }
 }

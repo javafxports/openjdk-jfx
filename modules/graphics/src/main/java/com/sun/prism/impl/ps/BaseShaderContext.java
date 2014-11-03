@@ -96,8 +96,7 @@ public abstract class BaseShaderContext extends BaseContext {
         DRAW_ELLIPSE   ("DrawEllipse", FILL_ELLIPSE),
         FILL_ROUNDRECT ("FillRoundRect"),
         DRAW_ROUNDRECT ("DrawRoundRect", FILL_ROUNDRECT),
-        DRAW_SEMIROUNDRECT("DrawSemiRoundRect"),
-        FILL_CUBICCURVE("FillCubicCurve");
+        DRAW_SEMIROUNDRECT("DrawSemiRoundRect");
 
         private String name;
         private MaskType filltype;
@@ -124,7 +123,7 @@ public abstract class BaseShaderContext extends BaseContext {
         }
     }
 
-    // mask type     4 bits (12 types)
+    // mask type     4 bits (14 types)
     // paint type    2 bits
     // paint opts    2 bits
     private static final int NUM_STOCK_SHADER_SLOTS =
@@ -298,7 +297,7 @@ public abstract class BaseShaderContext extends BaseContext {
 
     private Shader getSpecialShader(BaseGraphics g, SpecialShaderType sst) {
         // We do alpha test if depth test is enabled
-        boolean alphaTest = g.isDepthTest() && g.isDepthBuffer();
+        boolean alphaTest = g.isAlphaTestShader();
         Shader shaders[] = alphaTest ? specialATShaders : specialShaders;
         Shader shader = shaders[sst.ordinal()];
         if (shader != null && !shader.isValid()) {
@@ -476,7 +475,7 @@ public abstract class BaseShaderContext extends BaseContext {
                     tex1 = null;
                 }
                 // We do alpha test if depth test is enabled
-                shader = getPaintShader(g.isDepthTest() && g.isDepthBuffer(), maskType, paint);
+                shader = getPaintShader(g.isAlphaTestShader(), maskType, paint);
             }
             checkState(g, CHECK_PAINT_OP_MASK, xform, shader);
             setTexture(0, tex0);
