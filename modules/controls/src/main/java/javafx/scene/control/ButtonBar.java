@@ -27,7 +27,9 @@ package javafx.scene.control;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
@@ -41,6 +43,10 @@ import com.sun.javafx.scene.traversal.Algorithm;
 import com.sun.javafx.scene.traversal.Direction;
 import com.sun.javafx.scene.traversal.ParentTraversalEngine;
 import com.sun.javafx.scene.traversal.TraversalContext;
+import javafx.beans.value.WritableValue;
+import javafx.css.StyleableProperty;
+
+import java.util.Map;
 
 /**
  * A ButtonBar is essentially a {@link HBox}, with the additional functionality
@@ -358,7 +364,14 @@ public class ButtonBar extends Control {
      * @param buttonData The ButtonData to designate the button as.
      */
     public static void setButtonData(Node button, ButtonData buttonData) {
-        button.getProperties().put(ButtonBarSkin.BUTTON_DATA_PROPERTY, buttonData);
+        final Map<Object,Object> properties = button.getProperties();
+        final ObjectProperty<ButtonData> property =
+                (ObjectProperty<ButtonData>) properties.getOrDefault(
+                        ButtonBarSkin.BUTTON_DATA_PROPERTY,
+                        new SimpleObjectProperty<>(button, "buttonData", buttonData));
+
+        property.set(buttonData);
+        properties.putIfAbsent(ButtonBarSkin.BUTTON_DATA_PROPERTY, property);
     }
     
     /**
@@ -368,7 +381,12 @@ public class ButtonBar extends Control {
      * @param button The button to return the previously set ButtonData for.
      */
     public static ButtonData getButtonData(Node button) {
-        return (ButtonData) button.getProperties().get(ButtonBarSkin.BUTTON_DATA_PROPERTY);
+        final Map<Object,Object> properties = button.getProperties();
+        if (properties.containsKey(ButtonBarSkin.BUTTON_DATA_PROPERTY)) {
+            ObjectProperty<ButtonData> property = (ObjectProperty<ButtonData>) properties.get(ButtonBarSkin.BUTTON_DATA_PROPERTY);
+            return property == null ? null : property.get();
+        }
+        return null;
     }
 
     /**
@@ -442,7 +460,11 @@ public class ButtonBar extends Control {
 
         // we allow for the buttons inside the ButtonBar to be focus traversable,
         // but the ButtonBar itself is not.
-        setFocusTraversable(false);
+        // focusTraversable is styleable through css. Calling setFocusTraversable
+        // makes it look to css like the user set the value and css will not 
+        // override. Initializing focusTraversable by calling set on the 
+        // CssMetaData ensures that css will be able to override the value.
+        ((StyleableProperty<Boolean>)(WritableValue<Boolean>)focusTraversableProperty()).applyStyle(null, Boolean.FALSE);
 
         final boolean buttonOrderEmpty = buttonOrder == null || buttonOrder.isEmpty();
         
@@ -559,6 +581,17 @@ public class ButtonBar extends Control {
      * 
      **************************************************************************/
 
+    /**
+      * Most Controls return true for focusTraversable, so Control overrides
+      * this method to return true, but ButtonBar returns false for
+      * focusTraversable's initial value; hence the override of the override. 
+      * This method is called from CSS code to get the correct initial value.
+      * @treatAsPrivate implementation detail
+      */
+    @Deprecated @Override
+    protected /*do not make final*/ Boolean impl_cssGetFocusTraversableInitialValue() {
+        return Boolean.FALSE;
+    }
 
 
 
