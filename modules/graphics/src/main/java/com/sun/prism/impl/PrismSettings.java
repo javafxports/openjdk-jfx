@@ -54,8 +54,6 @@ public final class PrismSettings {
     public static final boolean useNewImageLoader;
     public static final List<String> tryOrder;
     public static final int prismStatFrequency;
-    public static final boolean doPiscesText;
-    public static final boolean doOpenPiscesText;
     public static final boolean doNativePisces;
     public static final String refType;
     public static final boolean forceRepaint;
@@ -90,6 +88,7 @@ public final class PrismSettings {
     public static final boolean skipMeshNormalComputation;
     public static final boolean forceUploadingPainter;
     public static final boolean forceAlphaTestShader;
+    public static final boolean forceNonAntialiasedShape;
     
 
     private PrismSettings() {
@@ -227,12 +226,6 @@ public final class PrismSettings {
             doNativePisces = Boolean.parseBoolean(npprop);
         }
 
-        /* Setting for text.
-         */
-        String text = systemProperties.getProperty("prism.text", "");
-        doPiscesText = "pisces".equals(text);
-        doOpenPiscesText = "openpisces".equals(text);
-
         String primtex = systemProperties.getProperty("prism.primtextures");
         if (primtex == null) {
             primTextureSize = PlatformUtil.isEmbedded() ? -1 : 0;
@@ -267,11 +260,6 @@ public final class PrismSettings {
                 System.out.print(s+" ");
             }
             System.out.println("");
-            if (PrismSettings.doPiscesText || PrismSettings.doOpenPiscesText) {
-                System.out.println("Using " + text + " for text rasterization");
-            } else {
-                System.out.println("Using platform text rasterizer");
-            }
             String piscestype = (doNativePisces ? "native" : "java");
             System.out.println("Using " + piscestype + "-based Pisces rasterizer");
             printBooleanOption(dirtyOptsEnabled, "Using dirty region optimizations");
@@ -350,6 +338,9 @@ public final class PrismSettings {
 
         // Force the use of fragment shader that does alpha testing (i.e. discard if alpha == 0.0)
         forceAlphaTestShader = getBoolean(systemProperties, "prism.forceAlphaTestShader", false);
+
+        // Force non anti-aliasing (not smooth) shape rendering
+        forceNonAntialiasedShape = getBoolean(systemProperties, "prism.forceNonAntialiasedShape", false);
 
     }
 
