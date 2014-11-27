@@ -47,6 +47,7 @@ import static com.sun.javafx.scene.control.infrastructure.ControlTestUtils.asser
 import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
 
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -2529,5 +2530,105 @@ public class TreeViewTest {
         assertEquals(1, (int)anchor);
 
         sl.dispose();
+    }
+
+    private final ObservableList<TreeItem<String>> rt_39256_list = FXCollections.observableArrayList();
+    @Test public void test_rt_39256() {
+        TreeItem<String> root = new TreeItem<>("Root");
+        root.setExpanded(true);
+        root.getChildren().addAll(
+                new TreeItem<>("a"),
+                new TreeItem<>("b"),
+                new TreeItem<>("c"),
+                new TreeItem<>("d")
+        );
+
+        TreeView<String> stringTreeView = new TreeView<>(root);
+        stringTreeView.setShowRoot(false);
+
+        MultipleSelectionModel<TreeItem<String>> sm = stringTreeView.getSelectionModel();
+        sm.setSelectionMode(SelectionMode.MULTIPLE);
+
+//        rt_39256_list.addListener((ListChangeListener<TreeItem<String>>) change -> {
+//            while (change.next()) {
+//                System.err.println("number of selected persons (in bound list): " + change.getList().size());
+//            }
+//        });
+
+        Bindings.bindContent(rt_39256_list, sm.getSelectedItems());
+
+        assertEquals(0, sm.getSelectedItems().size());
+        assertEquals(0, rt_39256_list.size());
+
+        sm.selectAll();
+        assertEquals(4, sm.getSelectedItems().size());
+        assertEquals(4, rt_39256_list.size());
+
+        sm.selectAll();
+        assertEquals(4, sm.getSelectedItems().size());
+        assertEquals(4, rt_39256_list.size());
+
+        sm.selectAll();
+        assertEquals(4, sm.getSelectedItems().size());
+        assertEquals(4, rt_39256_list.size());
+    }
+
+    private final ObservableList<TreeItem<String>> rt_39482_list = FXCollections.observableArrayList();
+    @Ignore("Fix not yet developed")
+    @Test public void test_rt_39482() {
+        TreeItem<String> root = new TreeItem<>("Root");
+        root.setExpanded(true);
+        root.getChildren().addAll(
+                new TreeItem<>("a"),
+                new TreeItem<>("b"),
+                new TreeItem<>("c"),
+                new TreeItem<>("d")
+        );
+
+        TreeView<String> stringTreeView = new TreeView<>(root);
+        stringTreeView.setShowRoot(false);
+
+        MultipleSelectionModel<TreeItem<String>> sm = stringTreeView.getSelectionModel();
+        sm.setSelectionMode(SelectionMode.MULTIPLE);
+
+//        rt_39256_list.addListener((ListChangeListener<TreeItem<String>>) change -> {
+//            while (change.next()) {
+//                System.err.println("number of selected persons (in bound list): " + change.getList().size());
+//            }
+//        });
+
+        Bindings.bindContent(rt_39256_list, sm.getSelectedItems());
+
+        assertEquals(0, sm.getSelectedItems().size());
+        assertEquals(0, rt_39482_list.size());
+
+        System.out.println("Test One:");
+        sm.selectAll();
+        assertEquals(4, sm.getSelectedItems().size());
+        assertEquals(4, rt_39482_list.size());
+
+        try {
+            System.out.println("\nTest Two:");
+            sm.clearAndSelect(0);
+            assertEquals(1, sm.getSelectedIndices().size());
+            assertEquals(1, sm.getSelectedItems().size());
+            assertEquals("a", sm.getSelectedItem());
+            assertEquals("a", rt_39482_list.get(0));
+            assertEquals(1, rt_39482_list.size());
+        } catch (IndexOutOfBoundsException e) {
+            e.printStackTrace();
+            fail();
+        }
+
+        System.out.println("\nTest Three:");
+        sm.selectAll();
+        assertEquals(4, sm.getSelectedIndices().size());
+        assertEquals(4, sm.getSelectedItems().size());
+        assertEquals(4, rt_39482_list.size());
+
+        System.out.println("\nTest Four:");
+        sm.clearAndSelect(1);
+        assertEquals(1, sm.getSelectedItems().size());
+        assertEquals(1, rt_39482_list.size());
     }
 }
