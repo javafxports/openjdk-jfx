@@ -170,7 +170,8 @@ extern "C" {
             }
 
             // Validation
-            {
+            AutoFreePtr<ISectionalPropertyContainer> config = platform.GetConfigFile(platform.GetConfigFileName());
+            if (config->ContainsSection(_T("AppCDSJVMOptions"))) {
                 switch (platform.GetAppCDSState()) {
                     case cdsOn:
                     case cdsAuto: {
