@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,8 +35,6 @@ import javafx.stage.Screen;
 import javafx.application.Application;
 import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
-
-import java.io.File;
 
 /**
  *  The application should be used by QA in order to test main
@@ -78,16 +76,13 @@ public class HelloSanity extends Application {
         Button bEffs = new Button("Effects");
         bEffs.setOnAction(e -> builder.effectsTest(globalScene, mainBox));
 
-        Button bRobot = new Button("Robot");
-        bRobot.setOnAction(e -> builder.robotTest(globalScene, mainBox, primaryStage));
-
         Button bgestures = new Button("Gesture Actions");
         bgestures.setOnAction(e -> builder.GestureTest(globalScene, mainBox));
         
         Button bquit = new Button("Quit");
         bquit.setOnAction(e -> primaryStage.close());
         
-        mainBox.getChildren().addAll(welcome, bControls, bTabs, bWins, bRobot,
+        mainBox.getChildren().addAll(welcome, bControls, bTabs, bWins,
                                      bAnim, bEffs, bgestures, bquit);
         globalScene.setRoot(mainBox);
         globalScene.getStylesheets().add("hello/HelloSanityStyles.css");
