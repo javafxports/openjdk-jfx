@@ -2387,10 +2387,15 @@ find_conversion (const char  *format,
  * Since: 2.4
  */
 
+#ifdef GSTREAMER_LITE
 #ifndef G_OS_WIN32
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
 #endif // G_OS_WIN32
+#else // GSTREAMER_LITE
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#endif // GSTREAMER_LITE
 
 gchar *
 g_markup_vprintf_escaped (const gchar *format,
@@ -2518,9 +2523,13 @@ g_markup_vprintf_escaped (const gchar *format,
     return NULL;
 }
 
+#ifdef GSTREAMER_LITE
 #ifndef G_OS_WIN32
 #pragma GCC diagnostic pop
 #endif // G_OS_WIN32
+#else // GSTREAMER_LITE
+#pragma GCC diagnostic pop
+#endif // GSTREAMER_LITE
 
 /**
  * g_markup_printf_escaped:
