@@ -56,7 +56,6 @@ import static com.sun.javafx.PlatformUtil.isWindows;
  */
 public class TextFieldBehavior extends TextInputControlBehavior<TextField> {
     private TextFieldSkin skin;
-    private ContextMenu contextMenu;
     private TwoLevelFocusBehavior tlFocus;
     private ChangeListener<Scene> sceneListener;
     private ChangeListener<Node> focusOwnerListener;
@@ -64,7 +63,6 @@ public class TextFieldBehavior extends TextInputControlBehavior<TextField> {
     public TextFieldBehavior(final TextField textField) {
         super(textField);
 
-        contextMenu = new ContextMenu();
         if (Properties.IS_TOUCH_SUPPORTED) {
             contextMenu.getStyleClass().add("text-input-context-menu");
         }
@@ -342,7 +340,8 @@ public class TextFieldBehavior extends TextInputControlBehavior<TextField> {
 
         if (contextMenu.isShowing()) {
             contextMenu.hide();
-        } else if (textField.getContextMenu() == null) {
+        } else if (textField.getContextMenu() == null && 
+                   textField.getOnContextMenuRequested() == null) {
             double screenX = e.getScreenX();
             double screenY = e.getScreenY();
             double sceneX = e.getSceneX();
@@ -372,7 +371,7 @@ public class TextFieldBehavior extends TextInputControlBehavior<TextField> {
                 }
             }
 
-            populateContextMenu(contextMenu);
+            populateContextMenu();
             double menuWidth = contextMenu.prefWidth(-1);
             double menuX = screenX - (Properties.IS_TOUCH_SUPPORTED ? (menuWidth / 2) : 0);
             Screen currentScreen = com.sun.javafx.util.Utils.getScreenForPoint(screenX, 0);
