@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,38 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.sun.glass.ui.swt;
 
-import com.sun.glass.ui.Pixels;
-import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
+package javafx.fxml;
 
-final class SWTPixels extends Pixels {
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import static org.junit.Assert.assertArrayEquals;
+import org.junit.Test;
 
-    public SWTPixels(int width, int height, ByteBuffer data) {
-        super(width, height, data);
-    }
+public class AlertTest {
 
-    public SWTPixels(int width, int height, IntBuffer data) {
-        super(width, height, data);
-    }
-    
-    protected SWTPixels(int width, int height, IntBuffer data, float scale) {
-        super(width, height, data, scale);
-    }
+    @Test
+    public void testAlertButtons() throws Exception {
+        Alert alert = FXMLLoader.load(getClass().getResource("alert.fxml"));
 
-    @Override
-    protected void _fillDirectByteBuffer(ByteBuffer bb) {
-        //TODO - not implemented
-    }
-    
-    @Override
-    protected void _attachInt(long ptr, int w, int h, IntBuffer ints, int[] array, int offset) {
-        //TODO - not implemented
-    }
-
-    @Override
-    protected void _attachByte(long ptr, int w, int h, ByteBuffer bytes, byte[] array, int offset) {
-        //TODO - not implemented
+        assertArrayEquals(new ButtonType[] {ButtonType.YES, ButtonType.NO}, alert.getButtonTypes().toArray());
     }
 }
