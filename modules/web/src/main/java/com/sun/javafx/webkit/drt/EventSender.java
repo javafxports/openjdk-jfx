@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,10 +30,8 @@ import com.sun.javafx.webkit.KeyCodeMap;
 import com.sun.webkit.event.WCKeyEvent;
 import com.sun.webkit.event.WCMouseEvent;
 import com.sun.webkit.event.WCMouseWheelEvent;
-import java.util.ArrayList;
+
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import javafx.scene.input.KeyCode;
 
@@ -64,7 +62,7 @@ final class EventSender {
         MAP.put("printScreen", KeyCode.PRINTSCREEN);
         MAP.put("menu", KeyCode.CONTEXT_MENU);
         for (KeyCode code : KeyCode.values()) {
-            MAP.put(code.impl_getCode(), code);
+            MAP.put(code.getCode(), code);
             MAP.put(code.getName().toLowerCase(), code);
             MAP.put(code.getName(), code);
         }
@@ -94,6 +92,11 @@ final class EventSender {
      * The current state of mouse buttons.
      */
     private boolean mousePressed;
+
+    /**
+     * The type of mouse button.
+     */
+    private int mouseButton = WCMouseEvent.NOBUTTON;
 
     /**
      * The time offset for events.
@@ -147,6 +150,7 @@ final class EventSender {
      * methods of the DRT event sender object.
      */
     private void mouseUpDown(int button, int modifiers) {
+        mouseButton = button;
         mousePressed = isSet(modifiers, PRESSED);
         dispatchMouseEvent(mousePressed
                 ? WCMouseEvent.MOUSE_PRESSED
@@ -162,7 +166,8 @@ final class EventSender {
         mousePositionY = y;
         dispatchMouseEvent(mousePressed
                 ? WCMouseEvent.MOUSE_DRAGGED
-                : WCMouseEvent.MOUSE_MOVED, 0, 0, 0);
+                : WCMouseEvent.MOUSE_MOVED, 
+                (mousePressed ? mouseButton : WCMouseEvent.NOBUTTON), 0, 0);
     }
 
     /**
