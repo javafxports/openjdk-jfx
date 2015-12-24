@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1247,7 +1247,7 @@ void DragView::View::screen_changed() {
 }
 
 void DragView::View::expose() {
-    cairo_t *context = gdk_cairo_create(widget->window);
+    cairo_t *context = gdk_cairo_create(gtk_widget_get_window(widget));
 
     cairo_surface_t* cairo_surface;
 

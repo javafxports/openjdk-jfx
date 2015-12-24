@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -119,7 +119,7 @@ static jobject createJavaScreen(JNIEnv* env, GdkScreen* screen, gint monitor_idx
     jobject jScreen = env->NewObject(jScreenCls, jScreenInit,
                                      (jlong)monitor_idx,
 
-                                     visual ? visual->depth : 0,
+                                     (visual ? gdk_visual_get_depth(visual) : 0),
 
                                      monitor_geometry.x,
                                      monitor_geometry.y,

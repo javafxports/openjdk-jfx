@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,7 +76,7 @@ public abstract class RegionUITestBase extends VisualTestBase {
     static final double TOLERANCE = 0.07;
 
     protected void assertColorEquals(Color expected, int x, int y, double tolerance) {
-        Color actual = getColor(x, y);
+        Color actual = getColorThreadSafe(x, y);
         try {
             assertColorEquals(expected, actual, tolerance);
         } catch (AssertionError error) {
@@ -85,11 +85,11 @@ public abstract class RegionUITestBase extends VisualTestBase {
     }
 
     protected void assertColorDoesNotEqual(Color notExpected, int x, int y, double tolerance) {
-        Color actual = getColor(x, y);
+        Color actual = getColorThreadSafe(x, y);
         assertColorDoesNotEqual(notExpected, actual, tolerance);
     }
 
-    private Color getColor(int x, int y) {
+    private Color getColorThreadSafe(int x, int y) {
         AtomicReference<Color> color = new AtomicReference<>();
         runAndWait(() -> color.set(getColor(scene, x, y)));
         return color.get();
