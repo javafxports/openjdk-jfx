@@ -36,6 +36,7 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Worker.State;
 import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
@@ -109,6 +110,21 @@ public class MiscellaneousTest extends TestBase {
                 "    s = s + s;\n" +
                 "}\n" +
                 "</script>");
+    }
+
+    @Test public void testWebViewWithoutSceneGraph() {
+        submit(() -> {
+             WebEngine engine = new WebView().getEngine();
+             engine.getLoadWorker().stateProperty().addListener(
+                    (observable, oldValue, newValue) -> {
+                        if (State.SUCCEEDED == newValue) {
+                            engine.executeScript(
+                                "window.scrollTo" +
+                                "(0, document.documentElement.scrollHeight)");
+                        }
+                    });
+             engine.loadContent("<body> <a href=#>hello</a></body>");
+        });
     }
 
     private WebEngine createWebEngine() {
