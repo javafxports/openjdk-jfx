@@ -25,8 +25,6 @@
 
 package com.sun.marlin;
 
-import java.awt.geom.Path2D;
-import java.lang.ref.WeakReference;
 import java.util.concurrent.atomic.AtomicInteger;
 import com.sun.util.reentrant.ReentrantContext;
 import com.sun.javafx.geom.Rectangle;
@@ -60,8 +58,6 @@ public final class RendererContext extends ReentrantContext implements MarlinCon
     final Curve curve = new Curve();
     // MarlinRenderingEngine.TransformingPathConsumer2D
     public final TransformingPathConsumer2D transformerPC2D;
-    // recycled Path2D instance (weak)
-    private WeakReference<Path2D.Float> refPath2D = null;
     public final Renderer renderer;
     private RendererNoAA rendererNoAA = null;
     public final Stroker stroker;
@@ -147,23 +143,6 @@ public final class RendererContext extends ReentrantContext implements MarlinCon
             // mark context as CLEAN:
             dirty = false;
         }
-    }
-
-    Path2D.Float getPath2D() {
-        // resolve reference:
-        Path2D.Float p2d
-            = (refPath2D != null) ? refPath2D.get() : null;
-
-        // create a new Path2D ?
-        if (p2d == null) {
-            p2d = new Path2D.Float(Path2D.WIND_NON_ZERO, INITIAL_EDGES_COUNT); // 32K
-
-            // update weak reference:
-            refPath2D = new WeakReference<Path2D.Float>(p2d);
-        }
-        // reset the path anyway:
-        p2d.reset();
-        return p2d;
     }
 
     public RendererNoAA getRendererNoAA() {

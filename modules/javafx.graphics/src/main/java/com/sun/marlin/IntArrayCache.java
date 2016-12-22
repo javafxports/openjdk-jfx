@@ -236,8 +236,8 @@ public final class IntArrayCache implements MarlinConst {
         return (int[]) OffHeapArray.UNSAFE.allocateUninitializedArray(int.class, length);
     }
 
-    public static void fill(final int[] array, final int fromIndex,
-                            final int toIndex, final int value)
+    static void fill(final int[] array, final int fromIndex,
+                     final int toIndex, final int value)
     {
         // clear array data:
         Arrays.fill(array, fromIndex, toIndex, value);
