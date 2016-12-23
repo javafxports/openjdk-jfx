@@ -151,7 +151,7 @@ final class Curve {
         assert off <= 6 && roots.length >= 10;
         int ret = off;
         int numPerpdfddf = perpendiculardfddf(roots, off);
-        float t0 = 0, ft0 = ROCsq(t0) - w*w;
+        float t0 = 0f, ft0 = ROCsq(t0) - w*w;
         roots[off + numPerpdfddf] = 1f; // always check interval end points
         numPerpdfddf++;
         for (int i = off; i < off + numPerpdfddf; i++) {
