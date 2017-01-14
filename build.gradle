@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -257,7 +257,7 @@ ext.BUILD_CLOSED = buildClosed
 
 ext.RUNARGSFILE = "run.args"
 ext.COMPILEARGSFILE = "compile.args"
-ext.JAVAPOLICYFILE = 'run.java.policy'
+ext.RUNJAVAPOLICYFILE = 'run.java.policy'
 
 ext.TESTCOMPILEARGSFILE = "testcompile.args"
 ext.TESTRUNARGSFILE = "testrun.args"
@@ -334,13 +334,10 @@ def cachedStub = STUB_RUNTIME.equals(closedCacheStubRuntime)
 
 if (cachedStub) {
     def stubModulesLib = "$STUB_RUNTIME/modules_libs"
-    def dirSuffix = (IS_MAC || IS_WINDOWS) ? "" : "/$OS_ARCH"
-    defineProperty("MEDIA_STUB", "$stubModulesLib/javafx.media$dirSuffix")
-    defineProperty("WEB_STUB", "$stubModulesLib/javafx.web$dirSuffix")
+    defineProperty("MEDIA_STUB", "$stubModulesLib/javafx.media")
+    defineProperty("WEB_STUB", "$stubModulesLib/javafx.web")
 } else {
-    def libraryStub = IS_MAC ? "$STUB_RUNTIME/lib" :
-                      IS_WINDOWS ? "$STUB_RUNTIME/bin" :
-                      "$STUB_RUNTIME/lib/$OS_ARCH"
+    def libraryStub = IS_WINDOWS ? "$STUB_RUNTIME/bin" : "$STUB_RUNTIME/lib"
 
     defineProperty("MEDIA_STUB", libraryStub)
     defineProperty("WEB_STUB", libraryStub)
@@ -738,15 +735,9 @@ List<String> computeLibraryPath(boolean working) {
     def modularSdkDirName = "${platformPrefix}modular-sdk"
     def modularSdkDir = "${rootProject.buildDir}/${modularSdkDirName}"
     def modulesLibsDir = "${modularSdkDir}/modules_libs"
-    String suffix = ""
-
-    if (!HOST_MODULES_ARCH.equals("")) {
-        suffix = "/${HOST_MODULES_ARCH}"
-    }
-
 
     modsWithNative.each() { m ->
-        lp << cygpath("${modulesLibsDir}/javafx.${m}${suffix}")
+        lp << cygpath("${modulesLibsDir}/javafx.${m}")
     }
     return lp
 }
@@ -969,15 +960,12 @@ compileTargets { t ->
 
     if (!targetProperties.containsKey('modLibDest')) targetProperties.modLibDest = targetProperties.libDest
 
-    if (!targetProperties.containsKey('modulesArch')) targetProperties.modulesArch = ""
-
     // This value is used as a prefix for various directories under ./build,
     // such as sdk, to allow for a common name for the hosted build
     // (for use when building apps) and a unique name for cross builds.
     if (rootProject.defaultHostTarget.equals(t.name)) {
         // use a simple common default for the "host" build
         targetProperties.platformPrefix=""
-        rootProject.ext.HOST_MODULES_ARCH = targetProperties.modulesArch
     } else {
         // and a more complex one for cross builds
         targetProperties.platformPrefix="${t.name}-"
@@ -2367,44 +2355,7 @@ project(":fxpackager") {
                 }
             }
         }
-        task buildIconSwap(type: CCTask, group: "Build") {
-            description = "Compiles native sources for the application co-bundle launcher"
-            matches = "IconSwap\\.cpp"
-            params.addAll(WIN.iconLauncher.ccFlags)
-            output(file("$buildDir/native/IconSwap"))
-            source file("src/main/native/tools/win/iconswap")
-            compiler = WIN.launcher.compiler
-            exe = true
-            linkerOptions.addAll(WIN.iconLauncher.linkFlags)
-            doLast {
-                copy {
-                    from "$buildDir/native/IconSwap/IconSwap.exe"
-                    into "${buildClassesDir}/com/oracle/tools/packager/windows"
-                }
-            }
-        }
-        task compileVersionInfoSwap(type: CCTask, group: "Build") {
-            description = "Compiles native sources for the VersionInfoSwap tool";
-            matches = ".*\\.cpp"
-            source(file("src/main/native/tools/win/versioninfoswap"));
-            params.addAll(WIN.versionInfoLauncher.ccFlags)
-            output(file("$buildDir/native/VersionInfoSwap/obj"));
-            compiler = WIN.versionInfoLauncher.compiler
-        }
-        task linkVersionInfoSwap(type: LinkTask, group: "Build", dependsOn: compileVersionInfoSwap) {
-            description = "Links native sources for the VersionInfoSwap tool";
-            objectDir = file("$buildDir/native/VersionInfoSwap/obj")
-            linkParams.addAll(WIN.versionInfoLauncher.linkFlags);
-            lib = file("$buildDir/native/VersionInfoSwap/VersionInfoSwap.exe")
-            linker = WIN.versionInfoLauncher.linker
-            doLast {
-                copy {
-                    from "$buildDir/native/VersionInfoSwap/VersionInfoSwap.exe"
-                    into "${buildClassesDir}/com/oracle/tools/packager/windows"
-                }
-            }
-        }
-        task compileLauncher(dependsOn: [buildWinLauncher, linkWinLibrary, buildWinLauncherSvc, buildIconSwap, linkVersionInfoSwap])
+        task compileLauncher(dependsOn: [buildWinLauncher, linkWinLibrary, buildWinLauncherSvc])
     } else if (IS_MAC && COMPILE_FXPACKAGER) {
         task buildMacLauncher(type: CCTask, group: "Build") {
             description = "Compiles native sources for the application co-bundle launcher"
@@ -2472,12 +2423,12 @@ project(":fxpackager") {
     // this is simply moving the existing shell script and ensuring it has proper
     // permissions. For Windows, this includes compiling the native executable
     if (IS_WINDOWS && COMPILE_FXPACKAGER){
-        task buildJavaPackager(type: CCTask, group: "Build") {
+        task compileJavaPackager(type: CCTask, group: "Build") {
             description = "Compiles native sources for javapackager.exe"
-            matches = "javapackager\\.cpp"
+            matches = ".*\\.cpp"
             params.addAll(WIN.fxpackager.ccFlags)
             compiler = WIN.fxpackager.compiler
-            output(file("$buildDir/native/javapackager"))
+            output(file("$buildDir/native/javapackager/obj"))
             source WIN.fxpackager.nativeSource
             doFirst {
                 copy {
@@ -2500,16 +2451,13 @@ project(":fxpackager") {
                     args(WIN.fxpackager.rcSource)
                 }
             }
-            doLast {
-                mkdir "$buildDir/javapackager"
-                exec({
-                    commandLine("$WIN.fxpackager.linker", "/nologo", "/opt:REF", "/incremental:no", "/manifest", "kernel32.lib", "advapi32.lib",
-                            "/out:$buildDir/native/javapackager/javapackager.exe",
-                            "$buildDir/native/javapackager/javapackager.obj",
-                            "$buildDir/native/javapackager/javapackager.res")
-                    environment(WINDOWS_NATIVE_COMPILE_ENVIRONMENT)
-                })
-            }
+        }
+        task linkJavaPackager(type: LinkTask, dependsOn: compileJavaPackager, group: "Build") {
+            description = "Links javapackager.exe"
+            objectDir = file("$buildDir/native/javapackager/obj")
+            linkParams.addAll(WIN.fxpackager.linkFlags);
+            lib = file("$buildDir/native/javapackager/javapackager.exe")
+            linker = WIN.fxpackager.linker
             doLast {
                 exec({
                     commandLine("$MC", "-manifest",
@@ -2523,6 +2471,7 @@ project(":fxpackager") {
                 }
             }
         }
+        task buildJavaPackager(dependsOn: [compileJavaPackager, linkJavaPackager])
     } else {
         task buildJavaPackager(group: "Build") {
             enabled = COMPILE_FXPACKAGER
@@ -3230,7 +3179,7 @@ project(":systemTests") {
 
     commonModuleSetup(project, [ 'base', 'graphics', 'controls', 'media', 'web', 'swing', 'fxml' ])
 
-    File javaPolicyFile = new File(rootProject.buildDir, TESTJAVAPOLICYFILE);
+    File testJavaPolicyFile = new File(rootProject.buildDir, TESTJAVAPOLICYFILE);
     File testRunArgsFile = new File(rootProject.buildDir,TESTRUNARGSFILE);
 
     File stRunArgsFile = new File(project.buildDir,"st.run.args");
@@ -3271,7 +3220,7 @@ project(":systemTests") {
         // Properties passed to test.util.Util
         systemProperties 'worker.debug': IS_WORKER_DEBUG
         systemProperties 'worker.patchmodule.file': cygpath(stRunArgsFile.path)
-        systemProperties 'worker.patch.policy': cygpath(javaPolicyFile.path)
+        systemProperties 'worker.patch.policy': cygpath(testJavaPolicyFile.path)
         systemProperties 'worker.java.cmd': JAVA
 
         if (!IS_USE_ROBOT) {
@@ -3740,6 +3689,15 @@ compileTargets { t ->
                         filter(project.sourceFilter)
                     }
                 }
+                // Copy .html and other files needed for doc bundles
+                if (copySources) {
+                    copy {
+                        from "${project.projectDir}/src/main/java"
+                        from "${project.projectDir}/src/main/docs"
+                        into "${modulesSrcDir}/${moduleName}"
+                        exclude "**/*.java"
+                    }
+                }
 
                 // Copy make/build.properties
                 def srcMakeDir = "${project.projectDir}/make"
@@ -3747,18 +3705,6 @@ compileTargets { t ->
                 copy {
                     from srcMakeDir
                     into dstMakeDir
-                }
-
-                // FIXME: The following is a temporary fix for JDK-8171450.
-                // It should be removed once the rest of the build logic is
-                // updated to look for native libs in the lib/ directory on
-                // Linux and not in lib/$ARCH/
-                if (IS_LINUX) {
-                    copy {
-                        from "${modulesLibsDir}/${moduleName}/$OS_ARCH"
-                        into "${modulesLibsDir}/${moduleName}"
-                        include "*.so"
-                    }
                 }
             }
 
@@ -3950,8 +3896,7 @@ compileTargets { t ->
                               "${ctrlbld}/resources/android")
                     } else if (t.name == 'ios') {
                         from ("${webbld}/classes/ios",
-                              "${webbld}/resources/ios",
-                              "modules/extensions/build/classes/ios")
+                              "${webbld}/resources/ios")
                     } else {
                         from ("${webbld}/classes/main",
                               "${webbld}resources/main")
@@ -4139,10 +4084,13 @@ compileTargets { t ->
         File testCompileArgsFile = new File(rootProject.buildDir, TESTCOMPILEARGSFILE)
         // And a test java.policy file
         File testJavaPolicyFile = new File(rootProject.buildDir, TESTJAVAPOLICYFILE)
+        // and the non-test version to go with run.args
+        File runJavaPolicyFile = new File(rootProject.buildDir, RUNJAVAPOLICYFILE);
 
         outputs.file(testRunArgsFile)
         outputs.file(testCompileArgsFile)
         outputs.file(testJavaPolicyFile)
+        outputs.file(runJavaPolicyFile)
 
         doLast() {
             rootProject.buildDir.mkdir()
@@ -4175,6 +4123,12 @@ compileTargets { t ->
 
                     String themod = dir.toURI()
                     testJavaPolicyFile <<  "grant codeBase \"${themod}\" {\n" +
+                    "    permission java.security.AllPermission;\n" +
+                    "};\n"
+
+                    dir = new File(rootProject.buildDir, "modular-sdk/modules/${project.ext.moduleName}")
+                    themod = dir.toURI()
+                    runJavaPolicyFile <<  "grant codeBase \"${themod}\" {\n" +
                     "    permission java.security.AllPermission;\n" +
                     "};\n"
                 }
