@@ -5,7 +5,8 @@ if [ -z ${JAVA_HOME} ]; then
   exit
 fi
 
-VERSION=1.2
+PLATFORM=`bash ../whichplatform.sh`
+VERSION=1.3
 MAC_APPSTORE_ARGS=""
 
 # Argument parsing.
@@ -31,7 +32,6 @@ rm -rf output
 mkdir output
 
 # Generate ICNS file
-PLATFORM=`bash ../whichplatform.sh`
 ICON="";
 
 if [[ $PLATFORM == "MAC" ]]; then
@@ -47,8 +47,8 @@ eval ${JAVAPACKAGER} $(IFS=$' '; echo "${ARGS[*]}") \
   -outdir output \
   -name MinesweeperFX \
   $ICON \
-  -native image \
-  -BsignBundle=false -Bversion=9.0 \
+  -native \
+  -Bversion=9.0 \
   -Bmac.dmg.simple=true \
   --module MinesweeperFX/minesweeperfx.MinesweeperFX \
   --module-path modules \
