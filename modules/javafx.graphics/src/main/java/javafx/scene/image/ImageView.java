@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,7 +68,7 @@ import java.util.List;
  * Example code for displaying images
  * </p>
  *
- * <pre>{@code
+ * <pre><code>
  * import javafx.application.Application;
  * import javafx.geometry.Rectangle2D;
  * import javafx.scene.Group;
@@ -81,7 +81,7 @@ import java.util.List;
  *
  * public class HelloImageView extends Application {
  *
- *     &#64;Override public void start(Stage stage) {
+ *     {@literal @Override} public void start(Stage stage) {
  *         // load the image
  *         Image image = new Image("flower.png");
  *
@@ -128,7 +128,7 @@ import java.util.List;
  *         Application.launch(args);
  *     }
  * }
- * }</pre>
+ * </code></pre>
  * <p>
  * The code above produces the following:
  * </p>

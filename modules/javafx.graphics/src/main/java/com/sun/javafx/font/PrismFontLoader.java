@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,7 @@ public class PrismFontLoader extends FontLoader {
         // locate the META-INF directory and search for a fonts.mf
         // located there
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        if (loader == null) return map;
         URL u = loader.getResource("META-INF/fonts.mf");
         if (u == null) return map;
 
