@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,30 +23,8 @@
  * questions.
  */
 
-/**
- * Defines APIs for playback of media and audio content, as part of the
- * JavaFX UI toolkit, including {@link javafx.scene.media.MediaView} and
- * {@link javafx.scene.media.MediaPlayer}.
- *
- * @moduleGraph
- * @since 9
- */
-module javafx.media {
-    requires transitive javafx.base;
-    requires transitive javafx.graphics;
+module mymod {
+    requires javafx.controls;
 
-    exports javafx.scene.media;
-
-    exports com.sun.javafx.media to
-        javafx.web;
-    exports com.sun.media.jfxmedia to
-        javafx.web;
-    exports com.sun.media.jfxmedia.control to
-        javafx.web;
-    exports com.sun.media.jfxmedia.events to
-        javafx.web;
-    exports com.sun.media.jfxmedia.locator to
-        javafx.web;
-    exports com.sun.media.jfxmedia.track to
-        javafx.web;
+    exports testapp;
 }

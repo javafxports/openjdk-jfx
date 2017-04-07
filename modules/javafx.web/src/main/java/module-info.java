@@ -26,6 +26,9 @@
 /**
  * Defines APIs for the WebView functionality contained within the the
  * JavaFX UI toolkit.
+ *
+ * @moduleGraph
+ * @since 9
  */
 module javafx.web {
     requires transitive java.xml;
