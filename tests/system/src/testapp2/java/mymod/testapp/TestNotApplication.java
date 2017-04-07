@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,30 +23,34 @@
  * questions.
  */
 
+package testapp;
+
+import javafx.application.Application;
+import javafx.application.Platform;
+
 /**
- * Defines APIs for playback of media and audio content, as part of the
- * JavaFX UI toolkit, including {@link javafx.scene.media.MediaView} and
- * {@link javafx.scene.media.MediaPlayer}.
- *
- * @moduleGraph
- * @since 9
+ * Modular test app using an ordinary Java class without extending Application.
+ * This is launched by ModuleLauncherTest.
  */
-module javafx.media {
-    requires transitive javafx.base;
-    requires transitive javafx.graphics;
+public class TestNotApplication {
 
-    exports javafx.scene.media;
+    // NOTE: these constants must match those in test.launchertest.Constants
+    private static final int ERROR_UNEXPECTED_EXCEPTION = 4;
+    private static final int ERROR_TOOLKIT_IS_RUNNING = 5;
 
-    exports com.sun.javafx.media to
-        javafx.web;
-    exports com.sun.media.jfxmedia to
-        javafx.web;
-    exports com.sun.media.jfxmedia.control to
-        javafx.web;
-    exports com.sun.media.jfxmedia.events to
-        javafx.web;
-    exports com.sun.media.jfxmedia.locator to
-        javafx.web;
-    exports com.sun.media.jfxmedia.track to
-        javafx.web;
+    public static void main(String[] args) {
+        try {
+            Platform.runLater(() -> {
+                // do nothing
+            });
+            System.exit(ERROR_TOOLKIT_IS_RUNNING);
+        } catch (IllegalStateException ex) {
+            // OK
+        } catch (RuntimeException ex) {
+            ex.printStackTrace();
+            System.exit(ERROR_UNEXPECTED_EXCEPTION);
+        }
+        Application.launch(TestAppNoMain.class, args);
+    }
+
 }
