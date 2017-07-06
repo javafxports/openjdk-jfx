@@ -24,68 +24,39 @@ endif ()
 set(LIB_INSTALL_DIR "${CMAKE_INSTALL_FULL_LIBDIR}" CACHE PATH "Absolute path to library installation directory")
 set(EXEC_INSTALL_DIR "${CMAKE_INSTALL_FULL_BINDIR}" CACHE PATH "Absolute path to executable installation directory")
 
-file(TO_CMAKE_PATH $ENV{WEBKIT_OUTPUTDIR}/import/include IMPORT_INCLUDE_DIR)
-file(TO_CMAKE_PATH $ENV{WEBKIT_OUTPUTDIR}/import/lib IMPORT_LIBRARIES_DIR)
 if (WIN32)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/bin")
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/bin")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/lib")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/lib")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/lib")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/lib")
+
     #### ICU ####
-    set(ICU_FOUND TRUE)
-    set(ICU_I18N_FOUND TRUE)
-    set(ICU_INCLUDE_DIRS ${IMPORT_INCLUDE_DIR}/icu)
-    if (CMAKE_BUILD_TYPE STREQUAL "Release")
-        set(ICU_LIBRARIES ${IMPORT_LIBRARIES_DIR}/sicuuc.lib ${IMPORT_LIBRARIES_DIR}/icudt.lib)
-        set(ICU_I18N_LIBRARIES ${IMPORT_LIBRARIES_DIR}/sicuin.lib)
-    else ()
-        set(ICU_LIBRARIES ${IMPORT_LIBRARIES_DIR}/sicuucd.lib ${IMPORT_LIBRARIES_DIR}/icudt.lib)
-        set(ICU_I18N_LIBRARIES ${IMPORT_LIBRARIES_DIR}/sicuind.lib)
-    endif ()
+    set (ICU_JAVA_COMMON_LIB sicuuc)
+    set (ICU_I18N_LIBRARIES sicuin)
+    set (ICU_JAVA_DATA_LIB ${CMAKE_BINARY_DIR}/lib/sicudt.lib)
     #### ICU-END ####
-
-    set(LIBXML2_INCLUDE_DIR ${IMPORT_INCLUDE_DIR})
-    set(LIBXML2_LIBRARIES ${IMPORT_LIBRARIES_DIR}/libxml2_a.lib)
-
-    #### Sqlite3 ####
-    set(SQLITE_FOUND TRUE)
-    set(SQLITE_INCLUDE_DIR ${IMPORT_INCLUDE_DIR})
-    set(SQLITE_LIBRARIES ${IMPORT_LIBRARIES_DIR}/sqlite3.lib)
-    #### Sqlite3-END ####
-
-    set(LIBXSLT_INCLUDE_DIR ${IMPORT_INCLUDE_DIR})
-    set(LIBXSLT_LIBRARIES ${IMPORT_LIBRARIES_DIR}/libxslt_a.lib)
 elseif (APPLE)
     # set(USE_CF 1)
     add_definitions(-DUSE_CF=1)
     add_definitions(-DJSC_OBJC_API_ENABLED=0)
 
     #### ICU ####
-    set(ICU_FOUND TRUE)
-    set(ICU_I18N_FOUND TRUE)
-    set(ICU_INCLUDE_DIRS ${IMPORT_INCLUDE_DIR})
-    set(ICU_LIBRARIES ${IMPORT_LIBRARIES_DIR}/libicuuc.a ${IMPORT_LIBRARIES_DIR}/libicudata.a)
-    set(ICU_I18N_LIBRARIES ${IMPORT_LIBRARIES_DIR}/libicui18n.a)
+    set(ICU_JAVA_COMMON_LIB icuuc)
+    set(ICU_I18N_LIBRARIES icui18n)
+    set(ICU_JAVA_DATA_LIB ${CMAKE_BINARY_DIR}/lib/libicudata.a)
     #### ICU-END ####
 
-    #### Sqlite3 ####
-    set(SQLITE_FOUND TRUE)
-    set(SQLITE_INCLUDE_DIR ${IMPORT_INCLUDE_DIR})
-    set(SQLITE_LIBRARIES ${IMPORT_LIBRARIES_DIR}/libsqlite3.a)
-    #### Sqlite3-END ####
     find_package(LibXml2 2.8.0 REQUIRED)
     find_package(LibXslt 1.1.7 REQUIRED)
     set(CMAKE_SKIP_RPATH TRUE)
 elseif (UNIX)
     #### ICU ####
-    set(ICU_FOUND TRUE)
-    set(ICU_I18N_FOUND TRUE)
-    set(ICU_INCLUDE_DIRS ${IMPORT_INCLUDE_DIR})
-    set(ICU_LIBRARIES ${IMPORT_LIBRARIES_DIR}/libicuuc.a ${IMPORT_LIBRARIES_DIR}/libicudata.a)
-    set(ICU_I18N_LIBRARIES ${IMPORT_LIBRARIES_DIR}/libicui18n.a)
+    set(ICU_JAVA_COMMON_LIB icuuc)
+    set(ICU_I18N_LIBRARIES icui18n)
+    set(ICU_JAVA_DATA_LIB ${CMAKE_BINARY_DIR}/lib/libicudata.a)
     #### ICU-END ####
-
-    #### Sqlite3 ####
-    set(SQLITE_FOUND TRUE)
-    set(SQLITE_INCLUDE_DIR ${IMPORT_INCLUDE_DIR})
-    set(SQLITE_LIBRARIES ${IMPORT_LIBRARIES_DIR}/libsqlite3.a)
-    #### Sqlite3-END ####
 
     find_package(LibXml2 2.7.0 REQUIRED)
     find_package(LibXslt 1.1.7 REQUIRED)
@@ -102,7 +73,7 @@ if (WIN32)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
     # Workaround for MSBuild. It always creates Release|Debug folder
     # according to the build type on each target.
-    install(PROGRAMS ${CMAKE_BINARY_DIR}/lib/${CMAKE_BUILD_TYPE}/${WebCore_OUTPUT_NAME}.dll DESTINATION ${CMAKE_BINARY_DIR}/lib OPTIONAL)
+    install(PROGRAMS ${CMAKE_BINARY_DIR}/bin/${WebCore_OUTPUT_NAME}.dll DESTINATION ${CMAKE_BINARY_DIR}/lib OPTIONAL)
     # Copied from OptionsWindows.cmake
     add_definitions(-D_HAS_EXCEPTIONS=0 -DNOMINMAX -DUNICODE -DU_STATIC_IMPLEMENTATION)
     add_definitions(
@@ -291,3 +262,10 @@ if (CMAKE_MAJOR_VERSION LESS 3)
         FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
     )
 endif ()
+
+set(ICU_INCLUDE_DIRS
+    "${THIRDPARTY_DIR}/icu/source/common"
+    "${THIRDPARTY_DIR}/icu/source/i18n"
+)
+
+set(ICU_LIBRARIES ${ICU_JAVA_COMMON_LIB} ${ICU_JAVA_DATA_LIB})
