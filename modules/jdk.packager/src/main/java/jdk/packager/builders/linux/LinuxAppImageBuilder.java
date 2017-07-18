@@ -26,6 +26,7 @@ package jdk.packager.builders.linux;
 
 
 import com.oracle.tools.packager.BundlerParamInfo;
+import com.oracle.tools.packager.IOUtils;
 import com.oracle.tools.packager.Log;
 import com.oracle.tools.packager.RelativeFileSet;
 import com.oracle.tools.packager.StandardBundlerParam;
@@ -68,6 +69,7 @@ public class LinuxAppImageBuilder extends AbstractAppImageBuilder {
     private final Path root;
     private final Path appDir;
     private final Path runtimeDir;
+    private final Path resourcesDir;
     private final Path mdir;
 
     private final Map<String, ? super Object> params;
@@ -87,38 +89,21 @@ public class LinuxAppImageBuilder extends AbstractAppImageBuilder {
             },
             (s, p) -> new File(s));
 
-//    public static final BundlerParamInfo<URL> RAW_EXECUTABLE_URL = new StandardBundlerParam<>(
-//            I18N.getString("param.raw-executable-url.name"),
-//            I18N.getString("param.raw-executable-url.description"),
-//            "linux.launcher.url",
-//            URL.class,
-//            params -> LinuxResources.class.getResource(EXECUTABLE_NAME),
-//            (s, p) -> {
-//                try {
-//                    return new URL(s);
-//                } catch (MalformedURLException e) {
-//                    Log.info(e.toString());
-//                    return null;
-//                }
-//            });
-//
-
     public LinuxAppImageBuilder(Map<String, Object> config, Path imageOutDir) throws IOException {
         super(config, imageOutDir.resolve(APP_NAME.fetchFrom(config) + "/runtime"));
 
         Objects.requireNonNull(imageOutDir);
 
-        //@SuppressWarnings("unchecked")
-        //String img = (String) config.get("jimage.name"); // FIXME constant
-
         this.root = imageOutDir.resolve(APP_NAME.fetchFrom(config));
         this.appDir = root.resolve("app");
         this.runtimeDir = root.resolve("runtime");
+        this.resourcesDir = root.resolve("resources");
         this.mdir = runtimeDir.resolve("lib");
         this.params = new HashMap<String, Object>();
         config.entrySet().stream().forEach(e -> params.put(e.getKey().toString(), e.getValue()));
         Files.createDirectories(appDir);
         Files.createDirectories(runtimeDir);
+        Files.createDirectories(resourcesDir);
     }
 
     private Path destFile(String dir, String filename) {
@@ -203,7 +188,7 @@ public class LinuxAppImageBuilder extends AbstractAppImageBuilder {
             copyApplication();
 
             // Copy icon to Resources folder
-//FIXME            copyIcon(resourcesDirectory);
+            copyIcon();
 
         } catch (IOException ex) {
             Log.info("Exception: " + ex);
@@ -221,6 +206,12 @@ public class LinuxAppImageBuilder extends AbstractAppImageBuilder {
         executableFile.toFile().setWritable(true, true);
 
         writeCfgFile(p, root.resolve(getLauncherCfgName(p)).toFile(), "$APPDIR/runtime");
+    }
+
+    private void copyIcon() throws IOException {
+        File icon = ICON_PNG.fetchFrom(params);
+        File iconTarget = new File(resourcesDir.toFile(), APP_FS_NAME.fetchFrom(params) + ".png");
+        IOUtils.copyFile(icon, iconTarget);
     }
 
     private void copyApplication() throws IOException {

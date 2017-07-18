@@ -148,6 +148,7 @@ public class MenuBarSkin extends SkinBase<MenuBar> {
     private EventHandler<MouseEvent> mouseEventHandler;
     private ChangeListener<Boolean> menuBarFocusedPropertyListener;
     private ChangeListener<Scene> sceneChangeListener;
+    private ChangeListener<Boolean> menuVisibilityChangeListener;
 
     private boolean pendingDismiss = false;
 
@@ -347,15 +348,14 @@ public class MenuBarSkin extends SkinBase<MenuBar> {
             }
         });
 
+        menuVisibilityChangeListener = (ov, t, t1) -> {
+            rebuildUI();
+        };
+
         rebuildUI();
         control.getMenus().addListener((ListChangeListener<Menu>) c -> {
             rebuildUI();
         });
-        for (final Menu menu : getSkinnable().getMenus()) {
-            menu.visibleProperty().addListener((ov, t, t1) -> {
-                rebuildUI();
-            });
-        }
 
         if (Toolkit.getToolkit().getSystemMenu().isSupported()) {
             control.useSystemMenuBarProperty().addListener(valueModel -> {
@@ -820,6 +820,8 @@ public class MenuBarSkin extends SkinBase<MenuBar> {
         for (Menu m : getSkinnable().getMenus()) {
             // remove action listeners
             updateActionListeners(m, false);
+
+            m.visibleProperty().removeListener(menuVisibilityChangeListener);
         }
         for (Node n : container.getChildren()) {
             // Stop observing menu's showing & disable property for changes.
@@ -920,6 +922,9 @@ public class MenuBarSkin extends SkinBase<MenuBar> {
 
         getSkinnable().focusedProperty().addListener(menuBarFocusedPropertyListener);
         for (final Menu menu : getSkinnable().getMenus()) {
+
+            menu.visibleProperty().addListener(menuVisibilityChangeListener);
+
             if (!menu.isVisible()) continue;
             final MenuBarButton menuButton = new MenuBarButton(this, menu);
             menuButton.setFocusTraversable(false);
@@ -951,8 +956,11 @@ public class MenuBarSkin extends SkinBase<MenuBar> {
             });
             menuButton.showingProperty().addListener((observable, oldValue, isShowing) -> {
                 if (isShowing) {
+                    if(openMenuButton == null && focusedMenuIndex != -1)
+                        openMenuButton = (MenuBarButton)container.getChildren().get(focusedMenuIndex);
+
                     if (openMenuButton != null && openMenuButton != menuButton) {
-                        openMenuButton.hide();
+                        openMenuButton.clearHover();
                     }
                     openMenuButton = menuButton;
                     showMenu(menu);
@@ -1046,10 +1054,6 @@ public class MenuBarSkin extends SkinBase<MenuBar> {
         if (openMenu != null) {
             openMenu.hide();
             openMenu = null;
-            openMenuButton = (MenuBarButton)container.getChildren().get(focusedMenuIndex);
-            openMenuButton.clearHover();
-            openMenuButton = null;
-            menuModeEnd();
         }
     }
 
@@ -1146,6 +1150,7 @@ public class MenuBarSkin extends SkinBase<MenuBar> {
          for(Node n : container.getChildren()) {
             if (n.isHover()) {
                 ((MenuBarButton)n).clearHover();
+                ((MenuBarButton)n).disarm();
                 return;
             }
         }

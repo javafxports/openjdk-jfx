@@ -31,12 +31,12 @@
  */
 module jdk.packager.services {
     exports jdk.packager.services;
+    exports jdk.packager.services.singleton;
 
     requires java.prefs;
+    requires java.desktop;
 
     uses jdk.packager.services.UserJvmOptionsService;
 
     provides jdk.packager.services.UserJvmOptionsService with jdk.packager.services.userjvmoptions.LauncherUserJvmOptions;
-// service loaders are not preserving order, so delete this and provide only one
-//    provides jdk.packager.services.UserJvmOptionsService with jdk.packager.services.userjvmoptions.PreferencesUserJvmOptions;
 }

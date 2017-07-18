@@ -62,7 +62,6 @@ public:
     TString FMainJar;
     TString FMainModule;
     TString FMainClassName;
-    bool FIsRuntimeBundled;
     TString FJVMRuntimeDirectory;
     TString FJVMLibraryFileName;
     TString FSplashScreenFileName;
@@ -110,6 +109,7 @@ public:
     void Initialize();
     void Clear();
     void FreeBootFields();
+    bool CheckForSingleInstance();
 
     void SetCommandLineArguments(int argc, TCHAR* argv[]);
 
@@ -136,7 +136,6 @@ public:
     TString GetClassPath();
     TString GetModulePath();
     TString GetMainClassName();
-    bool IsRuntimeBundled();
     TString GetJVMLibraryFileName();
     TString GetJVMRuntimeDirectory();
     TString GetSplashScreenFileName();

@@ -5,7 +5,9 @@
         <data xmlns="http://www.netbeans.org/ns/j2se-project/3">
             <name>fxpackager</name>
             <source-roots>
-                <root id="src.dir"/>
+                <root id="src.dir" name="jdk.packager"/>
+                <root id="src.dir.service" name="jdk.packager.services"/>
+                <root id="src.dir.ant" name="antplugin"/>
             </source-roots>
             <test-roots>
                 <root id="test.src.dir"/>
