@@ -1,8 +1,10 @@
-## WebKit Open Source Project: WebKit v604.1
+## WebKit Open Source Project: WebKit v605.1
 
 ### WebKit Notice
 <pre>
-Oracle license do NOT apply to the WebKit; it is
+You are receiving a copy of WebKit in either source or
+object code in the JavaFX runtime or JavaFX SDK. The terms of the
+Oracle license do NOT apply to WebKit; it is
 licensed under the following license, separately from the Oracle programs
 you receive. If you do not wish to install this library, you may delete
 this library:
@@ -14,7 +16,7 @@ this library:
 A copy of the Oracle modified WebKit library source code is located
 in the following OpenJDK Mercurial repository:
 
-   http://hg.openjdk.java.net/openjfx/9/rt
+   http://hg.openjdk.java.net/openjfx/jfx/rt
 
 You can use Mercurial to clone the repository or you can browse the
 source using a web browser. The root directory of the WebKit source
