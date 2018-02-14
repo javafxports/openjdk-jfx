@@ -1,0 +1,81 @@
+language: java
+sudo: false
+
+addons:
+  apt:
+    packages: &global_deps
+      - ksh
+      - bison
+      - flex
+      - gperf
+      - libasound2-dev
+      - libgl1-mesa-dev
+      - libgstreamer0.10-dev
+      - libgstreamer-plugins-base0.10-dev
+      - libjpeg-dev
+      - libpng-dev
+      - libx11-dev
+      - libxml2-dev
+      - libxslt1-dev
+      - libxt-dev
+      - libxxf86vm-dev
+      - pkg-config
+      - libavcodec-dev
+      - mercurial
+      - libgtk2.0-dev
+      - libgtk-3-dev
+      - libxtst-dev
+      - libudev-dev
+      - libavformat-dev
+      - cmake
+      - ruby
+      - gdb
+      - libcups2-dev
+
+# For webkit: t5-qmake qtbase5-dev qtdeclarative5-dev libqt5webkit5-dev ?
+# Won't be able to build webkit in the time alloted by Travis
+
+before_cache:
+  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+
+matrix:
+  fast_finish: true
+  include:
+    - os: linux
+      dist: trusty
+      jdk: oraclejdk9
+      addons:
+        apt:
+          packages:
+            - oracle-java9-installer
+            - *global_deps
+    - os: osx
+      osx_image: xcode9
+      env:
+        - PRINT_CRASH_LOGS="true"
+
+before_script:
+  - wget https://services.gradle.org/distributions/gradle-4.3-bin.zip
+  - unzip gradle-4.3-bin.zip
+  - export GRADLE_HOME=$PWD/gradle-4.3
+  - export PATH=$GRADLE_HOME/bin:$PATH
+  - echo $JAVA_OPTS
+  - echo $GRADLE_OPTS
+  # run on xvfb screen (for linux).
+  - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then export DISPLAY=:99.0 && sh -e /etc/init.d/xvfb start; fi
+
+before_install: .ci/before_install.sh
+
+# skip install stage.
+install: true
+
+script: .ci/script.sh
+
+notifications:
+  email: false
+
