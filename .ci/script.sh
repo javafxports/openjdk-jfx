@@ -2,7 +2,7 @@
 set -uo pipefail
 
 BOOT_JDK10_VER="42"
-BOOT_JDK10="jdk-10-ea+42"
+BOOT_JDK10="jdk-10-ea+${BOOT_JDK10_VER}"
 
 echo "which java: $(which java)"
 ulimit -c unlimited -S
