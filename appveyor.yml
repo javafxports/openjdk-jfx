@@ -1,0 +1,72 @@
+version: "{branch} {build}"
+
+image: Visual Studio 2017
+
+environment:
+  JAVA_HOME: C:\jdk9
+  VS150COMNTOOLS: C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build
+  MSVC_VER: 14.12.25827
+  APPVEYOR_CACHE_ENTRY_ZIP_ARGS: "-t7z -m0=lzma -mx=9"
+
+shallow_clone: true
+
+build:
+  verbosity: detailed
+
+build_script:
+  - ps: |
+      choco install jdk9 --version 9.0.4.11 -params 'installdir=C:\\jdk9'
+      choco install gradle --version 4.3.0
+      refreshenv
+  - cmd: |
+      call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64
+      gradle build -PCOMPILE_WEBKIT=false --stacktrace -x :web:test --info --no-daemon
+
+test_script:
+  - gradle test -x :web:test -PFULL_TEST=true --stacktrace --info --no-daemon
+
+on_finish:
+  - ps: |
+        $crashes = Get-ChildItem -Include hs_err_pid*.log -Recurse
+        Write-Output $crashes
+        $javaExe = $env.JAVA_HOME + '\bin\java.exe'
+        ForEach ($crash in $crashes) {
+          Get-Content $crash
+          $crashDump = $crash.Name + '.mdmp'
+          Start-Process -FilePath "C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -ArgumentList "-v -z $crashDump -c '!sym noisy;~*;kb;q' -i $javaExe"
+        }
+
+        # This technically works but is really inefficient as it requires an HTTP request for every
+        # single test. Ideally we want to batch the results. We can do this by POSTing to:
+        # $APPVEYOR_API_URL/api/tests/batch
+        # With JSON body:
+        # https://www.appveyor.com/docs/build-worker-api/#rest-3
+        # In order to do this we will need to iterate over all the XML files and convert them into
+        # a big JSON array.
+        Write-Output -Message 'Uploading test results to AppVeyor…' -Verbose
+        $wc = New-Object 'System.Net.WebClient'
+        $modules = @("javafx.base", "javafx.graphics", "javafx.controls", "javafx.fxml", "javafx.jmx", "javafx.media", "javafx.swing", "javafx.swt") # "javafx.web")
+        ForEach ($module in $modules) {
+          ForEach ($file in Get-ChildItem ".\modules\${module}\build\test-results\test\TEST-*.xml") {
+            try {
+              $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", $file) 2>&1 | Out-Null
+            } catch [System.Net.WebException] {
+              # Ignore
+            }
+          }
+        }
+
+        # Install JDK 10 (for boot JDK)
+        $client = New-Object net.webclient
+        $client.DownloadFile("https://download.java.net/java/jdk10/archive/42/BCL/jdk-10-ea+42_windows-x64_bin.exe", "C:\Users\appveyor\jdk-10.exe")
+        Start-Process "C:\Users\appveyor\jdk-10.exe" -ArgumentList "/s ADDLOCAL=`"ToolsFeature,SourceFeature,PublicjreFeature`" /INSTALLDIR=`"C:\jdk-10`" /L `"C:\Users\appveyor\jdk-10-install.txt`""
+  - cmd: |
+        REM Currently building OpenJDK exceeds Appveyor's time limits. Keep this around
+        REM in case we ever get the proper infrastructure.
+        hg clone http://hg.openjdk.java.net/jdk/jdk
+        cd jdk/
+        REM C:\cygwin\bin\bash "PATH=/bin:/cygdrive/c/Windows/System32:/cygdrive/c/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Auxiliary/Build && ./configure --with-import-modules=/cygdrive/c/projects/openjfx/build/modular-sdk --with-boot-jdk=/cygdrive/c/jdk-10"
+
+cache:
+  - C:\Users\appveyor\.gradle\caches
+
