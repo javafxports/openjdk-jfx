@@ -53,6 +53,7 @@
 #include <algorithm>
 #include <dlfcn.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 
 PosixPlatform::PosixPlatform(void) {
@@ -380,7 +381,7 @@ bool PosixProcess::Wait() {
     pid_t wpid = 0;
 
 #ifdef LINUX
-    wait();
+    wait(&status);
 #endif
 #ifdef MAC
     wpid = wait(&status);
