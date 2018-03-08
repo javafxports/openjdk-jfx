@@ -1,4 +1,2 @@
-README:
-  This file should be located at the top of the "rt" Mercurial repository.
-
-TODO: add more information here
+# JavaFX mirror
+This repository is a mirror of the [OpenJFX repository](http://hg.openjdk.java.net/openjfx/jfx-dev/rt).
