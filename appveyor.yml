@@ -3,9 +3,6 @@ version: "{branch} {build}"
 image: Visual Studio 2017
 
 environment:
-# detailed gradle build:
-#  GRADLE_OPTS: "-PCOMPILE_WEBKIT=false --no-daemon --stacktrace --info"
-  GRADLE_OPTS: "-PCOMPILE_WEBKIT=false --no-daemon --stacktrace"
   JAVA_HOME: C:\\jdk9
   VCINSTALLDIR: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build
   VS150COMNTOOLS: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build
@@ -24,11 +21,12 @@ build_script:
       choco install jdk9 --version 9.0.4.11 -params 'installdir=C:\\jdk9'
       choco install gradle --version 4.3.0
       refreshenv
-      gradle build -x :web:test $($env:env:GRADLE_OPTS)
+# detailed gradle build: add --info
+      gradle build -x :web:test -PCOMPILE_WEBKIT=false --no-daemon --stacktrace
 
 # Full test crash
 #test_script:
-#  - gradle test -x :web:test ${env:GRADLE_OPTS}
+#  - gradle test -x :web:test -PCOMPILE_WEBKIT=false --no-daemon --stacktrace
 
 on_finish:
   - ps: |
