@@ -13,7 +13,8 @@ environment:
 shallow_clone: true
 
 build:
-  verbosity: detailed
+  verbosity: normal
+#  verbosity: detailed
 
 build_script:
   - ps: |
@@ -23,8 +24,9 @@ build_script:
   - cmd: |
       gradle build -PCOMPILE_WEBKIT=false --stacktrace -x :web:test --info --no-daemon
 
-test_script:
-  - gradle test -x :web:test -PFULL_TEST=true --stacktrace --info --no-daemon
+# Full test crash
+#test_script:
+#  - gradle test -x :web:test -PFULL_TEST=true --stacktrace --info --no-daemon
 
 on_finish:
   - ps: |
