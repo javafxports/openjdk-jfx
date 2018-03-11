@@ -21,7 +21,7 @@ build:
 
 build_script:
   - ps: |
-      choco install jdk9 --version 9.0.4.11 -params 'installdir=${env:JAVA_HOME}'
+      choco install jdk9 --version 9.0.4.11 -params 'installdir=C:\\jdk9'
       choco install gradle --version 4.3.0
       refreshenv
   - cmd: |
