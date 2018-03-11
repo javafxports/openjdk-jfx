@@ -21,7 +21,7 @@ build_script:
       choco install jdk9 --version 9.0.4.11 -params 'installdir=C:\\jdk9'
       choco install gradle --version 4.3.0
       refreshenv
-# detailed gradle build: add --info
+      # detailed gradle build: add --info
       gradle build -x :web:test -PCOMPILE_WEBKIT=false --no-daemon --stacktrace
 
 # Full test crash
