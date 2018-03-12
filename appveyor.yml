@@ -26,9 +26,6 @@ build:
   verbosity: normal
   # verbosity: detailed
 
-before_script:
-  call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
-
 build_script:
   - ps: |
       choco install jdk9 --version 9.0.4.11 -params 'installdir=C:\\jdk9'
