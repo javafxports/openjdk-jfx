@@ -6,6 +6,8 @@ environment:
   JAVA_HOME: C:\\jdk9
   VCINSTALLDIR: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build
   VS150COMNTOOLS: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build
+  VSVARS32FILE: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars32.bat
+  MSVC_VER: 14.12.25827
   APPVEYOR_CACHE_ENTRY_ZIP_ARGS: "-t7z -m0=lzma -mx=9"
   matrix:
   - ARCHITECTURE: x64
@@ -24,11 +26,9 @@ build:
   # verbosity: detailed
 
 
-before_build:
-  - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
-
 build_script:
   - ps: |
+      C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat 
       choco install jdk9 --version 9.0.4.11 -params 'installdir=C:\\jdk9'
       choco install gradle --version 4.3.0
       refreshenv
