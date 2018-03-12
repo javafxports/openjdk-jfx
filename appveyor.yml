@@ -7,7 +7,7 @@ environment:
   VCINSTALLDIR: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build
   VS150COMNTOOLS: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build
   VSVARS32FILE: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars32.bat
-#  MSVC_VER: 14.12.25827
+  # MSVC_VER: 14.12.25827
   APPVEYOR_CACHE_ENTRY_ZIP_ARGS: "-t7z -m0=lzma -mx=9"
   matrix:
   - ARCHITECTURE: x64
