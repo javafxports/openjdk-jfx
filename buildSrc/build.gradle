@@ -113,7 +113,7 @@ task generateGrammarSource(type: JavaExec) {
     def grammars = fileTree(src).include("**/*.g")
     main = "org.antlr.Tool"
     classpath = configurations.antlr3
-    args = ["-o", dest, grammars.files].flatten()
+    args = ["-Xconversiontimeout", "30000", "-o", dest, grammars.files].flatten()
     // See RT-30955. This should be removed when JDK-8015656 is fixed
     ignoreExitValue = true
 }
