@@ -27,6 +27,11 @@ package javafx.scene.image;
 
 import com.sun.javafx.beans.event.AbstractNotifyListener;
 import com.sun.javafx.css.StyleManager;
+import javafx.css.ParsedValue;
+import javafx.css.StyleConverter;
+import javafx.css.StyleableBooleanProperty;
+import javafx.css.StyleableDoubleProperty;
+import javafx.css.converter.SizeConverter;
 import javafx.css.converter.URLConverter;
 import com.sun.javafx.geom.BaseBounds;
 import com.sun.javafx.geom.transform.BaseTransform;
@@ -47,6 +52,8 @@ import javafx.geometry.NodeOrientation;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.AccessibleRole;
 import javafx.scene.Node;
+import javafx.scene.text.Font;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -421,13 +428,18 @@ public class ImageView extends Node {
 
     public final DoubleProperty fitWidthProperty() {
         if (fitWidth == null) {
-            fitWidth = new DoublePropertyBase() {
+            fitWidth = new StyleableDoubleProperty() {
 
                 @Override
                 protected void invalidated() {
                     invalidateWidthHeight();
                     NodeHelper.markDirty(ImageView.this, DirtyBits.NODE_VIEWPORT);
                     NodeHelper.geomChanged(ImageView.this);
+                }
+
+                @Override
+                public CssMetaData getCssMetaData() {
+                    return StyleableProperties.FIT_WIDTH;
                 }
 
                 @Override
@@ -469,13 +481,18 @@ public class ImageView extends Node {
 
     public final DoubleProperty fitHeightProperty() {
         if (fitHeight == null) {
-            fitHeight = new DoublePropertyBase() {
+            fitHeight = new StyleableDoubleProperty() {
 
                 @Override
                 protected void invalidated() {
                     invalidateWidthHeight();
                     NodeHelper.markDirty(ImageView.this, DirtyBits.NODE_VIEWPORT);
                     NodeHelper.geomChanged(ImageView.this);
+                }
+
+                @Override
+                public CssMetaData getCssMetaData() {
+                    return StyleableProperties.FIT_HEIGHT;
                 }
 
                 @Override
@@ -534,13 +551,18 @@ public class ImageView extends Node {
 
     public final BooleanProperty preserveRatioProperty() {
         if (preserveRatio == null) {
-            preserveRatio = new BooleanPropertyBase() {
+            preserveRatio = new StyleableBooleanProperty() {
 
                 @Override
                 protected void invalidated() {
                     invalidateWidthHeight();
                     NodeHelper.markDirty(ImageView.this, DirtyBits.NODE_VIEWPORT);
                     NodeHelper.geomChanged(ImageView.this);
+                }
+
+                @Override
+                public CssMetaData getCssMetaData() {
+                    return StyleableProperties.PRESERVE_RATIO;
                 }
 
                 @Override
@@ -586,11 +608,16 @@ public class ImageView extends Node {
 
     public final BooleanProperty smoothProperty() {
         if (smooth == null) {
-            smooth = new BooleanPropertyBase(SMOOTH_DEFAULT) {
+            smooth = new StyleableBooleanProperty(SMOOTH_DEFAULT) {
 
                 @Override
                 protected void invalidated() {
                     NodeHelper.markDirty(ImageView.this, DirtyBits.NODE_SMOOTH);
+                }
+
+                @Override
+                public CssMetaData getCssMetaData() {
+                    return StyleableProperties.SMOOTH;
                 }
 
                 @Override
@@ -826,13 +853,93 @@ public class ImageView extends Node {
             }
         };
 
-         private static final List<CssMetaData<? extends Styleable, ?>> STYLEABLES;
-         static {
+        private static final CssMetaData<ImageView,Number> FIT_WIDTH =
+            new CssMetaData<ImageView,Number>("-fx-fit-width",
+                SizeConverter.getInstance(), 0.0) {
+
+                @Override
+                public boolean isSettable(ImageView n) {
+                    return n.fitWidth == null || !n.fitWidth.isBound();
+                }
+
+                @Override
+                public StyleableProperty<Number> getStyleableProperty(ImageView n) {
+                    return (StyleableProperty<Number>)n.fitWidthProperty();
+                }
+            };
+
+        private static final CssMetaData<ImageView,Number> FIT_HEIGHT =
+            new CssMetaData<ImageView,Number>("-fx-fit-height",
+                SizeConverter.getInstance(), 0.0) {
+
+                @Override
+                public boolean isSettable(ImageView n) {
+                    return n.fitHeight == null || !n.fitHeight.isBound();
+                }
+
+                @Override
+                public StyleableProperty<Number> getStyleableProperty(ImageView n) {
+                    return (StyleableProperty<Number>)n.fitHeightProperty();
+                }
+            };
+
+        private static final CssMetaData<ImageView,Boolean> SMOOTH =
+            new CssMetaData<ImageView,Boolean>("-fx-smooth",
+                new StyleConverter<String,Boolean>() {
+                    @Override
+                    public Boolean convert(ParsedValue<String, Boolean> value, Font font) {
+                        final String sval = value != null ? value.getValue() : null;
+                        return "true".equalsIgnoreCase(sval);
+                    }
+
+                },
+                SMOOTH_DEFAULT) {
+
+                @Override
+                public boolean isSettable(ImageView n) {
+                    return n.smooth == null || !n.smooth.isBound();
+                }
+
+                @Override
+                public StyleableProperty<Boolean> getStyleableProperty(ImageView n) {
+                    return (StyleableProperty<Boolean>)n.smoothProperty();
+                }
+            };
+
+        private static final CssMetaData<ImageView,Boolean> PRESERVE_RATIO =
+            new CssMetaData<ImageView,Boolean>("-fx-preserve-ratio",
+                new StyleConverter<String,Boolean>() {
+                    @Override
+                    public Boolean convert(ParsedValue<String, Boolean> value, Font font) {
+                        final String sval = value != null ? value.getValue() : null;
+                        return "true".equalsIgnoreCase(sval);
+                    }
+
+                },
+                Boolean.FALSE) {
+
+                @Override
+                public boolean isSettable(ImageView n) {
+                    return n.preserveRatio == null || !n.preserveRatio.isBound();
+                }
+
+                @Override
+                public StyleableProperty<Boolean> getStyleableProperty(ImageView n) {
+                    return (StyleableProperty<Boolean>)n.preserveRatioProperty();
+                }
+            };
+
+        private static final List<CssMetaData<? extends Styleable, ?>> STYLEABLES;
+        static {
             final List<CssMetaData<? extends Styleable, ?>> styleables =
                 new ArrayList<CssMetaData<? extends Styleable, ?>>(Node.getClassCssMetaData());
             styleables.add(IMAGE);
+            styleables.add(FIT_WIDTH);
+            styleables.add(FIT_HEIGHT);
+            styleables.add(SMOOTH);
+            styleables.add(PRESERVE_RATIO);
             STYLEABLES = Collections.unmodifiableList(styleables);
-         }
+        }
     }
 
     /**

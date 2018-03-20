@@ -47,6 +47,7 @@ public final class ImageView_cssMethods_Test extends CssMethodsTestBase {
     private static final ImageView TEST_IMAGE_VIEW = new ImageView();
     private static final String TEST_IMAGE_URL1 = "file:test_image_1.png";
     private static final String TEST_IMAGE_URL2 = "file:test_image_2.png";
+    public static final boolean SMOOTH_DEFAULT = Toolkit.getToolkit().getDefaultImageSmooth();
 
     private static final ValueComparator IMAGE_COMPARATOR =
             new ValueComparator() {
@@ -81,7 +82,15 @@ public final class ImageView_cssMethods_Test extends CssMethodsTestBase {
                    TestImages.TEST_IMAGE_32x32,
                    "-fx-image", TEST_IMAGE_URL2, IMAGE_COMPARATOR),
             config(TEST_IMAGE_VIEW, "translateX", 0.0,
-                   "-fx-translate-x", 10.0)
+                   "-fx-translate-x", 10.0),
+            config(TEST_IMAGE_VIEW, "fitWidth", 0,
+                "-fx-fit-width", 1.0),
+            config(TEST_IMAGE_VIEW, "fitHeight", 0,
+                "-fx-fit-height", 1.0),
+            config(TEST_IMAGE_VIEW, "smooth", SMOOTH_DEFAULT,
+                "-fx-smooth", !SMOOTH_DEFAULT),
+            config(TEST_IMAGE_VIEW, "preserveRatio", false,
+                "-fx-preserve-ratio", true)
         });
     }
 
