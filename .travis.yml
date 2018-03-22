@@ -60,12 +60,8 @@ matrix:
         - PRINT_CRASH_LOGS="true"
 
 before_script:
-  - wget https://services.gradle.org/distributions/gradle-4.3-bin.zip
-  - unzip gradle-4.3-bin.zip
-  - export GRADLE_HOME=$PWD/gradle-4.3
-  - export PATH=$GRADLE_HOME/bin:$PATH
   - echo $JAVA_OPTS
-  - echo $GRADLE_OPTS
+  - sh ./gradlew --version
   # run on xvfb screen (for linux).
   - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then export DISPLAY=:99.0 && sh -e /etc/init.d/xvfb start; fi
 
