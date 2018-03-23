@@ -1577,6 +1577,8 @@ allprojects {
 
     compileTestJava {
     }
+
+    compileTestJava.enabled = IS_FULL_TEST
 }
 
 // Qualified exports needed by javafx.* modules (excluding javafx.swing)
@@ -2173,10 +2175,10 @@ project(":swing") {
     // Now that JMX is gone, we can likely uncomment the following as
     // a fix for JDK-8195669
     /* should not be built, but needed in JMX
+    */
     tasks.all {
         if (!COMPILE_SWING) it.enabled = false
     }
-    */
     project.ext.buildModule = COMPILE_SWING
     project.ext.includeSources = true
     project.ext.moduleRuntime = true
@@ -3725,6 +3727,13 @@ project(":systemTests") {
         testapp6
     }
 
+	compileTestapp1Java.onlyIf { IS_FULL_TEST }
+	compileTestapp2Java.onlyIf { IS_FULL_TEST }
+	compileTestapp3Java.onlyIf { IS_FULL_TEST }
+	compileTestapp4Java.onlyIf { IS_FULL_TEST }
+	compileTestapp5Java.onlyIf { IS_FULL_TEST }
+	compileTestapp6Java.onlyIf { IS_FULL_TEST }
+
     project.ext.buildModule = false
     project.ext.moduleRuntime = false
     project.ext.moduleName = "systemTests"
@@ -3733,6 +3742,7 @@ project(":systemTests") {
         testCompile project(":graphics").sourceSets.test.output
         testCompile project(":base").sourceSets.test.output
         testCompile project(":controls").sourceSets.test.output
+        testCompile project(":controls")
         testCompile project(":swing").sourceSets.test.output
     }
 
@@ -3941,6 +3951,7 @@ allprojects {
                 '-implicit:none',
                 '--module-source-path', project.moduleSourcePathShim
                 ])
+            options.compilerArgs.addAll(qualExportsCore)
         }
         project.compileShimsJava.dependsOn(project.compileJava)
 
