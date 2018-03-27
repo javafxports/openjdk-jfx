@@ -28,9 +28,9 @@ package javafx.scene.image;
 import com.sun.javafx.beans.event.AbstractNotifyListener;
 import com.sun.javafx.css.StyleManager;
 import javafx.css.ParsedValue;
-import javafx.css.StyleConverter;
 import javafx.css.StyleableBooleanProperty;
 import javafx.css.StyleableDoubleProperty;
+import javafx.css.converter.BooleanConverter;
 import javafx.css.converter.SizeConverter;
 import javafx.css.converter.URLConverter;
 import com.sun.javafx.geom.BaseBounds;
@@ -885,15 +885,7 @@ public class ImageView extends Node {
 
         private static final CssMetaData<ImageView,Boolean> SMOOTH =
             new CssMetaData<ImageView,Boolean>("-fx-smooth",
-                new StyleConverter<String,Boolean>() {
-                    @Override
-                    public Boolean convert(ParsedValue<String, Boolean> value, Font font) {
-                        final String sval = value != null ? value.getValue() : null;
-                        return "true".equalsIgnoreCase(sval);
-                    }
-
-                },
-                SMOOTH_DEFAULT) {
+                BooleanConverter.getInstance(), SMOOTH_DEFAULT) {
 
                 @Override
                 public boolean isSettable(ImageView n) {
@@ -908,15 +900,7 @@ public class ImageView extends Node {
 
         private static final CssMetaData<ImageView,Boolean> PRESERVE_RATIO =
             new CssMetaData<ImageView,Boolean>("-fx-preserve-ratio",
-                new StyleConverter<String,Boolean>() {
-                    @Override
-                    public Boolean convert(ParsedValue<String, Boolean> value, Font font) {
-                        final String sval = value != null ? value.getValue() : null;
-                        return "true".equalsIgnoreCase(sval);
-                    }
-
-                },
-                Boolean.FALSE) {
+                BooleanConverter.getInstance(), Boolean.FALSE) {
 
                 @Override
                 public boolean isSettable(ImageView n) {
