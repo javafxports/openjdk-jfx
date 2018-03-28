@@ -32,7 +32,6 @@ addons:
       - gdb
       - libcups2-dev
 
-# For webkit: t5-qmake qtbase5-dev qtdeclarative5-dev libqt5webkit5-dev ?
 # Won't be able to build webkit in the time alloted by Travis
 
 before_cache:
