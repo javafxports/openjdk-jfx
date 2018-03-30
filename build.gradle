@@ -1581,19 +1581,11 @@ allprojects {
 
 // Qualified exports needed by javafx.* modules (excluding javafx.swing)
 def qualExportsCore = [
-    "--add-exports=java.base/sun.reflect.misc=javafx.base",
-    "--add-exports=java.base/sun.reflect.misc=javafx.fxml",
-    "--add-exports=java.base/sun.reflect.misc=javafx.web",
-    "--add-exports=java.base/sun.util.logging=javafx.base",
-    "--add-exports=java.base/sun.util.logging=javafx.controls",
-    "--add-exports=java.base/sun.util.logging=javafx.fxml",
-    "--add-exports=java.base/sun.util.logging=javafx.graphics",
     "--add-exports=java.desktop/sun.print=javafx.graphics",
 ]
 
 // Qualified exports needed by javafx.swing
 def qualExportsSwing = [
-        "--add-exports=java.base/sun.util.logging=javafx.swing",
         "--add-exports=java.desktop/java.awt.dnd.peer=javafx.swing",
         "--add-exports=java.desktop/sun.awt=javafx.swing",
         "--add-exports=java.desktop/sun.awt.dnd=javafx.swing",
@@ -2133,9 +2125,6 @@ project(":controls") {
             "-DCSS_META_DATA_TEST_DIR=$cssDir"
     }
 
-    List<String> css2BinAddExports = [
-            '--add-exports=java.base/sun.util.logging=javafx.graphics',
-            ]
     def modulePath = "${project.sourceSets.main.java.outputDir}"
     modulePath += File.pathSeparator + "${rootProject.projectDir}/modules/javafx.graphics/build/classes/java/main"
     modulePath += File.pathSeparator + "${rootProject.projectDir}/modules/javafx.base/build/classes/java/main"
@@ -2152,7 +2141,6 @@ project(":controls") {
                 jvmArgs += patchModuleArgs
                 jvmArgs += "--module-path=$modulePath"
                 jvmArgs += "--add-modules=javafx.graphics"
-                jvmArgs += css2BinAddExports
                 main = "com.sun.javafx.css.parser.Css2Bin"
                 args css
             }
@@ -2956,8 +2944,10 @@ project(":media") {
 
     compileToolsJava {
         enabled = IS_COMPILE_MEDIA
-        options.compilerArgs.addAll(project.modulePathArgs)
+        def modulePath = "${project.sourceSets.main.java.outputDir}"
         options.compilerArgs.addAll([
+            "--module-path=$modulePath",
+            "--add-modules=javafx.media",
             '--add-exports', 'javafx.media/com.sun.media.jfxmedia=ALL-UNNAMED',
             ])
     }
@@ -2968,7 +2958,7 @@ project(":media") {
     def nativeSrcDir = file("${projectDir}/src/main/native")
     def generatedHeadersDir = file("${buildDir}/gensrc/headers/${project.moduleName}")
 
-    task generateMediaErrorHeader(dependsOn: [compileToolsJava, compileJava]) {
+    task generateMediaErrorHeader(dependsOn: [compileJava, compileToolsJava]) {
         enabled = IS_COMPILE_MEDIA
         def headerpath = file("$generatedHeadersDir/jfxmedia_errors.h");
         doLast {
@@ -2978,9 +2968,15 @@ project(":media") {
 
             mkdir generatedHeadersDir;
 
+            def modulePath = "${project.sourceSets.main.java.outputDir}"
+            modulePath += File.pathSeparator + "${rootProject.projectDir}/modules/javafx.graphics/build/classes/java/main"
+            modulePath += File.pathSeparator + "${rootProject.projectDir}/modules/javafx.base/build/classes/java/main"
+
             exec {
                 commandLine("$JAVA");
                 args += patchModuleArgs
+                args += [ "--module-path=$modulePath" ]
+                args += [ "--add-modules=javafx.media" ]
                 args +=  [ '--add-exports=javafx.media/com.sun.media.jfxmedia=ALL-UNNAMED' ]
                 args +=  [ '-classpath', "${classpath.asPath}" ]
                 args += [ "headergen.HeaderGen", "$headerpath", "$srcRoot" ]
@@ -4065,6 +4061,7 @@ task javadoc(type: Javadoc, dependsOn: createMSPfile) {
     options.windowTitle("${javadocTitle}")
     options.header("${javadocHeader}")
     options.bottom("${javadocBottom}")
+    options.locale("en");
     if (BUILD_CLOSED) {
         options.linksOffline(JDK_DOCS, JDK_DOCS_CLOSED);
     } else {
