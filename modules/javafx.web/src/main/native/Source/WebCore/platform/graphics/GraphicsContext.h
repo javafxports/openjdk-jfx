@@ -34,6 +34,7 @@
 #include "Image.h"
 #include "ImageOrientation.h"
 #include "Pattern.h"
+#include "TransformationMatrix.h"
 #include <wtf/Function.h>
 #include <wtf/Noncopyable.h>
 
@@ -195,7 +196,7 @@ struct GraphicsContextState {
     bool shadowsUseLegacyRadius : 1;
 #endif
 #if PLATFORM(JAVA)
-    AffineTransform transform;
+    TransformationMatrix transform;
     FloatRect clipBounds;
 #endif
     bool drawLuminanceMask : 1;

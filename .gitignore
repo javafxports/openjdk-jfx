@@ -14,3 +14,4 @@ webrev/
 webrev.zip
 gradle.properties
 apps/samples/Ensemble8/lib/
+modules/*/build

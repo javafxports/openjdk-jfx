@@ -43,6 +43,7 @@ public abstract class BaseTransform implements CanTransformVec3d{
         AFFINE_2D,
         TRANSLATE_3D,
         AFFINE_3D,
+        GENERAL_TRANSFORM,
     }
 
     /*
@@ -350,6 +351,12 @@ public abstract class BaseTransform implements CanTransformVec3d{
     public double getMzy() { return 0.0; }
     public double getMzz() { return 1.0; }
     public double getMzt() { return 0.0; }
+    public double getMpx() { return 0.0; }
+    public double getMpy() { return 0.0; }
+    public double getMpz() { return 0.0; }
+    public double getMpw() { return 1.0; }
+
+    public boolean isAffine() { return true; }
 
     public abstract Point2D transform(Point2D src, Point2D dst);
     public abstract Point2D inverseTransform(Point2D src, Point2D dst)
@@ -471,6 +478,9 @@ public abstract class BaseTransform implements CanTransformVec3d{
     public int hashCode() {
         if (isIdentity()) return 0;
         long bits = 0;
+        bits = bits * 31 + Double.doubleToLongBits(getMpz());
+        bits = bits * 31 + Double.doubleToLongBits(getMpy());
+        bits = bits * 31 + Double.doubleToLongBits(getMpx());
         bits = bits * 31 + Double.doubleToLongBits(getMzz());
         bits = bits * 31 + Double.doubleToLongBits(getMzy());
         bits = bits * 31 + Double.doubleToLongBits(getMzx());
@@ -480,6 +490,7 @@ public abstract class BaseTransform implements CanTransformVec3d{
         bits = bits * 31 + Double.doubleToLongBits(getMyx());
         bits = bits * 31 + Double.doubleToLongBits(getMxy());
         bits = bits * 31 + Double.doubleToLongBits(getMxx());
+        bits = bits * 31 + Double.doubleToLongBits(getMpw());
         bits = bits * 31 + Double.doubleToLongBits(getMzt());
         bits = bits * 31 + Double.doubleToLongBits(getMyt());
         bits = bits * 31 + Double.doubleToLongBits(getMxt());
@@ -514,7 +525,11 @@ public abstract class BaseTransform implements CanTransformVec3d{
                 getMzx() == a.getMzx() &&
                 getMzy() == a.getMzy() &&
                 getMzz() == a.getMzz() &&
-                getMzt() == a.getMzt());
+                getMzt() == a.getMzt() &&
+                getMpx() == a.getMpx() &&
+                getMpy() == a.getMpy() &&
+                getMpz() == a.getMpz() &&
+                getMpw() == a.getMpw());
     }
 
     static Point2D makePoint(Point2D src, Point2D dst) {
@@ -530,15 +545,20 @@ public abstract class BaseTransform implements CanTransformVec3d{
         return ((a < EPSILON_ABSOLUTE) && (a > -EPSILON_ABSOLUTE));
     }
 
+    static boolean almostOne(double a) {
+        return ((a < 1+EPSILON_ABSOLUTE) && (a > 1-EPSILON_ABSOLUTE));
+    }
+
     /**
      * Returns the matrix elements and degree of this transform as a string.
      * @return  the matrix elements and degree of this transform
      */
     @Override
     public String toString() {
-        return "Matrix: degree " + getDegree() + "\n" +
-                getMxx() + ", " + getMxy() + ", " + getMxz() + ", " + getMxt() + "\n" +
-                getMyx() + ", " + getMyy() + ", " + getMyz() + ", " + getMyt() + "\n" +
-                getMzx() + ", " + getMzy() + ", " + getMzz() + ", " + getMzt() + "\n";
+        return getClass().getName() + " degree: " + getDegree() + ", " +
+                "(" + getMxx() + ", " + getMxy() + ", " + getMxz() + ", " + getMxt() + ")" +
+                "(" + getMyx() + ", " + getMyy() + ", " + getMyz() + ", " + getMyt() + ")" +
+                "(" + getMzx() + ", " + getMzy() + ", " + getMzz() + ", " + getMzt() + ")" +
+                "(" + getMpx() + ", " + getMpy() + ", " + getMpz() + ", " + getMpw() + ")";
     }
 }

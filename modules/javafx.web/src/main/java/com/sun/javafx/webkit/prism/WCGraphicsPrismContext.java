@@ -33,6 +33,7 @@ import com.sun.javafx.geom.*;
 import com.sun.javafx.geom.transform.Affine2D;
 import com.sun.javafx.geom.transform.Affine3D;
 import com.sun.javafx.geom.transform.BaseTransform;
+import com.sun.javafx.geom.transform.GeneralTransform3D;
 import com.sun.javafx.scene.text.GlyphList;
 import com.sun.javafx.scene.text.TextLayout;
 import com.sun.javafx.sg.prism.*;
@@ -52,6 +53,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -113,6 +115,7 @@ class WCGraphicsPrismContext extends WCGraphicsContext {
 
     final void initBaseTransform(BaseTransform t) {
         baseTransform = new Affine3D(t);
+        ((Affine3D) baseTransform).scale(1, 1, -1);
         state.setTransform((Affine3D)baseTransform);
     }
 
@@ -1182,7 +1185,7 @@ class WCGraphicsPrismContext extends WCGraphicsContext {
         private boolean restorePoint = false;
 
         private DropShadow shadow;
-        private Affine3D xform;
+        private GeneralTransform3D xform;
         private Layer layer;
         private int compositeOperation;
 
@@ -1191,7 +1194,7 @@ class WCGraphicsPrismContext extends WCGraphicsContext {
             paint = Color.BLACK;
             stroke.setPaint(Color.BLACK);
             alpha = 1.0f;
-            xform = new Affine3D();
+            xform = new GeneralTransform3D();
             compositeOperation = COMPOSITE_SOURCE_OVER;
         }
 
@@ -1202,7 +1205,7 @@ class WCGraphicsPrismContext extends WCGraphicsContext {
             if (clip != null) {
                 clip = new Rectangle(clip);
             }
-            xform = new Affine3D(state.getTransformNoClone());
+            xform = new GeneralTransform3D(state.getTransformNoClone());
             setShadow(state.getShadowNoClone());
             setLayer(state.getLayerNoClone());
             setAlpha(state.getAlpha());
@@ -1216,7 +1219,6 @@ class WCGraphicsPrismContext extends WCGraphicsContext {
         }
 
         private void apply(Graphics g) {
-            //TODO: Verify if we need to apply more properties from state
             g.setTransform(getTransformNoClone());
             g.setClipRect(getClipNoClone());
             g.setExtraAlpha(getAlpha());
@@ -1793,8 +1795,16 @@ class WCGraphicsPrismContext extends WCGraphicsContext {
     }
 
     public void setTransform(WCTransform tm) {
-        double m[] = tm.getMatrix();
-        Affine3D at = new Affine3D(new Affine2D(m[0], m[1], m[2], m[3], m[4], m[5]));
+        final double m[] = tm.getMatrix();
+        Affine3D at;
+        if (tm.is2D()) {
+            at = new Affine3D(new Affine2D(m[0], m[1], m[2], m[3], m[4], m[5]));
+        } else {
+            at = new GeneralTransform3D(m[0], m[4], m[8], m[12],
+                                        m[1], m[5], m[9], m[13],
+                                        m[2], m[6], m[10], m[14],
+                                        m[3], m[7], m[11], m[15]);
+        }
         if (state.getLayerNoClone() == null) {
             at.preConcatenate(baseTransform);
         }

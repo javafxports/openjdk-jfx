@@ -321,14 +321,16 @@ public final class GraphicsDecoder  {
                             buf.getInt());  // height
                     break;
                 case CONCATTRANSFORM_FFFFFF:
-                    gc.concatTransform(new WCTransform(
-                            buf.getFloat(), buf.getFloat(), buf.getFloat(),
-                            buf.getFloat(), buf.getFloat(), buf.getFloat()));
-                    break;
+                    throw new NullPointerException("Should not reach");
+                    // gc.concatTransform(new WCTransform(
+                    //        buf.getFloat(), buf.getFloat(), buf.getFloat(),
+                    //        buf.getFloat(), buf.getFloat(), buf.getFloat()));
                 case SET_TRANSFORM:
                     gc.setTransform(new WCTransform(
-                            buf.getFloat(), buf.getFloat(), buf.getFloat(),
-                            buf.getFloat(), buf.getFloat(), buf.getFloat()));
+                            buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat(),
+                            buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat(),
+                            buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat(),
+                            buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat()));
                     break;
                 case COPYREGION:
                     WCPageBackBuffer buffer = (WCPageBackBuffer)gm.getRef(buf.getInt());

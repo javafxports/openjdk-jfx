@@ -34,12 +34,12 @@ import com.sun.javafx.geom.Vec3d;
  *
  */
 public class Affine3D extends AffineBase {
-    private double mxz;
-    private double myz;
-    private double mzx;
-    private double mzy;
-    private double mzz;
-    private double mzt;
+    protected double mxz;
+    protected double myz;
+    protected double mzx;
+    protected double mzy;
+    protected double mzz;
+    protected double mzt;
 
     public Affine3D() {
         mxx = myy = mzz = 1.0;
@@ -981,30 +981,30 @@ public class Affine3D extends AffineBase {
                 preTranslate(transform.getMxt(), transform.getMyt(), transform.getMzt());
                 return;
         }
-        double Txx = transform.getMxx();
-        double Txy = transform.getMxy();
-        double Txz = transform.getMxz();
-        double Txt = transform.getMxt();
-        double Tyx = transform.getMyx();
-        double Tyy = transform.getMyy();
-        double Tyz = transform.getMyz();
-        double Tyt = transform.getMyt();
-        double Tzx = transform.getMzx();
-        double Tzy = transform.getMzy();
-        double Tzz = transform.getMzz();
-        double Tzt = transform.getMzt();
-        double rxx = (Txx * mxx + Txy * myx + Txz * mzx /* + Txt * 0.0 */);
-        double rxy = (Txx * mxy + Txy * myy + Txz * mzy /* + Txt * 0.0 */);
-        double rxz = (Txx * mxz + Txy * myz + Txz * mzz /* + Txt * 0.0 */);
-        double rxt = (Txx * mxt + Txy * myt + Txz * mzt + Txt /* * 1.0 */);
-        double ryx = (Tyx * mxx + Tyy * myx + Tyz * mzx /* + Tyt * 0.0 */);
-        double ryy = (Tyx * mxy + Tyy * myy + Tyz * mzy /* + Tyt * 0.0 */);
-        double ryz = (Tyx * mxz + Tyy * myz + Tyz * mzz /* + Tyt * 0.0 */);
-        double ryt = (Tyx * mxt + Tyy * myt + Tyz * mzt + Tyt /* * 1.0 */);
-        double rzx = (Tzx * mxx + Tzy * myx + Tzz * mzx /* + Tzt * 0.0 */);
-        double rzy = (Tzx * mxy + Tzy * myy + Tzz * mzy /* + Tzt * 0.0 */);
-        double rzz = (Tzx * mxz + Tzy * myz + Tzz * mzz /* + Tzt * 0.0 */);
-        double rzt = (Tzx * mxt + Tzy * myt + Tzz * mzt + Tzt /* * 1.0 */);
+        final double Txx = transform.getMxx();
+        final double Txy = transform.getMxy();
+        final double Txz = transform.getMxz();
+        final double Txt = transform.getMxt();
+        final double Tyx = transform.getMyx();
+        final double Tyy = transform.getMyy();
+        final double Tyz = transform.getMyz();
+        final double Tyt = transform.getMyt();
+        final double Tzx = transform.getMzx();
+        final double Tzy = transform.getMzy();
+        final double Tzz = transform.getMzz();
+        final double Tzt = transform.getMzt();
+        final double rxx = (Txx * mxx + Txy * myx + Txz * mzx /* + Txt * 0.0 */);
+        final double rxy = (Txx * mxy + Txy * myy + Txz * mzy /* + Txt * 0.0 */);
+        final double rxz = (Txx * mxz + Txy * myz + Txz * mzz /* + Txt * 0.0 */);
+        final double rxt = (Txx * mxt + Txy * myt + Txz * mzt + Txt /* * 1.0 */);
+        final double ryx = (Tyx * mxx + Tyy * myx + Tyz * mzx /* + Tyt * 0.0 */);
+        final double ryy = (Tyx * mxy + Tyy * myy + Tyz * mzy /* + Tyt * 0.0 */);
+        final double ryz = (Tyx * mxz + Tyy * myz + Tyz * mzz /* + Tyt * 0.0 */);
+        final double ryt = (Tyx * mxt + Tyy * myt + Tyz * mzt + Tyt /* * 1.0 */);
+        final double rzx = (Tzx * mxx + Tzy * myx + Tzz * mzx /* + Tzt * 0.0 */);
+        final double rzy = (Tzx * mxy + Tzy * myy + Tzz * mzy /* + Tzt * 0.0 */);
+        final double rzz = (Tzx * mxz + Tzy * myz + Tzz * mzz /* + Tzt * 0.0 */);
+        final double rzt = (Tzx * mxt + Tzy * myt + Tzz * mzt + Tzt /* * 1.0 */);
         this.mxx = rxx;
         this.mxy = rxy;
         this.mxz = rxz;
@@ -1129,28 +1129,5 @@ public class Affine3D extends AffineBase {
     // Note that Math.sin(Math.PI) has an error of about 10^-16
     private static double _matround(double matval) {
         return Math.rint(matval * 1E15) / 1E15;
-    }
-
-    /**
-     * Returns a <code>String</code> that represents the value of this
-     * {@link Object}.
-     * @return a <code>String</code> representing the value of this
-     * <code>Object</code>.
-     */
-    @Override
-    public String toString() {
-        return ("Affine3D[["
-                + _matround(mxx) + ", "
-                + _matround(mxy) + ", "
-                + _matround(mxz) + ", "
-                + _matround(mxt) + "], ["
-                + _matround(myx) + ", "
-                + _matround(myy) + ", "
-                + _matround(myz) + ", "
-                + _matround(myt) + "], ["
-                + _matround(mzx) + ", "
-                + _matround(mzy) + ", "
-                + _matround(mzz) + ", "
-                + _matround(mzt) + "]]");
     }
 }

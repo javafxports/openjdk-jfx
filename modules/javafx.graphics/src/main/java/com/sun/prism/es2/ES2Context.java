@@ -241,6 +241,7 @@ class ES2Context extends BaseShaderContext {
         } else {
             projViewTx.set(scratchTx);
         }
+        // System.err.println("updateRenderTarget:" + projViewTx);
 
         // update camera position; this will be uploaded to the shader
         // when we switch to 3D state
@@ -270,6 +271,7 @@ class ES2Context extends BaseShaderContext {
             xform = BaseTransform.IDENTITY_TRANSFORM;
         }
 
+        // System.err.println("updateShaderTransform:" + xform);
         scratchTx.set(projViewTx);
         updateRawMatrix(scratchTx.mul(xform));
 

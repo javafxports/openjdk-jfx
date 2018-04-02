@@ -30,9 +30,35 @@ import java.util.Arrays;
 public final class WCTransform extends Ref {
     private final double[] m;
 
-    public WCTransform(double m00, double m10, double m01, double m11,
-                       double m02, double m12)
+    final private boolean is2D;
+    public WCTransform(double m11, double m12, double m13, double m14,
+                       double m21, double m22, double m23, double m24,
+                       double m31, double m32, double m33, double m34,
+                       double m41, double m42, double m43, double m44)
     {
+        this.is2D = false;
+        this.m = new double[16];
+        m[0] = m11;
+        m[1] = m12;
+        m[2] = m13;
+        m[3] = m14;
+        m[4] = m21;
+        m[5] = m22;
+        m[6] = m23;
+        m[7] = m24;
+        m[8] = m31;
+        m[9] = m32;
+        m[10] = m33;
+        m[11] = m34;
+        m[12] = m41;
+        m[13] = m42;
+        m[14] = m43;
+        m[15] = m44;
+    }
+
+    public WCTransform(double m00, double m10, double m01, double m11,
+                       double m02, double m12) {
+        this.is2D = true;
         this.m = new double[6];
         m[0] = m00;
         m[1] = m10;
@@ -44,5 +70,24 @@ public final class WCTransform extends Ref {
 
     public double [] getMatrix() {
         return Arrays.copyOf(m, m.length);
+    }
+
+    public boolean is2D() {
+        return this.is2D;
+    }
+
+    @Override
+    public String toString() {
+         String val = "WCTransform:";
+         if (is2D()) {
+            val += "(" + m[0] + "," + m[1] + "," + m[2] + ")" +
+                   "(" + m[3] + "," + m[4] + "," + m[5] + ")";
+         } else {
+            val += "(" + m[0] + "," + m[1] + "," + m[2] + "," + m[3] + ")" +
+                   "(" + m[4] + "," + m[5] + "," + m[6] + "," + m[7] + ")" +
+                   "(" + m[8] + "," + m[9] + "," + m[10] + "," + m[11] + ")" +
+                   "(" + m[12] + "," + m[13] + "," + m[14] + "," + m[15] + ")";
+         }
+         return val;
     }
 }

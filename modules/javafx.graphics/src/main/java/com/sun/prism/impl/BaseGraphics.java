@@ -33,6 +33,7 @@ import com.sun.javafx.geom.Rectangle;
 import com.sun.javafx.geom.RoundRectangle2D;
 import com.sun.javafx.geom.Shape;
 import com.sun.javafx.geom.transform.Affine3D;
+import com.sun.javafx.geom.transform.GeneralTransform3D;
 import com.sun.javafx.geom.transform.BaseTransform;
 import com.sun.javafx.sg.prism.NGCamera;
 import com.sun.javafx.sg.prism.NodePath;
@@ -58,7 +59,7 @@ public abstract class BaseGraphics implements RectShadowGraphics {
     protected static final BaseTransform IDENT = BaseTransform.IDENTITY_TRANSFORM;
 
     // TODO: initialize transform lazily to avoid creating garbage... (RT-27422)
-    private final Affine3D transform3D = new Affine3D();
+    private final GeneralTransform3D transform3D = new GeneralTransform3D();
     private NGCamera camera = NGCamera.INSTANCE;
     private RectBounds devClipRect;
     private RectBounds finalClipRect;
