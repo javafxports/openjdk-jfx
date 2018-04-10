@@ -1,0 +1,16 @@
+# FIXME: Eventually we should include the needed patterns from .hgingore
+# The goal is that a full build & test, followed by "git status" would show
+# no untracked files
+
+*.orig
+*.bak
+*.rej
+*.swp
+build/
+.gradle/
+**/nbproject/private/
+dist/
+webrev/
+webrev.zip
+gradle.properties
+apps/samples/Ensemble8/lib/

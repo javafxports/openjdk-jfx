@@ -3,7 +3,7 @@ version: "{branch} {build}"
 image: Visual Studio 2017
 
 environment:
-  JAVA_HOME: C:\\jdk9
+  JAVA_HOME: C:\jdk10
   VCINSTALLDIR: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build
   APPVEYOR_CACHE_ENTRY_ZIP_ARGS: "-t7z -m0=lzma -mx=9"
 
@@ -11,7 +11,7 @@ shallow_clone: true
 
 build_script:
   - ps: |
-      choco install jdk9 --version 9.0.4.11 -params 'installdir=C:\\jdk9'
+      choco install jdk10 -params 'installdir=c:\\jdk10'
       choco install gradle --version 4.3.0
       $msvcToolsVer = Get-Content "$env:VCINSTALLDIR\Microsoft.VCToolsVersion.default.txt"
       if ([string]::IsNullOrWhitespace($msvcToolsVer)) {
@@ -23,7 +23,7 @@ build_script:
       $env:VSVARS32FILE = "$env:VCINSTALLDIR\vcvars32.bat"
       refreshenv
       # Must invoke gradle with cmd.exe so stderr output doesn't fail the build:
-  - cmd: gradle test -PCOMPILE_WEBKIT=false --stacktrace -x :web:test --info --no-daemon
+  - cmd: gradlew test -PCOMPILE_WEBKIT=false --stacktrace -x :web:test --info --no-daemon
 on_finish:
   - ps: |
         $crashes = Get-ChildItem -Include hs_err_pid*.log -Recurse
@@ -59,10 +59,6 @@ on_finish:
           }
         }
 
-        # Install JDK 10 (for boot JDK)
-        # $client = New-Object net.webclient
-        # $client.DownloadFile("https://download.java.net/java/jdk10/archive/42/BCL/jdk-10-ea+42_windows-x64_bin.exe", "C:\Users\appveyor\jdk-10.exe")
-        # Start-Process "C:\Users\appveyor\jdk-10.exe" -ArgumentList "/s ADDLOCAL=`"ToolsFeature,SourceFeature,PublicjreFeature`" /INSTALLDIR=`"C:\jdk-10`" /L `"C:\Users\appveyor\jdk-10-install.txt`""
   - cmd: |
         REM Currently building OpenJDK exceeds Appveyor's time limits. Keep this around
         REM in case we ever get the proper infrastructure.
