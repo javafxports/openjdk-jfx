@@ -333,7 +333,7 @@ ext.JAVA_HOME = JDK_HOME
 defineProperty("JAVA", cygpathExe("$JDK_HOME/bin/java"))
 defineProperty("JAVAC", cygpathExe("$JDK_HOME/bin/javac"))
 defineProperty("JAVADOC", cygpathExe("$JDK_HOME/bin/javadoc"))
-defineProperty("JDK_DOCS", "http://download.java.net/java/jdk9/docs/api/")
+defineProperty("JDK_DOCS", "https://docs.oracle.com/javase/10/docs/api/")
 defineProperty("JDK_JMODS", cygpath(System.getenv("JDK_JMODS")) ?: cygpath(System.getenv("JDK_HOME") + "/jmods"))
 
 defineProperty("javaRuntimeVersion", System.getProperty("java.runtime.version"))
@@ -3545,6 +3545,19 @@ project(":web") {
     compileJava.dependsOn(copyWrappers);
 
     test {
+        doFirst {
+            if (!IS_COMPILE_WEBKIT) {
+                println "*****************************************************"
+                println "WARNING: running web tests without building webkit."
+                println "The webkit native library will be copied from the JDK,"
+                println "which might lead to failures in some web tests."
+                println "To avoid these failures, you should either build"
+                println "webkit locally, copy the native webkit library from a"
+                println "recent build, or skip execution of web test cases with"
+                println "'-x :web:test'"
+                println "*****************************************************"
+            }
+        }
         // Run web tests in headless mode
         systemProperty 'glass.platform', 'Monocle'
         systemProperty 'monocle.platform', 'Headless'
@@ -4057,7 +4070,20 @@ task javadoc(type: Javadoc, dependsOn: createMSPfile) {
     setDestinationDir(new File(buildDir, 'javadoc'));
 
     exclude("com/**/*", "Compile*", "javafx/builder/**/*", "javafx/scene/accessibility/**/*");
+
+    options.tags("apiNote:a:API Note:")
+    options.tags("implSpec:a:Implementation Requirements:")
+    options.tags("implNote:a:Implementation Note:")
+    options.tags("param")
+    options.tags("return")
+    options.tags("throws")
     options.tags("moduleGraph:X")
+    options.tags("since")
+    options.tags("version")
+    options.tags("serialData")
+    options.tags("factory")
+    options.tags("see")
+
     options.windowTitle("${javadocTitle}")
     options.header("${javadocHeader}")
     options.bottom("${javadocBottom}")
