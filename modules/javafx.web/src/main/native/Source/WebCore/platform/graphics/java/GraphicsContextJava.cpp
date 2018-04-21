@@ -455,7 +455,9 @@ void GraphicsContext::translate(float x, float y)
         return;
 
     m_state.transform.translate(x, y);
-    set3DTransform(m_state.transform);
+    platformContext()->rq().freeSpace(12)
+    << (jint)com_sun_webkit_graphics_GraphicsDecoder_TRANSLATE
+    << x << y;
 }
 
 void GraphicsContext::setPlatformFillColor(const Color& col)
@@ -529,7 +531,13 @@ void GraphicsContext::setURLForRect(const URL&, const FloatRect&)
 
 void GraphicsContext::concatCTM(const AffineTransform& at)
 {
-    concat3DTransform(TransformationMatrix(at));
+    if (paintingDisabled())
+        return;
+
+    m_state.transform.multiply(at);
+    platformContext()->rq().freeSpace(28)
+    << (jint)com_sun_webkit_graphics_GraphicsDecoder_CONCATTRANSFORM_FFFFFF
+    << (float)at.a() << (float)at.b() << (float)at.c() << (float)at.d() << (float)at.e() << (float)at.f();
 }
 
 //void GraphicsContext::addInnerRoundedRectClip(const IntRect& r, int thickness)
@@ -834,7 +842,10 @@ void GraphicsContext::rotate(float radians)
         return;
 
     m_state.transform.rotate(radians);
-    set3DTransform(m_state.transform);
+    platformContext()->rq().freeSpace(2 * 4)
+    << (jint)com_sun_webkit_graphics_GraphicsDecoder_ROTATE
+    << radians;
+
 }
 
 void GraphicsContext::scale(const FloatSize& size)
@@ -842,8 +853,10 @@ void GraphicsContext::scale(const FloatSize& size)
     if (paintingDisabled())
         return;
 
-    m_state.transform.scaleNonUniform(size.width(), size.height());
-    set3DTransform(m_state.transform);
+    m_state.transform.scale(size.width(), size.height());
+    platformContext()->rq().freeSpace(12)
+    << (jint)com_sun_webkit_graphics_GraphicsDecoder_SCALE
+    << size.width() << size.height();
 }
 
 void GraphicsContext::fillRoundedRect(const FloatRoundedRect& rect, const Color& color, BlendMode) // todo tav Int to Float
@@ -888,47 +901,38 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& frect, const Floa
     setFillColor(oldFillColor);
 }
 
-#if ENABLE(3D_TRANSFORMS) && USE(TEXTURE_MAPPER)
 TransformationMatrix GraphicsContext::get3DTransform() const
 {
     // FIXME: Can we approximate the transformation better than this?
-    return m_state.transform;
+    return getCTM().toTransformationMatrix();
 }
 
 void GraphicsContext::concat3DTransform(const TransformationMatrix& transform)
 {
-    if (paintingDisabled())
-        return;
-
-    m_state.transform.multiply(transform);
-    set3DTransform(m_state.transform);
+    concatCTM(transform.toAffineTransform());
 }
 
 void GraphicsContext::set3DTransform(const TransformationMatrix& transform)
 {
-    if (paintingDisabled())
-        return;
-
-    m_state.transform = transform;
-    platformContext()->rq().freeSpace(68)
-    << (jint)com_sun_webkit_graphics_GraphicsDecoder_SET_TRANSFORM
-    << (float)transform.m11() << (float)transform.m12() << (float)transform.m13() << (float)transform.m14() 
-    << (float)transform.m21() << (float)transform.m22() << (float)transform.m23() << (float)transform.m24() 
-    << (float)transform.m31() << (float)transform.m32() << (float)transform.m33() << (float)transform.m34()
-    << (float)transform.m41() << (float)transform.m42() << (float)transform.m43() << (float)transform.m44();
+    setCTM(transform.toAffineTransform());
 }
-#endif
 
 //utatodo: do we need the Java-only m_state.transform?
 AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
 {
-    return m_state.transform.toAffineTransform();
+    return m_state.transform;
 }
 
 
 void GraphicsContext::setCTM(const AffineTransform& tm)
 {
-    set3DTransform(TransformationMatrix(tm));
+    if (paintingDisabled())
+        return;
+
+    m_state.transform = tm;
+    platformContext()->rq().freeSpace(28)
+    << (jint)com_sun_webkit_graphics_GraphicsDecoder_SET_TRANSFORM
+    << (float)tm.a() << (float)tm.b() << (float)tm.c() << (float)tm.d() << (float)tm.e() << (float)tm.f();
 }
 
 void Gradient::platformDestroy()
