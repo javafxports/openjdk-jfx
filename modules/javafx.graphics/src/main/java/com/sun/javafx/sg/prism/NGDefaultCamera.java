@@ -34,7 +34,7 @@ public class NGDefaultCamera extends NGParallelCamera {
             setViewHeight(h);
 
             final double halfDepth = (w > h) ? w / 2.0 : h / 2.0;
-            projViewTx.ortho(0.0, w, h, 0.0, -9999999, 99999);
+            projViewTx.ortho(0.0, w, h, 0.0, -halfDepth, halfDepth);
         }
     }
 }
