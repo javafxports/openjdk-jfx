@@ -58,8 +58,7 @@ public interface Graphics {
     public void scale(float sx, float sy);
     public void scale(float sx, float sy, float sz);
 
-    public void setPerspectiveTransform(GeneralTransform3D gt);
-    public GeneralTransform3D getPerspectiveTransformNoClone();
+    public void setPerspectiveTransform(GeneralTransform3D perspectiveTransform);
     public void setCamera(NGCamera camera);
     public NGCamera getCameraNoClone();
     public void setDepthTest(boolean depthTest);

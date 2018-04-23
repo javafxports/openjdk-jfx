@@ -200,12 +200,7 @@ final class SWGraphics implements ReadbackGraphics {
     public void setCamera(NGCamera camera) {
     }
 
-    public GeneralTransform3D getPerspectiveTransformNoClone() {
-        throw new UnsupportedOperationException("getPerspectiveTransformNoClone: unimp");
-    }
-
     public void setPerspectiveTransform(GeneralTransform3D transform) {
-        throw new UnsupportedOperationException("setPerspectiveTransform: unimp");
     }
 
     public NGCamera getCameraNoClone() {

@@ -35,12 +35,11 @@ import com.sun.javafx.geom.Vec3f;
  * GeneralTransform is typically used only for projection transforms.
  *
  */
-public final class GeneralTransform3D extends Affine3D {
+public final class GeneralTransform3D implements CanTransformVec3d {
 
     //The 4x4 double-precision floating point matrix.  The mathematical
     //representation is row major, as in traditional matrix mathematics.
-
-    private double mpx, mpy, mpz, mpw;
+    protected double[] mat = new double[16];
 
     //flag if this is an identity transformation.
     private boolean identity;
@@ -53,82 +52,16 @@ public final class GeneralTransform3D extends Affine3D {
     }
 
     /**
-     * Constructs and initializes a transform to the identity matrix.
-     */
-    public GeneralTransform3D(double mxx, double mxy, double mxz, double mxt,
-                    double myx, double myy, double myz, double myt,
-                    double mzx, double mzy, double mzz, double mzt,
-                    double mpx, double mpy, double mpz, double mpw) {
-        this.mxx = mxx;
-        this.mxy = mxy;
-        this.mxz = mxz;
-        this.mxt = mxt;
-
-        this.myx = myx;
-        this.myy = myy;
-        this.myz = myz;
-        this.myt = myt;
-
-        this.mzx = mzx;
-        this.mzy = mzy;
-        this.mzz = mzz;
-        this.mzt = mzt;
-
-        this.mpx = mpx;
-        this.mpy = mpy;
-        this.mpz = mpz;
-        this.mpw = mpw;
-
-        updateState();
-    }
-
-    public GeneralTransform3D(BaseTransform transform) {
-        setTransform(transform);
-    }
-
-    @Override
-    public void setTransform(final BaseTransform transform) {
-        this.mxx = transform.getMxx();
-        this.mxy = transform.getMxy();
-        this.mxz = transform.getMxz();
-        this.mxt = transform.getMxt();
-        this.myx = transform.getMyx();
-        this.myy = transform.getMyy();
-        this.myz = transform.getMyz();
-        this.myt = transform.getMyt();
-        this.mzx = transform.getMzx();
-        this.mzy = transform.getMzy();
-        this.mzz = transform.getMzz();
-        this.mzt = transform.getMzt();
-        this.mpx = transform.getMpx();
-        this.mpy = transform.getMpy();
-        this.mpz = transform.getMpz();
-        this.mpw = transform.getMpw();
-        updateState();
-    }
-
-    @Override public double getMpx() { return mpx; }
-    @Override public double getMpy() { return mpy; }
-    @Override public double getMpz() { return mpz; }
-    @Override public double getMpw() { return mpw; }
-
-    @Override
-    public Degree getDegree() {
-        return Degree.GENERAL_TRANSFORM;
-    }
-
-    /**
      * Returns true if the transform is affine. A transform is considered
      * to be affine if the last row of its matrix is (0,0,0,1). Note that
      * an instance of AffineTransform3D is always affine.
      */
-    @Override
     public boolean isAffine() {
         if (!isInfOrNaN() &&
-                almostZero(mpx) &&
-                almostZero(mpy) &&
-                almostZero(mpz) &&
-                almostOne(mpw)) {
+                almostZero(mat[12]) &&
+                almostZero(mat[13]) &&
+                almostZero(mat[14]) &&
+                almostOne(mat[15])) {
 
             return true;
         } else {
@@ -144,27 +77,7 @@ public final class GeneralTransform3D extends Affine3D {
      * @return this transform
      */
     public GeneralTransform3D set(GeneralTransform3D t1) {
-        // System.arraycopy(t1.mat, 0, mat, 0, mat.length);
-        mxx = t1.mxx;
-        mxy = t1.mxy;
-        mxz = t1.mxz;
-        mxt = t1.mxt;
-
-        myx = t1.myx;
-        myy = t1.myy;
-        myz = t1.myz;
-        myt = t1.myt;
-
-        mzx = t1.mzx;
-        mzy = t1.mzy;
-        mzz = t1.mzz;
-        mzt = t1.mzt;
-
-        mpx = t1.mpx;
-        mpy = t1.mpy;
-        mpz = t1.mpz;
-        mpw = t1.mpw;
-
+        System.arraycopy(t1.mat, 0, mat, 0, mat.length);
         updateState();
         return this;
     }
@@ -179,28 +92,7 @@ public final class GeneralTransform3D extends Affine3D {
      * @return this transform
      */
     public GeneralTransform3D set(double[] m) {
-        // System.arraycopy(m, 0, mat, 0, mat.length);
-
-        mxx = m[ 0];
-        mxy = m[ 1];
-        mxz = m[ 2];
-        mxt = m[ 3];
-
-        myx = m[ 4];
-        myy = m[ 5];
-        myz = m[ 6];
-        myt = m[ 7];
-
-        mzx = m[ 8];
-        mzy = m[ 9];
-        mzz = m[10];
-        mzt = m[11];
-
-        mpx = m[12];
-        mpy = m[13];
-        mpz = m[14];
-        mpw = m[15];
-
+        System.arraycopy(m, 0, mat, 0, mat.length);
         updateState();
         return this;
     }
@@ -216,75 +108,16 @@ public final class GeneralTransform3D extends Affine3D {
      */
     public double[] get(double[] rv) {
         if (rv == null) {
-            rv = new double[16];
+            rv = new double[mat.length];
         }
-        // System.arraycopy(mat, 0, rv, 0, mat.length);
-
-        rv[ 0] = mxx;
-        rv[ 1] = mxy;
-        rv[ 2] = mxz;
-        rv[ 3] = mxt;
-
-        rv[ 4] = myx;
-        rv[ 5] = myy;
-        rv[ 6] = myz;
-        rv[ 7] = myt;
-
-        rv[ 8] = mzx;
-        rv[ 9] = mzy;
-        rv[10] = mzz;
-        rv[11] = mzt;
-
-        rv[12] = mpx;
-        rv[13] = mpy;
-        rv[14] = mpz;
-        rv[15] = mpw;
+        System.arraycopy(mat, 0, rv, 0, mat.length);
 
         return rv;
     }
 
     public double get(int index) {
-        assert ((index >= 0) && (index < 16));
-        
-        switch(index) {
-            case  0: 
-                return mxx;
-            case 1: 
-                return mxy;
-            case 2: 
-                return mxz;
-            case 3: 
-                return mxt;
-
-            case 4: 
-                return myx;
-            case 5: 
-                return myy;
-            case 6: 
-                return myz;
-            case 7: 
-                return myt;
-
-            case 8: 
-                return mzx;
-            case 9: 
-                return mzy;
-           case 10: 
-                return mzz;
-           case 11: 
-                return mzt;
-
-           case 12: 
-                return mpx;
-           case 13: 
-                return mpy;
-           case 14: 
-                return mpz;
-           case 15: 
-                return mpw;
-           default:
-                throw new IllegalArgumentException("Invalid index:" + index);
-        }
+        assert ((index >= 0) && (index < mat.length));
+        return mat[index];
     }
 
     private Vec3d tempV3d;
@@ -307,13 +140,13 @@ public final class GeneralTransform3D extends Affine3D {
             pointOut = new Point2D();
         }
 
-        double w = (float) (mpx * point.x + mpy * point.y
-                 + mpw);
+        double w = (float) (mat[12] * point.x + mat[13] * point.y
+                 + mat[15]);
 
-        pointOut.x = (float) (mxx * point.x + mxy * point.y
-                + mxt);
-        pointOut.y = (float) (myx * point.x + myy * point.y
-                + myt);
+        pointOut.x = (float) (mat[0] * point.x + mat[1] * point.y
+                + mat[3]);
+        pointOut.y = (float) (mat[4] * point.x + mat[5] * point.y
+                + mat[7]);
 
         pointOut.x /= w;
         pointOut.y /= w;
@@ -338,16 +171,16 @@ public final class GeneralTransform3D extends Affine3D {
         }
 
         // compute here as point.x, point.y and point.z may change
-        // in case (point == pointOut), and mpz is usually != 0
-        double w = (float) (mpx * point.x + mpy * point.y
-                + mpz * point.z + mpw);
+        // in case (point == pointOut), and mat[14] is usually != 0
+        double w = (float) (mat[12] * point.x + mat[13] * point.y
+                + mat[14] * point.z + mat[15]);
 
-        pointOut.x = (float) (mxx * point.x + mxy * point.y
-                + mxz * point.z + mxt);
-        pointOut.y = (float) (myx * point.x + myy * point.y
-                + myz * point.z + myt);
-        pointOut.z = (float) (mzx * point.x + mzy * point.y
-                + mzz * point.z + mzt);
+        pointOut.x = (float) (mat[0] * point.x + mat[1] * point.y
+                + mat[2] * point.z + mat[3]);
+        pointOut.y = (float) (mat[4] * point.x + mat[5] * point.y
+                + mat[6] * point.z + mat[7]);
+        pointOut.z = (float) (mat[8] * point.x + mat[9] * point.y
+                + mat[10] * point.z + mat[11]);
 
         if (w != 0.0f) {
             pointOut.x /= w;
@@ -387,12 +220,12 @@ public final class GeneralTransform3D extends Affine3D {
      * @return the transformed normal
      */
     public Vec3f transformNormal(Vec3f normal, Vec3f normalOut) {
-        normal.x =  (float) (mxx*normal.x + mxy*normal.y +
-                            mxz*normal.z);
-        normal.y =  (float) (myx*normal.x + myy*normal.y +
-                            myz*normal.z);
-        normal.z =  (float) (mzx*normal.x + mzy*normal.y +
-                             mzz*normal.z);
+        normal.x =  (float) (mat[0]*normal.x + mat[1]*normal.y +
+                            mat[2]*normal.z);
+        normal.y =  (float) (mat[4]*normal.x + mat[5]*normal.y +
+                            mat[6]*normal.z);
+        normal.z =  (float) (mat[8]*normal.x + mat[9]*normal.y +
+                             mat[10]*normal.z);
         return normalOut;
     }
 
@@ -445,12 +278,12 @@ public final class GeneralTransform3D extends Affine3D {
 
         cotangent = Math.cos(half_fov) / sine;
 
-        mxx = verticalFOV ? cotangent / aspect : cotangent;
-        myy = verticalFOV ? cotangent : cotangent * aspect;
-        mzz = -(zFar + zNear) / deltaZ;
-        mzt = -2.0 * zNear * zFar / deltaZ;
-        mpz = -1.0;
-        mxy = mxz = mxt = myx = myz = myt = mzx = mzy = mpx = mpy = mpw = 0;
+        mat[0] = verticalFOV ? cotangent / aspect : cotangent;
+        mat[5] = verticalFOV ? cotangent : cotangent * aspect;
+        mat[10] = -(zFar + zNear) / deltaZ;
+        mat[11] = -2.0 * zNear * zFar / deltaZ;
+        mat[14] = -1.0;
+        mat[1] = mat[2] = mat[3] = mat[4] = mat[6] = mat[7] = mat[8] = mat[9] = mat[12] = mat[13] = mat[15] = 0;
 
         updateState();
         return this;
@@ -483,23 +316,23 @@ public final class GeneralTransform3D extends Affine3D {
         double deltay = 1 / (top - bottom);
         double deltaz = 1 / (far - near);
 
-        mxx = 2.0 * deltax;
-        mxt = -(right + left) * deltax;
-        myy = 2.0 * deltay;
-        myt = -(top + bottom) * deltay;
-        mzz = 2.0 * deltaz;
-        mzt = (far + near) * deltaz;
-        mxy = mxz = myx = myz = mzx =
-                mzy = mpx = mpy = mpz = 0;
-        mpw = 1;
+        mat[0] = 2.0 * deltax;
+        mat[3] = -(right + left) * deltax;
+        mat[5] = 2.0 * deltay;
+        mat[7] = -(top + bottom) * deltay;
+        mat[10] = 2.0 * deltaz;
+        mat[11] = (far + near) * deltaz;
+        mat[1] = mat[2] = mat[4] = mat[6] = mat[8] =
+                mat[9] = mat[12] = mat[13] = mat[14] = 0;
+        mat[15] = 1;
 
         updateState();
         return this;
     }
 
     public double computeClipZCoord() {
-        double zEc = (1.0 - mpw) / mpz;
-        double zCc = mzz * zEc + mzt;
+        double zEc = (1.0 - mat[15]) / mat[14];
+        double zCc = mat[10] * zEc + mat[11];
         return zCc;
     }
 
@@ -508,25 +341,20 @@ public final class GeneralTransform3D extends Affine3D {
      *
      * @return the determinant
      */
-    @Override
-    public double getDeterminant() {
-        return determinant();
-    }
-
     public double determinant() {
          // cofactor exapainsion along first row
-         return mxx*(myy*(mzz*mpw - mzt*mpz) -
-                        myz*(mzy*mpw - mzt*mpy) +
-                        myt*(mzy*mpz - mzz*mpy)) -
-                mxy*(myx*(mzz*mpw - mzt*mpz) -
-                        myz*(mzx*mpw - mzt*mpx) +
-                        myt*(mzx*mpz - mzz*mpx)) +
-                mxz*(myx*(mzy*mpw - mzt*mpy) -
-                        myy*(mzx*mpw - mzt*mpx) +
-                        myt*(mzx*mpy - mzy*mpx)) -
-                mxt*(myx*(mzy*mpz - mzz*mpy) -
-                        myy*(mzx*mpz - mzz*mpx) +
-                        myz*(mzx*mpy - mzy*mpx));
+         return mat[0]*(mat[5]*(mat[10]*mat[15] - mat[11]*mat[14]) -
+                        mat[6]*(mat[ 9]*mat[15] - mat[11]*mat[13]) +
+                        mat[7]*(mat[ 9]*mat[14] - mat[10]*mat[13])) -
+                mat[1]*(mat[4]*(mat[10]*mat[15] - mat[11]*mat[14]) -
+                        mat[6]*(mat[ 8]*mat[15] - mat[11]*mat[12]) +
+                        mat[7]*(mat[ 8]*mat[14] - mat[10]*mat[12])) +
+                mat[2]*(mat[4]*(mat[ 9]*mat[15] - mat[11]*mat[13]) -
+                        mat[5]*(mat[ 8]*mat[15] - mat[11]*mat[12]) +
+                        mat[7]*(mat[ 8]*mat[13] - mat[ 9]*mat[12])) -
+                mat[3]*(mat[4]*(mat[ 9]*mat[14] - mat[10]*mat[13]) -
+                        mat[5]*(mat[ 8]*mat[14] - mat[10]*mat[12]) +
+                        mat[6]*(mat[ 8]*mat[13] - mat[ 9]*mat[12]));
     }
 
     /**
@@ -534,9 +362,8 @@ public final class GeneralTransform3D extends Affine3D {
      *
      * @return this transform
      */
-    @Override
-    public void invert() {
-        invert(this);
+    public GeneralTransform3D invert() {
+        return invert(this);
     }
 
     /**
@@ -554,26 +381,22 @@ public final class GeneralTransform3D extends Affine3D {
         // Use LU decomposition and backsubstitution code specifically
         // for floating-point 4x4 matrices.
         // Copy source matrix to tmp
-        // System.arraycopy(t1.mat, 0, tmp, 0, tmp.length);
-        tmp = t1.get(tmp);
+        System.arraycopy(t1.mat, 0, tmp, 0, tmp.length);
 
         // Calculate LU decomposition: Is the matrix singular?
         if (!luDecomposition(tmp, row_perm)) {
             // Matrix has no inverse
             throw new SingularMatrixException();
         }
-        t1.set(tmp);
 
         // Perform back substitution on the identity matrix
         // luDecomposition will set rot[] & scales[] for use
         // in luBacksubstituation
-        mxx = 1.0;  mxy = 0.0;  mxz = 0.0;  mxt = 0.0;
-        myx = 0.0;  myy = 1.0;  myz = 0.0;  myt = 0.0;
-        mzx = 0.0;  mzy = 0.0;  mzz = 1.0; mzt = 0.0;
-        mpx = 0.0; mpy = 0.0; mpz = 0.0; mpw = 1.0;
-        final double[] mat = this.get(null);
-        luBacksubstitution(tmp, row_perm, mat);
-        this.set(mat);
+        mat[0] = 1.0;  mat[1] = 0.0;  mat[2] = 0.0;  mat[3] = 0.0;
+        mat[4] = 0.0;  mat[5] = 1.0;  mat[6] = 0.0;  mat[7] = 0.0;
+        mat[8] = 0.0;  mat[9] = 0.0;  mat[10] = 1.0; mat[11] = 0.0;
+        mat[12] = 0.0; mat[13] = 0.0; mat[14] = 0.0; mat[15] = 1.0;
+        luBacksubstitution(tmp, row_perm, this.mat);
 
         updateState();
         return this;
@@ -820,11 +643,6 @@ public final class GeneralTransform3D extends Affine3D {
      * @return this transform
      */
     public GeneralTransform3D mul(BaseTransform t1) {
-
-        if (t1 instanceof GeneralTransform3D) {
-            return mul((GeneralTransform3D) t1);
-        }
-
         if (t1.isIdentity()) {
             return this;
         }
@@ -834,58 +652,58 @@ public final class GeneralTransform3D extends Affine3D {
         double tmp8, tmp9, tmp10, tmp11;
         double tmp12, tmp13, tmp14, tmp15;
 
-        double Txx = t1.getMxx();
-        double Txy = t1.getMxy();
-        double Txz = t1.getMxz();
-        double Txt = t1.getMxt();
-        double Tyx = t1.getMyx();
-        double Tyy = t1.getMyy();
-        double Tyz = t1.getMyz();
-        double Tyt = t1.getMyt();
-        double Tzx = t1.getMzx();
-        double Tzy = t1.getMzy();
-        double Tzz = t1.getMzz();
-        double Tzt = t1.getMzt();
+        double mxx = t1.getMxx();
+        double mxy = t1.getMxy();
+        double mxz = t1.getMxz();
+        double mxt = t1.getMxt();
+        double myx = t1.getMyx();
+        double myy = t1.getMyy();
+        double myz = t1.getMyz();
+        double myt = t1.getMyt();
+        double mzx = t1.getMzx();
+        double mzy = t1.getMzy();
+        double mzz = t1.getMzz();
+        double mzt = t1.getMzt();
 
-        tmp0 = mxx * Txx + mxy * Tyx + mxz * Tzx;
-        tmp1 = mxx * Txy + mxy * Tyy + mxz * Tzy;
-        tmp2 = mxx * Txz + mxy * Tyz + mxz * Tzz;
-        tmp3 = mxx * Txt + mxy * Tyt + mxz * Tzt + mxt;
-        tmp4 = myx * Txx + myy * Tyx + myz * Tzx;
-        tmp5 = myx * Txy + myy * Tyy + myz * Tzy;
-        tmp6 = myx * Txz + myy * Tyz + myz * Tzz;
-        tmp7 = myx * Txt + myy * Tyt + myz * Tzt + myt;
-        tmp8 = mzx * Txx + mzy * Tyx + mzz * Tzx;
-        tmp9 = mzx * Txy + mzy * Tyy + mzz * Tzy;
-        tmp10 = mzx * Txz + mzy * Tyz + mzz * Tzz;
-        tmp11 = mzx * Txt + mzy * Tyt + mzz * Tzt + mzt;
+        tmp0 = mat[0] * mxx + mat[1] * myx + mat[2] * mzx;
+        tmp1 = mat[0] * mxy + mat[1] * myy + mat[2] * mzy;
+        tmp2 = mat[0] * mxz + mat[1] * myz + mat[2] * mzz;
+        tmp3 = mat[0] * mxt + mat[1] * myt + mat[2] * mzt + mat[3];
+        tmp4 = mat[4] * mxx + mat[5] * myx + mat[6] * mzx;
+        tmp5 = mat[4] * mxy + mat[5] * myy + mat[6] * mzy;
+        tmp6 = mat[4] * mxz + mat[5] * myz + mat[6] * mzz;
+        tmp7 = mat[4] * mxt + mat[5] * myt + mat[6] * mzt + mat[7];
+        tmp8 = mat[8] * mxx + mat[9] * myx + mat[10] * mzx;
+        tmp9 = mat[8] * mxy + mat[9] * myy + mat[10] * mzy;
+        tmp10 = mat[8] * mxz + mat[9] * myz + mat[10] * mzz;
+        tmp11 = mat[8] * mxt + mat[9] * myt + mat[10] * mzt + mat[11];
         if (isAffine()) {
             tmp12 = tmp13 = tmp14 = 0;
             tmp15 = 1;
         }
         else {
-            tmp12 = mpx * Txx + mpy * Tyx + mpz * Tzx;
-            tmp13 = mpx * Txy + mpy * Tyy + mpz * Tzy;
-            tmp14 = mpx * Txz + mpy * Tyz + mpz * Tzz;
-            tmp15 = mpx * Txt + mpy * Tyt + mpz * Tzt + mpw;
+            tmp12 = mat[12] * mxx + mat[13] * myx + mat[14] * mzx;
+            tmp13 = mat[12] * mxy + mat[13] * myy + mat[14] * mzy;
+            tmp14 = mat[12] * mxz + mat[13] * myz + mat[14] * mzz;
+            tmp15 = mat[12] * mxt + mat[13] * myt + mat[14] * mzt + mat[15];
         }
 
-        mxx = tmp0;
-        mxy = tmp1;
-        mxz = tmp2;
-        mxt = tmp3;
-        myx = tmp4;
-        myy = tmp5;
-        myz = tmp6;
-        myt = tmp7;
-        mzx = tmp8;
-        mzy = tmp9;
-        mzz = tmp10;
-        mzt = tmp11;
-        mpx = tmp12;
-        mpy = tmp13;
-        mpz = tmp14;
-        mpw = tmp15;
+        mat[0] = tmp0;
+        mat[1] = tmp1;
+        mat[2] = tmp2;
+        mat[3] = tmp3;
+        mat[4] = tmp4;
+        mat[5] = tmp5;
+        mat[6] = tmp6;
+        mat[7] = tmp7;
+        mat[8] = tmp8;
+        mat[9] = tmp9;
+        mat[10] = tmp10;
+        mat[11] = tmp11;
+        mat[12] = tmp12;
+        mat[13] = tmp13;
+        mat[14] = tmp14;
+        mat[15] = tmp15;
 
         updateState();
         return this;
@@ -909,35 +727,35 @@ public final class GeneralTransform3D extends Affine3D {
      *
      * @return this transform
      */
-    @Override
-    public void scale(double sx, double sy, double sz) {
+    public GeneralTransform3D scale(double sx, double sy, double sz) {
         boolean update = false;
 
         if (sx != 1.0) {
-            mxx  *= sx;
-            myx  *= sx;
-            mzx  *= sx;
-            mpx *= sx;
+            mat[0]  *= sx;
+            mat[4]  *= sx;
+            mat[8]  *= sx;
+            mat[12] *= sx;
             update = true;
         }
         if (sy != 1.0) {
-            mxy  *= sy;
-            myy  *= sy;
-            mzy  *= sy;
-            mpy *= sy;
+            mat[1]  *= sy;
+            mat[5]  *= sy;
+            mat[9]  *= sy;
+            mat[13] *= sy;
             update = true;
         }
         if (sz != 1.0) {
-            mxz  *= sz;
-            myz  *= sz;
-            mzz *= sz;
-            mpz *= sz;
+            mat[2]  *= sz;
+            mat[6]  *= sz;
+            mat[10] *= sz;
+            mat[14] *= sz;
             update = true;
         }
 
         if (update) {
             updateState();
         }
+        return this;
     }
 
     /**
@@ -959,165 +777,108 @@ public final class GeneralTransform3D extends Affine3D {
         double tmp12, tmp13, tmp14, tmp15;
 
         if (t1.isAffine()) {
-            tmp0 = mxx * t1.mxx + mxy * t1.myx + mxz * t1.mzx;
-            tmp1 = mxx * t1.mxy + mxy * t1.myy + mxz * t1.mzy;
-            tmp2 = mxx * t1.mxz + mxy * t1.myz + mxz * t1.mzz;
-            tmp3 = mxx * t1.mxt + mxy * t1.myt + mxz * t1.mzt + mxt;
-            tmp4 = myx * t1.mxx + myy * t1.myx + myz * t1.mzx;
-            tmp5 = myx * t1.mxy + myy * t1.myy + myz * t1.mzy;
-            tmp6 = myx * t1.mxz + myy * t1.myz + myz * t1.mzz;
-            tmp7 = myx * t1.mxt + myy * t1.myt + myz * t1.mzt + myt;
-            tmp8 = mzx * t1.mxx + mzy * t1.myx + mzz * t1.mzx;
-            tmp9 = mzx * t1.mxy + mzy * t1.myy + mzz * t1.mzy;
-            tmp10 = mzx * t1.mxz + mzy * t1.myz + mzz * t1.mzz;
-            tmp11 = mzx * t1.mxt + mzy * t1.myt + mzz * t1.mzt + mzt;
+            tmp0 = mat[0] * t1.mat[0] + mat[1] * t1.mat[4] + mat[2] * t1.mat[8];
+            tmp1 = mat[0] * t1.mat[1] + mat[1] * t1.mat[5] + mat[2] * t1.mat[9];
+            tmp2 = mat[0] * t1.mat[2] + mat[1] * t1.mat[6] + mat[2] * t1.mat[10];
+            tmp3 = mat[0] * t1.mat[3] + mat[1] * t1.mat[7] + mat[2] * t1.mat[11] + mat[3];
+            tmp4 = mat[4] * t1.mat[0] + mat[5] * t1.mat[4] + mat[6] * t1.mat[8];
+            tmp5 = mat[4] * t1.mat[1] + mat[5] * t1.mat[5] + mat[6] * t1.mat[9];
+            tmp6 = mat[4] * t1.mat[2] + mat[5] * t1.mat[6] + mat[6] * t1.mat[10];
+            tmp7 = mat[4] * t1.mat[3] + mat[5] * t1.mat[7] + mat[6] * t1.mat[11] + mat[7];
+            tmp8 = mat[8] * t1.mat[0] + mat[9] * t1.mat[4] + mat[10] * t1.mat[8];
+            tmp9 = mat[8] * t1.mat[1] + mat[9] * t1.mat[5] + mat[10] * t1.mat[9];
+            tmp10 = mat[8] * t1.mat[2] + mat[9] * t1.mat[6] + mat[10] * t1.mat[10];
+            tmp11 = mat[8] * t1.mat[3] + mat[9] * t1.mat[7] + mat[10] * t1.mat[11] + mat[11];
             if (isAffine()) {
                 tmp12 = tmp13 = tmp14 = 0;
                 tmp15 = 1;
             }
             else {
-                tmp12 = mpx * t1.mxx + mpy * t1.myx +
-                        mpz * t1.mzx;
-                tmp13 = mpx * t1.mxy + mpy * t1.myy +
-                        mpz * t1.mzy;
-                tmp14 = mpx * t1.mxz + mpy * t1.myz +
-                        mpz * t1.mzz;
-                tmp15 = mpx * t1.mxt + mpy * t1.myt +
-                        mpz * t1.mzt + mpw;
+                tmp12 = mat[12] * t1.mat[0] + mat[13] * t1.mat[4] +
+                        mat[14] * t1.mat[8];
+                tmp13 = mat[12] * t1.mat[1] + mat[13] * t1.mat[5] +
+                        mat[14] * t1.mat[9];
+                tmp14 = mat[12] * t1.mat[2] + mat[13] * t1.mat[6] +
+                        mat[14] * t1.mat[10];
+                tmp15 = mat[12] * t1.mat[3] + mat[13] * t1.mat[7] +
+                        mat[14] * t1.mat[11] + mat[15];
             }
         } else {
-            tmp0 = mxx * t1.mxx + mxy * t1.myx + mxz * t1.mzx +
-                    mxt * t1.mpx;
-            tmp1 = mxx * t1.mxy + mxy * t1.myy + mxz * t1.mzy +
-                    mxt * t1.mpy;
-            tmp2 = mxx * t1.mxz + mxy * t1.myz + mxz * t1.mzz +
-                    mxt * t1.mpz;
-            tmp3 = mxx * t1.mxt + mxy * t1.myt + mxz * t1.mzt +
-                    mxt * t1.mpw;
-            tmp4 = myx * t1.mxx + myy * t1.myx + myz * t1.mzx +
-                    myt * t1.mpx;
-            tmp5 = myx * t1.mxy + myy * t1.myy + myz * t1.mzy +
-                    myt * t1.mpy;
-            tmp6 = myx * t1.mxz + myy * t1.myz + myz * t1.mzz +
-                    myt * t1.mpz;
-            tmp7 = myx * t1.mxt + myy * t1.myt + myz * t1.mzt +
-                    myt * t1.mpw;
-            tmp8 = mzx * t1.mxx + mzy * t1.myx + mzz * t1.mzx +
-                    mzt * t1.mpx;
-            tmp9 = mzx * t1.mxy + mzy * t1.myy + mzz * t1.mzy +
-                    mzt * t1.mpy;
-            tmp10 = mzx * t1.mxz + mzy * t1.myz +
-                    mzz * t1.mzz + mzt * t1.mpz;
+            tmp0 = mat[0] * t1.mat[0] + mat[1] * t1.mat[4] + mat[2] * t1.mat[8] +
+                    mat[3] * t1.mat[12];
+            tmp1 = mat[0] * t1.mat[1] + mat[1] * t1.mat[5] + mat[2] * t1.mat[9] +
+                    mat[3] * t1.mat[13];
+            tmp2 = mat[0] * t1.mat[2] + mat[1] * t1.mat[6] + mat[2] * t1.mat[10] +
+                    mat[3] * t1.mat[14];
+            tmp3 = mat[0] * t1.mat[3] + mat[1] * t1.mat[7] + mat[2] * t1.mat[11] +
+                    mat[3] * t1.mat[15];
+            tmp4 = mat[4] * t1.mat[0] + mat[5] * t1.mat[4] + mat[6] * t1.mat[8] +
+                    mat[7] * t1.mat[12];
+            tmp5 = mat[4] * t1.mat[1] + mat[5] * t1.mat[5] + mat[6] * t1.mat[9] +
+                    mat[7] * t1.mat[13];
+            tmp6 = mat[4] * t1.mat[2] + mat[5] * t1.mat[6] + mat[6] * t1.mat[10] +
+                    mat[7] * t1.mat[14];
+            tmp7 = mat[4] * t1.mat[3] + mat[5] * t1.mat[7] + mat[6] * t1.mat[11] +
+                    mat[7] * t1.mat[15];
+            tmp8 = mat[8] * t1.mat[0] + mat[9] * t1.mat[4] + mat[10] * t1.mat[8] +
+                    mat[11] * t1.mat[12];
+            tmp9 = mat[8] * t1.mat[1] + mat[9] * t1.mat[5] + mat[10] * t1.mat[9] +
+                    mat[11] * t1.mat[13];
+            tmp10 = mat[8] * t1.mat[2] + mat[9] * t1.mat[6] +
+                    mat[10] * t1.mat[10] + mat[11] * t1.mat[14];
 
-            tmp11 = mzx * t1.mxt + mzy * t1.myt +
-                    mzz * t1.mzt + mzt * t1.mpw;
+            tmp11 = mat[8] * t1.mat[3] + mat[9] * t1.mat[7] +
+                    mat[10] * t1.mat[11] + mat[11] * t1.mat[15];
             if (isAffine()) {
-                tmp12 = t1.mpx;
-                tmp13 = t1.mpy;
-                tmp14 = t1.mpz;
-                tmp15 = t1.mpw;
+                tmp12 = t1.mat[12];
+                tmp13 = t1.mat[13];
+                tmp14 = t1.mat[14];
+                tmp15 = t1.mat[15];
             } else {
-                tmp12 = mpx * t1.mxx + mpy * t1.myx +
-                        mpz * t1.mzx + mpw * t1.mpx;
-                tmp13 = mpx * t1.mxy + mpy * t1.myy +
-                        mpz * t1.mzy + mpw * t1.mpy;
-                tmp14 = mpx * t1.mxz + mpy * t1.myz +
-                        mpz * t1.mzz + mpw * t1.mpz;
-                tmp15 = mpx * t1.mxt + mpy * t1.myt +
-                        mpz * t1.mzt + mpw * t1.mpw;
+                tmp12 = mat[12] * t1.mat[0] + mat[13] * t1.mat[4] +
+                        mat[14] * t1.mat[8] + mat[15] * t1.mat[12];
+                tmp13 = mat[12] * t1.mat[1] + mat[13] * t1.mat[5] +
+                        mat[14] * t1.mat[9] + mat[15] * t1.mat[13];
+                tmp14 = mat[12] * t1.mat[2] + mat[13] * t1.mat[6] +
+                        mat[14] * t1.mat[10] + mat[15] * t1.mat[14];
+                tmp15 = mat[12] * t1.mat[3] + mat[13] * t1.mat[7] +
+                        mat[14] * t1.mat[11] + mat[15] * t1.mat[15];
             }
         }
 
-        mxx = tmp0;
-        mxy = tmp1;
-        mxz = tmp2;
-        mxt = tmp3;
-        myx = tmp4;
-        myy = tmp5;
-        myz = tmp6;
-        myt = tmp7;
-        mzx = tmp8;
-        mzy = tmp9;
-        mzz = tmp10;
-        mzt = tmp11;
-        mpx = tmp12;
-        mpy = tmp13;
-        mpz = tmp14;
-        mpw = tmp15;
+        mat[0] = tmp0;
+        mat[1] = tmp1;
+        mat[2] = tmp2;
+        mat[3] = tmp3;
+        mat[4] = tmp4;
+        mat[5] = tmp5;
+        mat[6] = tmp6;
+        mat[7] = tmp7;
+        mat[8] = tmp8;
+        mat[9] = tmp9;
+        mat[10] = tmp10;
+        mat[11] = tmp11;
+        mat[12] = tmp12;
+        mat[13] = tmp13;
+        mat[14] = tmp14;
+        mat[15] = tmp15;
 
         updateState();
         return this;
     }
 
-    public void preConcatenate(BaseTransform transform) {
-        switch (transform.getDegree()) {
-            case IDENTITY:
-                return;
-            case TRANSLATE_2D:
-                preTranslate(transform.getMxt(), transform.getMyt(), 0.0);
-                return;
-            case TRANSLATE_3D:
-                preTranslate(transform.getMxt(), transform.getMyt(), transform.getMzt());
-                return;
-        }
-        final double Txx = transform.getMxx();
-        final double Txy = transform.getMxy();
-        final double Txz = transform.getMxz();
-        final double Txt = transform.getMxt();
-        final double Tyx = transform.getMyx();
-        final double Tyy = transform.getMyy();
-        final double Tyz = transform.getMyz();
-        final double Tyt = transform.getMyt();
-        final double Tzx = transform.getMzx();
-        final double Tzy = transform.getMzy();
-        final double Tzz = transform.getMzz();
-        final double Tzt = transform.getMzt();
-        final double Tpx = transform.getMpx();
-        final double Tpy = transform.getMpy();
-        final double Tpz = transform.getMpz();
-        final double Tpw = transform.getMpw();
-        final double rxx = (Txx * mxx + Txy * myx + Txz * mzx + Txt * mpx);
-        final double rxy = (Txx * mxy + Txy * myy + Txz * mzy + Txt * mpy);
-        final double rxz = (Txx * mxz + Txy * myz + Txz * mzz + Txt * mpz);
-        final double rxt = (Txx * mxt + Txy * myt + Txz * mzt + Txt * mpw);
-        final double ryx = (Tyx * mxx + Tyy * myx + Tyz * mzx + Tyt * mpx);
-        final double ryy = (Tyx * mxy + Tyy * myy + Tyz * mzy + Tyt * mpy);
-        final double ryz = (Tyx * mxz + Tyy * myz + Tyz * mzz + Tyt * mpz);
-        final double ryt = (Tyx * mxt + Tyy * myt + Tyz * mzt + Tyt * mpw);
-        final double rzx = (Tzx * mxx + Tzy * myx + Tzz * mzx + Tzt * mpx);
-        final double rzy = (Tzx * mxy + Tzy * myy + Tzz * mzy + Tzt * mpy);
-        final double rzz = (Tzx * mxz + Tzy * myz + Tzz * mzz + Tzt * mpz);
-        final double rzt = (Tzx * mxt + Tzy * myt + Tzz * mzt + Tzt * mpw);
-        final double rpx = (Tpx * mxx + Tpy * myx + Tpz * mzx + Tpw * mpx);
-        final double rpy = (Tpx * mxy + Tpy * myy + Tpz * mzy + Tpw * mpy);
-        final double rpz = (Tpx * mxz + Tpy * myz + Tpz * mzz + Tpw * mpz);
-        final double rpw = (Tpx * mxt + Tpy * myt + Tpz * mzt + Tpw * mpw);
-        this.mxx = rxx;
-        this.mxy = rxy;
-        this.mxz = rxz;
-        this.mxt = rxt;
-        this.myx = ryx;
-        this.myy = ryy;
-        this.myz = ryz;
-        this.myt = ryt;
-        this.mzx = rzx;
-        this.mzy = rzy;
-        this.mzz = rzz;
-        this.mzt = rzt;
-        this.mpx = rpx;
-        this.mpy = rpy;
-        this.mpz = rpz;
-        this.mpw = rpw;
-        updateState();
-    }
-
     /**
      * Sets this transform to the identity matrix.
      *
-     * @return void
+     * @return this transform
      */
-    public void setIdentity() {
-        setToIdentity();
+    public GeneralTransform3D setIdentity() {
+        mat[0] = 1.0;  mat[1] = 0.0;  mat[2] = 0.0;  mat[3] = 0.0;
+        mat[4] = 0.0;  mat[5] = 1.0;  mat[6] = 0.0;  mat[7] = 0.0;
+        mat[8] = 0.0;  mat[9] = 0.0;  mat[10] = 1.0; mat[11] = 0.0;
+        mat[12] = 0.0; mat[13] = 0.0; mat[14] = 0.0; mat[15] = 1.0;
+        identity = true;
+        return this;
     }
 
     /**
@@ -1125,23 +886,18 @@ public final class GeneralTransform3D extends Affine3D {
      * to be identity if the diagonal elements of its matrix is all 1s
      * otherwise 0s.
      */
-    @Override
     public boolean isIdentity() {
-        return super.isIdentity() && identity;
+        return identity;
     }
 
-    @Override
-    protected void reset3Delements() {
-        super.reset3Delements();
-        mpx = 0.0; mpy = 0.0; mpz = 0.0; mpw = 1.0;
-        identity = true;
-    }
-
-    @Override
-    protected void updateState() {
+    private void updateState() {
         //set the identity flag.
-        identity = mpx == 0.0 && mpy == 0.0 && mpz == 0.0;
-        super.updateState();
+        identity =
+            mat[0]  == 1.0 && mat[5]  == 1.0 && mat[10] == 1.0 && mat[15] == 1.0 &&
+            mat[1]  == 0.0 && mat[2]  == 0.0 && mat[3]  == 0.0 &&
+            mat[4]  == 0.0 && mat[6]  == 0.0 && mat[7]  == 0.0 &&
+            mat[8]  == 0.0 && mat[9]  == 0.0 && mat[11] == 0.0 &&
+            mat[12] == 0.0 && mat[13] == 0.0 && mat[14] == 0.0;
     }
 
     // Check whether matrix has an Infinity or NaN value. If so, don't treat it
@@ -1150,7 +906,6 @@ public final class GeneralTransform3D extends Affine3D {
         // The following is a faster version of the check.
         // Instead of 3 tests per array element (Double.isInfinite is 2 tests),
         // for a total of 48 tests, we will do 16 multiplies and 1 test.
-        final double[] mat = get(null);
         double d = 0.0;
         for (int i = 0; i < mat.length; i++) {
             d *= mat[i];
@@ -1159,16 +914,14 @@ public final class GeneralTransform3D extends Affine3D {
         return d != 0.0;
     }
 
-    static boolean isAffine(double[] mat) {
-        if (almostZero(mat[12]) &&
-                almostZero(mat[13]) &&
-                almostZero(mat[14]) &&
-                almostOne(mat[15])) {
+    private static final double EPSILON_ABSOLUTE = 1.0e-5;
 
-            return true;
-        } else {
-            return false;
-        }
+    static boolean almostZero(double a) {
+        return ((a < EPSILON_ABSOLUTE) && (a > -EPSILON_ABSOLUTE));
+    }
+
+    static boolean almostOne(double a) {
+        return ((a < 1+EPSILON_ABSOLUTE) && (a > 1-EPSILON_ABSOLUTE));
     }
 
     public GeneralTransform3D copy() {
@@ -1176,4 +929,17 @@ public final class GeneralTransform3D extends Affine3D {
         newTransform.set(this);
         return newTransform;
     }
+
+    /**
+     * Returns the matrix elements of this transform as a string.
+     * @return  the matrix elements of this transform
+     */
+    @Override
+    public String toString() {
+        return mat[0] + ", " + mat[1] + ", " + mat[2] + ", " + mat[3] + "\n" +
+                mat[4] + ", " + mat[5] + ", " + mat[6] + ", " + mat[7] + "\n" +
+                mat[8] + ", " + mat[9] + ", " + mat[10] + ", " + mat[11] + "\n" +
+                mat[12] + ", " + mat[13] + ", " + mat[14] + ", " + mat[15] + "\n";
+    }
+
 }

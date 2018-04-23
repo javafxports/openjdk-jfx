@@ -197,7 +197,6 @@ struct GraphicsContextState {
 #endif
 #if PLATFORM(JAVA)
     AffineTransform transform;
-    TransformationMatrix perspectiveTransform;
     FloatRect clipBounds;
 #endif
     bool drawLuminanceMask : 1;

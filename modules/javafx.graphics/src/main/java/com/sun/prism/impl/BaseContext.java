@@ -128,9 +128,9 @@ public abstract class BaseContext {
 
     protected void setPerspectiveTransform(GeneralTransform3D transform) {
         if (transform == null) {
-            perspectiveTransform.setToIdentity();
+            perspectiveTransform.setIdentity();
         } else {
-            perspectiveTransform.setTransform(transform);
+            perspectiveTransform.set(transform);
         }
     }
 

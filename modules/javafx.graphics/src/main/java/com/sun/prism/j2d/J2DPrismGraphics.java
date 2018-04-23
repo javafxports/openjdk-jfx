@@ -1273,10 +1273,6 @@ public class J2DPrismGraphics
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    public GeneralTransform3D getPerspectiveTransformNoClone() {
-        throw new UnsupportedOperationException("getPerspectiveTransformNoClone: unimp");
-    }
-
     public void setPerspectiveTransform(GeneralTransform3D transform) {
     }
 

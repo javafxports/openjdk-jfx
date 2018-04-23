@@ -59,7 +59,7 @@ public abstract class BaseGraphics implements RectShadowGraphics {
     protected static final BaseTransform IDENT = BaseTransform.IDENTITY_TRANSFORM;
 
     // TODO: initialize transform lazily to avoid creating garbage... (RT-27422)
-    private final GeneralTransform3D transform3D = new GeneralTransform3D();
+    private final Affine3D transform3D = new Affine3D();
     private NGCamera camera = NGCamera.INSTANCE;
     private RectBounds devClipRect;
     private RectBounds finalClipRect;
@@ -136,11 +136,6 @@ public abstract class BaseGraphics implements RectShadowGraphics {
 
     public BaseTransform getTransformNoClone() {
         return transform3D;
-    }
-
-    @Override
-    public GeneralTransform3D getPerspectiveTransformNoClone() {
-        return null;
     }
 
     @Override
