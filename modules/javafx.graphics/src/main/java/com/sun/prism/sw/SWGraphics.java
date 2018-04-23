@@ -40,6 +40,7 @@ import com.sun.javafx.geom.RoundRectangle2D;
 import com.sun.javafx.geom.Shape;
 import com.sun.javafx.geom.transform.Affine2D;
 import com.sun.javafx.geom.transform.BaseTransform;
+import com.sun.javafx.geom.transform.GeneralTransform3D;
 import com.sun.javafx.geom.transform.NoninvertibleTransformException;
 import com.sun.javafx.scene.text.GlyphList;
 import com.sun.javafx.sg.prism.NGCamera;
@@ -197,6 +198,14 @@ final class SWGraphics implements ReadbackGraphics {
     }
 
     public void setCamera(NGCamera camera) {
+    }
+
+    public GeneralTransform3D getPerspectiveTransformNoClone() {
+        throw new UnsupportedOperationException("getPerspectiveTransformNoClone: unimp");
+    }
+
+    public void setPerspectiveTransform(GeneralTransform3D transform) {
+        throw new UnsupportedOperationException("setPerspectiveTransform: unimp");
     }
 
     public NGCamera getCameraNoClone() {

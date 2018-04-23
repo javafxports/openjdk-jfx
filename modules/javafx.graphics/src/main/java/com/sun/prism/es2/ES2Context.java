@@ -271,9 +271,8 @@ class ES2Context extends BaseShaderContext {
             xform = BaseTransform.IDENTITY_TRANSFORM;
         }
 
-        // System.err.println("updateShaderTransform:" + xform);
         scratchTx.set(projViewTx);
-        updateRawMatrix(scratchTx.mul(xform));
+        updateRawMatrix(scratchTx.mul(xform).mul(getPerspectiveTransformNoClone()));
 
         ES2Shader es2shader = (ES2Shader) shader;
         es2shader.setMatrix("mvpMatrix", rawMatrix);

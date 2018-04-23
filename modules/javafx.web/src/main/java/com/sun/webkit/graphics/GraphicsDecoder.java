@@ -83,6 +83,7 @@ public final class GraphicsDecoder  {
     @Native public final static int SET_LINE_JOIN          = 53;
     @Native public final static int SET_MITER_LIMIT        = 54;
     @Native public final static int SET_TEXT_MODE          = 55;
+    @Native public final static int SET_PERSPECTIVE_TRANSFORM = 56;
 
     private final static Logger log =
         Logger.getLogger(GraphicsDecoder.class.getName());
@@ -324,6 +325,13 @@ public final class GraphicsDecoder  {
                     gc.concatTransform(new WCTransform(
                             buf.getFloat(), buf.getFloat(), buf.getFloat(),
                             buf.getFloat(), buf.getFloat(), buf.getFloat()));
+                    break;
+                case SET_PERSPECTIVE_TRANSFORM:
+                    gc.setPerspectiveTransform(new WCTransform(
+                            buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat(),
+                            buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat(),
+                            buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat(),
+                            buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat()));
                     break;
                 case SET_TRANSFORM:
                     gc.setTransform(new WCTransform(
