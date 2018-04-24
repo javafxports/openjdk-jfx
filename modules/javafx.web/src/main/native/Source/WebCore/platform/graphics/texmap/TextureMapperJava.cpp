@@ -87,7 +87,7 @@ void TextureMapperJava::drawTexture(const BitmapTexture& texture, const FloatRec
     context->restore();
 }
 
-void TextureMapperJava::drawSolidColor(const FloatRect& rect, const TransformationMatrix& matrix, const Color& color)
+void TextureMapperJava::drawSolidColor(const FloatRect& rect, const TransformationMatrix& transform, const Color& color)
 {
     GraphicsContext* context = currentContext();
     if (!context)
@@ -95,7 +95,12 @@ void TextureMapperJava::drawSolidColor(const FloatRect& rect, const Transformati
 
     context->save();
     context->setCompositeOperation(isInMaskMode() ? CompositeDestinationIn : CompositeSourceOver);
-    context->concat3DTransform(matrix);
+    context->platformContext()->rq().freeSpace(68)
+        << (jint)com_sun_webkit_graphics_GraphicsDecoder_SET_PERSPECTIVE_TRANSFORM
+        << (float)transform.m11() << (float)transform.m12() << (float)transform.m13() << (float)transform.m14()
+        << (float)transform.m21() << (float)transform.m22() << (float)transform.m23() << (float)transform.m24()
+        << (float)transform.m31() << (float)transform.m32() << (float)transform.m33() << (float)transform.m34()
+        << (float)transform.m41() << (float)transform.m42() << (float)transform.m43() << (float)transform.m44();
 
     context->fillRect(rect, color);
     context->restore();

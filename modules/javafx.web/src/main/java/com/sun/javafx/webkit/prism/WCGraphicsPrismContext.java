@@ -517,7 +517,9 @@ class WCGraphicsPrismContext extends WCGraphicsContext {
             @Override void doPaint(Graphics g) {
                 Paint paint = (rgba != null) ? createColor(rgba) : state.getPaintNoClone();
                 DropShadow shadow = state.getShadowNoClone();
-                if (shadow != null) {
+                // TextureMapperJava::drawSolidColor calls fillRect with perspective
+                // projection.
+                if (shadow != null || !state.getPerspectiveTransformNoClone().isIdentity()) {
                     final NGRectangle node = new NGRectangle();
                     node.updateRectangle(x, y, w, h, 0, 0);
                     render(g, shadow, paint, null, node);
