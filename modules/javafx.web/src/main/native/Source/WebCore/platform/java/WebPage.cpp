@@ -852,6 +852,7 @@ namespace {
 
 bool s_useJIT;
 bool s_useDFGJIT;
+bool s_useCSS3D;
 
 }  // namespace
 
@@ -860,9 +861,10 @@ extern "C" {
 #endif
 
 JNIEXPORT void JNICALL Java_com_sun_webkit_WebPage_twkInitWebCore
-    (JNIEnv* env, jclass self, jboolean useJIT, jboolean useDFGJIT) {
+    (JNIEnv* env, jclass self, jboolean useJIT, jboolean useDFGJIT, jboolean useCSS3D) {
     s_useJIT = useJIT;
     s_useDFGJIT = useDFGJIT;
+    s_useCSS3D = useCSS3D;
 }
 
 JNIEXPORT jlong JNICALL Java_com_sun_webkit_WebPage_twkCreatePage
@@ -939,7 +941,7 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_WebPage_twkInit
     settings.setLoadsImagesAutomatically(true);
     settings.setMinimumFontSize(0);
     settings.setMinimumLogicalFontSize(5);
-    settings.setAcceleratedCompositingEnabled(true);
+    settings.setAcceleratedCompositingEnabled(s_useCSS3D);
     settings.setScriptEnabled(true);
     settings.setJavaScriptCanOpenWindowsAutomatically(true);
     settings.setPluginsEnabled(usePlugins);
