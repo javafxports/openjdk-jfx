@@ -53,7 +53,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -115,7 +114,6 @@ class WCGraphicsPrismContext extends WCGraphicsContext {
 
     final void initBaseTransform(BaseTransform t) {
         baseTransform = new Affine3D(t);
-        ((Affine3D) baseTransform).scale(1, 1, -1);
         state.setTransform((Affine3D)baseTransform);
     }
 
@@ -1807,14 +1805,7 @@ class WCGraphicsPrismContext extends WCGraphicsContext {
     }
 
     public void setPerspectiveTransform(WCTransform tm) {
-        final double m[] = tm.getMatrix();
-        final GeneralTransform3D at = new GeneralTransform3D().set(m);
-        /*
-        final GeneralTransform3D at = new GeneralTransform3D(m[0], m[4], m[8], m[12],
-                                                             m[1], m[5], m[9], m[13],
-                                                             m[2], m[6], m[10], m[14],
-                                                             m[3], m[7], m[11], m[15]);
-                                                             */
+        final GeneralTransform3D at = new GeneralTransform3D().set(tm.getMatrix());
         state.setPerspectiveTransform(at);
         resetCachedGraphics();
     }

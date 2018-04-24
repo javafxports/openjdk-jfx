@@ -241,7 +241,6 @@ class ES2Context extends BaseShaderContext {
         } else {
             projViewTx.set(scratchTx);
         }
-        // System.err.println("updateRenderTarget:" + projViewTx);
 
         // update camera position; this will be uploaded to the shader
         // when we switch to 3D state

@@ -30,13 +30,11 @@ import java.util.Arrays;
 public final class WCTransform extends Ref {
     private final double[] m;
 
-    final private boolean is2D;
     public WCTransform(double m11, double m12, double m13, double m14,
                        double m21, double m22, double m23, double m24,
                        double m31, double m32, double m33, double m34,
                        double m41, double m42, double m43, double m44)
     {
-        this.is2D = false;
         this.m = new double[16];
 
         m[0] = m11;
@@ -62,7 +60,6 @@ public final class WCTransform extends Ref {
 
     public WCTransform(double m00, double m10, double m01, double m11,
                        double m02, double m12) {
-        this.is2D = true;
         this.m = new double[6];
         m[0] = m00;
         m[1] = m10;
@@ -76,14 +73,10 @@ public final class WCTransform extends Ref {
         return Arrays.copyOf(m, m.length);
     }
 
-    public boolean is2D() {
-        return this.is2D;
-    }
-
     @Override
     public String toString() {
          String val = "WCTransform:";
-         if (is2D()) {
+         if (m.length == 6) {
             val += "(" + m[0] + "," + m[1] + "," + m[2] + ")" +
                    "(" + m[3] + "," + m[4] + "," + m[5] + ")";
          } else {

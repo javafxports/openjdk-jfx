@@ -115,9 +115,7 @@ private:
                        GraphicsLayerPaintingPhase,
                        const FloatRect&,
                        GraphicsLayerPaintBehavior) override;
-    // float deviceScaleFactor() const override { return 0.5; }
 
-    void applyDeviceScaleFactor();
     bool keyEvent(const PlatformKeyboardEvent& event);
     bool charEvent(const PlatformKeyboardEvent& event);
     bool keyEventDefault(const PlatformKeyboardEvent& event);

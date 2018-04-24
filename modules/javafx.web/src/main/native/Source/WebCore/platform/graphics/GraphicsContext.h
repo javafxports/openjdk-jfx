@@ -34,7 +34,6 @@
 #include "Image.h"
 #include "ImageOrientation.h"
 #include "Pattern.h"
-#include "TransformationMatrix.h"
 #include <wtf/Function.h>
 #include <wtf/Noncopyable.h>
 

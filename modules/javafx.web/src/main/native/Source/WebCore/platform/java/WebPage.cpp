@@ -197,24 +197,6 @@ JLObject WebPage::jobjectFromPage(Page* page)
         : NULL;
 }
 
-void WebPage::applyDeviceScaleFactor()
-{
-    if (!m_rootLayer)
-        return;
-
-#if 0
-    const FloatSize& size = m_rootLayer->size();
-
-    TransformationMatrix m;
-    m.scale(deviceScaleFactor());
-    // Center view
-    double tx = (size.width() - size.width() / deviceScaleFactor()) / 2.0;
-    double ty = (size.height() - size.height() / deviceScaleFactor()) / 2.0;
-    m.translate(tx, ty);
-    m_rootLayer->setTransform(m);
-#endif
-}
-
 void WebPage::setSize(const IntSize& size)
 {
     Frame* mainFrame = (Frame*)&m_page->mainFrame();
@@ -229,7 +211,6 @@ void WebPage::setSize(const IntSize& size)
 
     if (m_rootLayer) {
         m_rootLayer->setSize(size);
-        applyDeviceScaleFactor();
         m_rootLayer->setNeedsDisplay();
     }
 }
@@ -412,7 +393,6 @@ void WebPage::setRootChildLayer(GraphicsLayer* layer)
         m_rootLayer->setDrawsContent(true);
         m_rootLayer->setContentsOpaque(true);
         m_rootLayer->setSize(pageRect().size());
-        applyDeviceScaleFactor();
         m_rootLayer->setNeedsDisplay();
         m_rootLayer->addChild(layer);
 
@@ -959,10 +939,7 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_WebPage_twkInit
     settings.setLoadsImagesAutomatically(true);
     settings.setMinimumFontSize(0);
     settings.setMinimumLogicalFontSize(5);
-    // FIXME(arunprasad): Will be addressed in JDK-8148129.
-    bool acceleratedComposition;
-    acceleratedComposition = true;
-    settings.setAcceleratedCompositingEnabled(acceleratedComposition);
+    settings.setAcceleratedCompositingEnabled(true);
     settings.setScriptEnabled(true);
     settings.setJavaScriptCanOpenWindowsAutomatically(true);
     settings.setPluginsEnabled(usePlugins);

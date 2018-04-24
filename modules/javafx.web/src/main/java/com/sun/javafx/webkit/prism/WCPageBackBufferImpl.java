@@ -55,6 +55,7 @@ final class WCPageBackBufferImpl extends WCPageBackBuffer implements ResourceFac
 
     public WCGraphicsContext createGraphics() {
         Graphics g = texture.createGraphics();
+        // Make use of custom camera created for WebKit.
         g.setCamera(WCCamera.INSTANCE);
         g.scale(pixelScale, pixelScale);
         return WCGraphicsManager.getGraphicsManager().createGraphicsContext(g);
