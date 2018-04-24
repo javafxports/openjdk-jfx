@@ -316,7 +316,6 @@ void WebPage::paint(jobject rq, jint x, jint y, jint w, jint h)
 
 void WebPage::postPaint(jobject rq, jint x, jint y, jint w, jint h)
 {
-    RenderThemeJava::setTheme(nullptr);
     if (!m_page->inspectorController().highlightedNode()
             && !m_rootLayer
     ) {
@@ -346,6 +345,7 @@ void WebPage::postPaint(jobject rq, jint x, jint y, jint w, jint h)
     }
 
     gc.platformContext()->rq().flushBuffer();
+    RenderThemeJava::setTheme(nullptr);
 }
 
 void WebPage::scroll(const IntSize& scrollDelta,
