@@ -29,10 +29,14 @@ import java.net.URI;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashSet;
+import java.io.*;
+import java.nio.*;
+import java.nio.file.*;
 
 public class NativeLibLoader {
 
     private static final HashSet<String> loaded = new HashSet<String>();
+    private static final String tmpdir = System.getProperty("java.io.tmpdir");
 
     public static synchronized void loadLibrary(String libname) {
         if (!loaded.contains(libname)) {
@@ -130,6 +134,10 @@ public class NativeLibLoader {
                             + libraryName + ") succeeded");
                 }
             } catch (UnsatisfiedLinkError ex2) {
+                // if the library is available in the jar, copy it to /tmp and load it from there
+                if (loadLibraryFromResource(libraryName)) {
+                    return;
+                }
                 //On iOS we link all libraries staticaly. Presence of library
                 //is recognized by existence of JNI_OnLoad_libraryname() C function.
                 //If libraryname contains hyphen, it needs to be translated
@@ -148,6 +156,29 @@ public class NativeLibLoader {
                 throw ex2;
             }
         }
+    }
+
+   /**
+    * If there is a library with the platform-correct name at the
+    * root of the resources in this jar, use that.
+    */
+    private static boolean loadLibraryFromResource(String libraryName) {
+        try {
+            String reallib = "/"+libPrefix+libraryName+libSuffix;
+            InputStream is = NativeLibLoader.class.getResourceAsStream(reallib);
+            if (is != null) {
+                File f = new File(tmpdir, reallib);
+                if (f.exists()) f.delete();
+                Path path = f.toPath();
+                Files.copy(is, path);
+                String fp = f.getAbsolutePath();
+                System.load(fp);
+                return true;
+            }
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        return false;
     }
 
     /**
