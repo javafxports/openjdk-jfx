@@ -4872,6 +4872,7 @@ compileTargets { t ->
 
         // Create modular jars
         def srcClassesDir = "${buildDir}/${platformPrefix}module-classes"
+        def srcLibsDir = "${buildDir}/${platformPrefix}module-lib"
         def dstModularJarDir = "${standaloneLibDir}"
         def modularJarName = "${moduleName}.jar"
         def modularJarTask = project.task("modularJarStandalone$t.capital", type: Jar, dependsOn: project.assemble) {
@@ -4879,6 +4880,7 @@ compileTargets { t ->
             archiveName = modularJarName
             includeEmptyDirs = false
             from srcClassesDir
+            from srcLibsDir
         }
 
         // Copy native libraries
@@ -4891,7 +4893,6 @@ compileTargets { t ->
         }
 
         // Copy other lib files
-        def srcLibsDir = "${buildDir}/${platformPrefix}module-lib"
         def dstLibsDir = "${standaloneLibDir}"
         def copyLibFilesTask = project.task("copyLibFilesStandalone$t.capital", type: Copy, dependsOn: copyNativeFilesTask) {
             from srcLibsDir
