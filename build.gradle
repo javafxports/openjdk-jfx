@@ -333,6 +333,7 @@ ext.JAVA_HOME = JDK_HOME
 defineProperty("JAVA", cygpathExe("$JDK_HOME/bin/java"))
 defineProperty("JAVAC", cygpathExe("$JDK_HOME/bin/javac"))
 defineProperty("JAVADOC", cygpathExe("$JDK_HOME/bin/javadoc"))
+defineProperty("JMOD", cygpathExe("$JDK_HOME/bin/jmod"))
 defineProperty("JDK_DOCS", "https://docs.oracle.com/javase/10/docs/api/")
 defineProperty("JDK_JMODS", cygpath(System.getenv("JDK_JMODS")) ?: cygpath(System.getenv("JDK_HOME") + "/jmods"))
 
@@ -357,6 +358,12 @@ if (BUILD_CLOSED) {
 // gradle version check fails
 defineProperty("GRADLE_VERSION_CHECK", "true")
 ext.IS_GRADLE_VERSION_CHECK = Boolean.parseBoolean(GRADLE_VERSION_CHECK)
+
+// JFX_DEPS_URL specifies the optional location of an alternate local repository
+defineProperty("JFX_DEPS_URL", "")
+
+// JDK_DOCS_LINK specifies the optional URL for offline javadoc linking
+defineProperty("JDK_DOCS_LINK", "")
 
 // COMPILE_WEBKIT specifies whether to build all of webkit.
 defineProperty("COMPILE_WEBKIT", "false")
@@ -550,8 +557,8 @@ project.ext.set("defaultHostTarget", IS_MAC ? "mac" : IS_WINDOWS ? "win" : IS_LI
 defineProperty("COMPILE_TARGETS", "$defaultHostTarget")
 
 // Flag indicating whether to import cross compile tools
-def importCrossTools = BUILD_CLOSED ? true : false;
-if (!importCrossTools && hasProperty("IMPORT_CROSS_TOOLS")) {
+def importCrossTools = false
+if (hasProperty("IMPORT_CROSS_TOOLS")) {
     importCrossTools = Boolean.parseBoolean(IMPORT_CROSS_TOOLS);
 }
 ext.IS_IMPORT_CROSS_TOOLS = importCrossTools
@@ -1612,14 +1619,29 @@ void addJCov(p, test) {
 }
 
 allprojects {
-    // Setup the repositories that we'll download libraries from. Maven Central is
-    // just easy for most things. The custom "ivy" repo is for downloading SWT. The way it
-    // works is to setup the download URL such that it will resolve to the actual jar file
-    // to download. See SWT_FILE_NAME for the name of the jar that will be used as the
-    // "artifact" in the pattern below. Note that the closed builds use different repositories
-    // so if you are debugging a closed-build artifact related build issue, check out the
-    // closed gradle file instead.
-    if (!BUILD_CLOSED) {
+
+    // Setup the repositories that we'll download libraries from.
+    // By default we use Maven Central for most things. The custom "ivy"
+    // repo is for downloading SWT. The way it works is to setup the
+    // download URL such that it will resolve to the actual jar file to
+    // download. See SWT_FILE_NAME for the name of the jar that will be
+    // used as the "artifact" in the pattern below.
+    // If JFX_DEPS_URL is set, then that overrides the default
+    // repositories. This allows the dependencies to be cached locally.
+
+    if (JFX_DEPS_URL != "") {
+        repositories {
+            ivy {
+                url JFX_DEPS_URL
+                layout "pattern", {
+                    artifact "[artifact]-[revision](-[classifier]).[ext]"
+                    artifact "[artifact].[ext]"
+                }
+            }
+        }
+    }
+
+    if (JFX_DEPS_URL == "") {
         repositories {
             mavenCentral()
             ivy {
@@ -1631,7 +1653,7 @@ allprojects {
         }
     }
 
-    if (!BUILD_CLOSED && IS_BUILD_LIBAV_STUBS) {
+    if (JFX_DEPS_URL == "" && IS_BUILD_LIBAV_STUBS) {
         repositories {
             ivy {
                 url libAVRepositoryURL
@@ -2483,7 +2505,7 @@ project(":fxpackager") {
 
     // fxpackager has a dependency on ant in order to build the ant jar,
     // and as such needs to point to the apache binary repository
-    if (!BUILD_CLOSED) {
+    if (JFX_DEPS_URL == "") {
         repositories {
             maven {
                 url "https://repository.apache.org"
@@ -4260,8 +4282,8 @@ task javadoc(type: Javadoc, dependsOn: createMSPfile) {
     options.header("${javadocHeader}")
     options.bottom("${javadocBottom}")
     options.locale("en");
-    if (BUILD_CLOSED) {
-        options.linksOffline(JDK_DOCS, JDK_DOCS_CLOSED);
+    if (JDK_DOCS_LINK != "") {
+        options.linksOffline(JDK_DOCS, JDK_DOCS_LINK);
     } else {
         options.links(JDK_DOCS);
     }
@@ -4304,6 +4326,11 @@ task sdk() {
     }
 }
 
+task jmods() {
+    dependsOn(sdk)
+    // real work items added later.
+}
+
 task appsjar() {
     dependsOn(sdk)
     // Note: the jar dependencies get added elsewhere see project(":apps")
@@ -4343,7 +4370,7 @@ task checkCache() {
 }
 
 task publicExports() {
-    dependsOn(sdk, apps, javadoc, jdkZip)
+    dependsOn(sdk, jmods, apps, javadoc, jdkZip)
     // note the real work is below in the compileTargets
 }
 
@@ -4357,7 +4384,7 @@ task perf() {
 }
 
 task zips() {
-    dependsOn(sdk, javadoc, apps, jdkZip, publicExports, perf)
+    dependsOn(sdk, jmods, javadoc, apps, jdkZip, publicExports, perf)
     // note the real work is below in the compileTargets
 }
 
@@ -4509,13 +4536,18 @@ compileTargets { t ->
         def docsBundleName = "javafx-docs-${RELEASE_VERSION}"
         def docsArtifactsDir = "${artifactsDir}/${docsBundleName}"
 
+        def jmodsDirName = "jmods"
+        def jmodsDir = "${rootProject.buildDir}/${jmodsDirName}"
+        def jmodsBundleName = "javafx-jmods-${RELEASE_VERSION}"
+        def jmodsArtifactsDir = "${artifactsDir}/${jmodsBundleName}"
+
         def publicExportsTask = task ("publicExportsStandalone${t.capital}") {
             group = "Basic"
             description = "Creates the disk layout for sdk, jmods, and docs"
         }
         publicExports.dependsOn(publicExportsTask)
 
-        def copyArtifactsSdkTask = task("copyArtifactsSdk$t.capital", type: Copy, dependsOn: [sdk,apps,javadoc]) {
+        def copyArtifactsSdkTask = task("copyArtifactsSdk$t.capital", type: Copy, dependsOn: [sdk,jmods,apps,javadoc]) {
             from sdkDir
             into sdkArtifactsDir
         }
@@ -4540,6 +4572,12 @@ compileTargets { t ->
             into "${docsArtifactsDir}/api"
         }
         publicExportsTask.dependsOn(copyArtifactsDocsTask)
+
+        def copyArtifactsJmodsTask = task("copyArtifactsJmods$t.capital", type: Copy, dependsOn: copyArtifactsDocsTask) {
+            from jmodsDir
+            into "${jmodsArtifactsDir}"
+        }
+        publicExportsTask.dependsOn(copyArtifactsJmodsTask)
 
         def zipsTask = task ("zipsStandalone${t.capital}") {
             group = "Basic"
@@ -4568,6 +4606,15 @@ compileTargets { t ->
             into "${docsBundleName}"
         }
         zipsTask.dependsOn(zipDocsTask)
+
+        def zipJmodsTask = task("zipJmods$t.capital", type: Zip, dependsOn: zipDocsTask) {
+            destinationDir = file("${bundlesDir}")
+            archiveName = "${jmodsBundleName}.zip"
+            includeEmptyDirs = false
+            from jmodsArtifactsDir
+            into "${jmodsBundleName}"
+        }
+        zipsTask.dependsOn(zipJmodsTask)
     }
 }
 
@@ -5367,6 +5414,54 @@ compileTargets { t ->
     sdkTask.dependsOn(buildModulesTask)
 }
 sdk.dependsOn(buildModules)
+
+// Build the jmod for each module for the standalone SDK only.
+compileTargets { t ->
+    if (!HAS_JAVAFX_MODULES) {
+        def targetProperties = project.ext[t.upper]
+
+        def platformPrefix = targetProperties.platformPrefix
+        def jmodsDirName = "${platformPrefix}jmods"
+        def jmodsDir = "${rootProject.buildDir}/${jmodsDirName}"
+        def standaloneSdkDirName = "${platformPrefix}sdk"
+        def standaloneSdkDir = "${rootProject.buildDir}/${standaloneSdkDirName}"
+        def standaloneLegalDir = "${standaloneSdkDir}/legal"
+
+        moduleProjList.each { project ->
+            def moduleName = project.ext.moduleName
+            def buildDir = project.buildDir
+
+            def srcClassesDir = "${buildDir}/${platformPrefix}module-classes"
+            def srcLibDir = "${buildDir}/${platformPrefix}module-lib"
+            def srcLegalDir = "${standaloneLegalDir}/${moduleName}"
+
+            def jmodName = "${moduleName}.jmod"
+            def jmodFile = "${jmodsDir}/${jmodName}"
+            def jmodTask = project.task("jmod$t.capital", group: "Build", dependsOn: sdk) {
+                doLast {
+                    mkdir jmodsDir
+                    delete(jmodFile);
+                    exec {
+                        commandLine(JMOD)
+                        args("create")
+                        args("--class-path")
+                        args(srcClassesDir)
+                        // Not all modules have a "lib" dir
+                        if (file(srcLibDir).isDirectory()) {
+                            args("--libs")
+                            args(srcLibDir)
+                        }
+                        args("--legal-notices")
+                        args(srcLegalDir)
+                        args(jmodFile)
+                    }
+                }
+            }
+
+            jmods.dependsOn(jmodTask)
+        }
+    }
+}
 
 task checkrepo() {
     doLast {
