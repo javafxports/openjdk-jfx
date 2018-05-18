@@ -69,7 +69,6 @@ import javafx.util.Callback;
 
 import com.sun.javafx.scene.control.skin.FXVK;
 import com.sun.javafx.scene.web.behavior.HTMLEditorBehavior;
-import com.sun.webkit.dom.HTMLDocumentImpl;
 import com.sun.webkit.WebPage;
 import com.sun.javafx.webkit.Accessor;
 
@@ -448,10 +447,10 @@ public class HTMLEditorSkin extends SkinBase<HTMLEditor> {
             if (newValue.doubleValue() == totalWork) {
                 cachedHTMLText = null;
                 Platform.runLater(() -> {
-                    setDesignMode("on");
                     setContentEditable(true);
                     updateToolbarState(true);
                     updateNodeOrientation();
+                    executeCommand(STYLEWITHCSS.getCommand(), "true");
                 });
             }
         });
@@ -784,7 +783,7 @@ public class HTMLEditorSkin extends SkinBase<HTMLEditor> {
         fgColorButton.setOnAction(ev1 -> {
             Color newValue = fgColorButton.getValue();
             if (newValue != null) {
-                executeCommand(FOREGROUND_COLOR.getCommand(), colorValueToHex(newValue));
+                executeCommand(FOREGROUND_COLOR.getCommand(), colorValueToRGBA(newValue));
                 fgColorButton.hide();
             }
         });
@@ -806,17 +805,18 @@ public class HTMLEditorSkin extends SkinBase<HTMLEditor> {
         bgColorButton.setOnAction(ev -> {
             Color newValue = bgColorButton.getValue();
             if (newValue != null) {
-                executeCommand(BACKGROUND_COLOR.getCommand(), colorValueToHex(newValue));
+                executeCommand(BACKGROUND_COLOR.getCommand(), colorValueToRGBA(newValue));
                 bgColorButton.hide();
             }
         });
     }
 
-    private String colorValueToHex(Color c) {
-        return String.format((Locale)null, "#%02x%02x%02x",
+    private String colorValueToRGBA(Color c) {
+        return String.format((Locale)null, "rgba(%d, %d, %d, %.5f)",
                              Math.round(c.getRed() * 255),
                              Math.round(c.getGreen() * 255),
-                             Math.round(c.getBlue() * 255));
+                             Math.round(c.getBlue() * 255),
+                             c.getOpacity());
     }
 
     private Button addButton(ToolBar toolbar, final String iconName, String tooltipText,
@@ -1109,11 +1109,6 @@ public class HTMLEditorSkin extends SkinBase<HTMLEditor> {
         htmlBodyElement.setAttribute("contenteditable", Boolean.toString(b));
     }
 
-    private void setDesignMode(String mode) {
-        HTMLDocumentImpl htmlDocumentImpl = (HTMLDocumentImpl)webPage.getDocument(webPage.getMainFrame());
-        htmlDocumentImpl.setDesignMode(mode);
-    }
-
     private boolean getCommandState(String command) {
         return webPage.queryCommandState(command);
     }
@@ -1195,6 +1190,7 @@ public class HTMLEditorSkin extends SkinBase<HTMLEditor> {
 
         FOREGROUND_COLOR("forecolor"),
         BACKGROUND_COLOR("backcolor"),
+        STYLEWITHCSS("styleWithCSS"),
 
         INSERT_NEW_LINE("insertnewline"),
         INSERT_TAB("inserttab");
