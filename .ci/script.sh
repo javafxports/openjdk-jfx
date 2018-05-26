@@ -8,7 +8,7 @@ fi
 echo "which java: $(which java)"
 ulimit -c unlimited -S
 
-sh ./gradlew build -PCONF=DebugNative -x :web:test --no-daemon --stacktrace --info
+sh ./gradlew all test -PCONF=DebugNative -x :web:test --no-daemon --stacktrace --info
 
 # Print core dumps when JVM crashes.
 RESULT=$?
