@@ -24,8 +24,6 @@
  */
 package test.com.sun.marlin;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -49,9 +47,11 @@ import javafx.stage.Stage;
 import junit.framework.AssertionFailedError;
 import org.junit.AfterClass;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import test.util.Util;
 import static test.util.Util.TIMEOUT;
 
 /**
@@ -64,8 +64,6 @@ import static test.util.Util.TIMEOUT;
 public class DashedRectTest {
 
     static final int BLUE_PIXEL = 0xff0000ff;
-
-    static final File OUTPUT_DIR = new File(".");
 
     final static double DASH_LEN = 3.0;
     final static double DASH_PH = 5000.0;
@@ -96,6 +94,46 @@ public class DashedRectTest {
         @Override
         public void start(Stage primaryStage) throws Exception {
             this.stage = primaryStage;
+
+            stage.setTitle("DashedRectTest");
+            stage.show();
+
+            launchLatch.countDown();
+        }
+    }
+
+    @BeforeClass
+    public static void setupOnce() {
+        // Start the Application
+        new Thread(() -> Application.launch(MyApp.class, (String[]) null)).start();
+
+        try {
+            if (!launchLatch.await(TIMEOUT, TimeUnit.MILLISECONDS)) {
+                throw new AssertionFailedError("Timeout waiting for Application to launch");
+            }
+
+        } catch (InterruptedException ex) {
+            AssertionFailedError err = new AssertionFailedError("Unexpected exception");
+            err.initCause(ex);
+            throw err;
+        }
+
+        assertEquals(0, launchLatch.getCount());
+    }
+
+    @AfterClass
+    public static void teardownOnce() {
+        Platform.exit();
+    }
+
+    @Test(timeout = 10000)
+    public void TestDashedPath() throws InterruptedException {
+
+        final int size = MAX * 2;
+
+        final WritableImage img = new WritableImage(size, size);
+
+        Util.runAndWait(() -> {
 
             // Corrupt Marlin Dasher.dash cached array:
             final Path path1 = new Path();
@@ -133,56 +171,14 @@ public class DashedRectTest {
             path2.getStrokeDashArray().setAll(DASH_LEN);
 
             Scene scene = new Scene(new Group(path1, path2));
-            stage.setScene(scene);
-            stage.setTitle("DashedRectTest");
-            stage.show();
 
-            launchLatch.countDown();
-        }
-    }
+            myApp.stage.setScene(scene);
 
-    @BeforeClass
-    public static void setupOnce() {
-        // Start the Application
-        new Thread(() -> Application.launch(MyApp.class, (String[]) null)).start();
-
-        try {
-            if (!launchLatch.await(TIMEOUT, TimeUnit.MILLISECONDS)) {
-                throw new AssertionFailedError("Timeout waiting for Application to launch");
-            }
-
-        } catch (InterruptedException ex) {
-            AssertionFailedError err = new AssertionFailedError("Unexpected exception");
-            err.initCause(ex);
-            throw err;
-        }
-
-        assertEquals(0, launchLatch.getCount());
-    }
-
-    @AfterClass
-    public static void teardownOnce() {
-        Platform.exit();
-    }
-
-    @Test(timeout = 10000)
-    public void TestDashedPath() throws InterruptedException, IOException {
-
-        final int size = MAX * 2;
-
-        final WritableImage img = new WritableImage(size, size);
-
-        done = false;
-        Platform.runLater(() -> {
             final SnapshotParameters sp = new SnapshotParameters();
             sp.setViewport(new Rectangle2D(0, 0, size, size));
 
-            myApp.stage.getScene().getRoot().snapshot(sp, img);
-
-            signalDone();
+            scene.getRoot().snapshot(sp, img);
         });
-
-        waitDone();
 
         // Check image on few pixels:
         final PixelReader pr = img.getPixelReader();
@@ -191,26 +187,13 @@ public class DashedRectTest {
         checkPixel(pr, 10, 5, BLUE_PIXEL);
     }
 
-    boolean done;
-
-    synchronized void signalDone() {
-        done = true;
-        notifyAll();
-    }
-
-    synchronized void waitDone() throws InterruptedException {
-        while (!done) {
-            wait();
-        }
-    }
-
     private static void checkPixel(final PixelReader pr,
                                    final int x, final int y,
                                    final int expected) {
 
         final int rgb = pr.getArgb(x, y);
         if (rgb != expected) {
-            throw new IllegalStateException("bad pixel at (" + x + ", " + y
+            fail("bad pixel at (" + x + ", " + y
                     + ") = " + rgb + " expected: " + expected);
         }
     }
