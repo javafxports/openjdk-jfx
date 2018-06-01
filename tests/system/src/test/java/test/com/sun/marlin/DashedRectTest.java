@@ -95,6 +95,7 @@ public class DashedRectTest {
         public void start(Stage primaryStage) throws Exception {
             this.stage = primaryStage;
 
+            stage.setScene(new Scene(new Group()));
             stage.setTitle("DashedRectTest");
             stage.show();
 
@@ -130,8 +131,6 @@ public class DashedRectTest {
     public void TestDashedPath() throws InterruptedException {
 
         final int size = MAX * 2;
-
-        final WritableImage img = new WritableImage(size, size);
 
         Util.runAndWait(() -> {
 
@@ -177,14 +176,14 @@ public class DashedRectTest {
             final SnapshotParameters sp = new SnapshotParameters();
             sp.setViewport(new Rectangle2D(0, 0, size, size));
 
-            scene.getRoot().snapshot(sp, img);
+            final WritableImage img = scene.getRoot().snapshot(sp, new WritableImage(size, size));
+
+            // Check image on few pixels:
+            final PixelReader pr = img.getPixelReader();
+
+            // 10, 5 = blue
+            checkPixel(pr, 10, 5, BLUE_PIXEL);
         });
-
-        // Check image on few pixels:
-        final PixelReader pr = img.getPixelReader();
-
-        // 10, 5 = blue
-        checkPixel(pr, 10, 5, BLUE_PIXEL);
     }
 
     private static void checkPixel(final PixelReader pr,
