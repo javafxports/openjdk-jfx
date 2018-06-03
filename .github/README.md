@@ -1,5 +1,5 @@
 # Open JFX Mirror   
-[![Build Status](https://travis-ci.org/javafxports/openjdk-jfx.svg?branch=develop)](https://travis-ci.org/javafxports/openjdk-jfx) [![Build Status](https://ci.appveyor.com/api/projects/status/javafxports-github-bot/openjdk-jfx/branch/develop?svg=true)](https://ci.appveyor.com/project/javafxports-github-bot/openjdk-jfx)
+[![Build Status](https://travis-ci.org/javafxports/openjdk-jfx.svg?branch=develop)](https://travis-ci.org/javafxports/openjdk-jfx) [![Build Status](https://ci.appveyor.com/api/projects/status/github/javafxports/openjdk-jfx?branch=develop&svg=true)](https://ci.appveyor.com/project/javafxports-github-bot/openjdk-jfx)
 
 OpenJFX is an open source, next generation client application platform for desktop, mobile and embedded systems based on JavaSE. It is a collaborative effort by many individuals and companies with the goal of producing a modern, efficient, and fully featured toolkit for developing rich client applications. This is the open source project where we develop JavaFX.
 
