@@ -296,6 +296,9 @@ ext.IS_MAC = OS_NAME.contains("mac") || OS_NAME.contains("darwin")
 ext.IS_WINDOWS = OS_NAME.contains("windows")
 ext.IS_LINUX = OS_NAME.contains("linux")
 
+ext.MAVEN_GROUP_ID = "javafx"
+ext.MAVEN_VERSION = "11.0.0-SNAPSHOT"
+
 // Verify that the architecture & OS are supported configurations. Note that
 // at present building on PI is not supported, but we would only need to make
 // some changes on assumptions on what should be built (like SWT / Swing) and
@@ -1514,6 +1517,68 @@ void addJSL(Project project, String name, String pkg, List<String> addExports, C
 
 }
 
+void addMavenPublication(Project project, boolean hasNative, List<String> projectDependencies) {
+    project.apply plugin: 'maven-publish'
+
+    def nativePublications = [ 'linux' ] //, 'mac', 'win' ]
+
+    project.group = MAVEN_GROUP_ID
+    project.version = MAVEN_VERSION
+
+    compileTargets { t ->
+        project.publishing {
+            publications {
+                maven(MavenPublication) {
+                    artifactId = project.moduleName
+
+                    artifact project.tasks."modularJarStandalone$t.capital"
+
+                    if (hasNative) {
+                        artifact project.tasks."modularNativeJarStandalone$t.capital" {
+                            classifier t.name
+                        }
+                    }
+
+                    if (hasNative || !projectDependencies.empty) {
+                        pom.withXml {
+                            Node dependencies = asNode().appendNode("dependencies")
+                            if (hasNative) {
+                                nativePublications.each { np ->
+                                    Node dependency = dependencies.appendNode("dependency")
+                                    dependency.appendNode("groupId", MAVEN_GROUP_ID)
+                                    dependency.appendNode("artifactId", project.moduleName)
+                                    dependency.appendNode("version", MAVEN_VERSION)
+                                    dependency.appendNode("classifier", np)
+                                }
+                            }
+                            projectDependencies.each { dep ->
+                                Node dependency = dependencies.appendNode("dependency")
+                                dependency.appendNode("groupId", MAVEN_GROUP_ID)
+                                dependency.appendNode("artifactId", "javafx.$dep")
+                                dependency.appendNode("version", MAVEN_VERSION)
+                            }
+                        }
+                    }
+                }
+            }
+
+/*
+            repositories {
+                maven {
+                    name = "gluon"
+                    credentials {
+                        username gluonNexusPublishUsername
+                        password gluonNexusPublishPassword
+                    }
+                    def repositoryBaseUrl = "http://nexus.gluonhq.com/nexus/content/repositories"
+                    url project.version.endsWith('SNAPSHOT') ? "${repositoryBaseUrl}/snapshots" : "${repositoryBaseUrl}/releases"
+                }
+            }
+*/
+        }
+    }
+}
+
 /**
  * Parses a JDK version string. The string must be in one of the following
  * two formats:
@@ -1821,6 +1886,8 @@ project(":base") {
     compileJava.dependsOn processVersionInfo
 
     compileJava.options.compilerArgs.addAll(qualExportsCore)
+
+    addMavenPublication(project, true, [])
 }
 
 // The graphics module is needed for any graphical JavaFX application. It requires
@@ -1833,6 +1900,7 @@ project(":graphics") {
     project.ext.includeSources = true
     project.ext.moduleRuntime = true
     project.ext.moduleName = "javafx.graphics"
+    project.ext.mavenPublish = true
 
     getConfigurations().create("antlr");
 
@@ -2247,6 +2315,8 @@ project(":graphics") {
     }
 
     compileJava.options.compilerArgs.addAll(qualExportsCore)
+
+    addMavenPublication(project, true, [ 'base' ])
 }
 
 project(":controls") {
@@ -2307,6 +2377,8 @@ project(":controls") {
     })
 
     compileJava.options.compilerArgs.addAll(qualExportsCore)
+
+    addMavenPublication(project, false, [ 'graphics' ])
 }
 
 project(":swing") {
@@ -2344,6 +2416,8 @@ project(":swing") {
 
     compileJava.options.compilerArgs.addAll(qualExportsCore)
     compileJava.options.compilerArgs.addAll(qualExportsSwing)
+
+    addMavenPublication(project, false, [ 'graphics' ])
 }
 
 project(":swt") {
@@ -2438,6 +2512,8 @@ project(":fxml") {
     }
 
     compileJava.options.compilerArgs.addAll(qualExportsCore)
+
+    addMavenPublication(project, false, [ 'controls' ])
 }
 
 project(":fxpackagerservices") {
@@ -3640,6 +3716,8 @@ project(":media") {
     }
 
     compileJava.options.compilerArgs.addAll(qualExportsCore)
+
+    addMavenPublication(project, true, [ 'graphics' ])
 }
 
 project(":web") {
@@ -3872,6 +3950,8 @@ project(":web") {
     }
 
     compileJava.options.compilerArgs.addAll(qualExportsCore)
+
+    addMavenPublication(project, true, [ 'controls', 'media' ])
 }
 
 // This project is for system tests that need to run with a full SDK.
@@ -4207,7 +4287,6 @@ allprojects {
     if (rootProject.hasProperty("EXTRA_COMPILE_ARGS") && project.hasProperty('compileTestJava')) {
         project.compileTestJava.options.compilerArgs.addAll(EXTRA_COMPILE_ARGS.split(' '))
     }
-
 }
 
 /******************************************************************************
@@ -4879,7 +4958,6 @@ compileTargets { t ->
 
         // Create modular jars
         def srcClassesDir = "${buildDir}/${platformPrefix}module-classes"
-        def srcLibsDir = "${buildDir}/${platformPrefix}module-lib"
         def dstModularJarDir = "${standaloneLibDir}"
         def modularJarName = "${moduleName}.jar"
         def modularJarTask = project.task("modularJarStandalone$t.capital", type: Jar, dependsOn: project.assemble) {
@@ -4887,7 +4965,16 @@ compileTargets { t ->
             archiveName = modularJarName
             includeEmptyDirs = false
             from srcClassesDir
+        }
+
+        // Create module native jars
+        def srcLibsDir = "${buildDir}/${platformPrefix}module-lib"
+        def modularNativeJarName = "${moduleName}-native.jar"
+        def modularNativeJarTask = project.task("modularNativeJarStandalone$t.capital", type: Jar, dependsOn: modularJarTask) {
+            destinationDir = file("${dstModularJarDir}")
+            archiveName = modularNativeJarName
             from srcLibsDir
+            exclude("*.dll")
         }
 
         // Copy native libraries
@@ -4928,6 +5015,7 @@ compileTargets { t ->
 
         buildModulesTask.dependsOn(
             modularJarTask,
+            modularNativeJarTask,
             copyNativeFilesTask,
             copyLibFilesTask,
             copyLegalTask)
