@@ -40,7 +40,10 @@ public class NativeLibLoader {
 
     public static synchronized void loadLibrary(String libname) {
         if (!loaded.contains(libname)) {
-            loadLibraryInternal(libname);
+            StackWalker walker = AccessController.doPrivileged((PrivilegedAction<StackWalker>) () ->
+            StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE));
+            Class caller = walker.getCallerClass();
+            loadLibraryInternal(libname, caller);
             loaded.add(libname);
         }
     }
@@ -91,7 +94,7 @@ public class NativeLibLoader {
         return paths;
     }
 
-    private static void loadLibraryInternal(String libraryName) {
+    private static void loadLibraryInternal(String libraryName, Class caller) {
         // Look for the library in the same directory as the jar file
         // containing this class.
         // If that fails, then try System.loadLibrary.
@@ -135,7 +138,7 @@ public class NativeLibLoader {
                 }
             } catch (UnsatisfiedLinkError ex2) {
                 // if the library is available in the jar, copy it to /tmp and load it from there
-                if (loadLibraryFromResource(libraryName)) {
+                if (loadLibraryFromResource(libraryName, caller)) {
                     return;
                 }
                 //On iOS we link all libraries staticaly. Presence of library
@@ -162,10 +165,10 @@ public class NativeLibLoader {
     * If there is a library with the platform-correct name at the
     * root of the resources in this jar, use that.
     */
-    private static boolean loadLibraryFromResource(String libraryName) {
+    private static boolean loadLibraryFromResource(String libraryName, Class caller) {
         try {
             String reallib = "/"+libPrefix+libraryName+libSuffix;
-            InputStream is = NativeLibLoader.class.getResourceAsStream(reallib);
+            InputStream is = caller.getResourceAsStream(reallib);
             if (is != null) {
                 File f = new File(tmpdir, reallib);
                 if (f.exists()) f.delete();
