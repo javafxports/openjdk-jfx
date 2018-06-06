@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,10 +62,14 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.SelectionModel;
 import javafx.scene.control.SelectionModelShim;
 import javafx.scene.control.SingleSelectionModel;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.skin.VirtualFlow;
 import javafx.scene.input.KeyCode;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -73,6 +77,7 @@ import javafx.stage.Stage;
 import javafx.util.Callback;
 import javafx.util.StringConverter;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -104,12 +109,22 @@ public class ComboBoxTest {
      ********************************************************************/
 
     @Before public void setup() {
+        Thread.currentThread().setUncaughtExceptionHandler((thread, throwable) -> {
+            if (throwable instanceof RuntimeException) {
+                throw (RuntimeException)throwable;
+            } else {
+                Thread.currentThread().getThreadGroup().uncaughtException(thread, throwable);
+            }
+        });
+
         comboBox = new ComboBox<String>();
         comboBox.setSkin(new ComboBoxListViewSkin<>(comboBox));
         sm = comboBox.getSelectionModel();
     }
 
-
+    @After public void cleanup() {
+        Thread.currentThread().setUncaughtExceptionHandler(null);
+    }
 
     /*********************************************************************
      *                                                                   *
@@ -630,6 +645,10 @@ public class ComboBoxTest {
     }
 
     @Test public void ensureImpl_getPseudoClassStateReturnsValidValue() {
+        Stage stage = new Stage();
+        Scene scene = new Scene(comboBox);
+        stage.setScene(scene);
+
         Set<PseudoClass> pseudoClassStates = comboBox.getPseudoClassStates();
         assertFalse(comboBox.isEditable());
         assertTrue(pseudoClassStates.size() >= 0);
@@ -704,6 +723,10 @@ public class ComboBoxTest {
     }
 
     @Test public void ensureCanToggleShowing() {
+        Stage stage = new Stage();
+        Scene scene = new Scene(comboBox);
+        stage.setScene(scene);
+
         comboBox.show();
         assertTrue(comboBox.isShowing());
         comboBox.hide();
@@ -711,6 +734,10 @@ public class ComboBoxTest {
     }
 
     @Test public void ensureCanNotToggleShowingWhenDisabled() {
+        Stage stage = new Stage();
+        Scene scene = new Scene(comboBox);
+        stage.setScene(scene);
+
         comboBox.setDisable(true);
         comboBox.show();
         assertFalse(comboBox.isShowing());
@@ -1994,5 +2021,45 @@ public class ComboBoxTest {
         comboBox.setValue("New Value");
         assertEquals(2, count.get());
         assertEquals("New Value", comboBox.getValue());
+    }
+
+    private int skinChangedCount = 0;
+    @Test public void test_JDK_8185854() {
+        final FlowPane comboPane = new FlowPane(10, 10);
+        ComboBox combo = new ComboBox<String>();
+
+        combo.skinProperty().addListener((o, oldSkin, newSkin) -> {
+            skinChangedCount++;
+        });
+
+        combo.setDisable(false);
+        combo.setEditable(false);
+
+        comboPane.getChildren().add(combo);
+
+        TabPane tabPane = new TabPane();
+        Tab tab = new Tab();
+        tab.setText("ComboBox");
+        tab.setContent(comboPane);
+        tabPane.getTabs().add(tab);
+
+        BorderPane p = new BorderPane();
+        p.setCenter(tabPane);
+
+        Scene scene = new Scene(p);
+        scene.getStylesheets().add(ComboBoxTest.class.getResource("JDK_8185854.css").toExternalForm());
+
+        Toolkit tk = Toolkit.getToolkit();
+
+        Stage stage = new Stage();
+        stage.setScene(scene);
+        stage.setWidth(500);
+        stage.setHeight(400);
+
+        stage.show();
+
+        tk.firePulse();
+
+        assertEquals("ComboBox skinProperty changed more than once, which is not expected.", 1, skinChangedCount);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -92,6 +92,10 @@ public class PlatformImpl {
     private static String applicationType = "";
     private static BooleanProperty accessibilityActive = new SimpleBooleanProperty();
 
+    private static final boolean verbose
+            = AccessController.doPrivileged((PrivilegedAction<Boolean>) () ->
+                Boolean.getBoolean("javafx.verbose"));
+
     private static final boolean DEBUG
             = AccessController.doPrivileged((PrivilegedAction<Boolean>) ()
                     -> Boolean.getBoolean("com.sun.javafx.application.debug"));
@@ -121,7 +125,7 @@ public class PlatformImpl {
 
     /**
      * Sets the name of the this application based on the Application class.
-     * This method is called by the launcher or by the deploy code, and is not
+     * This method is called by the launcher, and is not
      * called from the FX Application Thread, so we need to do it in a runLater.
      * We do not need to wait for the result since it will complete before the
      * Application start() method is called regardless.
@@ -217,6 +221,13 @@ public class PlatformImpl {
             s = System.getProperty("javafx.embed.singleThread");
             if (s != null) {
                 isThreadMerged = Boolean.valueOf(s);
+                if (isThreadMerged && !isSupported(ConditionalFeature.SWING)) {
+                    isThreadMerged = false;
+                    if (verbose) {
+                        System.err.println(
+                        "WARNING: javafx.embed.singleThread ignored (javafx.swing module not found)");
+                    }
+                }
             }
             return null;
         });
