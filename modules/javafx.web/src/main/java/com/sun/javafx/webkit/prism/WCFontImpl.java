@@ -257,4 +257,11 @@ final class WCFontImpl extends WCFont {
     @Override public float getCapHeight() {
         return getFontStrike().getMetrics().getCapHeight();
     }
+    
+    // Guy Abossolo Foh : Implémentation pour corriger le Bug de MathML.
+    public float[] getGlyphBoundingBox(int glyph) {
+        float[] bb = new float[4];
+        bb = getFontStrike().getFontResource().getGlyphBoundingBox(glyph, font.getSize(), bb);
+        return bb;
+    }
 }
