@@ -17,14 +17,14 @@ cd ../combined
 echo "Check out master"
 git checkout master
 
+echo "Pull master (github)"
+git pull github master
+
 echo "Fetch (root)"
 git fetch "imports/openjfx/jfx-dev/rt/root"
 
 echo "Merge (root)"
 git merge "imports/openjfx/jfx-dev/rt/root/master" -m "Merge from (root)" --no-ff
-
-echo "Pull master (github)"
-git pull github master
 
 echo "Push master (github)"
 git push github master --tags
