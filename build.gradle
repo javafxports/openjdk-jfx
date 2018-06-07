@@ -333,7 +333,8 @@ ext.JAVA_HOME = JDK_HOME
 defineProperty("JAVA", cygpathExe("$JDK_HOME/bin/java"))
 defineProperty("JAVAC", cygpathExe("$JDK_HOME/bin/javac"))
 defineProperty("JAVADOC", cygpathExe("$JDK_HOME/bin/javadoc"))
-defineProperty("JDK_DOCS", "http://download.java.net/java/jdk9/docs/api/")
+defineProperty("JMOD", cygpathExe("$JDK_HOME/bin/jmod"))
+defineProperty("JDK_DOCS", "https://docs.oracle.com/javase/10/docs/api/")
 defineProperty("JDK_JMODS", cygpath(System.getenv("JDK_JMODS")) ?: cygpath(System.getenv("JDK_HOME") + "/jmods"))
 
 defineProperty("javaRuntimeVersion", System.getProperty("java.runtime.version"))
@@ -346,29 +347,6 @@ defineProperty("FFmpegRepositoryURL", "https://www.ffmpeg.org/releases/")
 
 loadProperties("$projectDir/build.properties")
 
-// Look for stub runtime in either JDK or modular-sdk dir layout
-
-def String closedCacheStubRuntime = cygpath("$projectDir") + "/../caches/modular-sdk"
-
-def String jdkStubRuntime = cygpath("$JDK_HOME")
-
-defineProperty("STUB_RUNTIME", BUILD_CLOSED ? closedCacheStubRuntime : jdkStubRuntime)
-
-def cachedStub = STUB_RUNTIME.equals(closedCacheStubRuntime)
-
-if (cachedStub) {
-    def stubModulesLib = "$STUB_RUNTIME/modules_libs"
-    defineProperty("MEDIA_STUB", "$stubModulesLib/javafx.media")
-    defineProperty("WEB_STUB", "$stubModulesLib/javafx.web")
-} else {
-    def libraryStub = IS_WINDOWS ? "$STUB_RUNTIME/bin" : "$STUB_RUNTIME/lib"
-
-    defineProperty("MEDIA_STUB", libraryStub)
-    defineProperty("WEB_STUB", libraryStub)
-}
-
-defineProperty("UPDATE_STUB_CACHE", (cachedStub ? 'true' : 'false'))
-
 def supplementalPreBuildFile = file("$closedDir/closed-pre-build.gradle");
 def supplementalBuildFile = file("$closedDir/closed-build.gradle");
 
@@ -380,6 +358,12 @@ if (BUILD_CLOSED) {
 // gradle version check fails
 defineProperty("GRADLE_VERSION_CHECK", "true")
 ext.IS_GRADLE_VERSION_CHECK = Boolean.parseBoolean(GRADLE_VERSION_CHECK)
+
+// JFX_DEPS_URL specifies the optional location of an alternate local repository
+defineProperty("JFX_DEPS_URL", "")
+
+// JDK_DOCS_LINK specifies the optional URL for offline javadoc linking
+defineProperty("JDK_DOCS_LINK", "")
 
 // COMPILE_WEBKIT specifies whether to build all of webkit.
 defineProperty("COMPILE_WEBKIT", "false")
@@ -411,7 +395,7 @@ defineProperty("COMPILE_PARFAIT", "false")
 ext.IS_COMPILE_PARFAIT = Boolean.parseBoolean(COMPILE_PARFAIT)
 
 // BUILD_FXPACKAGER enables building the packager modules and native code
-defineProperty("BUILD_FXPACKAGER", "true")
+defineProperty("BUILD_FXPACKAGER", "false")
 ext.IS_BUILD_FXPACKAGER = Boolean.parseBoolean(BUILD_FXPACKAGER)
 
 // RETAIN_PACKAGER_TESTS specifies whether the tests in fxpackager should
@@ -573,8 +557,8 @@ project.ext.set("defaultHostTarget", IS_MAC ? "mac" : IS_WINDOWS ? "win" : IS_LI
 defineProperty("COMPILE_TARGETS", "$defaultHostTarget")
 
 // Flag indicating whether to import cross compile tools
-def importCrossTools = BUILD_CLOSED ? true : false;
-if (!importCrossTools && hasProperty("IMPORT_CROSS_TOOLS")) {
+def importCrossTools = false
+if (hasProperty("IMPORT_CROSS_TOOLS")) {
     importCrossTools = Boolean.parseBoolean(IMPORT_CROSS_TOOLS);
 }
 ext.IS_IMPORT_CROSS_TOOLS = importCrossTools
@@ -595,6 +579,62 @@ ext.DO_BUILD_SDK_FOR_TEST = Boolean.parseBoolean(BUILD_SDK_FOR_TEST)
 if (!DO_BUILD_SDK_FOR_TEST) {
     gradle.taskGraph.useFilter({ task -> !task.name.equals("classes") && !task.name.equals("jar") })
 }
+
+// Make sure JDK_HOME/bin/java exists
+if (!file(JAVA).exists()) throw new Exception("Missing or incorrect path to 'java': '$JAVA'. Perhaps bad JDK_HOME? $JDK_HOME")
+if (!file(JAVAC).exists()) throw new Exception("Missing or incorrect path to 'javac': '$JAVAC'. Perhaps bad JDK_HOME? $JDK_HOME")
+if (!file(JAVADOC).exists()) throw new Exception("Missing or incorrect path to 'javadoc': '$JAVADOC'. Perhaps bad JDK_HOME? $JDK_HOME")
+
+// Determine the verion of Java in JDK_HOME. It looks like this:
+//
+// $ java -version
+// java version "1.7.0_45"
+// Java(TM) SE Runtime Environment (build 1.7.0_45-b18)
+// Java HotSpot(TM) 64-Bit Server VM (build 24.45-b08, mixed mode)
+//
+// We need to parse the second line
+def inStream = new java.io.BufferedReader(new java.io.InputStreamReader(new java.lang.ProcessBuilder(JAVA, "-fullversion").start().getErrorStream()));
+try {
+    String v = inStream.readLine().trim();
+    if (v != null) {
+        int ib = v.indexOf("full version \"");
+        if (ib != -1) {
+            String str = v.substring(ib);
+            String ver = str.substring(str.indexOf("\"") + 1, str.size() - 1);
+
+            defineProperty("jdkRuntimeVersion", ver)
+            def jdkVersionInfo = parseJavaVersion(ver)
+            defineProperty("jdkVersion", jdkVersionInfo[0])
+            defineProperty("jdkBuildNumber", jdkVersionInfo[1])
+        }
+    }
+} finally {
+    inStream.close();
+}
+if (!project.hasProperty("jdkRuntimeVersion")) throw new Exception("Unable to determine the version of Java in JDK_HOME at $JDK_HOME");
+
+
+// Determine whether the javafx.* modules are present in the JDK. To do this,
+// we will execute "java --list-modules" and search for javafx.base
+ext.HAS_JAVAFX_MODULES = false;
+def inStream2 = new java.io.BufferedReader(new java.io.InputStreamReader(new java.lang.ProcessBuilder(JAVA, "--list-modules").start().getInputStream()));
+try {
+    String v;
+    while ((v = inStream2.readLine()) != null) {
+        v = v.trim();
+        if (v.startsWith("javafx.base")) ext.HAS_JAVAFX_MODULES = true;
+    }
+} finally {
+    inStream2.close();
+}
+
+// The HAS_JAVAFX_MODULES flag will be used to determine the mode for building
+// and running the applications and tests.
+// If HAS_JAVAFX_MODULES is true, then we will build / test javafx modules
+// for exporting to a JDK build. If HAS_JAVAFX_MODULES is false, then we will
+// build / test a standalone sdk for running with a JDK that does not include
+// the javafx modules.
+
 
 /**
  * Fetch/Check that external tools are present for the build. This method
@@ -757,39 +797,95 @@ void ant(String conf,   // platform configuration
 
 List<String> computeLibraryPath(boolean working) {
     List<String> lp = []
-    List<String> modsWithNative = [ 'graphics', 'media', 'web' ]
 
-    // the build/modular-sdk area
-    def platformPrefix = ""
-    def modularSdkDirName = "${platformPrefix}modular-sdk"
-    def modularSdkDir = "${rootProject.buildDir}/${modularSdkDirName}"
-    def modulesLibsDir = "${modularSdkDir}/modules_libs"
+    if (HAS_JAVAFX_MODULES) {
+        List<String> modsWithNative = [ 'graphics', 'media', 'web' ]
 
-    modsWithNative.each() { m ->
-        lp << cygpath("${modulesLibsDir}/javafx.${m}")
+        // the build/modular-sdk area
+        def platformPrefix = ""
+        def bundledSdkDirName = "${platformPrefix}modular-sdk"
+        def bundledSdkDir = "${rootProject.buildDir}/${bundledSdkDirName}"
+        def modulesLibsDir = "${bundledSdkDir}/modules_libs"
+
+        modsWithNative.each() { m ->
+            lp << cygpath("${modulesLibsDir}/javafx.${m}")
+        }
+    } else {
+        def platformPrefix = ""
+        def standaloneSdkDirName = "${platformPrefix}sdk"
+        def standaloneSdkDir = "${rootProject.buildDir}/${standaloneSdkDirName}"
+        def modulesLibName = IS_WINDOWS ? "bin" : "lib"
+        def modulesLibsDir = "${standaloneSdkDir}/${modulesLibName}"
+        lp << cygpath("${modulesLibsDir}")
     }
+
     return lp
 }
 
-// Return list with the arguments needed for --patch-module for the provided projects
-// used with Java executables ie. tests
+// Return list with the arguments needed for --patch-module or --module-path
+// for the provided projects. Used with Java executables ie. tests
 List<String> computePatchModuleArgs(List<String> deps, boolean test, boolean includeJLP) {
-     List<String> pma = []
+    List<String> pma = []
 
-     deps.each {String projname ->
-         def proj = project(projname)
-         if (proj.hasProperty("moduleName")) {
-             File dir;
-             if (test && proj.sourceSets.hasProperty('shims')) {
-                dir = file("${rootProject.buildDir}/shims")
-             } else {
-                dir = file("${rootProject.buildDir}/modular-sdk/modules")
-             }
-             String moduleName = proj.ext.moduleName
-             String dirpath = cygpath("${dir}/${moduleName}")
-             pma += "--patch-module=${moduleName}=${dirpath}"
-         }
-     }
+    if (HAS_JAVAFX_MODULES) {
+        deps.each { String projname ->
+            def proj = project(projname)
+            if (proj.hasProperty("moduleName")) {
+                File dir;
+                if (test && proj.sourceSets.hasProperty('shims')) {
+                    dir = file("${rootProject.buildDir}/shims")
+                } else {
+                    dir = file("${rootProject.buildDir}/modular-sdk/modules")
+                }
+                String moduleName = proj.ext.moduleName
+                String dirpath = cygpath("${dir}/${moduleName}")
+                pma += "--patch-module=${moduleName}=${dirpath}"
+            }
+        }
+    } else {
+        String mp = null
+        deps.each { String projname ->
+            def proj = project(projname)
+            if (proj.hasProperty("moduleName")) {
+                String moduleName = proj.ext.moduleName
+                File dir;
+                if (test && proj.sourceSets.hasProperty('shims')) {
+                    dir = file("${rootProject.buildDir}/shims/${moduleName}")
+                } else {
+                    dir = file("${rootProject.buildDir}/sdk/lib/${moduleName}.jar")
+                }
+                if (mp == null) {
+                    mp = dir.path
+                } else {
+                    mp = mp + File.pathSeparator + dir.path
+                }
+            }
+        }
+
+        // in some cases like base we could end up with an empty
+        // path... make sure we don't pass one back
+        if (mp == null) {
+            return null
+        }
+
+        pma += '--module-path'
+        pma += mp
+
+        String addm = null
+        deps.each {String projname ->
+            def proj = project(projname)
+            if (proj.hasProperty("moduleName") && proj.buildModule) {
+                if (addm == null) {
+                    addm = proj.moduleName
+                } else {
+                    addm = addm + "," + proj.moduleName
+                }
+            }
+        }
+        if (addm != null) {
+            pma += "--add-modules=${addm}"
+        }
+    }
 
     if (includeJLP) {
         pma += "-Djava.library.path=" + computeLibraryPath(true).join(File.pathSeparator)
@@ -798,45 +894,70 @@ List<String> computePatchModuleArgs(List<String> deps, boolean test, boolean inc
     return pma
 }
 
-// Return a list containing the --upgrade-module-path
+// Return a list containing the --upgrade-module-path or --module-path
 // used with Javac
 List<String> computeModulePathArgs(String  pname, List<String> deps, boolean test) {
-     List<String> mpa = [ '--upgrade-module-path' ]
-     String mp = null
-     deps.each {String projname ->
-         def proj = project(projname)
-         // for a non test set of args, we don't want the current module in the list
-         // for a test test, we do need it to update what we built
+    List<String> mpa = HAS_JAVAFX_MODULES ? [ '--upgrade-module-path' ] : [ '--module-path' ]
+    String mp = null
+    deps.each { String projname ->
+        def proj = project(projname)
+        // for a non test set of args, we don't want the current module in the list
+        // for a test test, we do need it to update what we built
 
-         if (proj.hasProperty("moduleName") &&
-                 proj.buildModule &&
-                     !(!test && proj.name.equals(pname))) {
-                 File dir;
-                 if (test && proj.sourceSets.hasProperty('shims')) {
-                    dir = new File(proj.sourceSets.shims.java.outputDir, proj.ext.moduleName);
-                 } else {
-                    dir = new File(proj.sourceSets.main.java.outputDir, proj.ext.moduleName);
-                 }
-                 if (mp == null) {
-                     mp = dir.path
-                 } else {
-                     mp = mp + File.pathSeparator + dir.path
-                 }
-             }
-         }
+        if (proj.hasProperty("moduleName") &&
+                proj.buildModule &&
+                !(!test && proj.name.equals(pname))) {
 
-         // in some cases like base we could end up with an empty
-         // path... make sure we don't pass one back
-         if (mp == null) {
-             return null
-         }
+            File dir;
+            if (test && proj.sourceSets.hasProperty('shims')) {
+                dir = new File(proj.sourceSets.shims.java.outputDir, proj.ext.moduleName);
+            } else {
+                dir = new File(proj.sourceSets.main.java.outputDir, proj.ext.moduleName);
+            }
+            if (mp == null) {
+                mp = dir.path
+            } else {
+                mp = mp + File.pathSeparator + dir.path
+            }
+        }
+    }
 
-         mpa += mp
-         return mpa
+    // in some cases like base we could end up with an empty
+    // path... make sure we don't pass one back
+    if (mp == null) {
+        return null
+    }
+
+    mpa += mp
+
+    if (!HAS_JAVAFX_MODULES) {
+        String addm = null
+        deps.each {String projname ->
+            def proj = project(projname)
+            // for a non test set of args, we don't want the current module in the list
+            // for a test test, we do need it to update what we built
+
+            if (proj.hasProperty("moduleName") &&
+                    proj.buildModule &&
+                    !(!test && proj.name.equals(pname))) {
+
+                if (addm == null) {
+                    addm = proj.moduleName
+                } else {
+                    addm = addm + "," + proj.moduleName
+                }
+            }
+        }
+        if (addm != null) {
+            mpa += "--add-modules=${addm}"
+        }
+    }
+
+    return mpa
 }
 
 
-void writeRunArgsFile(File dest, List<String> libpath, List<String> modpath) {
+void writeRunArgsFile(File dest, List<String> libpath, List<String> modpath, List<String> modules) {
 
     dest.delete()
 
@@ -853,10 +974,40 @@ void writeRunArgsFile(File dest, List<String> libpath, List<String> modpath) {
         dest <<  "  \"\n"
     }
 
-    modpath.each { e ->
-        dest <<  "--patch-module=\""
-        dest << e
-        dest << "\"\n"
+    if (HAS_JAVAFX_MODULES) {
+        modpath.each { e ->
+            dest <<  "--patch-module=\""
+            dest << e
+            dest << "\"\n"
+        }
+    } else {
+        if (modpath.size() == 1) {
+            dest <<  "--module-path=\""
+            dest << modpath[0]
+            dest << "\"\n"
+        } else {
+            dest <<  "--module-path=\"\\\n"
+            modpath.each() { e->
+                dest << "  "
+                dest << e
+                dest << File.pathSeparator
+                dest << "\\\n"
+            }
+            dest <<  "  \"\n"
+        }
+    }
+
+    if (modules != null) {
+        dest <<  "--add-modules="
+        dest << modules.join(",")
+        dest << "\n"
+    }
+}
+
+void appendQualExports(File dest, List<String> qualExports) {
+    qualExports.each { exp ->
+        dest << exp
+        dest << "\n"
     }
 }
 
@@ -936,11 +1087,13 @@ void commonModuleSetup(Project p, List<String> moduleChain) {
         rootProject.ext.EXTRA_ADDEXPORTS_ARGS = extraAddExportsList
     }
 
-    // use this variable, because it shows we have a non empty addition
-    if (rootProject.hasProperty("EXTRA_ADDEXPORTS_STRING")) {
-        p.ext.extraAddExports = EXTRA_ADDEXPORTS_ARGS.flatten()
-        if (p.hasProperty("testAddExports")) {
-            p.testAddExports += EXTRA_ADDEXPORTS_ARGS.flatten()
+    if (HAS_JAVAFX_MODULES) {
+        // use this variable, because it shows we have a non empty addition
+        if (rootProject.hasProperty("EXTRA_ADDEXPORTS_STRING")) {
+            p.ext.extraAddExports = EXTRA_ADDEXPORTS_ARGS.flatten()
+            if (p.hasProperty("testAddExports")) {
+                p.testAddExports += EXTRA_ADDEXPORTS_ARGS.flatten()
+            }
         }
     }
 }
@@ -1007,7 +1160,7 @@ compileTargets { t ->
 
     if (targetProperties.compileSwing) COMPILE_SWING = true
     if (targetProperties.compileSWT) COMPILE_SWT = true
-    if (IS_BUILD_FXPACKAGER && targetProperties.compileFXPackager) COMPILE_FXPACKAGER = true
+    if (IS_BUILD_FXPACKAGER && HAS_JAVAFX_MODULES && targetProperties.compileFXPackager) COMPILE_FXPACKAGER = true
 
     if (!targetProperties.containsKey('compileWebnodeNative')) {
         // unless specified otherwise, we will compile native Webnode if IS_COMPILE_WEBKIT
@@ -1056,54 +1209,6 @@ if (COMPILE_TARGETS == null || COMPILE_TARGETS == "") {
     throw new Exception("Unable to determine compilation platform, must specify valid COMPILE_TARGETS!")
 }
 
-// Make sure JDK_HOME/bin/java exists
-if (!file(JAVA).exists()) throw new Exception("Missing or incorrect path to 'java': '$JAVA'. Perhaps bad JDK_HOME? $JDK_HOME")
-if (!file(JAVAC).exists()) throw new Exception("Missing or incorrect path to 'javac': '$JAVAC'. Perhaps bad JDK_HOME? $JDK_HOME")
-if (!file(JAVADOC).exists()) throw new Exception("Missing or incorrect path to 'javadoc': '$JAVADOC'. Perhaps bad JDK_HOME? $JDK_HOME")
-
-// Determine the verion of Java in JDK_HOME. It looks like this:
-//
-// $ java -version
-// java version "1.7.0_45"
-// Java(TM) SE Runtime Environment (build 1.7.0_45-b18)
-// Java HotSpot(TM) 64-Bit Server VM (build 24.45-b08, mixed mode)
-//
-// We need to parse the second line
-def inStream = new java.io.BufferedReader(new java.io.InputStreamReader(new java.lang.ProcessBuilder(JAVA, "-fullversion").start().getErrorStream()));
-try {
-    String v = inStream.readLine().trim();
-    if (v != null) {
-        int ib = v.indexOf("full version \"");
-        if (ib != -1) {
-            String str = v.substring(ib);
-            String ver = str.substring(str.indexOf("\"") + 1, str.size() - 1);
-
-            defineProperty("jdkRuntimeVersion", ver)
-            def jdkVersionInfo = parseJavaVersion(ver)
-            defineProperty("jdkVersion", jdkVersionInfo[0])
-            defineProperty("jdkBuildNumber", jdkVersionInfo[1])
-        }
-    }
-} finally {
-    inStream.close();
-}
-if (!project.hasProperty("jdkRuntimeVersion")) throw new Exception("Unable to determine the version of Java in JDK_HOME at $JDK_HOME");
-
-
-// Determine whether the javafx.* modules are present in the JDK. To do this,
-// we will execute "java --list-modules" and search for javafx.base
-ext.HAS_JAVAFX_MODULES = false;
-def inStream2 = new java.io.BufferedReader(new java.io.InputStreamReader(new java.lang.ProcessBuilder(JAVA, "--list-modules").start().getInputStream()));
-try {
-    String v;
-    while ((v = inStream2.readLine()) != null) {
-        v = v.trim();
-        if (v.startsWith("javafx.base")) ext.HAS_JAVAFX_MODULES = true;
-    }
-} finally {
-    inStream2.close();
-}
-
 // Verify that CONF is something useful
 if (CONF != "Release" && CONF != "Debug" && CONF != "DebugNative") {
     logger.warn("Unknown configuration CONF='$CONF'. Treating as 'Release'")
@@ -1116,8 +1221,8 @@ if (Integer.parseInt(NUM_COMPILE_THREADS.toString()) < 1) {
     NUM_COMPILE_THREADS = 1
 }
 
-// Check for Gradle 4.3, error if < 3.0.
-if (gradle.gradleVersion != "4.3") {
+// Check for Gradle 4.8, error if < 4.3.
+if (gradle.gradleVersion != "4.8") {
     def ver = gradle.gradleVersion.split("[\\.]");
     def gradleMajor = Integer.parseInt(ver[0]);
     def gradleMinor = Integer.parseInt(ver[1].split("[^0-9]")[0]);
@@ -1132,10 +1237,43 @@ if (gradle.gradleVersion != "4.3") {
 
     logger.warn("*****************************************************************");
     logger.warn("Unsupported gradle version $gradle.gradleVersion in use.");
-    logger.warn("Only version 4.3 is supported. Use this version at your own risk");
+    logger.warn("Only version 4.8 is supported. Use this version at your own risk");
     if ( err != "") logger.warn(err);
     logger.warn("*****************************************************************");
 }
+
+// Look for stub runtime in bundled sdk, standalone sdk, or boot JDK
+
+def String cachedBundledRuntime = cygpath("$projectDir") + "/../caches/modular-sdk"
+def String cachedStandaloneRuntime = cygpath("$projectDir") + "/../caches/sdk"
+def String jdkStubRuntime = cygpath("$JDK_HOME")
+
+def defaultStubRuntime = ""
+if (file(cachedBundledRuntime).exists()) {
+    defaultStubRuntime = cachedBundledRuntime
+} else if (file(cachedStandaloneRuntime).exists()) {
+    defaultStubRuntime = cachedStandaloneRuntime
+} else if (BUILD_CLOSED) {
+    defaultStubRuntime = cachedBundledRuntime
+} else {
+    defaultStubRuntime = jdkStubRuntime
+}
+
+defineProperty("STUB_RUNTIME", defaultStubRuntime)
+
+if (STUB_RUNTIME.endsWith("/modular-sdk")) {
+    def stubModulesLib = "$STUB_RUNTIME/modules_libs"
+    defineProperty("MEDIA_STUB", "$stubModulesLib/javafx.media")
+    defineProperty("WEB_STUB", "$stubModulesLib/javafx.web")
+} else {
+    def libraryStub = IS_WINDOWS ? "$STUB_RUNTIME/bin" : "$STUB_RUNTIME/lib"
+
+    defineProperty("MEDIA_STUB", libraryStub)
+    defineProperty("WEB_STUB", libraryStub)
+}
+
+ext.UPDATE_STUB_CACHE = (BUILD_CLOSED && STUB_RUNTIME != "" && !file(STUB_RUNTIME).isDirectory())
+
 
 /******************************************************************************
  *                                                                            *
@@ -1174,10 +1312,7 @@ logger.quiet("RELEASE_SUFFIX: $RELEASE_SUFFIX")
 logger.quiet("RELEASE_VERSION_SHORT: $RELEASE_VERSION_SHORT")
 logger.quiet("RELEASE_VERSION_LONG: $RELEASE_VERSION_LONG")
 logger.quiet("RELEASE_VERSION_PADDED: $RELEASE_VERSION_PADDED")
-
-if (UPDATE_STUB_CACHE) {
-    logger.quiet("UPDATE_STUB_CACHE: $UPDATE_STUB_CACHE")
-}
+logger.quiet("UPDATE_STUB_CACHE: $UPDATE_STUB_CACHE")
 
 /******************************************************************************
  *                                                                            *
@@ -1484,14 +1619,29 @@ void addJCov(p, test) {
 }
 
 allprojects {
-    // Setup the repositories that we'll download libraries from. Maven Central is
-    // just easy for most things. The custom "ivy" repo is for downloading SWT. The way it
-    // works is to setup the download URL such that it will resolve to the actual jar file
-    // to download. See SWT_FILE_NAME for the name of the jar that will be used as the
-    // "artifact" in the pattern below. Note that the closed builds use different repositories
-    // so if you are debugging a closed-build artifact related build issue, check out the
-    // closed gradle file instead.
-    if (!BUILD_CLOSED) {
+
+    // Setup the repositories that we'll download libraries from.
+    // By default we use Maven Central for most things. The custom "ivy"
+    // repo is for downloading SWT. The way it works is to setup the
+    // download URL such that it will resolve to the actual jar file to
+    // download. See SWT_FILE_NAME for the name of the jar that will be
+    // used as the "artifact" in the pattern below.
+    // If JFX_DEPS_URL is set, then that overrides the default
+    // repositories. This allows the dependencies to be cached locally.
+
+    if (JFX_DEPS_URL != "") {
+        repositories {
+            ivy {
+                url JFX_DEPS_URL
+                layout "pattern", {
+                    artifact "[artifact]-[revision](-[classifier]).[ext]"
+                    artifact "[artifact].[ext]"
+                }
+            }
+        }
+    }
+
+    if (JFX_DEPS_URL == "") {
         repositories {
             mavenCentral()
             ivy {
@@ -1503,7 +1653,7 @@ allprojects {
         }
     }
 
-    if (!BUILD_CLOSED && IS_BUILD_LIBAV_STUBS) {
+    if (JFX_DEPS_URL == "" && IS_BUILD_LIBAV_STUBS) {
         repositories {
             ivy {
                 url libAVRepositoryURL
@@ -1579,18 +1729,8 @@ allprojects {
     }
 }
 
-// Qualified exports needed by javafx.* modules (excluding javafx.swing)
-def qualExportsCore = [
-    "--add-exports=java.base/sun.util.logging=javafx.base",
-    "--add-exports=java.base/sun.util.logging=javafx.controls",
-    "--add-exports=java.base/sun.util.logging=javafx.fxml",
-    "--add-exports=java.base/sun.util.logging=javafx.graphics",
-    "--add-exports=java.desktop/sun.print=javafx.graphics",
-]
-
 // Qualified exports needed by javafx.swing
 def qualExportsSwing = [
-        "--add-exports=java.base/sun.util.logging=javafx.swing",
         "--add-exports=java.desktop/java.awt.dnd.peer=javafx.swing",
         "--add-exports=java.desktop/sun.awt=javafx.swing",
         "--add-exports=java.desktop/sun.awt.dnd=javafx.swing",
@@ -1674,8 +1814,6 @@ project(":base") {
     sourceSets.main.java.srcDirs += "$buildDir/gensrc/java"
 
     compileJava.dependsOn processVersionInfo
-
-    compileJava.options.compilerArgs.addAll(qualExportsCore)
 }
 
 // The graphics module is needed for any graphical JavaFX application. It requires
@@ -1757,6 +1895,8 @@ project(":graphics") {
         main = "org.antlr.Tool"
 
         args = [
+            "-Xconversiontimeout",
+            "30000",
             "-o",
             "$buildDir/gensrc/antlr",
             "com/sun/scenario/effect/compiler/JSL.g" ]
@@ -1788,7 +1928,6 @@ project(":graphics") {
             '-implicit:none',
             '--module-source-path', defaultModuleSourcePath
             ] )
-        options.compilerArgs.addAll(qualExportsCore)
     }
     classes.dependsOn(compileFullJava)
 
@@ -2098,8 +2237,6 @@ project(":graphics") {
             }
         }
     }
-
-    compileJava.options.compilerArgs.addAll(qualExportsCore)
 }
 
 project(":controls") {
@@ -2130,9 +2267,6 @@ project(":controls") {
             "-DCSS_META_DATA_TEST_DIR=$cssDir"
     }
 
-    List<String> css2BinAddExports = [
-            '--add-exports=java.base/sun.util.logging=javafx.graphics',
-            ]
     def modulePath = "${project.sourceSets.main.java.outputDir}"
     modulePath += File.pathSeparator + "${rootProject.projectDir}/modules/javafx.graphics/build/classes/java/main"
     modulePath += File.pathSeparator + "${rootProject.projectDir}/modules/javafx.base/build/classes/java/main"
@@ -2149,7 +2283,6 @@ project(":controls") {
                 jvmArgs += patchModuleArgs
                 jvmArgs += "--module-path=$modulePath"
                 jvmArgs += "--add-modules=javafx.graphics"
-                jvmArgs += css2BinAddExports
                 main = "com.sun.javafx.css.parser.Css2Bin"
                 args css
             }
@@ -2162,18 +2295,14 @@ project(":controls") {
         into project.moduleShimsDir
         include "**/*.bss"
     })
-
-    compileJava.options.compilerArgs.addAll(qualExportsCore)
 }
 
 project(":swing") {
-    // Now that JMX is gone, we can likely uncomment the following as
-    // a fix for JDK-8195669
-    /* should not be built, but needed in JMX
+
     tasks.all {
         if (!COMPILE_SWING) it.enabled = false
     }
-    */
+
     project.ext.buildModule = COMPILE_SWING
     project.ext.includeSources = true
     project.ext.moduleRuntime = true
@@ -2195,9 +2324,12 @@ project(":swing") {
 
     test {
         enabled = IS_FULL_TEST && IS_AWT_TEST
+
+        if (!HAS_JAVAFX_MODULES) {
+            jvmArgs += qualExportsSwing
+        }
     }
 
-    compileJava.options.compilerArgs.addAll(qualExportsCore)
     compileJava.options.compilerArgs.addAll(qualExportsSwing)
 }
 
@@ -2275,7 +2407,7 @@ project(":fxml") {
     project.ext.moduleSourcePath = defaultModuleSourcePath
     project.ext.moduleSourcePathShim = defaultModuleSourcePathShim
 
-    commonModuleSetup(project, [ 'base', 'graphics', 'swing', 'controls', 'fxml' ])
+    commonModuleSetup(project, [ 'base', 'graphics', 'controls', 'fxml' ])
 
 
     dependencies {
@@ -2291,8 +2423,6 @@ project(":fxml") {
         // FIXME: change this to also allow JDK 9 boot jdk
         classpath += files("$JDK_HOME/jre/lib/ext/nashorn.jar")
     }
-
-    compileJava.options.compilerArgs.addAll(qualExportsCore)
 }
 
 project(":fxpackagerservices") {
@@ -2360,7 +2490,7 @@ project(":fxpackager") {
 
     // fxpackager has a dependency on ant in order to build the ant jar,
     // and as such needs to point to the apache binary repository
-    if (!BUILD_CLOSED) {
+    if (JFX_DEPS_URL == "") {
         repositories {
             maven {
                 url "https://repository.apache.org"
@@ -2953,8 +3083,10 @@ project(":media") {
 
     compileToolsJava {
         enabled = IS_COMPILE_MEDIA
-        options.compilerArgs.addAll(project.modulePathArgs)
+        def modulePath = "${project.sourceSets.main.java.outputDir}"
         options.compilerArgs.addAll([
+            "--module-path=$modulePath",
+            "--add-modules=javafx.media",
             '--add-exports', 'javafx.media/com.sun.media.jfxmedia=ALL-UNNAMED',
             ])
     }
@@ -2965,7 +3097,7 @@ project(":media") {
     def nativeSrcDir = file("${projectDir}/src/main/native")
     def generatedHeadersDir = file("${buildDir}/gensrc/headers/${project.moduleName}")
 
-    task generateMediaErrorHeader(dependsOn: [compileToolsJava, compileJava]) {
+    task generateMediaErrorHeader(dependsOn: [compileJava, compileToolsJava]) {
         enabled = IS_COMPILE_MEDIA
         def headerpath = file("$generatedHeadersDir/jfxmedia_errors.h");
         doLast {
@@ -2975,9 +3107,15 @@ project(":media") {
 
             mkdir generatedHeadersDir;
 
+            def modulePath = "${project.sourceSets.main.java.outputDir}"
+            modulePath += File.pathSeparator + "${rootProject.projectDir}/modules/javafx.graphics/build/classes/java/main"
+            modulePath += File.pathSeparator + "${rootProject.projectDir}/modules/javafx.base/build/classes/java/main"
+
             exec {
                 commandLine("$JAVA");
                 args += patchModuleArgs
+                args += [ "--module-path=$modulePath" ]
+                args += [ "--add-modules=javafx.media" ]
                 args +=  [ '--add-exports=javafx.media/com.sun.media.jfxmedia=ALL-UNNAMED' ]
                 args +=  [ '-classpath', "${classpath.asPath}" ]
                 args += [ "headergen.HeaderGen", "$headerpath", "$srcRoot" ]
@@ -3485,8 +3623,6 @@ project(":media") {
             dependsOn buildNativeTargets
         }
     }
-
-    compileJava.options.compilerArgs.addAll(qualExportsCore)
 }
 
 project(":web") {
@@ -3546,6 +3682,19 @@ project(":web") {
     compileJava.dependsOn(copyWrappers);
 
     test {
+        doFirst {
+            if (!IS_COMPILE_WEBKIT) {
+                println "*****************************************************"
+                println "WARNING: running web tests without building webkit."
+                println "The webkit native library will be copied from the JDK,"
+                println "which might lead to failures in some web tests."
+                println "To avoid these failures, you should either build"
+                println "webkit locally, copy the native webkit library from a"
+                println "recent build, or skip execution of web test cases with"
+                println "'-x :web:test'"
+                println "*****************************************************"
+            }
+        }
         // Run web tests in headless mode
         systemProperty 'glass.platform', 'Monocle'
         systemProperty 'monocle.platform', 'Headless'
@@ -3559,6 +3708,7 @@ project(":web") {
 
     compileTargets { t ->
         def targetProperties = project.rootProject.ext[t.upper]
+        def webkitProperties = targetProperties.webkit
         def classifier = (t.name != "linux" && t.name != "win") ? t.name :
                           IS_64 ? "${t.name}-amd64" : "${t.name}-i586"
 
@@ -3601,12 +3751,19 @@ project(":web") {
                     } else if (t.name == "mac") {
                         cmakeArgs = "-DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_MIN_VERSION -DCMAKE_OSX_SYSROOT=$MACOSX_SDK_PATH"
                     } else if (t.name == "linux") {
-                        cmakeArgs = "-DCMAKE_SYSTEM_NAME=Linux"
+                        cmakeArgs = "-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_C_COMPILER=${webkitProperties.compiler}"
                         if (IS_64) {
                             cmakeArgs = "$cmakeArgs -DCMAKE_SYSTEM_PROCESSOR=x86_64"
                         } else {
-                            cmakeArgs = "$cmakeArgs -DCMAKE_SYSTEM_PROCESSOR=i586 -DCMAKE_C_FLAGS=-m32 -DCMAKE_CXX_FLAGS=-m32"
+                            cmakeArgs = "$cmakeArgs -DCMAKE_SYSTEM_PROCESSOR=i586"
                         }
+                        // TODO: Use cflags and ldflags from all platforms
+                        def cFlags = webkitProperties.ccFlags?.join(' ') ?: ''
+                        def lFlags = webkitProperties.linkFlags?.join(' ') ?: ''
+                        // -shared flag should be omitted while creating executable.
+                        def exeFlags = webkitProperties.linkFlags?.join(' ')?.replace('-shared', '') ?: ''
+                        cmakeArgs = "$cmakeArgs -DCMAKE_C_FLAGS='${cFlags}' -DCMAKE_CXX_FLAGS='${cFlags}'"
+                        cmakeArgs = "$cmakeArgs -DCMAKE_SHARED_LINKER_FLAGS='${lFlags}' -DCMAKE_EXE_LINKER_FLAGS='${exeFlags}'"
                     } else if (t.name.startsWith("arm")) {
                         fail("ARM target is not supported as of now.")
                     }
@@ -3654,7 +3811,6 @@ project(":web") {
         }
 
         if (IS_WINDOWS && t.name == "win") {
-            def webkitProperties = project.rootProject.ext[t.upper].webkit
             def rcTask = project.task("rc${t.capital}", type: CompileResourceTask) {
                 compiler = webkitProperties.rcCompiler
                 source(webkitProperties.rcSource)
@@ -3697,8 +3853,6 @@ project(":web") {
     if (IS_COMPILE_WEBKIT) {
         assemble.dependsOn compileJavaDOMBinding, drtJar
     }
-
-    compileJava.options.compilerArgs.addAll(qualExportsCore)
 }
 
 // This project is for system tests that need to run with a full SDK.
@@ -3733,7 +3887,8 @@ project(":systemTests") {
         testCompile project(":swing").sourceSets.test.output
     }
 
-    commonModuleSetup(project, [ 'base', 'graphics', 'controls', 'media', 'web', 'swing', 'fxml' ])
+    def dependentProjects = [ 'base', 'graphics', 'controls', 'media', 'web', 'swing', 'fxml' ]
+    commonModuleSetup(project, dependentProjects)
 
     File testJavaPolicyFile = new File(rootProject.buildDir, TESTJAVAPOLICYFILE);
     File testRunArgsFile = new File(rootProject.buildDir,TESTRUNARGSFILE);
@@ -3771,6 +3926,13 @@ project(":systemTests") {
     test.dependsOn(createTestArgfiles);
 
     // Tasks to create standalone test applications for the launcher tests
+
+    if (project.hasProperty('testModulePathArgs')) {
+        compileTestapp1Java.options.compilerArgs.addAll(testModulePathArgs)
+    }
+    dependentProjects.each { e ->
+        compileTestapp1Java.dependsOn(rootProject.project(e).testClasses)
+    }
 
     def testapp1JarName = "testapp1.jar"
     task createTestapp1Jar1(type: Jar) {
@@ -3829,8 +3991,15 @@ project(":systemTests") {
         testappCompileTasks.each { appCompileTask ->
             appCompileTask.options.compilerArgs.addAll([
                 '-implicit:none',
-                '--module-source-path', testAppSourceDirs.join(File.pathSeparator)
+                '--module-source-path', testAppSourceDirs.join(File.pathSeparator),
                 ] )
+            if (project.hasProperty('testModulePathArgs')) {
+                appCompileTask.options.compilerArgs.addAll(testModulePathArgs)
+            }
+
+            dependentProjects.each { e ->
+                appCompileTask.dependsOn(rootProject.project(e).testClasses)
+            }
 
             copyTestAppTask.dependsOn(appCompileTask)
         }
@@ -3844,6 +4013,18 @@ project(":systemTests") {
     test {
         enabled = IS_FULL_TEST
 
+        // Parse testPatchModuleArgs looking for "--module-path".
+        // Save path if found so we can pass it to the module launcher tests
+        def pendingModulePath = false
+        testPatchModuleArgs.each { str ->
+            if (pendingModulePath) {
+                project.ext.launcherModulePath = str;
+                pendingModulePath = false
+            } else if (str == "--module-path") {
+                pendingModulePath = true
+            }
+        }
+
         // Properties passed to launcher tests
         systemProperty "launchertest.testapp1.jar", "build/testapp1/$testapp1JarName"
         modtestapps.each { testapp ->
@@ -3854,6 +4035,9 @@ project(":systemTests") {
         // Properties passed to test.util.Util
         systemProperties 'worker.debug': IS_WORKER_DEBUG
         systemProperties 'worker.patchmodule.file': cygpath(stRunArgsFile.path)
+        if (project.hasProperty("launcherModulePath")) {
+            systemProperties 'worker.module.path': launcherModulePath
+        }
         systemProperties 'worker.patch.policy': cygpath(testJavaPolicyFile.path)
         systemProperties 'worker.java.cmd': JAVA
 
@@ -3869,6 +4053,10 @@ project(":systemTests") {
             // Disable all AWT-based tests
             exclude("**/javafx/embed/swing/*.*");
             exclude("**/com/sun/javafx/application/Swing*.*");
+        }
+
+        if (!HAS_JAVAFX_MODULES) {
+            jvmArgs += qualExportsSwing
         }
 
         forkEvery = 1
@@ -3944,7 +4132,9 @@ allprojects {
         def copyGeneratedShimsTask = task("copyGeneratedShims", type: Copy, dependsOn: [compileShimsJava, processShimsResources]) {
             from project.sourceSets.shims.java.outputDir
             into "${rootProject.buildDir}/shims"
-            exclude("*/module-info.class")
+            if (HAS_JAVAFX_MODULES) {
+                exclude("*/module-info.class")
+            }
         }
 
         project.processShimsResources.dependsOn(project.processResources)
@@ -4042,6 +4232,10 @@ task createMSPfile() {
         mspFile << "--module-source-path\n"
         mspFile << defaultModuleSourcePath
         mspFile << "\n"
+
+        if (!HAS_JAVAFX_MODULES) {
+            appendQualExports(mspFile, qualExportsSwing)
+        }
     }
 }
 
@@ -4058,13 +4252,26 @@ task javadoc(type: Javadoc, dependsOn: createMSPfile) {
     setDestinationDir(new File(buildDir, 'javadoc'));
 
     exclude("com/**/*", "Compile*", "javafx/builder/**/*", "javafx/scene/accessibility/**/*");
+
+    options.tags("apiNote:a:API Note:")
+    options.tags("implSpec:a:Implementation Requirements:")
+    options.tags("implNote:a:Implementation Note:")
+    options.tags("param")
+    options.tags("return")
+    options.tags("throws")
     options.tags("moduleGraph:X")
+    options.tags("since")
+    options.tags("version")
+    options.tags("serialData")
+    options.tags("factory")
+    options.tags("see")
+
     options.windowTitle("${javadocTitle}")
     options.header("${javadocHeader}")
     options.bottom("${javadocBottom}")
     options.locale("en");
-    if (BUILD_CLOSED) {
-        options.linksOffline(JDK_DOCS, JDK_DOCS_CLOSED);
+    if (JDK_DOCS_LINK != "") {
+        options.linksOffline(JDK_DOCS, JDK_DOCS_LINK);
     } else {
         options.links(JDK_DOCS);
     }
@@ -4107,6 +4314,11 @@ task sdk() {
     }
 }
 
+task jmods() {
+    dependsOn(sdk)
+    // real work items added later.
+}
+
 task appsjar() {
     dependsOn(sdk)
     // Note: the jar dependencies get added elsewhere see project(":apps")
@@ -4145,9 +4357,9 @@ task checkCache() {
     dependsOn(updateCacheIfNeeded)
 }
 
-// TODO: consider moving the "public-sdk" portion of this task here
 task publicExports() {
-    dependsOn(sdk, apps, javadoc, jdkZip)
+    dependsOn(sdk, jmods, apps, javadoc, jdkZip)
+    // note the real work is below in the compileTargets
 }
 
 task perf() {
@@ -4160,7 +4372,8 @@ task perf() {
 }
 
 task zips() {
-    dependsOn(sdk, javadoc, apps, jdkZip, publicExports, perf)
+    dependsOn(sdk, jmods, javadoc, apps, jdkZip, publicExports, perf)
+    // note the real work is below in the compileTargets
 }
 
 task all() {
@@ -4289,6 +4502,110 @@ project(":apps") {
     }
 }
 
+// Tasks to create the disk layout for the sdk, jmods, and docs
+// in the artifacts directory (publicExports), and zip them up in
+// artifacts/bundles (zips)
+// These tasks are only used for the standalone SDK.
+compileTargets { t ->
+    if (!HAS_JAVAFX_MODULES) {
+        def targetProperties = rootProject.ext[t.upper]
+        def platformPrefix = targetProperties.platformPrefix
+
+        def artifactsDir = "${rootProject.buildDir}/artifacts"
+        def bundlesDir = "${artifactsDir}/bundles"
+
+        def sdkDirName = "${platformPrefix}sdk"
+        def sdkDir = "${rootProject.buildDir}/${sdkDirName}"
+        def sdkBundleName = "javafx-sdk-${RELEASE_VERSION}"
+        def sdkArtifactsDir = "${artifactsDir}/${sdkBundleName}"
+
+        def docsDirName = "javadoc"
+        def docsDir = "${rootProject.buildDir}/${docsDirName}"
+        def docsBundleName = "javafx-docs-${RELEASE_VERSION}"
+        def docsArtifactsDir = "${artifactsDir}/${docsBundleName}"
+
+        def jmodsDirName = "jmods"
+        def jmodsDir = "${rootProject.buildDir}/${jmodsDirName}"
+        def jmodsBundleName = "javafx-jmods-${RELEASE_VERSION}"
+        def jmodsArtifactsDir = "${artifactsDir}/${jmodsBundleName}"
+
+        def publicExportsTask = task ("publicExportsStandalone${t.capital}") {
+            group = "Basic"
+            description = "Creates the disk layout for sdk, jmods, and docs"
+        }
+        publicExports.dependsOn(publicExportsTask)
+
+        def copyArtifactsSdkTask = task("copyArtifactsSdk$t.capital", type: Copy, dependsOn: [sdk,jmods,apps,javadoc]) {
+            from sdkDir
+            into sdkArtifactsDir
+        }
+        publicExportsTask.dependsOn(copyArtifactsSdkTask)
+
+        // Need to modify file permissions Windows to make sure that the
+        // execute bit is set, and that the files are world readable
+        def chmodArtifactsSdkTask = task("chmodArtifactsSdk$t.capital", dependsOn: copyArtifactsSdkTask) {
+            if (IS_WINDOWS) {
+                doLast {
+                    exec {
+                        workingDir(sdkArtifactsDir)
+                        commandLine("chmod", "-R", "755", ".")
+                    }
+                }
+            }
+        }
+        publicExportsTask.dependsOn(chmodArtifactsSdkTask)
+
+        def copyArtifactsDocsTask = task("copyArtifactsDocs$t.capital", type: Copy, dependsOn: chmodArtifactsSdkTask) {
+            from docsDir
+            into "${docsArtifactsDir}/api"
+        }
+        publicExportsTask.dependsOn(copyArtifactsDocsTask)
+
+        def copyArtifactsJmodsTask = task("copyArtifactsJmods$t.capital", type: Copy, dependsOn: copyArtifactsDocsTask) {
+            from jmodsDir
+            into "${jmodsArtifactsDir}"
+        }
+        publicExportsTask.dependsOn(copyArtifactsJmodsTask)
+
+        def zipsTask = task ("zipsStandalone${t.capital}") {
+            group = "Basic"
+            description = "Creates the public zip bundles"
+        }
+        zips.dependsOn(zipsTask)
+
+        // Use native zip tool so that file permissions are preserved on Windows
+        def zipSdkTask = task("zipSdk$t.capital", dependsOn: publicExportsTask) {
+            doLast {
+                def outZipFile = "${bundlesDir}/${sdkBundleName}.zip"
+                mkdir bundlesDir
+                exec {
+                    workingDir(artifactsDir)
+                    commandLine("zip", "-q", "-r", outZipFile, sdkBundleName)
+                }
+            }
+        }
+        zipsTask.dependsOn(zipSdkTask)
+
+        def zipDocsTask = task("zipDocs$t.capital", type: Zip, dependsOn: zipSdkTask) {
+            destinationDir = file("${bundlesDir}")
+            archiveName = "${docsBundleName}.zip"
+            includeEmptyDirs = false
+            from docsArtifactsDir
+            into "${docsBundleName}"
+        }
+        zipsTask.dependsOn(zipDocsTask)
+
+        def zipJmodsTask = task("zipJmods$t.capital", type: Zip, dependsOn: zipDocsTask) {
+            destinationDir = file("${bundlesDir}")
+            archiveName = "${jmodsBundleName}.zip"
+            includeEmptyDirs = false
+            from jmodsArtifactsDir
+            into "${jmodsBundleName}"
+        }
+        zipsTask.dependsOn(zipJmodsTask)
+    }
+}
+
 
 /******************************************************************************
  *                                                                            *
@@ -4306,21 +4623,24 @@ compileTargets { t ->
     def targetProperties = project.ext[t.upper]
 
     def platformPrefix = targetProperties.platformPrefix
-    def modularSdkDirName = "${platformPrefix}modular-sdk"
-    def modularSdkDir = "${rootProject.buildDir}/${modularSdkDirName}"
-    def modulesDir = "${modularSdkDir}/modules"
-    def modulesCmdsDir = "${modularSdkDir}/modules_cmds"
-    def modulesLibsDir = "${modularSdkDir}/modules_libs"
-    def modulesSrcDir = "${modularSdkDir}/modules_src"
-    def modulesConfDir = "${modularSdkDir}/modules_conf"
-    def modulesLegalDir = "${modularSdkDir}/modules_legal"
-    def modulesMakeDir = "${modularSdkDir}/make"
+    def bundledSdkDirName = "${platformPrefix}modular-sdk"
+    def bundledSdkDir = "${rootProject.buildDir}/${bundledSdkDirName}"
+    def modulesDir = "${bundledSdkDir}/modules"
+    def modulesCmdsDir = "${bundledSdkDir}/modules_cmds"
+    def modulesLibsDir = "${bundledSdkDir}/modules_libs"
+    def modulesSrcDir = "${bundledSdkDir}/modules_src"
+    def modulesConfDir = "${bundledSdkDir}/modules_conf"
+    def modulesLegalDir = "${bundledSdkDir}/modules_legal"
+    def modulesMakeDir = "${bundledSdkDir}/make"
+
     final File runArgsFile = file("${rootProject.buildDir}/${RUNARGSFILE}")
     final File compileArgsFile = file("${rootProject.buildDir}/${COMPILEARGSFILE}")
 
     project.files(runArgsFile);
 
     def buildModulesTask = task("buildModules$t.capital", group: "Build") {
+        // BUNDLED SDK
+
         // Copy dependencies/*/module-info.java.extra
         // merging as needed, removing duplicates
         // only lines with 'exports' will be copied
@@ -4422,6 +4742,7 @@ compileTargets { t ->
     }
     buildModules.dependsOn(buildModulesTask)
 
+    // BUNDLED SDK
     moduleProjList.each { project ->
         // Copy classes, bin, and lib directories
 
@@ -4520,26 +4841,126 @@ compileTargets { t ->
             copyLegalTask)
     }
 
+    // ============================================================
+
+    def standaloneSdkDirName = "${platformPrefix}sdk"
+    def standaloneSdkDir = "${rootProject.buildDir}/${standaloneSdkDirName}"
+    def standaloneLibDir = "${standaloneSdkDir}/lib"
+    def libDest=targetProperties.libDest
+    def standaloneNativeDir = "${standaloneSdkDir}/${libDest}"
+    def standaloneLegalDir = "${standaloneSdkDir}/legal"
+    def standaloneSrcZipName = "src.zip"
+
+    // STANDALONE SDK
+    moduleProjList.each { project ->
+        // Copy classes, bin, and lib directories
+
+        def moduleName = project.ext.moduleName
+        def buildDir = project.buildDir
+
+        // Create modular jars
+        def srcClassesDir = "${buildDir}/${platformPrefix}module-classes"
+        def dstModularJarDir = "${standaloneLibDir}"
+        def modularJarName = "${moduleName}.jar"
+        def modularJarTask = project.task("modularJarStandalone$t.capital", type: Jar, dependsOn: project.assemble) {
+            destinationDir = file("${dstModularJarDir}")
+            archiveName = modularJarName
+            includeEmptyDirs = false
+            from srcClassesDir
+        }
+
+        // Copy native libraries
+        def srcNativeDir = "${buildDir}/${platformPrefix}module-lib"
+        def dstNativeDir = "${standaloneNativeDir}"
+        def copyNativeFilesTask = project.task("copyNativeFilesStandalone$t.capital", type: Copy, dependsOn: modularJarTask) {
+            from srcNativeDir
+            into dstNativeDir
+            include("*.dll")
+        }
+
+        // Copy other lib files
+        def srcLibsDir = "${buildDir}/${platformPrefix}module-lib"
+        def dstLibsDir = "${standaloneLibDir}"
+        def copyLibFilesTask = project.task("copyLibFilesStandalone$t.capital", type: Copy, dependsOn: copyNativeFilesTask) {
+            from srcLibsDir
+            into dstLibsDir
+            exclude("*.dll")
+        }
+
+        // Copy legal files
+        def licenseFiles = [ "ADDITIONAL_LICENSE_INFO", "ASSEMBLY_EXCEPTION", "LICENSE" ]
+        def srcLegalDir = "${project.projectDir}/src/main/legal"
+        def dstLegalDir = "${standaloneLegalDir}/${moduleName}"
+        def copyLegalTask = project.task("copyLegalStandalone$t.capital", type: Copy, dependsOn: copyLibFilesTask) {
+
+            def rtDir = rootProject.file('.')
+            licenseFiles.each { lFile ->
+                from "${rtDir}/${lFile}"
+            }
+
+            from srcLegalDir
+
+            into dstLegalDir
+
+            // Exclude ANGLE since we (currently) do not use it
+            exclude("angle.md")
+        }
+
+        buildModulesTask.dependsOn(
+            modularJarTask,
+            copyNativeFilesTask,
+            copyLibFilesTask,
+            copyLegalTask)
+    }
+
+    // Zip module sources for standalone SDK
+    //
+    // NOTE: the input is taken from the modular-sdk/modules_src dir
+    // so that we don't have to duplicate the logic and create another
+    // temporary directory. This is somewhat inelegant, since the bundled sdk
+    // and the standalone sdk should be independent of one another, but seems
+    // better than the alternatives.
+    def zipSourceFilesTask = project.task("zipSourceFilesStandalone$t.capital", type: Zip, dependsOn: buildModulesTask) {
+        destinationDir = file("${standaloneLibDir}")
+        archiveName = standaloneSrcZipName
+        includeEmptyDirs = false
+        from modulesSrcDir
+        include "**/*.java"
+    }
+    buildModules.dependsOn(zipSourceFilesTask)
+
+    // ============================================================
+
     def buildRunArgsTask = task("buildRunArgs$t.capital",
             group: "Build", dependsOn: buildModulesTask) {
         outputs.file(runArgsFile);
         inputs.file(EXTRAADDEXPORTS);
         doLast() {
-            List<String>libpath = []
             List<String>modpath = []
+            List<String>modnames = []
 
             moduleProjList.each { project ->
                 def moduleName = project.ext.moduleName
                 def dstModuleDir = cygpath("${modulesDir}/${moduleName}")
-                modpath <<  "${moduleName}=${dstModuleDir}"
+                if (HAS_JAVAFX_MODULES) {
+                    modpath <<  "${moduleName}=${dstModuleDir}"
+                } else {
+                    modnames << moduleName
+                }
             }
 
-            writeRunArgsFile(runArgsFile, computeLibraryPath(true), modpath)
-            writeRunArgsFile(compileArgsFile, null, modpath)
+            if (HAS_JAVAFX_MODULES) {
+                writeRunArgsFile(runArgsFile, computeLibraryPath(true), modpath, null)
+                writeRunArgsFile(compileArgsFile, null, modpath, null)
 
-            if (rootProject.hasProperty("EXTRA_ADDEXPORTS_STRING")) {
-                runArgsFile << EXTRA_ADDEXPORTS_STRING
-                compileArgsFile << EXTRA_ADDEXPORTS_STRING
+                if (rootProject.hasProperty("EXTRA_ADDEXPORTS_STRING")) {
+                    runArgsFile << EXTRA_ADDEXPORTS_STRING
+                    compileArgsFile << EXTRA_ADDEXPORTS_STRING
+                }
+            } else {
+                modpath = [ cygpath("${standaloneLibDir}") ]
+                writeRunArgsFile(runArgsFile, null, modpath, modnames)
+                writeRunArgsFile(compileArgsFile, null, modpath, modnames)
             }
         }
     }
@@ -4867,7 +5288,7 @@ compileTargets { t ->
         archiveName = jfxBundle
         destinationDir = file("${rootProject.buildDir}")
         includeEmptyDirs = false
-        from "${modularSdkDir}"
+        from "${bundledSdkDir}"
     }
     jdkZip.dependsOn(zipTask)
 
@@ -4905,37 +5326,72 @@ compileTargets { t ->
 
             List<String> modpath = []
 
-            moduleProjList.each { project ->
-                if (project.hasProperty("moduleName") && project.buildModule) {
-                    File dir;
-                    if (project.sourceSets.hasProperty('shims')) {
-                       dir = new File(rootProject.buildDir, "shims/${project.ext.moduleName}")
-                    } else {
-                       dir = new File(rootProject.buildDir, "modular-sdk/modules/${project.ext.moduleName}")
+            if (HAS_JAVAFX_MODULES) {
+                moduleProjList.each { project ->
+                    if (project.hasProperty("moduleName") && project.buildModule) {
+                        File dir;
+                        if (project.sourceSets.hasProperty('shims')) {
+                           dir = new File(rootProject.buildDir, "shims/${project.ext.moduleName}")
+                        } else {
+                           dir = new File(rootProject.buildDir, "modular-sdk/modules/${project.ext.moduleName}")
+                        }
+
+                        def dstModuleDir = cygpath(dir.path)
+                        modpath << "${project.ext.moduleName}=${dstModuleDir}"
+
+                        String themod = dir.toURI()
+                        testJavaPolicyFile <<  "grant codeBase \"${themod}\" {\n" +
+                        "    permission java.security.AllPermission;\n" +
+                        "};\n"
+
+                        dir = new File(rootProject.buildDir, "modular-sdk/modules/${project.ext.moduleName}")
+                        themod = dir.toURI()
+                        runJavaPolicyFile <<  "grant codeBase \"${themod}\" {\n" +
+                        "    permission java.security.AllPermission;\n" +
+                        "};\n"
                     }
-
-                    def dstModuleDir = cygpath(dir.path)
-                    modpath << "${project.ext.moduleName}=${dstModuleDir}"
-
-                    String themod = dir.toURI()
-                    testJavaPolicyFile <<  "grant codeBase \"${themod}\" {\n" +
-                    "    permission java.security.AllPermission;\n" +
-                    "};\n"
-
-                    dir = new File(rootProject.buildDir, "modular-sdk/modules/${project.ext.moduleName}")
-                    themod = dir.toURI()
-                    runJavaPolicyFile <<  "grant codeBase \"${themod}\" {\n" +
-                    "    permission java.security.AllPermission;\n" +
-                    "};\n"
                 }
-            }
 
-            writeRunArgsFile(testCompileArgsFile, null, modpath)
-            writeRunArgsFile(testRunArgsFile, computeLibraryPath(true), modpath)
+                writeRunArgsFile(testCompileArgsFile, null, modpath, null)
+                writeRunArgsFile(testRunArgsFile, computeLibraryPath(true), modpath, null)
 
-            if (rootProject.hasProperty("EXTRA_ADDEXPORTS_STRING")) {
-                testCompileArgsFile << EXTRA_ADDEXPORTS_STRING
-                testRunArgsFile << EXTRA_ADDEXPORTS_STRING
+                if (rootProject.hasProperty("EXTRA_ADDEXPORTS_STRING")) {
+                    testCompileArgsFile << EXTRA_ADDEXPORTS_STRING
+                    testRunArgsFile << EXTRA_ADDEXPORTS_STRING
+                }
+            } else  {
+                def modnames = []
+                moduleProjList.each { project ->
+                    if (project.hasProperty("moduleName") && project.buildModule) {
+                        modnames << project.ext.moduleName
+                        File dir;
+                        if (project.sourceSets.hasProperty('shims')) {
+                           dir = new File(rootProject.buildDir, "shims/${project.ext.moduleName}")
+                        } else {
+                           dir = new File(rootProject.buildDir, "sdk/lib/${project.ext.moduleName}.jar")
+                        }
+
+                        def dstModuleDir = cygpath(dir.path)
+                        modpath << "${dstModuleDir}"
+
+                        String themod = dir.toURI()
+                        testJavaPolicyFile <<  "grant codeBase \"${themod}\" {\n" +
+                        "    permission java.security.AllPermission;\n" +
+                        "};\n"
+
+                        dir = new File(rootProject.buildDir, "sdk/lib/${project.ext.moduleName}.jar")
+                        themod = dir.toURI()
+                        runJavaPolicyFile <<  "grant codeBase \"${themod}\" {\n" +
+                        "    permission java.security.AllPermission;\n" +
+                        "};\n"
+                    }
+                }
+
+                writeRunArgsFile(testCompileArgsFile, null, modpath, modnames)
+                writeRunArgsFile(testRunArgsFile, computeLibraryPath(true), modpath, modnames)
+
+                appendQualExports(testCompileArgsFile, qualExportsSwing)
+                appendQualExports(testRunArgsFile, qualExportsSwing)
             }
         }
     }
@@ -4946,6 +5402,54 @@ compileTargets { t ->
     sdkTask.dependsOn(buildModulesTask)
 }
 sdk.dependsOn(buildModules)
+
+// Build the jmod for each module for the standalone SDK only.
+compileTargets { t ->
+    if (!HAS_JAVAFX_MODULES) {
+        def targetProperties = project.ext[t.upper]
+
+        def platformPrefix = targetProperties.platformPrefix
+        def jmodsDirName = "${platformPrefix}jmods"
+        def jmodsDir = "${rootProject.buildDir}/${jmodsDirName}"
+        def standaloneSdkDirName = "${platformPrefix}sdk"
+        def standaloneSdkDir = "${rootProject.buildDir}/${standaloneSdkDirName}"
+        def standaloneLegalDir = "${standaloneSdkDir}/legal"
+
+        moduleProjList.each { project ->
+            def moduleName = project.ext.moduleName
+            def buildDir = project.buildDir
+
+            def srcClassesDir = "${buildDir}/${platformPrefix}module-classes"
+            def srcLibDir = "${buildDir}/${platformPrefix}module-lib"
+            def srcLegalDir = "${standaloneLegalDir}/${moduleName}"
+
+            def jmodName = "${moduleName}.jmod"
+            def jmodFile = "${jmodsDir}/${jmodName}"
+            def jmodTask = project.task("jmod$t.capital", group: "Build", dependsOn: sdk) {
+                doLast {
+                    mkdir jmodsDir
+                    delete(jmodFile);
+                    exec {
+                        commandLine(JMOD)
+                        args("create")
+                        args("--class-path")
+                        args(srcClassesDir)
+                        // Not all modules have a "lib" dir
+                        if (file(srcLibDir).isDirectory()) {
+                            args("--libs")
+                            args(srcLibDir)
+                        }
+                        args("--legal-notices")
+                        args(srcLegalDir)
+                        args(jmodFile)
+                    }
+                }
+            }
+
+            jmods.dependsOn(jmodTask)
+        }
+    }
+}
 
 task checkrepo() {
     doLast {

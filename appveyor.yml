@@ -3,7 +3,7 @@ version: "{branch} {build}"
 image: Visual Studio 2017
 
 environment:
-  JAVA_HOME: C:\\jdk9
+  JAVA_HOME: C:\jdk10
   VCINSTALLDIR: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build
   APPVEYOR_CACHE_ENTRY_ZIP_ARGS: "-t7z -m0=lzma -mx=9"
 
@@ -11,7 +11,18 @@ shallow_clone: true
 
 build_script:
   - ps: |
-      choco install jdk9 --version 9.0.4.11 -params 'installdir=C:\\jdk9'
+      choco install ant
+      $client = New-Object net.webclient
+      $client.DownloadFile('http://downloads.sourceforge.net/gnuwin32/zip-3.0-bin.zip', 'C:\Users\appveyor\zip-3.0.zip')
+      Expand-Archive -Path 'C:\Users\appveyor\zip-3.0.zip' -DestinationPath 'C:\Users\appveyor\zip'
+      $client.DownloadFile('http://downloads.sourceforge.net/gnuwin32/zip-3.0-dep.zip', 'C:\Users\appveyor\zip-3.0-deps.zip')
+      Expand-Archive -Path 'C:\Users\appveyor\zip-3.0-deps.zip' -DestinationPath 'C:\Users\appveyor\zip'
+      $env:PATH = "C:\Users\appveyor\zip\bin;$env:PATH"
+      $openJdk10 = 'https://github.com/AdoptOpenJDK/openjdk10-nightly/releases/download/jdk-10%2B23-20180524/OpenJDK10_x64_Win_20180524.zip'
+      $client.DownloadFile($openJdk10, 'C:\Users\appveyor\openjdk10.zip')
+      Expand-Archive -Path 'C:\Users\appveyor\openjdk10.zip' -DestinationPath 'C:\Users\appveyor\openjdk10'
+      Copy-Item -Path 'C:\Users\appveyor\openjdk10\*\' -Destination 'C:\jdk10' -Recurse -Force
+      choco install gradle --version 4.3.0
       $msvcToolsVer = Get-Content "$env:VCINSTALLDIR\Microsoft.VCToolsVersion.default.txt"
       if ([string]::IsNullOrWhitespace($msvcToolsVer)) {
         # The MSVC tools version file can have txt *or* props extension.
@@ -22,17 +33,41 @@ build_script:
       $env:VSVARS32FILE = "$env:VCINSTALLDIR\vcvars32.bat"
       refreshenv
       # Must invoke gradle with cmd.exe so stderr output doesn't fail the build:
-  - cmd: gradlew test -PCOMPILE_WEBKIT=false --stacktrace -x :web:test --info --no-daemon
+  - cmd: gradlew all test -PCOMPILE_WEBKIT=false -PCONF=DebugNative --stacktrace -x :web:test --info --no-daemon
+
 on_finish:
   - ps: |
+        $dbgDir = ".\javafx-debug-symbols\"
+        $dbgArchive = "javafx-debug-symbols.zip"
+        if ((Get-ChildItem -Include @("*.pdb","*.map") -Recurse | Where { -not $_.PSIsContainer}).Count -gt 0) {
+          # The build generated at least one map or pdb file, so bundle them and upload to Appveyor.
+          Get-ChildItem -Include @("*.pdb","*.map") -Recurse | Copy-Item -Destination (New-Item -Type directory -Force $dbgDir) -Force
+          Compress-Archive -Path $($dbgDir + '*') -DestinationPath $dbgArchive -CompressionLevel Optimal
+          Push-AppveyorArtifact $dbgArchive -Verbose
+        }
+
         $crashes = Get-ChildItem -Include hs_err_pid*.log -Recurse
-        Write-Output $crashes
-        $javaExe = $env.JAVA_HOME + '\bin\java.exe'
-        # This could be made much more useful if we had win32 debugging symbols for the JDK.
+        $javaExe = $env:JAVA_HOME + '\bin'
         ForEach ($crash in $crashes) {
+          $env:Path += ";C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\"
+          $env:Path += ";C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\"
+          $env:Path += ";C:\Program Files (x86)\Windows Kits\8.0\Debuggers\x64\"
+          $env:Path += ";C:\Program Files (x86)\Windows Kits\8.0\Debuggers\x86\"
+          Write-Host "Printing crash dump (${crash}):"
           Get-Content $crash
-          $crashDump = $crash.Name + '.mdmp'
-          Start-Process -FilePath "C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -ArgumentList "-v -z $crashDump -c '!sym noisy;~*;kb;q' -i $javaExe"
+          $crashDump = $crash.DirectoryName + '\' + $crash.Basename + '.mdmp'
+          Write-Host "\n\n--- NATIVE BACK TRACE ---"
+          # https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/cdb-command-line-options
+          # !sym noisy = Activates noisy symbol loading.
+          # ~* = Thread status for all threads in the process.
+          # .kframes 100 = Set stack length to 100 frames.
+          # kP = Display stack backtrace with the full parameters for each function that is called in the stack trace.
+          # .ecxr = Display exception context record.
+          # dpp = Display referenced memory (32-bit or 64-bit depending on architecture) in DWORD or QWORD.
+          # r. = Displays the registers used in the current instruction.
+          # q = Quit.
+          cdb -v -z $crashDump -c '!sym noisy;~*;kP;dpp;r.;q' -i $javaExe -lines -y "srv*C:\MSSymbols*http://msdl.microsoft.com/download/symbols;$($env:APPVEYOR_BUILD_FOLDER)\javafx-debug-symbols\"
+          Write-Host "\n\n--- END NATIVE BACK TRACE ---"
         }
 
         # This technically works but is really inefficient as it requires an HTTP request for every
@@ -42,7 +77,7 @@ on_finish:
         # https://www.appveyor.com/docs/build-worker-api/#rest-3
         # In order to do this we will need to iterate over all the XML files and convert them into
         # a big JSON array.
-        Write-Output -Message 'Uploading test results to AppVeyor…' -Verbose
+        Write-Host 'Uploading test results to AppVeyor…'
         $wc = New-Object 'System.Net.WebClient'
         $modules = @("javafx.base", "javafx.graphics", "javafx.controls", "javafx.fxml")
         $ErrorActionPreference = "SilentlyContinue"
@@ -58,19 +93,17 @@ on_finish:
           }
         }
 
-        # Install JDK 10 (for boot JDK)
-        # $client = New-Object net.webclient
-        # $client.DownloadFile("https://download.java.net/java/jdk10/archive/42/BCL/jdk-10-ea+42_windows-x64_bin.exe", "C:\Users\appveyor\jdk-10.exe")
-        # Start-Process "C:\Users\appveyor\jdk-10.exe" -ArgumentList "/s ADDLOCAL=`"ToolsFeature,SourceFeature,PublicjreFeature`" /INSTALLDIR=`"C:\jdk-10`" /L `"C:\Users\appveyor\jdk-10-install.txt`""
-  - cmd: |
-        REM Currently building OpenJDK exceeds Appveyor's time limits. Keep this around
-        REM in case we ever get the proper infrastructure.
-        REM hg clone http://hg.openjdk.java.net/jdk/jdk
-        REM cd jdk/
-        REM C:\cygwin\bin\bash "PATH=/bin:/cygdrive/c/Windows/System32:/cygdrive/c/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Auxiliary/Build && ./configure --with-import-modules=/cygdrive/c/projects/openjfx/build/modular-sdk --with-boot-jdk=/cygdrive/c/jdk-10"
+on_success:
+  - ps: |
+        $modules = "javafx-modules.zip"
+        Compress-Archive -Path ".\build\modular-sdk" -DestinationPath $modules -CompressionLevel Optimal
+        Push-AppveyorArtifact $modules -Verbose
 
 cache:
   - C:\Users\appveyor\.gradle\caches
+  - C:\Users\appveyor\.gradle\wrapper -> .gradle-wrapper\gradle-wrapper.properties
   - '%JAVA_HOME% -> appveyor.yml'
   - C:\ProgramData\chocolatey\bin -> appveyor.yml
   - C:\ProgramData\chocolatey\lib -> appveyor.yml
+  - C:\ProgramData\chocolatey\cache -> appveyor.yml
+  - C:\MSSymbols -> appveyor.yml
