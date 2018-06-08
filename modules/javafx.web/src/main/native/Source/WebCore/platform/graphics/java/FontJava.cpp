@@ -154,12 +154,13 @@ FloatRect Font::platformBoundsForGlyph(Glyph) const
     static jmethodID getGlyphBoundingBox_mID = env->GetMethodID(PG_GetFontClass(env), "getGlyphBoundingBox", "(I)D");
     ASSERT(getGlyphBoundingBox_mID);
 
-    float boudingBox[4];
-
-    (jfloatArray) res = (jfloatArray)env->CallObjectMethod(*jFont, getGlyphBoundingBox_mID, (jint)c);
+    jfloatArray boundingBox = (jfloatArray)env->CallObjectMethod(*jFont, getGlyphBoundingBox_mID, (jint)c);
+    
+    jfloat *bBox = env->GetFloatArrayElements(boundingBox,0);
+    
     CheckAndClearException(env);
 
-    return FloatRect(res[0], res[1], res[2], res[3]);
+    return FloatRect(bBox[0], bBox[1], bBox[2], bBox[3]);
     }
 
 }
