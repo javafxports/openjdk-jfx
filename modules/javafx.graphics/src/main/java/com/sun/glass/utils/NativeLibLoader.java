@@ -25,13 +25,13 @@
 package com.sun.glass.utils;
 
 import java.io.File;
+import java.io.InputStream;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashSet;
-import java.io.*;
-import java.nio.*;
-import java.nio.file.*;
 
 public class NativeLibLoader {
 
