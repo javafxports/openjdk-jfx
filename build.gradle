@@ -1224,8 +1224,8 @@ if (Integer.parseInt(NUM_COMPILE_THREADS.toString()) < 1) {
     NUM_COMPILE_THREADS = 1
 }
 
-// Check for Gradle 4.3, error if < 3.0.
-if (gradle.gradleVersion != "4.3") {
+// Check for Gradle 4.8, error if < 4.3.
+if (gradle.gradleVersion != "4.8") {
     def ver = gradle.gradleVersion.split("[\\.]");
     def gradleMajor = Integer.parseInt(ver[0]);
     def gradleMinor = Integer.parseInt(ver[1].split("[^0-9]")[0]);
@@ -1240,7 +1240,7 @@ if (gradle.gradleVersion != "4.3") {
 
     logger.warn("*****************************************************************");
     logger.warn("Unsupported gradle version $gradle.gradleVersion in use.");
-    logger.warn("Only version 4.3 is supported. Use this version at your own risk");
+    logger.warn("Only version 4.8 is supported. Use this version at your own risk");
     if ( err != "") logger.warn(err);
     logger.warn("*****************************************************************");
 }
@@ -1774,11 +1774,6 @@ allprojects {
     }
 }
 
-// Qualified exports needed by javafx.* modules (excluding javafx.swing)
-def qualExportsCore = [
-    "--add-exports=java.desktop/sun.print=javafx.graphics",
-]
-
 // Qualified exports needed by javafx.swing
 def qualExportsSwing = [
         "--add-exports=java.desktop/java.awt.dnd.peer=javafx.swing",
@@ -1864,10 +1859,8 @@ project(":base") {
     sourceSets.main.java.srcDirs += "$buildDir/gensrc/java"
 
     compileJava.dependsOn processVersionInfo
-
-    compileJava.options.compilerArgs.addAll(qualExportsCore)
-
     addMavenPublication(project, true, [])
+
 }
 
 // The graphics module is needed for any graphical JavaFX application. It requires
@@ -1983,7 +1976,6 @@ project(":graphics") {
             '-implicit:none',
             '--module-source-path', defaultModuleSourcePath
             ] )
-        options.compilerArgs.addAll(qualExportsCore)
     }
     classes.dependsOn(compileFullJava)
 
@@ -2294,9 +2286,8 @@ project(":graphics") {
         }
     }
 
-    compileJava.options.compilerArgs.addAll(qualExportsCore)
-
     addMavenPublication(project, true, [ 'base' ])
+
 }
 
 project(":controls") {
@@ -2356,9 +2347,8 @@ project(":controls") {
         include "**/*.bss"
     })
 
-    compileJava.options.compilerArgs.addAll(qualExportsCore)
-
     addMavenPublication(project, false, [ 'graphics' ])
+
 }
 
 project(":swing") {
@@ -2394,7 +2384,6 @@ project(":swing") {
         }
     }
 
-    compileJava.options.compilerArgs.addAll(qualExportsCore)
     compileJava.options.compilerArgs.addAll(qualExportsSwing)
 
     addMavenPublication(project, false, [ 'graphics' ])
@@ -2491,9 +2480,8 @@ project(":fxml") {
         classpath += files("$JDK_HOME/jre/lib/ext/nashorn.jar")
     }
 
-    compileJava.options.compilerArgs.addAll(qualExportsCore)
-
     addMavenPublication(project, false, [ 'controls' ])
+
 }
 
 project(":fxpackagerservices") {
@@ -3695,9 +3683,8 @@ project(":media") {
         }
     }
 
-    compileJava.options.compilerArgs.addAll(qualExportsCore)
-
     addMavenPublication(project, true, [ 'graphics' ])
+
 }
 
 project(":web") {
@@ -3929,9 +3916,8 @@ project(":web") {
         assemble.dependsOn compileJavaDOMBinding, drtJar
     }
 
-    compileJava.options.compilerArgs.addAll(qualExportsCore)
-
     addMavenPublication(project, true, [ 'controls', 'media' ])
+
 }
 
 // This project is for system tests that need to run with a full SDK.

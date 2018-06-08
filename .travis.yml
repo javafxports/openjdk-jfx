@@ -47,8 +47,8 @@ matrix:
   include:
     - os: linux
       dist: trusty
-      install: . ./install-jdk.sh -F 10 -L BCL
-      env: JDK='Oracle JDK 10'
+      install: . ./install-jdk.sh -F 10 -L GPL
+      env: JDK='Open JDK 10'
       addons:
         apt:
           packages:
