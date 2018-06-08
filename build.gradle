@@ -296,7 +296,7 @@ ext.IS_MAC = OS_NAME.contains("mac") || OS_NAME.contains("darwin")
 ext.IS_WINDOWS = OS_NAME.contains("windows")
 ext.IS_LINUX = OS_NAME.contains("linux")
 
-ext.MAVEN_GROUP_ID = "javafx"
+ext.MAVEN_GROUP_ID = "openjfx"
 ext.MAVEN_VERSION = "11.0.0-SNAPSHOT"
 
 // Verify that the architecture & OS are supported configurations. Note that
@@ -1531,50 +1531,30 @@ void addMavenPublication(Project project, boolean hasNative, List<String> projec
                 maven(MavenPublication) {
                     artifactId = project.moduleName
 
-                    artifact project.tasks."modularJarStandalone$t.capital"
-
-                    if (hasNative) {
-                        artifact project.tasks."modularNativeJarStandalone$t.capital" {
-                            classifier t.name
-                        }
+                    artifact project.tasks."modularPublicationJar$t.capital" {
+                        classifier "$t.name"
                     }
 
-                    if (hasNative || !projectDependencies.empty) {
+                    if (!projectDependencies.empty) {
                         pom.withXml {
                             Node dependencies = asNode().appendNode("dependencies")
-                            if (hasNative) {
-                                nativePublications.each { np ->
-                                    Node dependency = dependencies.appendNode("dependency")
-                                    dependency.appendNode("groupId", MAVEN_GROUP_ID)
-                                    dependency.appendNode("artifactId", project.moduleName)
-                                    dependency.appendNode("version", MAVEN_VERSION)
-                                    dependency.appendNode("classifier", np)
-                                }
-                            }
                             projectDependencies.each { dep ->
                                 Node dependency = dependencies.appendNode("dependency")
                                 dependency.appendNode("groupId", MAVEN_GROUP_ID)
                                 dependency.appendNode("artifactId", "javafx.$dep")
                                 dependency.appendNode("version", MAVEN_VERSION)
+                                dependency.appendNode("classifier", t.name)
                             }
                         }
                     }
                 }
             }
 
-/*
             repositories {
                 maven {
-                    name = "gluon"
-                    credentials {
-                        username gluonNexusPublishUsername
-                        password gluonNexusPublishPassword
-                    }
-                    def repositoryBaseUrl = "http://nexus.gluonhq.com/nexus/content/repositories"
-                    url project.version.endsWith('SNAPSHOT') ? "${repositoryBaseUrl}/snapshots" : "${repositoryBaseUrl}/releases"
+                    // inject repo here
                 }
             }
-*/
         }
     }
 }
@@ -4958,6 +4938,7 @@ compileTargets { t ->
 
         // Create modular jars
         def srcClassesDir = "${buildDir}/${platformPrefix}module-classes"
+        def srcLibsDir = "${buildDir}/${platformPrefix}module-lib"
         def dstModularJarDir = "${standaloneLibDir}"
         def modularJarName = "${moduleName}.jar"
         def modularJarTask = project.task("modularJarStandalone$t.capital", type: Jar, dependsOn: project.assemble) {
@@ -4965,16 +4946,6 @@ compileTargets { t ->
             archiveName = modularJarName
             includeEmptyDirs = false
             from srcClassesDir
-        }
-
-        // Create module native jars
-        def srcLibsDir = "${buildDir}/${platformPrefix}module-lib"
-        def modularNativeJarName = "${moduleName}-native.jar"
-        def modularNativeJarTask = project.task("modularNativeJarStandalone$t.capital", type: Jar, dependsOn: modularJarTask) {
-            destinationDir = file("${dstModularJarDir}")
-            archiveName = modularNativeJarName
-            from srcLibsDir
-            exclude("*.dll")
         }
 
         // Copy native libraries
@@ -5015,7 +4986,6 @@ compileTargets { t ->
 
         buildModulesTask.dependsOn(
             modularJarTask,
-            modularNativeJarTask,
             copyNativeFilesTask,
             copyLibFilesTask,
             copyLegalTask)
@@ -5037,6 +5007,31 @@ compileTargets { t ->
     }
     buildModules.dependsOn(zipSourceFilesTask)
 
+    // ============================================================
+
+    // Maven Publications
+    def publicationDirName = "${platformPrefix}publications"
+    def publicationDir = "${rootProject.buildDir}/${publicationDirName}"
+
+    moduleProjList.each { project -> 
+        // Create publications to be uploaded 
+
+        def moduleName = project.ext.moduleName
+        def buildDir = project.buildDir
+
+        def dstModularJarDir="${publicationDir}"
+        def srcClassesDir = "${buildDir}/${platformPrefix}module-classes"
+        def srcLibsDir = "${buildDir}/${platformPrefix}module-lib"
+        def modularPublicationJarName = "${moduleName}-linux.jar"
+        def modularPublicationJarTask = project.task("modularPublicationJar$t.capital", type: Jar ) {
+            destinationDir = file("${dstModularJarDir}")
+            archiveName = modularPublicationJarName
+            from srcLibsDir
+            from srcClassesDir
+        }
+        buildModulesTask.dependsOn(modularPublicationJarTask)
+
+    }
     // ============================================================
 
     def buildRunArgsTask = task("buildRunArgs$t.capital",
