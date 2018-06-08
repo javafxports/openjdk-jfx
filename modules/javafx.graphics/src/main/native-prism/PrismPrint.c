@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,27 +23,26 @@
  * questions.
  */
 
-#pragma once
+#include <jni.h>
+#include "com_sun_prism_j2d_print_J2DPrinterJob.h"
 
-#include <wtf/java/JavaEnv.h>
-#include "ScrollbarThemeComposite.h"
+/*
+ * Class com_sun_prism_j2d_print_J2DPrinterJob2D
+ * Method: getAlwaysOnTop
+ * Signature (Ljava/lang/Class;J)Ljavax.print.attribute.standard.DialogOwner;
+ */
+JNIEXPORT jobject
+Java_com_sun_prism_j2d_print_J2DPrinterJob_getAlwaysOnTop(
+ JNIEnv *env, jclass cls, jclass ownerClass, jlong id) {
 
-namespace WebCore {
+    jmethodID cons;
+    if (ownerClass == NULL) {
+        return NULL;
+    }
+    cons = (*env)->GetMethodID(env, ownerClass, "<init>", "(J)V");
+    if (cons == NULL || (*env)->ExceptionCheck(env)) {
+        return NULL;
+    }
+    return (*env)->NewObject(env, ownerClass, cons, id);
+}
 
-class ScrollbarThemeJava : public ScrollbarThemeComposite {
-public:
-    bool paint(Scrollbar&, GraphicsContext&, const IntRect& /*damageRect*/) override;
-    void invalidatePart(Scrollbar&, ScrollbarPart) override;
-
-    bool hasButtons(Scrollbar&) override { return true; }
-    bool hasThumb(Scrollbar&) override;
-
-    int scrollbarThickness(ScrollbarControlSize = RegularScrollbar, ScrollbarExpansionState = ScrollbarExpansionState::Expanded) override;
-
-    IntRect backButtonRect(Scrollbar&, ScrollbarPart, bool painting = false) override;
-    IntRect forwardButtonRect(Scrollbar&, ScrollbarPart, bool painting = false) override;
-    IntRect trackRect(Scrollbar&, bool painting = false) override;
-    bool usesOverlayScrollbars() const final { return true; }
-};
-
-} // namespace WebCore
