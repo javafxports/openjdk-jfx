@@ -49,7 +49,6 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.SnapshotParameters;
-import javafx.scene.canvas.Canvas;
 import javafx.scene.image.PixelReader;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
@@ -78,9 +77,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
-import test.util.Util;
 
 import static test.util.Util.TIMEOUT;
 
@@ -259,6 +256,19 @@ public final class ClipShapeTest {
             stage.show();
 
             launchLatch.countDown();
+        }
+    }
+
+    boolean done;
+
+    public synchronized void signalDone() {
+        done = true;
+        notifyAll();
+    }
+
+    public synchronized void waitDone() throws InterruptedException {
+        while (!done) {
+            wait();
         }
     }
 
@@ -513,7 +523,10 @@ DASH: Diff Pixels [Worst(All Test setups)][n: 7] sum: 8 avg: 1.142 [1 | 2] {
             for (int n = 0; n < NUM_TESTS; n++) {
                 genShape(p2d, ts);
 
-                Util.runAndWait(() -> {
+                // Use directly Platform.runLater() instead of Util.runAndWait()
+                // that has too high latency (100ms polling)
+                done = false;
+                Platform.runLater(() -> {
                     /*
                     Note: as CachingShapeRep try caching the Path mask at the second rendering pass,
                     then its xformBounds corresponds to the shape not the giiiiven clip.
@@ -526,7 +539,14 @@ DASH: Diff Pixels [Worst(All Test setups)][n: 7] sum: 8 avg: 1.142 [1 | 2] {
 
                     // Runtime clip setting OFF (2ND):
                     paintShape(p, imgOff, false);
+
+                    signalDone();
                 });
+                try {
+                    waitDone();
+                } catch (InterruptedException ex) {
+                    break;
+                }
 
                 /* compute image difference if possible */
                 diffImage = computeDiffImage(testCtx, testThCtx, prOn, prOff, prDiff);
@@ -694,7 +714,7 @@ DASH: Diff Pixels [Worst(All Test setups)][n: 7] sum: 8 avg: 1.142 [1 | 2] {
         if (out != wimg) {
             System.out.println("different images !");
         }
-        // Or use (faster?) 
+        // Or use (faster?)
         // ShapeUtil.getMaskData(p, null, b, BaseTransform.IDENTITY_TRANSFORM, true, aa);
     }
 
