@@ -1,6 +1,8 @@
 language: java
 sudo: false
 
+jdk: openjdk10
+
 addons:
   apt:
     packages: &global_deps
@@ -47,14 +49,12 @@ matrix:
   include:
     - os: linux
       dist: trusty
-      jdk: openjdk10
       addons:
         apt:
           packages:
             - *global_deps
     - os: osx
       osx_image: xcode9
-      jdk: openjdk10
       # env: PRINT_CRASH_LOGS="true"
 
 before_script:
