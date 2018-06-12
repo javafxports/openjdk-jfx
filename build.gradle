@@ -5008,8 +5008,8 @@ compileTargets { t ->
         def dstModularJarDir="${publicationDir}"
         def srcClassesDir = "${buildDir}/${platformPrefix}module-classes"
         def srcLibsDir = "${buildDir}/${platformPrefix}module-lib"
-        def modularPublicationJarName = "${moduleName}-linux.jar"
-        def modularPublicationJarTask = project.task("modularPublicationJar$t.capital", type: Jar ) {
+        def modularPublicationJarName = "${moduleName}-${t.name}.jar"
+        def modularPublicationJarTask = project.task("modularPublicationJar${t.capital}", type: Jar ) {
             destinationDir = file("${dstModularJarDir}")
             archiveName = modularPublicationJarName
             from srcLibsDir
