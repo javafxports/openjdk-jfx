@@ -29,4 +29,3 @@ exports sun.awt.dnd to javafx.swing;
 exports sun.awt.image to javafx.swing;
 exports sun.java2d to javafx.swing;
 exports sun.swing to javafx.swing;
-exports sun.print to javafx.graphics;
