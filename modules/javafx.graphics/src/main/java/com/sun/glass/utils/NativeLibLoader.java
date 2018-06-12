@@ -26,12 +26,14 @@ package com.sun.glass.utils;
 
 import java.io.File;
 import java.io.InputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashSet;
+import java.util.List;
 
 public class NativeLibLoader {
 
@@ -43,7 +45,17 @@ public class NativeLibLoader {
             StackWalker walker = AccessController.doPrivileged((PrivilegedAction<StackWalker>) () ->
             StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE));
             Class caller = walker.getCallerClass();
-            loadLibraryInternal(libname, caller);
+            loadLibraryInternal(libname, null, caller);
+            loaded.add(libname);
+        }
+    }
+
+    public static synchronized void loadLibrary(String libname, List<String> dependencies) {
+        if (!loaded.contains(libname)) {
+            StackWalker walker = AccessController.doPrivileged((PrivilegedAction<StackWalker>) () ->
+            StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE));
+            Class caller = walker.getCallerClass();
+            loadLibraryInternal(libname, dependencies, caller);
             loaded.add(libname);
         }
     }
@@ -94,7 +106,7 @@ public class NativeLibLoader {
         return paths;
     }
 
-    private static void loadLibraryInternal(String libraryName, Class caller) {
+    private static void loadLibraryInternal(String libraryName, List<String> dependencies, Class caller) {
         // Look for the library in the same directory as the jar file
         // containing this class.
         // If that fails, then try System.loadLibrary.
@@ -138,7 +150,7 @@ public class NativeLibLoader {
                 }
             } catch (UnsatisfiedLinkError ex2) {
                 // if the library is available in the jar, copy it to /tmp and load it from there
-                if (loadLibraryFromResource(libraryName, caller)) {
+                if (loadLibraryFromResource(libraryName, dependencies, caller)) {
                     return;
                 }
                 //On iOS we link all libraries staticaly. Presence of library
@@ -165,23 +177,54 @@ public class NativeLibLoader {
     * If there is a library with the platform-correct name at the
     * root of the resources in this jar, use that.
     */
-    private static boolean loadLibraryFromResource(String libraryName, Class caller) {
+    private static boolean loadLibraryFromResource(String libraryName, List<String> dependencies, Class caller) {
         try {
+            // first preload dependencies
+            if (dependencies != null) {
+                for (String dep: dependencies) {
+                    loadLibraryFromResource(dep, null, caller);
+                }
+            }
             String reallib = "/"+libPrefix+libraryName+libSuffix;
             InputStream is = caller.getResourceAsStream(reallib);
             if (is != null) {
-                File f = new File(tmpdir, reallib);
-                if (f.exists()) f.delete();
-                Path path = f.toPath();
-                Files.copy(is, path);
-                String fp = f.getAbsolutePath();
+                String fp = cacheLibrary(is, reallib);
                 System.load(fp);
+                if (verbose) {
+                    System.err.println("Loaded library " + reallib + " from resource");
+                }
                 return true;
             }
         } catch (Throwable t) {
+            // we should only be here if the resource exists in the module, but 
+            // for some reasons it can't be loaded. 
+            System.err.println("Loading library " + libraryName + " from resource failed: " + t);
             t.printStackTrace();
         }
         return false;
+    }
+
+    private static String cacheLibrary(InputStream is, String name) throws IOException {
+        String jfxVersion = System.getProperty("javafx.version", "versionless");
+        String userCache = System.getProperty("user.home") + "/.openjfx/cache/" + jfxVersion;
+        File cacheDir = new File(userCache);
+        if (cacheDir.exists()) {
+            if (!cacheDir.isDirectory()) {
+                throw new IOException ("Cache exists but is not a directory: "+cacheDir);
+            }
+        } else {
+            if (!cacheDir.mkdirs()) {
+                throw new IOException ("Can not create cache at "+cacheDir);
+            }
+        }
+        // we have a cache directory. Add the file here
+        File f = new File(cacheDir, name);
+        // if it exists, remove. Todo: check checksum and keep if same.
+        if (f.exists()) f.delete();
+        Path path = f.toPath();
+        Files.copy(is, path);
+        String fp = f.getAbsolutePath();
+        return fp;
     }
 
     /**
@@ -257,4 +300,5 @@ public class NativeLibLoader {
             throw (UnsatisfiedLinkError) new UnsatisfiedLinkError().initCause(e);
         }
     }
+
 }
