@@ -261,6 +261,9 @@ final class WCFontImpl extends WCFont {
     @Override public float[] getGlyphBoundingBox(int glyph) {
         float[] bb = new float[4];
         bb = getFontStrike().getFontResource().getGlyphBoundingBox(glyph, font.getSize(), bb);
+        // Depends on the defaults fonts.
+        // Best choice for a custom Latin Modern Math Font.
+        // bb[1]= -getAscent();
         bb[1]= -getCapHeight();
         bb[3]= getDescent()-bb[1];
         return bb;
