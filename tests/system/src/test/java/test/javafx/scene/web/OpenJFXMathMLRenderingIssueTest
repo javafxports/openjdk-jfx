@@ -34,8 +34,8 @@ import javafx.stage.Stage;
 
 /**
  * @test
- * @bug JDK-8147476 Rendering issues with MathML token elements
- * @bug JDK-8089878 HTMLEditor messes up MathML markup press
+ * @bug JDK-8147476 Rendering issues with MathML token elements.
+ * @bug JDK-8089878 HTMLEditor messes up MathML markup press.
  */
 public class OpenJFXMathMLRenderingIssueTest extends Application {
 
