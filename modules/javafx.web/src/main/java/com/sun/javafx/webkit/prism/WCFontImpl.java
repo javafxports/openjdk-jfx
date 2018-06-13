@@ -257,4 +257,12 @@ final class WCFontImpl extends WCFont {
     @Override public float getCapHeight() {
         return getFontStrike().getMetrics().getCapHeight();
     }
+    
+    @Override public float[] getGlyphBoundingBox(int glyph) {
+        float[] bb = new float[4];
+        bb = getFontStrike().getFontResource().getGlyphBoundingBox(glyph, font.getSize(), bb);
+        bb[1]= -getCapHeight();
+        bb[3]= getDescent()-bb[1];
+        return bb;
+    }
 }

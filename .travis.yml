@@ -32,7 +32,6 @@ addons:
       - gdb
       - libcups2-dev
 
-# For webkit: t5-qmake qtbase5-dev qtdeclarative5-dev libqt5webkit5-dev ?
 # Won't be able to build webkit in the time alloted by Travis
 
 before_cache:
@@ -48,24 +47,19 @@ matrix:
   include:
     - os: linux
       dist: trusty
-      jdk: oraclejdk9
+      install: . ./install-jdk.sh -F 10 -L GPL
+      env: JDK='Open JDK 10'
       addons:
         apt:
           packages:
-            - oracle-java9-installer
             - *global_deps
     - os: osx
       osx_image: xcode9
-      env:
-        - PRINT_CRASH_LOGS="true"
+      # env: PRINT_CRASH_LOGS="true"
 
 before_script:
-  - wget https://services.gradle.org/distributions/gradle-4.3-bin.zip
-  - unzip gradle-4.3-bin.zip
-  - export GRADLE_HOME=$PWD/gradle-4.3
-  - export PATH=$GRADLE_HOME/bin:$PATH
   - echo $JAVA_OPTS
-  - echo $GRADLE_OPTS
+  - sh ./gradlew --version
   # run on xvfb screen (for linux).
   - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then export DISPLAY=:99.0 && sh -e /etc/init.d/xvfb start; fi
 
