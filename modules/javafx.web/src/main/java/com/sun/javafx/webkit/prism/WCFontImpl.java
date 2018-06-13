@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -256,5 +256,16 @@ final class WCFontImpl extends WCFont {
 
     @Override public float getCapHeight() {
         return getFontStrike().getMetrics().getCapHeight();
+    }
+    
+    @Override public float[] getGlyphBoundingBox(int glyph) {
+        float[] bb = new float[4];
+        bb = getFontStrike().getFontResource().getGlyphBoundingBox(glyph, font.getSize(), bb);
+        // Depends on the defaults fonts.
+        // Best choice for a custom Latin Modern Math Font.
+        // bb[1]= -getAscent();
+        bb[1]= -getCapHeight();
+        bb[3]= getDescent()-bb[1];
+        return bb;
     }
 }
