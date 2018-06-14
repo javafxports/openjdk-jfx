@@ -25,13 +25,18 @@
 package com.sun.glass.utils;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.AccessController;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivilegedAction;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
@@ -231,13 +236,54 @@ public class NativeLibLoader {
         }
         // we have a cache directory. Add the file here
         File f = new File(cacheDir, name);
-        // if it exists, remove. Todo: check checksum and keep if same.
-        if (f.exists()) f.delete();
-        Path path = f.toPath();
-        Files.copy(is, path);
+        // if it exists, calculate checksum and keep if same as inputstream.
+        boolean write = true;
+        if (f.exists()) {
+            byte[] isHash;
+            byte[] fileHash;
+            try {
+                DigestInputStream dis = new DigestInputStream(is, MessageDigest.getInstance("MD5"));
+                isHash = dis.getMessageDigest().digest();
+            }
+            catch (NoSuchAlgorithmException nsa) {
+                isHash = new byte[1];
+            }
+            fileHash = calculateCheckSum(f);
+            if (!Arrays.equals(isHash, fileHash)) {
+                f.delete();
+            } else {
+                // hashes are the same, we already have the file.
+                write = false;
+            }
+        }
+        if (write) {
+            Path path = f.toPath();
+            Files.copy(is, path);
+        }
+
         String fp = f.getAbsolutePath();
         return fp;
     }
+
+    static byte[] calculateCheckSum(File file) {
+        try {
+                // not looking for security, just a checksum. MD5 should be faster than SHA
+                try (final InputStream stream = new FileInputStream(file);
+                    final DigestInputStream dis = new DigestInputStream(stream, MessageDigest.getInstance("MD5")); ) {
+                    dis.getMessageDigest().reset();
+                    while (dis.read() != -1) { /* empty loop body is intentional */ }
+                    return dis.getMessageDigest().digest();
+                }
+
+        } catch (IllegalArgumentException | NoSuchAlgorithmException | IOException | SecurityException e) {
+            // IOException also covers MalformedURLException
+            // SecurityException means some untrusted applet
+
+            // Fall through...
+        }
+        return new byte[0];
+    }
+
 
     /**
      * Load the native library from the same directory as the jar file
