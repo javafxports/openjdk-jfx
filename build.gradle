@@ -296,7 +296,7 @@ ext.IS_MAC = OS_NAME.contains("mac") || OS_NAME.contains("darwin")
 ext.IS_WINDOWS = OS_NAME.contains("windows")
 ext.IS_LINUX = OS_NAME.contains("linux")
 
-ext.MAVEN_GROUP_ID = "openjfx"
+ext.MAVEN_GROUP_ID = "org.openjfx"
 ext.MAVEN_VERSION = "11.0.0-SNAPSHOT"
 
 // Verify that the architecture & OS are supported configurations. Note that
