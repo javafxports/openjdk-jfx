@@ -115,6 +115,15 @@ public class NativeMediaManager {
                 } else {
                     dependencies.add("gstreamer-lite");
                 }
+                if (HostUtils.isLinux()) {
+                    dependencies.add("fxplugins");
+                    dependencies.add("avplugin");
+                    dependencies.add("avplugin-54");
+                    dependencies.add("avplugin-56");
+                    dependencies.add("avplugin-57");
+                    dependencies.add("avplugin-ffmpeg-56");
+                    dependencies.add("avplugin-ffmpeg-57");
+                }
 
                 NativeLibLoader.loadLibrary("jfxmedia", dependencies);
                 return null;

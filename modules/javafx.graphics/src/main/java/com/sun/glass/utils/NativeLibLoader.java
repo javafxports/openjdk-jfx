@@ -178,20 +178,32 @@ public class NativeLibLoader {
     * root of the resources in this jar, use that.
     */
     private static boolean loadLibraryFromResource(String libraryName, List<String> dependencies, Class caller) {
+        return installLibraryFromResource(libraryName, dependencies, caller, true);
+    }
+
+   /**
+    * If there is a library with the platform-correct name at the
+    * root of the resources in this jar, install it. If load is true, also load it.
+    */
+    private static boolean installLibraryFromResource(String libraryName, List<String> dependencies, Class caller, boolean load) {
         try {
             // first preload dependencies
             if (dependencies != null) {
                 for (String dep: dependencies) {
-                    loadLibraryFromResource(dep, null, caller);
+                    boolean hasdep = installLibraryFromResource(dep, null, caller, false);
                 }
             }
             String reallib = "/"+libPrefix+libraryName+libSuffix;
             InputStream is = caller.getResourceAsStream(reallib);
             if (is != null) {
                 String fp = cacheLibrary(is, reallib);
-                System.load(fp);
-                if (verbose) {
-                    System.err.println("Loaded library " + reallib + " from resource");
+                if (load) {
+                    System.load(fp);
+                    if (verbose) {
+                        System.err.println("Loaded library " + reallib + " from resource");
+                    }
+                } else if (verbose) {
+                    System.err.println("Unpacked library " + reallib + " from resource");
                 }
                 return true;
             }
