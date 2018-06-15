@@ -260,6 +260,9 @@ public final class RenderThemeImpl extends RenderTheme {
     {
         ensureNotDefault();
 
+        if (extParams == null) {
+            return null;
+        }
         FormControl fc = pool.get(id);
         WidgetType type = WidgetType.convert(widgetIndex);
 
