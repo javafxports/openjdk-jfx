@@ -1520,8 +1520,6 @@ void addJSL(Project project, String name, String pkg, List<String> addExports, C
 void addMavenPublication(Project project, boolean hasNative, List<String> projectDependencies) {
     project.apply plugin: 'maven-publish'
 
-    def nativePublications = [ 'linux' ] //, 'mac', 'win' ]
-
     project.group = MAVEN_GROUP_ID
     project.version = MAVEN_VERSION
 
