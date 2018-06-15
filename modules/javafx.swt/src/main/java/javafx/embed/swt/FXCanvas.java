@@ -266,7 +266,7 @@ public class FXCanvas extends Canvas {
                 }
             } catch (Exception e) {
                 //Fail silently.  If we can't get the methods, then the current version of SWT has no retina support
-            }            
+            }
         }
         initFx();
     }
