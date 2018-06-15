@@ -124,6 +124,11 @@ public class NativeMediaManager {
                     dependencies.add("avplugin-ffmpeg-56");
                     dependencies.add("avplugin-ffmpeg-57");
                 }
+                if (HostUtils.isMacOSX()) {
+                    dependencies.add("fxplugins");
+                    dependencies.add("glit-lite");
+                    dependencies.add("jfxmedia_av");
+                }
 
                 NativeLibLoader.loadLibrary("jfxmedia", dependencies);
                 return null;
