@@ -1552,7 +1552,14 @@ void addMavenPublication(Project project, boolean hasNative, List<String> projec
 
             repositories {
                 maven {
-                    // inject repo here
+                    def repositoryUrl = project.hasProperty('repositoryUrl') ? project.getProperty('repositoryUrl') : ""
+                    def repositoryUsername = project.hasProperty('repositoryUsername') ? project.getProperty('repositoryUsername') : ""
+                    def repositoryPassword = project.hasProperty('repositoryPassword') ? project.getProperty('repositoryPassword') : ""
+                    url repositoryUrl
+                    credentials {
+                       username repositoryUsername
+                       password repositoryPassword
+                    }
                 }
             }
         }
