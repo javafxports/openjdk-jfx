@@ -33,11 +33,12 @@ import javafx.scene.input.InputMethodEvent;
 import javafx.scene.input.InputMethodRequests;
 import javafx.scene.input.InputMethodTextRun;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.input.ScrollEvent;
 import javafx.scene.image.PixelFormat;
 import java.nio.IntBuffer;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import com.sun.javafx.cursor.CursorFrame;
 import com.sun.javafx.embed.AbstractEvents;
 import com.sun.javafx.embed.EmbeddedSceneDTInterface;
@@ -47,6 +48,7 @@ import com.sun.javafx.scene.input.KeyCodeMap;
 import com.sun.javafx.scene.traversal.Direction;
 import com.sun.javafx.sg.prism.NGNode;
 import com.sun.javafx.tk.TKClipboard;
+import com.sun.javafx.tk.TKPulseListener;
 import com.sun.javafx.tk.Toolkit;
 import com.sun.prism.paint.Color;
 import com.sun.prism.paint.Paint;
@@ -71,6 +73,8 @@ final class EmbeddedScene extends GlassScene implements EmbeddedSceneInterface {
     private volatile float      texScaleFactorY = 1.0f;
 
     private volatile PixelFormat<?> pixelFormat;
+    private final TKPulseListener pulseListener;
+    private final AtomicBoolean updateSceneState = new AtomicBoolean();
 
     public EmbeddedScene(HostInterface host, boolean depthBuffer, boolean msaa) {
         super(depthBuffer, msaa);
@@ -96,12 +100,21 @@ final class EmbeddedScene extends GlassScene implements EmbeddedSceneInterface {
         {
             pixelFormat = PixelFormat.getIntArgbInstance();
         }
+        
+        pulseListener = () -> {
+            if( updateSceneState.getAndSet(false) ) {
+                updateSceneState();
+            }
+        };
+        Toolkit.getToolkit().addStageTkPulseListener(pulseListener);
+        
         assert pixelFormat != null;
     }
 
     @Override
     public void dispose() {
         assert host != null;
+        Toolkit.getToolkit().removeStageTkPulseListener(pulseListener);
         QuantumToolkit.runWithRenderLock(() -> {
             host.setEmbeddedScene(null);
             host = null;
@@ -155,7 +168,8 @@ final class EmbeddedScene extends GlassScene implements EmbeddedSceneInterface {
         renderScaleX = scalex;
         renderScaleY = scaley;
         entireSceneNeedsRepaint();
-        sceneState.update();
+        updateSceneState.set(true);
+        Toolkit.getToolkit().firePulse();
     }
 
     public float getRenderScaleX() {
