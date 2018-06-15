@@ -1,6 +1,8 @@
 language: java
 sudo: false
 
+jdk: openjdk10
+
 addons:
   apt:
     packages: &global_deps
@@ -47,8 +49,6 @@ matrix:
   include:
     - os: linux
       dist: trusty
-      install: . ./install-jdk.sh -F 10 -L GPL
-      env: JDK='Open JDK 10'
       addons:
         apt:
           packages:
