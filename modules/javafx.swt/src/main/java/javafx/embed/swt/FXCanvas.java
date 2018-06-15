@@ -185,8 +185,8 @@ public class FXCanvas extends Canvas {
                 // FAIL silently should the reflection fail
             }
         } else if (SWT.getPlatform().equals("win32")) {
-            if(swtDPIUtilMethod == null) {
-        	return 1.0;
+            if (swtDPIUtilMethod == null) {
+                return 1.0;
             }
             try {
                 Integer value = (Integer) swtDPIUtilMethod.invoke(null);
@@ -260,7 +260,7 @@ public class FXCanvas extends Canvas {
         } else if (SWT.getPlatform().equals("win32")) {
             try {
                 String autoScale = AccessController.doPrivileged((PrivilegedAction<String>)() -> System.getProperty("swt.autoScale"));
-                if(autoScale == null || ! "false".equalsIgnoreCase(autoScale)) {
+                if (autoScale == null || ! "false".equalsIgnoreCase(autoScale)) {
                     Class dpiUtilClass = Class.forName("org.eclipse.swt.internal.DPIUtil");
                     swtDPIUtilMethod = dpiUtilClass.getMethod("getDeviceZoom");
                 }
@@ -332,7 +332,7 @@ public class FXCanvas extends Canvas {
         AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
             System.setProperty("com.sun.javafx.application.type", "FXCanvas");
             System.setProperty("javafx.embed.isEventThread", "true");
-            if(swtDPIUtilMethod == null) {
+            if (swtDPIUtilMethod == null) {
                 System.setProperty("glass.win.uiScale", "100%");
                 System.setProperty("glass.win.renderScale", "100%");
             } else {
