@@ -159,6 +159,14 @@ final class WCFontImpl extends WCFont {
     @Override public double getGlyphWidth(int glyph) {
         return getFontStrike().getFontResource().getAdvance(glyph, font.getSize());
     }
+    
+    @Override public float[] getGlyphBoundingBox(int glyph) {
+        float[] bb = new float[4];
+        bb = getFontStrike().getFontResource().getGlyphBoundingBox(glyph, font.getSize(), bb);
+        bb[1]= -getAscent();
+        bb[3]= getDescent()-bb[1];
+        return bb;
+    }
 
     @Override public float getXHeight() {
         return getFontStrike().getMetrics().getXHeight();
