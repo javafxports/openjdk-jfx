@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-if [[ "${TRAVIS_OS_NAME}" == osx ]]; then
-  export JAVA_HOME=~/jdk10
-  export PATH=$JAVA_HOME/bin:$PATH
-fi
 echo "which java: $(which java)"
 ulimit -c unlimited -S
 
