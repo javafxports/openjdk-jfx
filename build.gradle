@@ -1523,6 +1523,44 @@ void addMavenPublication(Project project, boolean hasNative, List<String> projec
     project.group = MAVEN_GROUP_ID
     project.version = MAVEN_VERSION
 
+    if (project.name == 'base') {
+        project.publishing {
+            publications {
+                javafx(MavenPublication) {
+                    artifactId = 'javafx'
+                    artifacts = []
+                }
+            }
+        }
+    }
+
+    gradle.taskGraph.whenReady { g ->
+        project.tasks.findAll { it.name == 'generatePomFileForJavafxPublication'}.each { it ->
+            it.doLast {
+                copy {
+                    into project.file("${project.buildDir}/publications/javafx")
+                    from file("${rootProject.projectDir}/javafx.pom")
+                    rename "javafx.pom", "pom-default.xml"
+                }
+            }
+        }
+    }
+
+    project.publishing {
+        repositories {
+            maven {
+                def repositoryUrl = project.hasProperty('repositoryUrl') ? project.getProperty('repositoryUrl') : ""
+                def repositoryUsername = project.hasProperty('repositoryUsername') ? project.getProperty('repositoryUsername') : ""
+                def repositoryPassword = project.hasProperty('repositoryPassword') ? project.getProperty('repositoryPassword') : ""
+                url repositoryUrl
+                credentials {
+                   username repositoryUsername
+                   password repositoryPassword
+                }
+            }
+        }
+    }
+
     compileTargets { t ->
         project.publishing {
             publications {
@@ -1535,31 +1573,24 @@ void addMavenPublication(Project project, boolean hasNative, List<String> projec
 
                     if (!projectDependencies.empty) {
                         pom.withXml {
+                            Node parent = asNode().appendNode("parent")
+                            parent.appendNode("groupId", MAVEN_GROUP_ID)
+                            parent.appendNode("artifactId", "javafx")
+                            parent.appendNode("version", MAVEN_VERSION)
+
                             Node dependencies = asNode().appendNode("dependencies")
                             projectDependencies.each { dep ->
                                 Node dependency = dependencies.appendNode("dependency")
                                 dependency.appendNode("groupId", MAVEN_GROUP_ID)
                                 dependency.appendNode("artifactId", "javafx.$dep")
                                 dependency.appendNode("version", MAVEN_VERSION)
-                                dependency.appendNode("classifier", t.name)
+                                dependency.appendNode("classifier", "\${javafx.platform}")
                             }
                         }
                     }
                 }
             }
 
-            repositories {
-                maven {
-                    def repositoryUrl = project.hasProperty('repositoryUrl') ? project.getProperty('repositoryUrl') : ""
-                    def repositoryUsername = project.hasProperty('repositoryUsername') ? project.getProperty('repositoryUsername') : ""
-                    def repositoryPassword = project.hasProperty('repositoryPassword') ? project.getProperty('repositoryPassword') : ""
-                    url repositoryUrl
-                    credentials {
-                       username repositoryUsername
-                       password repositoryPassword
-                    }
-                }
-            }
         }
     }
 }
