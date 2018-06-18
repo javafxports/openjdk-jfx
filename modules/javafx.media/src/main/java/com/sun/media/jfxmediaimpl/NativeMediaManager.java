@@ -126,10 +126,13 @@ public class NativeMediaManager {
                 }
                 if (HostUtils.isMacOSX()) {
                     dependencies.add("fxplugins");
-                    dependencies.add("glit-lite");
-                    dependencies.add("jfxmedia_av");
+                    dependencies.add("glib-lite");
+                    dependencies.add("jfxmedia_avf");
                 }
-
+                if (HostUtils.isWindows()) {
+                    dependencies.add("fxplugins");
+                    dependencies.add("glib-lite");
+                }
                 NativeLibLoader.loadLibrary("jfxmedia", dependencies);
                 return null;
             });
