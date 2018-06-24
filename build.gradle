@@ -1567,25 +1567,44 @@ void addMavenPublication(Project project, boolean hasNative, List<String> projec
                 maven(MavenPublication) {
                     artifactId = project.moduleName
 
+                    artifact project.tasks."moduleEmptyPublicationJar$t.capital"
                     artifact project.tasks."modularPublicationJar$t.capital" {
                         classifier "$t.name"
                     }
 
-                    if (!projectDependencies.empty) {
-                        pom.withXml {
-                            Node parent = asNode().appendNode("parent")
-                            parent.appendNode("groupId", MAVEN_GROUP_ID)
-                            parent.appendNode("artifactId", "javafx")
-                            parent.appendNode("version", MAVEN_VERSION)
+                    pom.withXml {
+                        Node parent = asNode().appendNode("parent")
+                        parent.appendNode("groupId", MAVEN_GROUP_ID)
+                        parent.appendNode("artifactId", "javafx")
+                        parent.appendNode("version", MAVEN_VERSION)
 
-                            Node dependencies = asNode().appendNode("dependencies")
+                        Node dependencies = asNode().appendNode("dependencies")
+
+                        Node projectDependencyLinux = dependencies.appendNode("dependency")
+                        projectDependencyLinux.appendNode("groupId", MAVEN_GROUP_ID)
+                        projectDependencyLinux.appendNode("artifactId", project.moduleName)
+                        projectDependencyLinux.appendNode("version", MAVEN_VERSION)
+                        projectDependencyLinux.appendNode("classifier", "\${javafx.platform.linux}")
+
+                        Node projectDependencyMac = dependencies.appendNode("dependency")
+                        projectDependencyMac.appendNode("groupId", MAVEN_GROUP_ID)
+                        projectDependencyMac.appendNode("artifactId", project.moduleName)
+                        projectDependencyMac.appendNode("version", MAVEN_VERSION)
+                        projectDependencyMac.appendNode("classifier", "\${javafx.platform.mac}")
+
+                        Node projectDependencyWin = dependencies.appendNode("dependency")
+                        projectDependencyWin.appendNode("groupId", MAVEN_GROUP_ID)
+                        projectDependencyWin.appendNode("artifactId", project.moduleName)
+                        projectDependencyWin.appendNode("version", MAVEN_VERSION)
+                        projectDependencyWin.appendNode("classifier", "\${javafx.platform.win}")
+
+                        if (!projectDependencies.empty) {
                             projectDependencies.each { dep ->
-                                Node dependency = dependencies.appendNode("dependency")
-                                dependency.appendNode("groupId", MAVEN_GROUP_ID)
-                                dependency.appendNode("artifactId", "javafx.$dep")
-                                dependency.appendNode("version", MAVEN_VERSION)
-                                dependency.appendNode("classifier", "\${javafx.platform}")
-                            }
+                                Node projectDependency = dependencies.appendNode("dependency")
+                                projectDependency.appendNode("groupId", MAVEN_GROUP_ID)
+                                projectDependency.appendNode("artifactId", "javafx.$dep")
+                                projectDependency.appendNode("version", MAVEN_VERSION)
+                           }
                         }
                     }
                 }
@@ -5044,13 +5063,21 @@ compileTargets { t ->
         def dstModularJarDir="${publicationDir}"
         def srcClassesDir = "${buildDir}/${platformPrefix}module-classes"
         def srcLibsDir = "${buildDir}/${platformPrefix}module-lib"
+
+        def modularEmptyPublicationJarName = "${moduleName}.jar"
+        def modularEmptyPublicationJarTask = project.task("moduleEmptyPublicationJar${t.capital}", type: Jar) {
+            destinationDir = file("${dstModularJarDir}")
+            archiveName = modularEmptyPublicationJarName
+        }
+
         def modularPublicationJarName = "${moduleName}-${t.name}.jar"
-        def modularPublicationJarTask = project.task("modularPublicationJar${t.capital}", type: Jar ) {
+        def modularPublicationJarTask = project.task("modularPublicationJar${t.capital}", type: Jar, dependsOn: modularEmptyPublicationJarTask) {
             destinationDir = file("${dstModularJarDir}")
             archiveName = modularPublicationJarName
             from srcLibsDir
             from srcClassesDir
         }
+
         buildModulesTask.dependsOn(modularPublicationJarTask)
 
     }

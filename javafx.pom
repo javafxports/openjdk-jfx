@@ -12,6 +12,9 @@
     <properties>
         <javafx.version>11.0.0-SNAPSHOT</javafx.version>
         <javafx.platform>${os.name}</javafx.platform>
+        <javafx.platform.linux>linux</javafx.platform.linux>
+        <javafx.platform.mac>mac</javafx.platform.mac>
+        <javafx.platform.win>win</javafx.platform.win>
     </properties>
     <dependencyManagement>
     </dependencyManagement>
@@ -46,8 +49,21 @@
                 </os>
             </activation>
             <properties>
-                <os.name>windows</os.name>
+                <os.name>win</os.name>
             </properties>
         </profile>
-   </profiles>
+        <profile>
+            <id>javafx.platform.custom</id>
+            <activation>
+                <property>
+                    <name>javafx.platform</name>
+                </property>
+            </activation>
+            <properties>
+                <javafx.platform.linux>${javafx.platform}</javafx.platform.linux>
+                <javafx.platform.mac>${javafx.platform}</javafx.platform.mac>
+                <javafx.platform.win>${javafx.platform}</javafx.platform.win>
+            </properties>
+        </profile>
+    </profiles>
 </project>
