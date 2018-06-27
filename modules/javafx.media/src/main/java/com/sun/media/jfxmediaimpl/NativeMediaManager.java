@@ -289,6 +289,7 @@ public class NativeMediaManager {
     public MediaPlayer getPlayer(Locator locator) {
         // FIXME: remove this
         initNativeLayer();
+
         MediaPlayer player = PlatformManager.getManager().createMediaPlayer(locator);
         if (null == player) {
             throw new MediaException("Could not create player!");
