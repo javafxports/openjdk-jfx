@@ -242,6 +242,8 @@ public class NativeLibLoader {
             byte[] fileHash;
             try {
                 DigestInputStream dis = new DigestInputStream(is, MessageDigest.getInstance("MD5"));
+                dis.getMessageDigest().reset();
+                while (dis.read() != -1) { /* empty loop body is intentional */ }
                 isHash = dis.getMessageDigest().digest();
             }
             catch (NoSuchAlgorithmException nsa) {
