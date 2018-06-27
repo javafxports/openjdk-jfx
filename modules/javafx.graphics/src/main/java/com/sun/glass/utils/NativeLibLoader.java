@@ -251,7 +251,7 @@ public class NativeLibLoader {
             }
             fileHash = calculateCheckSum(f);
             if (!Arrays.equals(isHash, fileHash)) {
-                f.delete();
+                Files.delete(f.toPath());
             } else {
                 // hashes are the same, we already have the file.
                 write = false;
