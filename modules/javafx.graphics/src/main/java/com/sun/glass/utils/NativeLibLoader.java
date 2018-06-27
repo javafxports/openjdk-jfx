@@ -43,7 +43,6 @@ import java.util.List;
 public class NativeLibLoader {
 
     private static final HashSet<String> loaded = new HashSet<String>();
-    private static final String tmpdir = System.getProperty("java.io.tmpdir");
 
     public static synchronized void loadLibrary(String libname) {
         if (!loaded.contains(libname)) {
@@ -154,7 +153,7 @@ public class NativeLibLoader {
                             + libraryName + ") succeeded");
                 }
             } catch (UnsatisfiedLinkError ex2) {
-                // if the library is available in the jar, copy it to /tmp and load it from there
+                // if the library is available in the jar, copy it to cache and load it from there
                 if (loadLibraryFromResource(libraryName, dependencies, caller)) {
                     return;
                 }
@@ -213,8 +212,8 @@ public class NativeLibLoader {
                 return true;
             }
         } catch (Throwable t) {
-            // we should only be here if the resource exists in the module, but 
-            // for some reasons it can't be loaded. 
+            // we should only be here if the resource exists in the module, but
+            // for some reasons it can't be loaded.
             System.err.println("Loading library " + libraryName + " from resource failed: " + t);
             t.printStackTrace();
         }
