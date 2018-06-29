@@ -200,7 +200,7 @@ public class NativeLibLoader {
             String reallib = "/"+libPrefix+libraryName+libSuffix;
             InputStream is = caller.getResourceAsStream(reallib);
             if (is != null) {
-                String fp = cacheLibrary(is, reallib);
+                String fp = cacheLibrary(is, reallib, caller);
                 if (load) {
                     System.load(fp);
                     if (verbose) {
@@ -220,7 +220,7 @@ public class NativeLibLoader {
         return false;
     }
 
-    private static String cacheLibrary(InputStream is, String name) throws IOException {
+    private static String cacheLibrary(InputStream is, String name, Class caller) throws IOException {
         String jfxVersion = System.getProperty("javafx.version", "versionless");
         String userCache = System.getProperty("user.home") + "/.openjfx/cache/" + jfxVersion;
         File cacheDir = new File(userCache);
@@ -243,8 +243,11 @@ public class NativeLibLoader {
             try {
                 DigestInputStream dis = new DigestInputStream(is, MessageDigest.getInstance("MD5"));
                 dis.getMessageDigest().reset();
-                while (dis.read() != -1) { /* empty loop body is intentional */ }
+                byte[] buffer = new byte[4096];
+                while (dis.read(buffer) != -1) { /* empty loop body is intentional */ }
                 isHash = dis.getMessageDigest().digest();
+                is.close();
+                is = caller.getResourceAsStream(name); // mark/reset not supported, we have to reread
             }
             catch (NoSuchAlgorithmException nsa) {
                 isHash = new byte[1];
@@ -272,7 +275,8 @@ public class NativeLibLoader {
                 try (final InputStream stream = new FileInputStream(file);
                     final DigestInputStream dis = new DigestInputStream(stream, MessageDigest.getInstance("MD5")); ) {
                     dis.getMessageDigest().reset();
-                    while (dis.read() != -1) { /* empty loop body is intentional */ }
+                    byte[] buffer = new byte[4096];
+                    while (dis.read(buffer) != -1) { /* empty loop body is intentional */ }
                     return dis.getMessageDigest().digest();
                 }
 
