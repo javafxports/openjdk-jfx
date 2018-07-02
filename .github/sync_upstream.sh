@@ -17,6 +17,9 @@ cd ../combined
 echo "Check out master"
 git checkout master
 
+echo "Pull master (github)"
+git pull github master
+
 echo "Fetch (root)"
 git fetch "imports/openjfx/jfx-dev/rt/root"
 
