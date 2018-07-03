@@ -3,36 +3,6 @@ sudo: false
 
 jdk: openjdk10
 
-addons:
-  apt:
-    packages: &global_deps
-      - ksh
-      - bison
-      - flex
-      - gperf
-      - libasound2-dev
-      - libgl1-mesa-dev
-      - libgstreamer0.10-dev
-      - libgstreamer-plugins-base0.10-dev
-      - libjpeg-dev
-      - libpng-dev
-      - libx11-dev
-      - libxml2-dev
-      - libxslt1-dev
-      - libxt-dev
-      - libxxf86vm-dev
-      - pkg-config
-      - libavcodec-dev
-      - mercurial
-      - libgtk2.0-dev
-      - libgtk-3-dev
-      - libxtst-dev
-      - libudev-dev
-      - libavformat-dev
-      - cmake
-      - ruby
-      - gdb
-      - libcups2-dev
 
 # Won't be able to build webkit in the time alloted by Travis
 
@@ -51,8 +21,39 @@ matrix:
       dist: trusty
       addons:
         apt:
+          sources:
+            # for gcc 7.3
+            - sourceline: 'ppa:ubuntu-toolchain-r/test'
           packages:
-            - *global_deps
+            - ksh
+            - bison
+            - flex
+            - gperf
+            - libasound2-dev
+            - libgl1-mesa-dev
+            - libgstreamer0.10-dev
+            - libgstreamer-plugins-base0.10-dev
+            - libjpeg-dev
+            - libpng-dev
+            - libx11-dev
+            - libxml2-dev
+            - libxslt1-dev
+            - libxt-dev
+            - libxxf86vm-dev
+            - pkg-config
+            - libavcodec-dev
+            - mercurial
+            - libgtk2.0-dev
+            - libgtk-3-dev
+            - libxtst-dev
+            - libudev-dev
+            - libavformat-dev
+            - cmake
+            - ruby
+            - gdb
+            - libcups2-dev
+            - gcc-7
+            - g++-7
     - os: osx
       osx_image: xcode9
       # env: PRINT_CRASH_LOGS="true"
@@ -63,7 +64,10 @@ before_script:
   # run on xvfb screen (for linux).
   - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then export DISPLAY=:99.0 && sh -e /etc/init.d/xvfb start; fi
 
-before_install: .ci/before_install.sh
+before_install:
+  - .ci/before_install.sh
+  - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 --slave /usr/bin/g++ g++ /usr/bin/g++-7 && sudo update-alternatives --config gcc && gcc --version && g++ --version; fi
+
 
 # skip install stage.
 install: true
