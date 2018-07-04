@@ -167,6 +167,8 @@ public class VirtualFlowMemoryLeakTest {
 
     @Test
     public void test_JDK8203345() throws Exception {
+        assumeTrue(PlatformUtil.isMac() || PlatformUtil.isWindows());
+
         final boolean screenReaderPresent = screenReaderLatch.await(5_000, MILLISECONDS);
         assumeTrue(screenReaderPresent);
 
