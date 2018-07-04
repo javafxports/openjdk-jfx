@@ -62,15 +62,6 @@ public class VirtualFlowMemoryLeakTest {
     private static CountDownLatch startupLatch;
     private static CountDownLatch screenReaderLatch = new CountDownLatch(1);
 
-    public static void main(final String[] args) throws Exception {
-        initFX();
-        try {
-            new VirtualFlowMemoryLeakTest().test_JDK8203345();
-        } finally {
-            teardown();
-        }
-    }
-
     public static class TestApp extends Application {
         @Override
         public void start(final Stage stage) throws Exception {
