@@ -36,6 +36,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.sun.javafx.PlatformUtil;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
