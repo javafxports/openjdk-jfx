@@ -43,14 +43,11 @@ matrix:
             - libxxf86vm-dev
             - pkg-config
             - libavcodec-dev
-            - mercurial
             - libgtk2.0-dev
             - libgtk-3-dev
             - libxtst-dev
             - libudev-dev
             - libavformat-dev
-            - cmake
-            - ruby
             - gdb
             - libcups2-dev
             - gcc-7
@@ -68,6 +65,7 @@ before_script:
 before_install:
   - .ci/before_install.sh
   - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 --slave /usr/bin/g++ g++ /usr/bin/g++-7 && sudo update-alternatives --config gcc && gcc --version && g++ --version; fi
+  - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then readlink -f gcc && readlink -f g++; fi
 
 
 # skip install stage.
