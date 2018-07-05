@@ -2,6 +2,7 @@
 set -euo pipefail
 
 if [[ "${TRAVIS_OS_NAME}" == osx ]]; then
+  brew install ccache
   brew update
   brew install ant
   brew install findutils
