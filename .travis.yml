@@ -73,7 +73,7 @@ install: true
 
 script:
     # compile for 2000 seconds,
-   - timeout 2000 .ci/script.sh webkit || true
+   - timeout 1600 .ci/script.sh webkit || true
     # build a cache
    - .ci/script.sh nowebkit
 

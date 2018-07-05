@@ -12,7 +12,7 @@ fi
 
 echo "WebKit build ${BUILD_WEBKIT}"
 
-sh ./gradlew all test -PCONF=Release -PCOMPILE_WEBKIT=${BUILD_WEBKIT} --no-daemon --stacktrace --info
+sh ./gradlew -PCONF=Release -PCOMPILE_WEBKIT=${BUILD_WEBKIT} --no-daemon
 
 # Print core dumps when JVM crashes.
 RESULT=$?
