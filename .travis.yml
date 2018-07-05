@@ -71,7 +71,11 @@ before_install:
 # skip install stage.
 install: true
 
-script: .ci/script.sh
+script:
+    # compile for 2000 seconds,
+   - timeout 2000 .ci/script.sh webkit || true
+    # build a cache
+   - .ci/script.sh nowebkit
 
 notifications:
   email: false

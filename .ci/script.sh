@@ -4,7 +4,15 @@ set -uo pipefail
 echo "which java: $(which java)"
 ulimit -c unlimited -S
 
-sh ./gradlew all test -PCONF=Release -PCOMPILE_WEBKIT=true --no-daemon --stacktrace --info
+if [[ $1 == webkit ]]; then
+  BUILD_WEBKIT=true
+else
+  BUILD_WEBKIT=false
+fi
+
+echo "WebKit build ${BUILD_WEBKIT}"
+
+sh ./gradlew all test -PCONF=Release -PCOMPILE_WEBKIT=${BUILD_WEBKIT} --no-daemon --stacktrace --info
 
 # Print core dumps when JVM crashes.
 RESULT=$?
