@@ -11,6 +11,7 @@ before_cache:
   - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
 
 cache:
+  ccache: true
   directories:
     - $HOME/.gradle/caches/
 
