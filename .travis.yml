@@ -15,6 +15,7 @@ cache:
   directories:
     - $HOME/.gradle/caches
     - $HOME/.ccache
+    - $HOME/Library/Caches/Homebrew
 
 matrix:
   fast_finish: true
@@ -76,7 +77,7 @@ install: true
 
 script:
     # compile for 2000 seconds,
-   - timeout 2000 .ci/script.sh webkit || gtimeout 2000 .ci/script.sh webkit || true
+   - timeout 1800 .ci/script.sh webkit || gtimeout 1800 .ci/script.sh webkit || true
     # build a cache
    - .ci/script.sh nowebkit
 

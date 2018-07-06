@@ -2,9 +2,9 @@
 set -euo pipefail
 
 if [[ "${TRAVIS_OS_NAME}" == osx ]]; then
-  brew install ccache
   brew update
   brew install ant
+  brew install ccache
   brew install findutils
   brew unlink python # fixes 'run_one_line' is not defined error in backtrace
 fi
