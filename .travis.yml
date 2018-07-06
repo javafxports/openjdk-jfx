@@ -11,6 +11,7 @@ before_cache:
   - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
 
 cache:
+  apt: true
   directories:
     - $HOME/.gradle/caches
     - $HOME/.ccache
@@ -75,7 +76,7 @@ install: true
 
 script:
     # compile for 2000 seconds,
-   - timeout 1600 .ci/script.sh webkit || gtimeout 1600 .ci/script.sh webkit || true
+   - timeout 2000 .ci/script.sh webkit || gtimeout 2000 .ci/script.sh webkit || true
     # build a cache
    - .ci/script.sh nowebkit
 
