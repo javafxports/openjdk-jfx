@@ -10,12 +10,10 @@ before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
   - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
 
-language: c++
-
 cache:
-  ccache: true
   directories:
-    - $HOME/.gradle/caches/
+    - $HOME/.gradle/caches
+    - $HOME/.ccache
 
 matrix:
   fast_finish: true
@@ -67,8 +65,9 @@ before_script:
 before_install:
   - .ci/before_install.sh
   - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 --slave /usr/bin/g++ g++ /usr/bin/g++-7 && sudo update-alternatives --config gcc && gcc --version && g++ --version; fi
-  - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then readlink -f gcc && readlink -f g++; fi
   - if [ "${TRAVIS_OS_NAME}" == "osx" ]; then export PATH="/usr/local/opt/ccache/libexec:$PATH"; fi
+  - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then export PATH="/usr/lib/ccache:$PATH"; fi
+  - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then readlink -f gcc && readlink -f g++; fi
 
 
 # skip install stage.
