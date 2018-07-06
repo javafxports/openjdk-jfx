@@ -67,7 +67,7 @@ before_install:
   - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 --slave /usr/bin/g++ g++ /usr/bin/g++-7 && sudo update-alternatives --config gcc && gcc --version && g++ --version; fi
   - if [ "${TRAVIS_OS_NAME}" == "osx" ]; then export PATH="/usr/local/opt/ccache/libexec:$PATH"; fi
   - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then export PATH="/usr/lib/ccache:$PATH"; fi
-  - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then readlink -f gcc && readlink -f g++; fi
+  - which gcc && which g++
 
 
 # skip install stage.
@@ -75,7 +75,7 @@ install: true
 
 script:
     # compile for 2000 seconds,
-   - timeout 1600 .ci/script.sh webkit || true
+   - timeout 1600 .ci/script.sh webkit || gtimeout 1600 .ci/script.sh webkit || true
     # build a cache
    - .ci/script.sh nowebkit
 
