@@ -67,7 +67,7 @@ public class Stylesheet {
 
     private final String url;
     /** The URL from which the stylesheet was loaded.
-     * @return The URL from which the stylesheet was loaded, or null if
+     * @return A String version of the URL from which the stylesheet was loaded, or null if
      *         the stylesheet was created from an inline style.
      */
     public String getUrl() {
@@ -238,7 +238,7 @@ public class Stylesheet {
     private String[] stringStore;
     final String[] getStringStore() { return stringStore; }
 
-    /** Load a binary stylesheet file from a input stream.
+    /** Loads a binary stylesheet from a URL.
      * @param url the URL from which the stylesheet will be loaded
      * @return the constructed stylesheet
      * @throws java.io.IOException the exception
@@ -293,9 +293,9 @@ public class Stylesheet {
     }
 
     /**
-     * Convert the .css file referenced by urlIn to binary format and write to urlOut.
-     * @param source is the JavaFX .css file to convert
-     * @param destination is the file to which the binary conversion is written
+     * Convert the .css file referenced by source to binary format and write to destination.
+     * @param source the JavaFX .css file to convert
+     * @param destination the file to which the binary version is written
      * @throws IOException the exception
      * @throws IllegalArgumentException if either parameter is null, if source and destination are the same,
      * if source cannot be read, or if destination cannot be written.
