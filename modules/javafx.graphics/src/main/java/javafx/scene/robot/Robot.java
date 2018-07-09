@@ -305,8 +305,8 @@ public final class Robot {
     /**
      * Returns a {@link WritableImage} containing the specified rectangular area relative
      * to the primary screen. If the given {@code image} is {@literal null}, or if the given
-     * {@code image} is too small, a new {@code WritableImage} will be created and returned.
-     * Otherwise, the given {@code image} is re-used.
+     * {@code image} is not the required size, a new {@code WritableImage} will be created
+     * and returned. Otherwise, the given {@code image} is re-used.
      *
      * @implSpec This method is equivalent to calling {@code getScreenCapture(x, y, width, height, true)},
      * that is, this method scales the image to fit the requested size.
@@ -328,8 +328,8 @@ public final class Robot {
     /**
      * Returns a {@link WritableImage} containing the specified rectangular area relative
      * to the primary screen. If the given {@code image} is {@literal null}, or if the given
-     * {@code image} is too small, a new {@code WritableImage} will be created and returned.
-     * Otherwise, the given {@code image} is re-used.
+     * {@code image} is not the required size, a new {@code WritableImage} will be created
+     * and returned. Otherwise, the given {@code image} is re-used.
      *
      * @implSpec This method is equivalent to calling {@code getScreenCapture(image, region, true)},
      * that is, this method scales the image to fit the requested size.
@@ -350,8 +350,8 @@ public final class Robot {
     /**
      * Returns a {@link WritableImage} containing the specified rectangular area relative to
      * the primary screen. If the given {@code image} is {@literal null}, or if the given
-     * {@code image} is too small, a new {@code WritableImage} will be created and returned.
-     * Otherwise, the given {@code image} is re-used.
+     * {@code image} is not the required size, a new {@code WritableImage} will be created
+     * and returned. Otherwise, the given {@code image} is re-used.
      * <p>
      * If the {@code scaleToFit} argument is {@literal false}, the returned
      * {@code Image} object dimensions may differ from the requested {@code width}
