@@ -174,6 +174,7 @@ public final class Robot {
      * @param location the (x,y) coordinates to move the mouse to
      * @throws IllegalStateException if this method is called on a thread
      * other than the JavaFX Application Thread.
+     * @throws NullPointerException if location is {@literal null}.
      */
     public final void mouseMove(Point2D location) {
         Objects.requireNonNull(location);
@@ -265,8 +266,8 @@ public final class Robot {
     /**
      * Returns a {@link WritableImage} containing the specified rectangular area relative
      * to the primary screen. If the given {@code image} is {@literal null}, or if the given
-     * {@code image} is too small, a new {@code WritableImage} will be created and returned.
-     * Otherwise, the given {@code image} is re-used.
+     * {@code image} is not the required size, a new {@code WritableImage} will be created
+     * and returned. Otherwise, the given {@code image} is re-used.
      * <p>
      * If the {@code scaleToFit} argument is {@literal false}, the returned
      * {@code Image} object dimensions may differ from the requested {@code width}
