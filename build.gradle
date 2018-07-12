@@ -297,7 +297,6 @@ ext.IS_WINDOWS = OS_NAME.contains("windows")
 ext.IS_LINUX = OS_NAME.contains("linux")
 
 ext.MAVEN_GROUP_ID = "org.openjfx"
-ext.MAVEN_VERSION = "11.0.0-SNAPSHOT"
 
 // Verify that the architecture & OS are supported configurations. Note that
 // at present building on PI is not supported, but we would only need to make
@@ -552,6 +551,7 @@ if (HUDSON_JOB_NAME == "not_hudson") {
 defineProperty("RELEASE_SUFFIX", relSuffix)
 defineProperty("RELEASE_VERSION_SHORT", "${RELEASE_VERSION}${RELEASE_SUFFIX}")
 defineProperty("RELEASE_VERSION_LONG", "${RELEASE_VERSION_SHORT}+${PROMOTED_BUILD_NUMBER}${relOpt}")
+defineProperty("MAVEN_VERSION", "$RELEASE_VERSION_LONG")
 
 // Check whether the COMPILE_TARGETS property has been specified (if so, it was done by
 // the user and not by this script). If it has not been defined then default
@@ -1517,7 +1517,7 @@ void addJSL(Project project, String name, String pkg, List<String> addExports, C
 
 }
 
-void addMavenPublication(Project project, boolean hasNative, List<String> projectDependencies) {
+void addMavenPublication(Project project, List<String> projectDependencies) {
     project.apply plugin: 'maven-publish'
 
     project.group = MAVEN_GROUP_ID
@@ -1565,7 +1565,7 @@ void addMavenPublication(Project project, boolean hasNative, List<String> projec
         project.publishing {
             publications {
                 maven(MavenPublication) {
-                    artifactId = project.moduleName
+                    artifactId = "javafx-${project.name}"
 
                     artifact project.tasks."moduleEmptyPublicationJar$t.capital"
                     artifact project.tasks."modularPublicationJar$t.capital" {
@@ -1580,29 +1580,17 @@ void addMavenPublication(Project project, boolean hasNative, List<String> projec
 
                         Node dependencies = asNode().appendNode("dependencies")
 
-                        Node projectDependencyLinux = dependencies.appendNode("dependency")
-                        projectDependencyLinux.appendNode("groupId", MAVEN_GROUP_ID)
-                        projectDependencyLinux.appendNode("artifactId", project.moduleName)
-                        projectDependencyLinux.appendNode("version", MAVEN_VERSION)
-                        projectDependencyLinux.appendNode("classifier", "\${javafx.platform.linux}")
-
-                        Node projectDependencyMac = dependencies.appendNode("dependency")
-                        projectDependencyMac.appendNode("groupId", MAVEN_GROUP_ID)
-                        projectDependencyMac.appendNode("artifactId", project.moduleName)
-                        projectDependencyMac.appendNode("version", MAVEN_VERSION)
-                        projectDependencyMac.appendNode("classifier", "\${javafx.platform.mac}")
-
-                        Node projectDependencyWin = dependencies.appendNode("dependency")
-                        projectDependencyWin.appendNode("groupId", MAVEN_GROUP_ID)
-                        projectDependencyWin.appendNode("artifactId", project.moduleName)
-                        projectDependencyWin.appendNode("version", MAVEN_VERSION)
-                        projectDependencyWin.appendNode("classifier", "\${javafx.platform.win}")
+                        Node projectDependencyPlatform = dependencies.appendNode("dependency")
+                        projectDependencyPlatform.appendNode("groupId", MAVEN_GROUP_ID)
+                        projectDependencyPlatform.appendNode("artifactId", "javafx-${project.name}")
+                        projectDependencyPlatform.appendNode("version", MAVEN_VERSION)
+                        projectDependencyPlatform.appendNode("classifier", "\${javafx.platform}")
 
                         if (!projectDependencies.empty) {
                             projectDependencies.each { dep ->
                                 Node projectDependency = dependencies.appendNode("dependency")
                                 projectDependency.appendNode("groupId", MAVEN_GROUP_ID)
-                                projectDependency.appendNode("artifactId", "javafx.$dep")
+                                projectDependency.appendNode("artifactId", "javafx-$dep")
                                 projectDependency.appendNode("version", MAVEN_VERSION)
                            }
                         }
@@ -1914,7 +1902,7 @@ project(":base") {
     sourceSets.main.java.srcDirs += "$buildDir/gensrc/java"
 
     compileJava.dependsOn processVersionInfo
-    addMavenPublication(project, true, [])
+    addMavenPublication(project, [])
 
 }
 
@@ -2341,7 +2329,7 @@ project(":graphics") {
         }
     }
 
-    addMavenPublication(project, true, [ 'base' ])
+    addMavenPublication(project, [ 'base' ])
 
 }
 
@@ -2402,7 +2390,7 @@ project(":controls") {
         include "**/*.bss"
     })
 
-    addMavenPublication(project, false, [ 'graphics' ])
+    addMavenPublication(project, [ 'graphics' ])
 
 }
 
@@ -2441,7 +2429,7 @@ project(":swing") {
 
     compileJava.options.compilerArgs.addAll(qualExportsSwing)
 
-    addMavenPublication(project, false, [ 'graphics' ])
+    addMavenPublication(project, [ 'graphics' ])
 }
 
 project(":swt") {
@@ -2535,7 +2523,7 @@ project(":fxml") {
         classpath += files("$JDK_HOME/jre/lib/ext/nashorn.jar")
     }
 
-    addMavenPublication(project, false, [ 'controls' ])
+    addMavenPublication(project, [ 'controls' ])
 
 }
 
@@ -3738,7 +3726,7 @@ project(":media") {
         }
     }
 
-    addMavenPublication(project, true, [ 'graphics' ])
+    addMavenPublication(project, [ 'graphics' ])
 
 }
 
@@ -3973,7 +3961,7 @@ project(":web") {
         assemble.dependsOn compileJavaDOMBinding, drtJar
     }
 
-    addMavenPublication(project, true, [ 'controls', 'media' ])
+    addMavenPublication(project, [ 'controls', 'media' ])
 
 }
 

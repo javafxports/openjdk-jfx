@@ -11,10 +11,6 @@
     <description>OpenJFX JavaFX</description>
     <properties>
         <javafx.version>11.0.0-SNAPSHOT</javafx.version>
-        <javafx.platform>${os.name}</javafx.platform>
-        <javafx.platform.linux>linux</javafx.platform.linux>
-        <javafx.platform.mac>mac</javafx.platform.mac>
-        <javafx.platform.win>win</javafx.platform.win>
     </properties>
     <dependencyManagement>
     </dependencyManagement>
@@ -27,7 +23,7 @@
                 </os>
             </activation>
             <properties>
-                <os.name>linux</os.name>
+                <javafx.platform>linux</javafx.platform>
             </properties>
         </profile>
         <profile>
@@ -38,7 +34,7 @@
                 </os>
             </activation>
             <properties>
-                <os.name>mac</os.name>
+                <javafx.platform>mac</javafx.platform>
             </properties>
         </profile>
         <profile>
@@ -49,7 +45,7 @@
                 </os>
             </activation>
             <properties>
-                <os.name>win</os.name>
+                <javafx.platform>win</javafx.platform>
             </properties>
         </profile>
         <profile>
@@ -60,9 +56,7 @@
                 </property>
             </activation>
             <properties>
-                <javafx.platform.linux>${javafx.platform}</javafx.platform.linux>
-                <javafx.platform.mac>${javafx.platform}</javafx.platform.mac>
-                <javafx.platform.win>${javafx.platform}</javafx.platform.win>
+                <javafx.platform>${javafx.platform}</javafx.platform>
             </properties>
         </profile>
     </profiles>
