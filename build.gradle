@@ -1542,6 +1542,9 @@ void addMavenPublication(Project project, List<String> projectDependencies) {
                     into project.file("${project.buildDir}/publications/javafx")
                     from file("${rootProject.projectDir}/javafx.pom")
                     rename "javafx.pom", "pom-default.xml"
+                    filter { line ->
+                        line.replaceAll("@VERSION@", MAVEN_VERSION)
+                    }
                 }
             }
         }

@@ -5,12 +5,12 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.openjfx</groupId>
     <artifactId>javafx</artifactId>
-    <version>11.0.0-SNAPSHOT</version>
+    <version>@VERSION@</version>
     <packaging>pom</packaging>
     <name>openjfx</name>
     <description>OpenJFX JavaFX</description>
     <properties>
-        <javafx.version>11.0.0-SNAPSHOT</javafx.version>
+        <javafx.version>@VERSION@</javafx.version>
     </properties>
     <dependencyManagement>
     </dependencyManagement>
