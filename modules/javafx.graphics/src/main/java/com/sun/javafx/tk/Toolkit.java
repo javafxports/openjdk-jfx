@@ -71,6 +71,7 @@ import java.util.WeakHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import com.sun.glass.ui.CommonDialogs.FileChooserResult;
+import com.sun.glass.ui.GlassRobot;
 import com.sun.glass.utils.NativeLibLoader;
 import com.sun.javafx.PlatformUtil;
 import com.sun.javafx.beans.event.AbstractNotifyListener;
@@ -199,17 +200,17 @@ public abstract class Toolkit {
             return TOOLKIT;
         }
 
-        // This loading of msvcp140.dll and vcruntime140.dll (VS2017) is required on Windows platforms
-        if (PlatformUtil.isWindows()) {
-            loadMSWindowsLibraries();
-        }
-
         AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
             // Get the javafx.version and javafx.runtime.version from a preconstructed
             // java class, VersionInfo, created at build time.
             VersionInfo.setupSystemProperties();
             return null;
         });
+
+        // This loading of msvcp140.dll and vcruntime140.dll (VS2017) is required on Windows platforms
+        if (PlatformUtil.isWindows()) {
+            loadMSWindowsLibraries();
+        }
 
         boolean userSpecifiedToolkit = true;
 
@@ -952,4 +953,6 @@ public abstract class Toolkit {
     public String getThemeName() {
         return null;
     }
+
+    public abstract GlassRobot createRobot();
 }
