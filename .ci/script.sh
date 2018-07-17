@@ -9,6 +9,9 @@ sh ./gradlew all test -PCONF=DebugNative -x :web:test --no-daemon --stacktrace -
 # Print core dumps when JVM crashes.
 RESULT=$?
 
+# KCR: check module-info class of javafx.swing module
+javap --module-path build/sdk/lib -m javafx.swing module-info
+
 if [[ ${RESULT} -ne 0 ]]; then
   if [ ! -z ${PRINT_CRASH_LOGS+x} ]; then
     if [[ "${TRAVIS_OS_NAME}" == osx ]]; then FIND="gfind"; else FIND="find"; fi

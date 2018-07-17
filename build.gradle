@@ -1292,6 +1292,7 @@ ext.UPDATE_STUB_CACHE = (BUILD_CLOSED && STUB_RUNTIME != "" && !file(STUB_RUNTIM
  *****************************************************************************/
 
 logger.quiet("gradle.gradleVersion: $gradle.gradleVersion")
+logger.quiet("KCR: testing...")
 logger.quiet("OS_NAME: $OS_NAME")
 logger.quiet("OS_ARCH: $OS_ARCH")
 logger.quiet("JAVA_HOME: $JAVA_HOME")
