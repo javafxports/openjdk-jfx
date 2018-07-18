@@ -146,8 +146,11 @@ public final class WebPage {
                     "com.sun.webkit.useJIT", "true"));
             final boolean useDFGJIT = Boolean.valueOf(System.getProperty(
                     "com.sun.webkit.useDFGJIT", "true"));
-            final boolean useCSS3D = Boolean.valueOf(System.getProperty(
-                    "com.sun.webkit.useCSS3D", Platform.isSupported(ConditionalFeature.SCENE3D) ? "true" : "false"));
+
+            // TODO: Enable CSS3D by default once it is stabilized.
+            boolean useCSS3D = Boolean.valueOf(System.getProperty(
+                    "com.sun.webkit.useCSS3D", "false"));
+            useCSS3D = useCSS3D && Platform.isSupported(ConditionalFeature.SCENE3D);
 
             // Initialize WTF, WebCore and JavaScriptCore.
             twkInitWebCore(useJIT, useDFGJIT, useCSS3D);
