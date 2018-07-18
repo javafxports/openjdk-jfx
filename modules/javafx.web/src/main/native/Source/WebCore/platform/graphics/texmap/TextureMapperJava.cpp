@@ -59,11 +59,11 @@ void TextureMapperJava::beginClip(const TransformationMatrix& matrix, const Floa
     GraphicsContext* context = currentContext();
     if (!context)
         return;
-    TransformationMatrix previousTransform = context->get3DTransform();
+    auto previousTransform = context->getCTM();
     context->save();
-    context->concat3DTransform(matrix);
+    context->concatCTM(matrix.toAffineTransform());
     context->clip(rect);
-    context->set3DTransform(previousTransform);
+    context->setCTM(previousTransform);
 }
 
 void TextureMapperJava::drawTexture(const BitmapTexture& texture, const FloatRect& targetRect, const TransformationMatrix& transform, float opacity, unsigned /* exposedEdges */)
