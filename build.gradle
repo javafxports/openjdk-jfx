@@ -5589,6 +5589,12 @@ compileTargets { t ->
         def standaloneSdkDir = "${rootProject.buildDir}/${standaloneSdkDirName}"
         def standaloneLegalDir = "${standaloneSdkDir}/legal"
 
+        def excludeDLLs = []
+        if (IS_WINDOWS) {
+            excludeDLLs += targetProperties.VS2017DLLNames
+            excludeDLLs += targetProperties.WinSDKDLLNames
+        }
+
         moduleProjList.each { project ->
             def moduleName = project.ext.moduleName
             def buildDir = project.buildDir
@@ -5612,6 +5618,13 @@ compileTargets { t ->
                         if (file(srcLibDir).isDirectory()) {
                             args("--libs")
                             args(srcLibDir)
+                        }
+                        // Exclude Microsoft DLLs from javafx.graphics.jmod
+                        if (moduleName == "javafx.graphics") {
+                            excludeDLLs.each { name ->
+                                args("--exclude")
+                                args(name)
+                            }
                         }
                         args("--legal-notices")
                         args(srcLegalDir)
