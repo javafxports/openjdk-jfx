@@ -109,8 +109,8 @@ public abstract class GlassRobot {
 
     /**
      * Scrolls the mouse wheel by the specified amount of wheel clicks. A positive
-     * {@code wheelAmt} scrolls the wheel towards the user (up) whereas negative
-     * amounts scrolls the wheel away from the user (down).
+     * {@code wheelAmt} scrolls the wheel towards the user (down) whereas negative
+     * amounts scrolls the wheel away from the user (up).
      *
      * @param wheelAmt the (signed) amount of clicks to scroll the wheel
      */
