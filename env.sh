@@ -13,7 +13,7 @@ export VS150COMNTOOLS="C:/Program Files (x86)/Microsoft Visual Studio/2017/Commu
 export DXSDK_DIR="C:/Program Files (x86)/Microsoft DirectX SDK (June 2010)"
 
 # ANT_HOME causes build failure if it has spaces.
-export ANT_HOME="C:/Progra~1/Java/apache-ant-1.8.2"
+export ANT_HOME="C:/Progra~1/Java/apache-ant-1.10.4"
 export MSVC_VER=14.14.26428
 
-export PATH=$PATH:"/cygdrive/c/Program Files/Java/gradle-4.6/bin":"/cygdrive/c/Program Files/Java/apache-ant-1.8.2/bin"
+export PATH=$PATH:"/cygdrive/c/Program Files/Java/gradle-4.6/bin":"/cygdrive/c/Program Files/Java/apache-ant-1.8.2/bin":"C:/Program Files/CMake/bin"
