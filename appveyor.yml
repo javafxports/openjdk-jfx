@@ -101,9 +101,10 @@ on_success:
 
 cache:
   - C:\Users\appveyor\.gradle\caches
-  - C:\Users\appveyor\.gradle\wrapper -> .gradle-wrapper\gradle-wrapper.properties
+  - C:\Users\appveyor\.gradle\wrapper -> gradle\wrapper\gradle-wrapper.properties
   - '%JAVA_HOME% -> appveyor.yml'
   - C:\ProgramData\chocolatey\bin -> appveyor.yml
   - C:\ProgramData\chocolatey\lib -> appveyor.yml
   - C:\ProgramData\chocolatey\cache -> appveyor.yml
   - C:\MSSymbols -> appveyor.yml
+
