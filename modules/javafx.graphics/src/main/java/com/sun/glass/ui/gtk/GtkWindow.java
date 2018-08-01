@@ -43,6 +43,12 @@ class GtkWindow extends Window {
 
     @Override
     protected native long _createWindow(long ownerPtr, long screenPtr, int mask);
+    
+    @Override
+    protected long _createEmbeddedWindow(long ownerPtr, long screenPtr, int mask) {
+        // TODO Auto-generated method stub
+        return 0;
+    }
 
     @Override
     protected native long _createChildWindow(long parent);
