@@ -1,9 +1,38 @@
 /*
- * Software
- * Copyright  2018 Gregery Barton
+ * Copyright (c) 2018 Gregery Barton, all rights reserved.
  *
- * Permission is granted to anyone to use this software for any purpose,
- * including commercial applications, and to alter it and redistribute it freely.
+ * Licensed under the Proliferate License, Version 1.0.
+ * You may not use this file except in compliance with the license.
+ * You may obtain an index of licenses at:
+ * https://github.com/gregeryb/proliferated/wiki/Index-of-Licenses
+ *
+ * This file may be sublicensed for distribution under the
+ * terms and conditions of ONE of the licenses listed below. Any
+ * modifications made to THIS file must not violate ANY license
+ * listed below. Upon agreeing to these terms, from top to bottom,
+ * left to right, the license that applies to you is the FIRST license
+ * when this file is deployed as standalone, or the EXACT match to the
+ * highest priority license in a combined work, if an exact match
+ * does not exist then the first license that is COMPATIBLE within
+ * the combined work applies.
+ *
+ * #PostgreSQL  #Upstream      #0BSD          #APSL-2.0      #EPL-2.0
+ * #NPOSL-3.0   #BSL-1.0       #Frmworx1.0    #BSD-2-Clause  #MirOS
+ * #LGPL-3.0    #NCSA          #Entessa       #CPAL-1.0      #AFL-3.0
+ * #GPL-3.0     #ORCLGPL2      #MS-PL         #OSL-3.0       #ZPL-2.0
+ * #LiLiQ-P     #UPL           #BSD-3-Clause  #EUPL-1.1      #APL-1.0
+ * #Naumen      #ECOS2         #AAL           #BSD-2-Patent  #W3C
+ * #LPPL-1.3c   #ECL-2.0       #Sleepycat     #Apache-2.0    #CDDL-1.0
+ * #HPND        #NGPL          #RSCPL         #OFL-1.1       #MPL-1.1
+ * #LiLiQ-R+    #AGPL-3.0      #RPL-1.5       #Xnet          #WXwindows
+ * #LGPL-2.1    #LiLiQ-R       #Zlib          #EPL-1.0       #SimPL-2.0
+ * #Motosoto    #MPL-1.0       #RPSL-1.0      #ISC           #Python-2.0
+ * #VSL-1.0     #OCLC-2.0      #CNRI-Python   #Fair          #NTP
+ * #OSET        #Watcom-1.0    #EUDatagrid    #GPL-2.0       #CATOSL-1.1
+ * #MPL-2.0     #LPL-1.02      #NASA-1.3      #SPL-1.0       #CUA-OPL-1.0
+ * #MS-RL       #QPL-1.0       #MIT           #EFL-2.0
+ * #IPA         #Artistic-2.0  #PHP-3.0       #OGTSL
+ * #CECILL-2.1  #Multics       #Nokia         #IPL-1.0
  *
  */
 package rebrand_javafx;
@@ -115,8 +144,7 @@ public class Rebrand {
    + "\n  however the standard license from these companies don't contain JavaFX specific text. "
    + "\n- It's your responsibility to make sure any other 'Must not be altered' text is unchanged or restored "
    + "\n  to its unaltered form."
-   + "\n- Search and replace ignores case."
-   + "\n- The process is not perfect and will require some manual corrections. Make sure you have a BACKUP!\n");
+   + "\n- Make sure you have a BACKUP!\n");
   Console console = System.console();
   if (console != null) {
    int wake_test = new Random().nextInt();
@@ -236,6 +264,10 @@ public class Rebrand {
  private static String edit(String source, SimpleEntry<String, String>[] edits) {
   String s = source;
   for (SimpleEntry<String, String> edit : edits) {
+   s = StringUtils.replace(s, edit.getKey().toUpperCase(), edit.getValue()
+    .toUpperCase());
+   s = StringUtils.replace(s, edit.getKey().toLowerCase(), edit.getValue()
+    .toLowerCase());
    s = StringUtils.replaceIgnoreCase(s, edit.getKey(), edit.getValue());
   }
   /*
