@@ -153,11 +153,8 @@
 namespace WebCore {
 
 WebPage::WebPage(std::unique_ptr<Page> page)
-    : m_syncLayers(false)
-    , m_suppressNextKeypressEvent(false)
-    , m_isDebugging(false)
+    : m_page(WTFMove(page))
 {
-    m_page = std::move(page);
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     if(!NotificationController::from(m_page.get())) {
         provideNotification(m_page.get(), NotificationClientJava::instance());

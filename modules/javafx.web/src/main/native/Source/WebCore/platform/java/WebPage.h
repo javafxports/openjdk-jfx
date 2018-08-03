@@ -134,15 +134,15 @@ private:
 
     std::unique_ptr<GraphicsLayer> m_rootLayer;
     std::unique_ptr<TextureMapper> m_textureMapper;
-    bool m_syncLayers;
+    bool m_syncLayers { false };
 
     // Webkit expects keyPress events to be suppressed if the associated keyDown
     // event was handled. Safari implements this behavior by peeking out the
     // associated WM_CHAR event if the keydown was handled. We emulate
     // this behavior by setting this flag if the keyDown was handled.
-    bool m_suppressNextKeypressEvent;
+    bool m_suppressNextKeypressEvent { false };
 
-    bool m_isDebugging;
+    bool m_isDebugging { false };
     static int globalDebugSessionCounter;
 };
 
