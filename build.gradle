@@ -1839,9 +1839,9 @@ def qualExportsSwing = [
 // These strings define the module-source-path to be used in compilation.
 // They need to contain the full paths to the sources and the * will be
 // used to infer the module name that is used.
-project.ext.defaultModuleSourcePath =
-    cygpath(rootProject.projectDir.path + '/modules/*/src/main/java') +
-        File.pathSeparator  +
+project.ext.defaultModuleSourcePath = 
+    cygpath(rootProject.projectDir.path + '/modules/*/src/main/java') + 
+        File.pathSeparator  + 
     cygpath(rootProject.projectDir.path + '/modules/*/build/gensrc/{java,jsl-decora,jsl-prism}')
 
 // graphics pass one
@@ -4380,9 +4380,10 @@ task javadoc(type: Javadoc, dependsOn: createMSPfile) {
     group = "Basic"
     description = "Generates the JavaDoc for all the public API"
     executable = JAVADOC
-    def projectsToDocument = [
-            project(":base"), project(":graphics"), project(":controls"), project(":media"),
-            project(":swing"), /*project(":swt"),*/ project(":fxml"), project(":web")]
+    //def projectsToDocument = [
+    //        project(":base"), project(":graphics"), project(":controls"), project(":media"),
+    //        project(":swing"), /*project(":swt"),*/ project(":fxml"), project(":web")]
+    def projectsToDocument = []
     source(projectsToDocument.collect({
         [it.sourceSets.main.java]
     }));
