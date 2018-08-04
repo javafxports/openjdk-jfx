@@ -1,6 +1,7 @@
 #!/bin/bash
 
 cd /cygdrive/c/Users/Gregery\ Barton/Documents/GitHub/openjdk-jfx/
+#cd /cygdrive/c/jfx
 
 
 

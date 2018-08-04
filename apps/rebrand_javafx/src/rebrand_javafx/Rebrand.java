@@ -139,12 +139,7 @@ public class Rebrand {
    + "\n- A default gradle build is not enough."
    + "\n- Refactoring does not work if a target identifier is split over multiple lines."
    + "\n- Repositories other than those in the default GitHub folders will be corrupted."
-   + "\n- Binary files introduced into the folder tree after initial clone from GitHub may also be corrupted."
-   + "\n- License text may be altered if the license text contains the literals 'javafx', 'com.sun', or 'com.oracle',"
-   + "\n  however the standard license from these companies don't contain JavaFX specific text. "
-   + "\n- It's your responsibility to make sure any other 'Must not be altered' text is unchanged or restored "
-   + "\n  to its unaltered form."
-   + "\n- Make sure you have a BACKUP!\n");
+   + "\n- Binary files introduced into the folder tree after initial clone from GitHub may also be corrupted.");
   Console console = System.console();
   if (console != null) {
    int wake_test = new Random().nextInt();
@@ -153,8 +148,7 @@ public class Rebrand {
     System.exit(1);
    }
   } else {
-   System.err.println("Must be run from an interactive console.");
-   System.exit(1);
+
   }
   SimpleEntry<String, String>[] edits = new SimpleEntry[]{
    new SimpleEntry("JavaFX", javafx),
