@@ -297,7 +297,7 @@ public class Stylesheet {
      * Convert the .css file referenced by source to binary format and write to destination.
      * @param source the JavaFX .css file to convert
      * @param destination the file to which the binary version is written
-     * @throws IOException if the destination file can not be created or any other IO error occurs.
+     * @throws IOException if any IO error occurs.
      * @throws IllegalArgumentException if either parameter is null, if source and destination are the same,
      * if source cannot be read, or if destination cannot be written.
      */
