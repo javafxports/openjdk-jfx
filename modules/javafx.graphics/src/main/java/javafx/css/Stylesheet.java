@@ -67,7 +67,7 @@ public class Stylesheet {
 
     private final String url;
     /** The URL from which the stylesheet was loaded.
-     * @return A String version of the URL from which the stylesheet was loaded, or null if
+     * @return A String representation of the URL from which the stylesheet was loaded, or null if
      *         the stylesheet was created from an inline style.
      */
     public String getUrl() {
@@ -131,9 +131,9 @@ public class Stylesheet {
     }
 
     /**
-     * Constructs a Stylesheet using the given URL as the base URI. The
+     * Constructs a Stylesheet interpreting the given String as the base URI. The
      * parameter may not be null.
-     * @param url
+     * @param url the base URI for this stylesheet.
      */
     Stylesheet(String url) {
 
@@ -239,9 +239,10 @@ public class Stylesheet {
     final String[] getStringStore() { return stringStore; }
 
     /** Loads a binary stylesheet from a URL.
-     * @param url the URL from which the stylesheet will be loaded
-     * @return the constructed stylesheet
-     * @throws java.io.IOException the exception
+     * @param url the URL from which the stylesheet will be loaded.
+     * @return the loaded stylesheet.
+     * @throws java.io.IOException if the binary stream corresponds to a more recent binary
+     * css version or if any other IO error occurs while reading from the stream.
      */
     public static Stylesheet loadBinary(URL url) throws IOException {
 
@@ -296,7 +297,7 @@ public class Stylesheet {
      * Convert the .css file referenced by source to binary format and write to destination.
      * @param source the JavaFX .css file to convert
      * @param destination the file to which the binary version is written
-     * @throws IOException the exception
+     * @throws IOException if the destination file can not be created or any other IO error occurs.
      * @throws IllegalArgumentException if either parameter is null, if source and destination are the same,
      * if source cannot be read, or if destination cannot be written.
      */
