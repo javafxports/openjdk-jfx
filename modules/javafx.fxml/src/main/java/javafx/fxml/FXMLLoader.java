@@ -3041,18 +3041,34 @@ public class FXMLLoader {
         return Class.forName(className, true, getDefaultClassLoader());
     }
 
-    private static boolean needsClassLoaderPermissionCheck(Class caller) {
-        if (caller == null) {
+    private static boolean needsClassLoaderPermissionCheck(ClassLoader from, ClassLoader to) {
+        if (from == to) {
             return false;
         }
-        return !FXMLLoader.class.getModule().equals(caller.getModule());
+        if (from == null) {
+            return false;
+        }
+        if (to == null) {
+            return true;
+        }
+        ClassLoader acl = to;
+        do {
+            acl = acl.getParent();
+            if (from == acl) {
+                return false;
+            }
+        } while (acl != null);
+        return true;
     }
 
     private static ClassLoader getDefaultClassLoader(Class caller) {
         if (defaultClassLoader == null) {
             final SecurityManager sm = System.getSecurityManager();
             if (sm != null) {
-                if (needsClassLoaderPermissionCheck(caller)) {
+                final ClassLoader callerClassLoader = (caller != null) ?
+                        caller.getClassLoader() :
+                        null;
+                if (needsClassLoaderPermissionCheck(callerClassLoader, FXMLLoader.class.getClassLoader())) {
                     sm.checkPermission(GET_CLASSLOADER_PERMISSION);
                 }
             }
