@@ -15,3 +15,6 @@ webrev.zip
 gradle.properties
 apps/samples/Ensemble8/lib/
 *.xml~
+!modules/javafx.media/src/main/native/gstreamer/3rd_party/glib/glib-2.56.1/build/
+!modules/javafx.media/src/main/native/gstreamer/gstreamer-lite/projects/build/
+

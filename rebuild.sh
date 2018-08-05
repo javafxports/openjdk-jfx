@@ -45,6 +45,6 @@ cd "$build_dir"
 pushd .
 cd "apps/rebrand_javafx" || exit 1
 ant jar || exit 1
-#java -jar dist/rebrand_javafx.jar "$win_build_dir" joslynfx aubree davis || exit 1
+java -jar dist/rebrand_javafx.jar "$win_build_dir" joslynfx aubree davis || exit 1
 popd
 gradle all
