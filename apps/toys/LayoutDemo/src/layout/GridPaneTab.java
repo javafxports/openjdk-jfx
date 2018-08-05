@@ -84,7 +84,7 @@ public class GridPaneTab extends Tab {
                 + "Duke was instantly embraced. In fact, at about the same time Java "
                 + "was first introduced and the first Java cup logo was commissioned, "
                 + "Duke became the official mascot of Java technology. In 2006, Duke "
-                + "was officially \"open sourced” under a BSD license. Developers and "
+                + "was officially \"open sourced\" under a BSD license. Developers and "
                 + "designers were encouraged to play around with Duke and for the first "
                 + "time had access to Duke’s graphical specifications through a java.net "
                 + "project at http://duke.kenai.com.\n\n"

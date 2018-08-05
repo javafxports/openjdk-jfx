@@ -174,12 +174,14 @@ public class Rebrand {
   {
    File conspicuous_file = new File(FilenameUtils.concat(path.toString(),
     ".travis.yml"));
+   System.out.println(conspicuous_file.toString());
    if (!conspicuous_file.exists()) {
     System.err.println("This does not appear to be an openjdk-JavaFX folder");
     System.exit(1);
    }
    File mysterious_file = new File(FilenameUtils.concat(path.toString(),
     "letter_from_lady_x_re_am_Main.eml"));
+   System.out.println(mysterious_file.toString());
    if (!mysterious_file.exists()) {
     System.err.println(
      "Not completely convinced this is a valid openjdk-JavaFX fork folder");
