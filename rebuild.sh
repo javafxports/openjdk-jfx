@@ -13,6 +13,10 @@ stat "$build_dir/letter_from_lady_x_re_am_Main.eml" || exit 1
 gradle -stop
 
 rm -rf "$build_dir"/* || exit 1
+rm -rf "$build_dir"/.gradle
+rm -rf "$build_dir"/buildSrc/.gradle
+
+
 cp ".travis.yml" "$build_dir" || exit 1
 cp "../letter_from_lady_x_re_am_Main.eml" "$build_dir" || exit 1
 
@@ -25,7 +29,6 @@ cp -r "apps" "$build_dir" &
 mkdir "$build_dir/modules"
 cp -r "modules/javafx.base" "$build_dir/modules" &
 cp -r "modules/javafx.controls" "$build_dir/modules" &
-cp -r "modules/javafx.fxml" "$build_dir/modules" &
 cp -r "modules/javafx.graphics" "$build_dir/modules" &
 cp -r "modules/javafx.media" "$build_dir/modules" &
 cp -r "modules/javafx.swing" "$build_dir/modules" &
