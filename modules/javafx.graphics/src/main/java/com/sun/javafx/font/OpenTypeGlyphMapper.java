@@ -29,11 +29,14 @@ public class OpenTypeGlyphMapper extends CharToGlyphMapper {
 
     PrismFontFile font;
     CMap cmap;
+    CMap cmap14;
+    int offset_format[] = {0}; // offset of format14
 
     public OpenTypeGlyphMapper(PrismFontFile font) {
         this.font = font;
+        offset_format[0] = 0;
         try {
-            cmap = CMap.initialize(font);
+            cmap = CMap.initialize(font, offset_format, -1);
         } catch (Exception e) {
             cmap = null;
         }
@@ -43,13 +46,35 @@ public class OpenTypeGlyphMapper extends CharToGlyphMapper {
         missingGlyph = 0; /* standard for TrueType fonts */
     }
 
-    public int getGlyphCode(int charCode) {
-        try {
-            return cmap.getGlyph(charCode);
-        } catch(Exception e) {
-            handleBadCMAP();
-            return missingGlyph;
+    public CMap createCMap14() {
+        if (cmap14 == null && offset_format[0] != 0) {
+            try {
+                cmap14 = CMap.initialize(font, offset_format, 14);
+                cmap14.setDefCMap(this.cmap);
+            } catch (Exception e) {
+                cmap14 = CMap.theNullCmap;
+            }
+            offset_format[0] = 0;
         }
+        return cmap14;
+    }
+
+    public int getGlyphCode(int charCode, int vs) {
+        if (vs == 0) {
+            try {
+                return cmap.getGlyph(charCode);
+            } catch(Exception e) {
+                handleBadCMAP();
+                return missingGlyph;
+            }
+        } else if (createCMap14() != null) {
+            try {
+                return cmap14.getGlyph(charCode, vs);
+            } catch(Exception e) {
+                return missingGlyph;
+            }
+        }
+        return missingGlyph;
     }
 
     private void handleBadCMAP() {

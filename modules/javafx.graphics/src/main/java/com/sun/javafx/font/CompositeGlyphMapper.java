@@ -31,6 +31,7 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
 
     public static final int SLOTMASK =  0xff000000;
     public static final int GLYPHMASK = 0x00ffffff;
+    public static final long LONGMASK = 0x00000000ffffffffL;
 
     public static final int NBLOCKS = 216;
     public static final int BLOCKSZ = 256;
@@ -54,11 +55,17 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
      * the caching ? So a variety of strategies are possible.
      */
     HashMap<Integer, Integer> glyphMap;
+    HashMap<Long, Integer> glyphMapVS; // HashMap for Variation Selector
+
+    public static long shiftVS_for_HashMap(int code) {
+        return (long)code << 32;
+    }
 
     public CompositeGlyphMapper(CompositeFontResource compFont) {
         font = compFont;
         missingGlyph = 0; // TrueType font standard, avoids lookup.
         glyphMap = new HashMap<Integer, Integer>();
+        glyphMapVS = new HashMap<Long, Integer>();
         slotMappers = new CharToGlyphMapper[compFont.getNumSlots()];
         asciiCacheOK = true;
     }
@@ -90,17 +97,37 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
         return ((slot) << 24 | (glyphCode & GLYPHMASK));
     }
 
-    private final int convertToGlyph(int unicode) {
+    public static final int compGlyphToSlot(int compGlyphCode) {
+        return (compGlyphCode >> 24);
+    }
+
+    public static final int compGlyphToGlyph(int compGlyphCode) {
+        return (compGlyphCode & GLYPHMASK);
+    }
+
+    private final int convertToGlyph(int unicode, int vs) {
         for (int slot = 0; slot < font.getNumSlots(); slot++) {
             CharToGlyphMapper mapper = getSlotMapper(slot);
-            int glyphCode = mapper.charToGlyph(unicode);
+            int glyphCode = mapper.charToGlyph(unicode, vs);
+
             if (glyphCode != mapper.getMissingGlyphCode()) {
                 glyphCode = compositeGlyphCode(slot, glyphCode);
-                glyphMap.put(unicode, glyphCode);
+                if (vs == 0 || CharToGlyphMapper.isVS(vs) == false) {
+                    glyphMap.put(unicode, glyphCode);
+                } else {
+                    glyphMapVS.put(
+                     shiftVS_for_HashMap(vs) | (unicode & LONGMASK), glyphCode);
+                }
                 return glyphCode;
             }
         }
-        glyphMap.put(unicode, missingGlyph);
+        if (vs == 0 || CharToGlyphMapper.isVS(vs) == false) {
+            glyphMap.put(unicode, missingGlyph);
+        } else {
+            glyphMapVS.put(
+             shiftVS_for_HashMap(vs) | (unicode & LONGMASK), missingGlyph);
+        }
+
         return missingGlyph;
     }
 
@@ -137,18 +164,24 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
         return charToGlyph[index];
     }
 
-    public int getGlyphCode(int charCode) {
+    public int getGlyphCode(int charCode, int vs) {
         // If ASCII then array lookup, else use glyphMap
         int retVal = getAsciiGlyphCode(charCode);
         if (retVal >= 0) {
             return retVal;
         }
 
-        Integer codeInt = glyphMap.get(charCode);
+        Integer codeInt;
+        if (vs == 0 || CharToGlyphMapper.isVS(vs) == false) {
+            codeInt = glyphMap.get(charCode);
+        } else {
+            codeInt = glyphMapVS.get(
+                       shiftVS_for_HashMap(vs) | (charCode & LONGMASK));
+        }
         if (codeInt != null) {
             return codeInt.intValue();
         } else {
-            return convertToGlyph(charCode);
+            return convertToGlyph(charCode, vs);
         }
     }
 }
