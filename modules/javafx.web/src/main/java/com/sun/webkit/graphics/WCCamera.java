@@ -25,8 +25,12 @@
 
 package com.sun.webkit.graphics;
 
+import com.sun.javafx.geom.transform.Affine3D;
+import com.sun.javafx.geom.transform.BaseTransform;
+import com.sun.javafx.geom.transform.GeneralTransform3D;
 import com.sun.javafx.sg.prism.NGCamera;
 import com.sun.javafx.sg.prism.NGDefaultCamera;
+import com.sun.prism.Graphics;
 
 // WCCamera is based on NGDefaultCamera, but the near and far clip
 // values are modified according to WebKit's requirement.
@@ -53,8 +57,18 @@ import com.sun.javafx.sg.prism.NGDefaultCamera;
 
 public class WCCamera extends NGDefaultCamera {
 
-    public static final NGCamera INSTANCE = new WCCamera();
+    public static final WCCamera INSTANCE0 = new WCCamera();
+    public static final WCCamera INSTANCE1 = new WCCamera();
 
+    public static WCCamera attachToGraphics(Graphics g) {
+        // flip the instances to invalidate state.isXformValid
+        // Refer BaseShaderContext.setRenderTarget
+        final WCCamera cam = g.getCameraNoClone() == INSTANCE0 ? INSTANCE1 : INSTANCE0;
+        g.setCamera(cam);
+        return cam;
+    }
+
+    @Override
     public void validate(final int w, final int h) {
         if ((w != viewWidth) || (h != viewHeight)) {
             setViewWidth(w);
@@ -62,6 +76,21 @@ public class WCCamera extends NGDefaultCamera {
 
             projViewTx.ortho(0.0, w, h, 0.0, -9999999, 99999);
         }
+    }
+
+    final private GeneralTransform3D perspectiveTransform = new GeneralTransform3D();
+    final private GeneralTransform3D resultTx = new GeneralTransform3D();
+    final private Affine3D xform = new Affine3D();
+
+    public void setPerspectiveTransform(GeneralTransform3D perspectiveTransform, BaseTransform xform) {
+        this.perspectiveTransform.set(perspectiveTransform);
+        this.xform.setTransform(xform);
+    }
+
+    @Override
+    public GeneralTransform3D getProjViewTx(GeneralTransform3D tx) {
+        resultTx.setIdentity();
+        return resultTx.mul(projViewTx).mul(xform).mul(perspectiveTransform);
     }
 }
 

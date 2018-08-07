@@ -1220,8 +1220,12 @@ class WCGraphicsPrismContext extends WCGraphicsContext {
         }
 
         private void apply(Graphics g) {
-            g.setTransform(getTransformNoClone());
-            g.setPerspectiveTransform(getPerspectiveTransformNoClone());
+            if (!getPerspectiveTransformNoClone().isIdentity()) {
+                WCCamera.attachToGraphics(g).setPerspectiveTransform(getPerspectiveTransformNoClone(), getTransformNoClone());
+                g.setTransform(BaseTransform.IDENTITY_TRANSFORM);
+            } else {
+                g.setTransform(getTransformNoClone());
+            }
             g.setClipRect(getClipNoClone());
             g.setExtraAlpha(getAlpha());
         }
