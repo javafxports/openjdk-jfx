@@ -24,10 +24,12 @@
  */
 
 #include "config.h"
-#include "BitmapTextureJava.h"
-#include "NotImplemented.h"
 
+#include "BitmapTextureJava.h"
 #include "GraphicsLayer.h"
+#include "NotImplemented.h"
+#include "PlatformContextJava.h"
+#include "TextureMapperJava.h"
 
 namespace WebCore {
 
@@ -46,9 +48,11 @@ void BitmapTextureJava::updateContents(const void* data, const IntRect& targetRe
 #endif
 }
 
-void BitmapTextureJava::updateContents(TextureMapper&, GraphicsLayer* sourceLayer, const IntRect& targetRect, const IntPoint& sourceOffset, UpdateContentsFlag, float scale)
+void BitmapTextureJava::updateContents(TextureMapper& mapper, GraphicsLayer* sourceLayer, const IntRect& targetRect, const IntPoint& sourceOffset, UpdateContentsFlag, float)
 {
     GraphicsContext& context = m_image->context();
+    // Share RenderThemeJava context
+    context.platformContext()->setJRenderTheme(static_cast<TextureMapperJava&>(mapper).graphicsContext()->platformContext()->jRenderTheme());
 
     context.clearRect(targetRect);
 
