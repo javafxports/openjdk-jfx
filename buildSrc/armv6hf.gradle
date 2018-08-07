@@ -32,18 +32,11 @@ def compilerHome=file("${rootProject.CROSS_TOOLS_DIR}/gcc-linaro-arm-linux-gnuea
 def compilerPrefix
 def jniPlatform
 if (IS_LINUX) {
-    fetchExternalTools('ARMV6HF',
-            ["${crossLibsPackage}.tgz",
-             "gcc-linaro-arm-linux-gnueabihf-raspbian-2012.09-20120921_linux.tgz" ],
-            rootProject.CROSS_TOOLS_DIR, rootProject.IS_IMPORT_CROSS_TOOLS)
 
     compilerHome=file("${rootProject.CROSS_TOOLS_DIR}/gcc-linaro-arm-linux-gnueabihf-raspbian-2012.09-20120921_linux")
     compilerPrefix="arm-linux-gnueabihf-"
     jniPlatform="linux"
 } else if (IS_MAC) {
-    fetchExternalTools('ARMV6HF',
-            ["${crossLibsPackage}.tgz"],
-            rootProject.CROSS_TOOLS_DIR, rootProject.IS_IMPORT_CROSS_TOOLS)
 
     compilerHome=file("/usr/local/arm-linux")
     compilerPrefix="arm-linux-"

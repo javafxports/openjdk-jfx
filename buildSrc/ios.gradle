@@ -25,11 +25,6 @@
 
 ext.IOS = [:]
 
-if (BUILD_CLOSED) {
-    fetchExternalTools('IOS',
-      ["ios-libs-08.tgz"],
-      rootProject.CROSS_TOOLS_DIR, rootProject.IS_IMPORT_CROSS_TOOLS)
-}
 
 // TODO Check for presence of iOS tools
 IOS.canBuild = IS_MAC

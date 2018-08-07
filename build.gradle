@@ -265,14 +265,7 @@ void fail(String msg) {
  *                                                                            *
  *****************************************************************************/
 
-// If the ../rt-closed directory exists, then we are doing a closed build.
-// In this case, build and property files will be read from
-// ../rt-closed/closed-build.gradle and ../rt-closed/closed-properties.gradle
-// respectively
-
-def closedDir = file("../rt-closed")
-def buildClosed = closedDir.isDirectory()
-ext.BUILD_CLOSED = buildClosed
+ 
 
 ext.RUNARGSFILE = "run.args"
 ext.COMPILEARGSFILE = "compile.args"
@@ -295,8 +288,7 @@ ext.IS_64 = OS_ARCH.toLowerCase().contains("64")
 ext.IS_MAC = OS_NAME.contains("mac") || OS_NAME.contains("darwin")
 ext.IS_WINDOWS = OS_NAME.contains("windows")
 ext.IS_LINUX = OS_NAME.contains("linux")
-
-ext.MAVEN_GROUP_ID = "org.openjfx"
+ 
 
 // Verify that the architecture & OS are supported configurations. Note that
 // at present building on PI is not supported, but we would only need to make
@@ -347,20 +339,11 @@ defineProperty("FFmpegRepositoryURL", "https://www.ffmpeg.org/releases/")
 
 loadProperties("$projectDir/build.properties")
 
-def supplementalPreBuildFile = file("$closedDir/closed-pre-build.gradle");
-def supplementalBuildFile = file("$closedDir/closed-build.gradle");
-
-if (BUILD_CLOSED) {
-    apply from: supplementalPreBuildFile
-}
 
 // GRADLE_VERSION_CHECK specifies whether to fail the build if the
 // gradle version check fails
 defineProperty("GRADLE_VERSION_CHECK", "true")
 ext.IS_GRADLE_VERSION_CHECK = Boolean.parseBoolean(GRADLE_VERSION_CHECK)
-
-// JFX_DEPS_URL specifies the optional location of an alternate local repository
-defineProperty("JFX_DEPS_URL", "")
 
 // JDK_DOCS_LINK specifies the optional URL for offline javadoc linking
 defineProperty("JDK_DOCS_LINK", "")
@@ -491,15 +474,11 @@ ext.IS_MILESTONE_FCS = Boolean.parseBoolean(MILESTONE_FCS)
 
 // The following properties define the product name for Oracle JDK and OpenJDK
 // for VersionInfo and the DLL manifest.
-if (BUILD_CLOSED) {
-    defineProperty("PRODUCT_NAME", "Java(TM)")
-    defineProperty("COMPANY_NAME", "Oracle Corporation")
-    defineProperty("PLATFORM_NAME", "Platform SE")
-} else {
+ 
     defineProperty("PRODUCT_NAME", "OpenJFX")
     defineProperty("COMPANY_NAME", "N/A")
     defineProperty("PLATFORM_NAME", "Platform")
-}
+ 
 
 // The following properties are set based on properties defined in
 // build.properties. The release version and suffix should be updated
@@ -535,7 +514,7 @@ if (HUDSON_JOB_NAME == "not_hudson") {
 defineProperty("RELEASE_SUFFIX", relSuffix)
 defineProperty("RELEASE_VERSION_SHORT", "${RELEASE_VERSION}${RELEASE_SUFFIX}")
 defineProperty("RELEASE_VERSION_LONG", "${RELEASE_VERSION_SHORT}+${PROMOTED_BUILD_NUMBER}${relOpt}")
-defineProperty("MAVEN_VERSION", "$RELEASE_VERSION_LONG")
+ 
 
 // Check whether the COMPILE_TARGETS property has been specified (if so, it was done by
 // the user and not by this script). If it has not been defined then default
@@ -608,113 +587,6 @@ if (!project.hasProperty("jdkRuntimeVersion")) throw new Exception("Unable to de
 ext.HAS_JAVAFX_MODULES = false;
 ext.HAS_UNSUPPORTED_DESKTOP = false;
 
-/**
- * Fetch/Check that external tools are present for the build. This method
- * will conditionally download the packages from project defined ivy repositories
- * and unpack them into the specified destdir
- *
- * @param configName A unique name to distinguish the configuration (ie "ARMSFV6")
- * @param packages A list of required packages (with extensions .tgz, .zip)
- * @param destdir where the packages should be unpacked
- * @param doFetch if true, the named packages will be download
- */
-void fetchExternalTools(String configName, List packages, File destdir, boolean doFetch) {
-    if (doFetch) {
-        // create a unique configuration for this fetch
-        def String fetchToolsConfig = "fetchTools$configName"
-        rootProject.configurations.create(fetchToolsConfig)
-
-        def List<String> fetchedPackages = []
-        def int fetchCount = 0
-
-        packages.each { pkgname->
-            def int dotdex = pkgname.lastIndexOf('.')
-            def int dashdex = pkgname.lastIndexOf('-')
-            def String basename = pkgname.substring(0,dashdex)
-            def String ver = pkgname.substring(dashdex+1,dotdex)
-            def String ext = pkgname.substring(dotdex+1)
-            def File pkgdir = file("$destdir/$basename-$ver")
-
-            if (!pkgdir.isDirectory()) {
-                rootProject.dependencies.add(fetchToolsConfig, "javafx:$basename:$ver", {
-                    artifact {
-                        name = basename
-                        type = ext
-                    }
-                })
-                println "adding $pkgname as a downloadable item did not find $pkgdir"
-                fetchedPackages.add(pkgname)
-                fetchCount++
-            }
-        }
-
-        //fetch all the missing packages
-        if (fetchedPackages.size > 0) {
-            destdir.mkdirs()
-
-            logger.quiet "fetching missing packages $fetchedPackages"
-            copy {
-                from rootProject.configurations[fetchToolsConfig]
-                into destdir
-            }
-
-            // unpack the fetched packages
-            fetchedPackages.each { pkgname->
-                logger.quiet "expanding the package $pkgname"
-                def srcball = file("${destdir}/${pkgname}")
-
-                if (!srcball.exists()) {
-                    throw new GradleException("Failed to fetch $pkgname");
-                }
-
-                def String basename = pkgname.substring(0,pkgname.lastIndexOf("."))
-                def File pkgdir = file("$destdir/$basename")
-
-                if (pkgname.endsWith(".tgz")) {
-                    if (IS_LINUX || IS_MAC) {
-                        // use native tar to support symlinks
-                        pkgdir.mkdirs()
-                        exec {
-                            workingDir pkgdir
-                            commandLine "tar", "zxf", "${srcball}"
-                         }
-                    } else {
-                        copy {
-                            from tarTree(resources.gzip("${srcball}"))
-                            into pkgdir
-                        }
-                    }
-                } else if (pkgname.endsWith(".zip")) {
-                     copy {
-                         from zipTree("${srcball}")
-                         into pkgdir
-                     }
-                } else {
-                    throw new GradleException("Unhandled package type for compile package ${pkgname}")
-                }
-                srcball.deleteOnExit();
-            }
-        } else {
-            logger.quiet "all tool packages are present $packages"
-        }
-    } else { // !doFetch - so just check they are present
-        // check that all the dirs are really there
-        def List<String> errors = []
-        packages.each { pkgname->
-            def String basename = pkgname.substring(0,pkgname.lastIndexOf("."))
-            def File pkgdir = file("$destdir/$basename")
-
-            if (!pkgdir.isDirectory()) {
-                errors.add(pkgname)
-            }
-        }
-        if (errors.size > 0) {
-            throw new GradleException("Error: missing tool packages: $errors")
-        } else {
-            logger.quiet "all tool packages are present $packages"
-        }
-    }
-}
 
 // Make a forked ANT call.
 // This needs to be forked so that ant can be used with the right JDK and updated modules
@@ -1173,9 +1045,7 @@ if (file(cachedBundledRuntime).exists()) {
     defaultStubRuntime = cachedBundledRuntime
 } else if (file(cachedStandaloneRuntime).exists()) {
     defaultStubRuntime = cachedStandaloneRuntime
-} else if (BUILD_CLOSED) {
-    defaultStubRuntime = cachedBundledRuntime
-} else {
+}  else {
     defaultStubRuntime = jdkStubRuntime
 }
 
@@ -1192,7 +1062,7 @@ if (STUB_RUNTIME.endsWith("/modular-sdk")) {
     defineProperty("WEB_STUB", libraryStub)
 }
 
-ext.UPDATE_STUB_CACHE = (BUILD_CLOSED && STUB_RUNTIME != "" && !file(STUB_RUNTIME).isDirectory())
+ext.UPDATE_STUB_CACHE = false
 
 
 /******************************************************************************
@@ -1233,7 +1103,7 @@ logger.quiet("RELEASE_SUFFIX: $RELEASE_SUFFIX")
 logger.quiet("RELEASE_VERSION_SHORT: $RELEASE_VERSION_SHORT")
 logger.quiet("RELEASE_VERSION_LONG: $RELEASE_VERSION_LONG")
 logger.quiet("RELEASE_VERSION_PADDED: $RELEASE_VERSION_PADDED")
-logger.quiet("MAVEN_VERSION: $MAVEN_VERSION")
+ 
 logger.quiet("UPDATE_STUB_CACHE: $UPDATE_STUB_CACHE")
 
 /******************************************************************************
@@ -1436,93 +1306,7 @@ void addJSL(Project project, String name, String pkg, List<String> addExports, C
 
 }
 
-void addMavenPublication(Project project, List<String> projectDependencies) {
-    project.apply plugin: 'maven-publish'
-
-    project.group = MAVEN_GROUP_ID
-    project.version = MAVEN_VERSION
-
-    if (project.name == 'base') {
-        project.publishing {
-            publications {
-                javafx(MavenPublication) {
-                    artifactId = 'javafx'
-                    artifacts = []
-                }
-            }
-        }
-    }
-
-    gradle.taskGraph.whenReady { g ->
-        project.tasks.findAll { it.name == 'generatePomFileForJavafxPublication'}.each { it ->
-            it.doLast {
-                copy {
-                    into project.file("${project.buildDir}/publications/javafx")
-                    from file("${rootProject.projectDir}/javafx.pom")
-                    rename "javafx.pom", "pom-default.xml"
-                    filter { line ->
-                        line.replaceAll("@VERSION@", MAVEN_VERSION)
-                    }
-                }
-            }
-        }
-    }
-
-    project.publishing {
-        repositories {
-            maven {
-                def repositoryUrl = project.hasProperty('repositoryUrl') ? project.getProperty('repositoryUrl') : ""
-                def repositoryUsername = project.hasProperty('repositoryUsername') ? project.getProperty('repositoryUsername') : ""
-                def repositoryPassword = project.hasProperty('repositoryPassword') ? project.getProperty('repositoryPassword') : ""
-                url repositoryUrl
-                credentials {
-                   username repositoryUsername
-                   password repositoryPassword
-                }
-            }
-        }
-    }
-
-    compileTargets { t ->
-        project.publishing {
-            publications {
-                maven(MavenPublication) {
-                    artifactId = "javafx-${project.name}"
-
-                    artifact project.tasks."moduleEmptyPublicationJar$t.capital"
-                    artifact project.tasks."modularPublicationJar$t.capital" {
-                        classifier "$t.name"
-                    }
-
-                    pom.withXml {
-                        Node parent = asNode().appendNode("parent")
-                        parent.appendNode("groupId", MAVEN_GROUP_ID)
-                        parent.appendNode("artifactId", "javafx")
-                        parent.appendNode("version", MAVEN_VERSION)
-
-                        Node dependencies = asNode().appendNode("dependencies")
-
-                        Node projectDependencyPlatform = dependencies.appendNode("dependency")
-                        projectDependencyPlatform.appendNode("groupId", MAVEN_GROUP_ID)
-                        projectDependencyPlatform.appendNode("artifactId", "javafx-${project.name}")
-                        projectDependencyPlatform.appendNode("version", MAVEN_VERSION)
-                        projectDependencyPlatform.appendNode("classifier", "\${javafx.platform}")
-
-                        if (!projectDependencies.empty) {
-                            projectDependencies.each { dep ->
-                                Node projectDependency = dependencies.appendNode("dependency")
-                                projectDependency.appendNode("groupId", MAVEN_GROUP_ID)
-                                projectDependency.appendNode("artifactId", "javafx-$dep")
-                                projectDependency.appendNode("version", MAVEN_VERSION)
-                           }
-                        }
-                    }
-                }
-            }
-
-        }
-    }
-}
+ 
 
 /**
  * Parses a JDK version string. The string must be in one of the following
@@ -1629,57 +1413,12 @@ void addJCov(p, test) {
 }
 
 allprojects {
-
-    // Setup the repositories that we'll download libraries from.
-    // By default we use Maven Central for most things. The custom "ivy"
-    // repo is for downloading SWT. The way it works is to setup the
-    // download URL such that it will resolve to the actual jar file to
-    // download. See SWT_FILE_NAME for the name of the jar that will be
-    // used as the "artifact" in the pattern below.
-    // If JFX_DEPS_URL is set, then that overrides the default
-    // repositories. This allows the dependencies to be cached locally.
-
-    if (JFX_DEPS_URL != "") {
         repositories {
-            ivy {
-                url JFX_DEPS_URL
-                layout "pattern", {
-                    artifact "[artifact]-[revision](-[classifier]).[ext]"
-                    artifact "[artifact].[ext]"
-                }
-            }
-        }
-    }
-
-    if (JFX_DEPS_URL == "") {
-        repositories {
-            mavenCentral()
-            ivy {
-                url "http://download.eclipse.org/eclipse/updates/4.6/R-4.6.3-201703010400/plugins/"
-                layout "pattern", {
-                    artifact "[artifact].[ext]"
-                }
-            }
-        }
-    }
-
-    if (JFX_DEPS_URL == "" && IS_BUILD_LIBAV_STUBS) {
-        repositories {
-            ivy {
-                url libAVRepositoryURL
-                layout "pattern", {
-                    artifact "[artifact].[ext]"
-                }
-            }
-            ivy {
-                url FFmpegRepositoryURL
-                layout "pattern", {
-                    artifact "[artifact].[ext]"
-                }
-            }
-        }
-    }
-
+			flatDir {
+				dirs rootProject.getProjectDir().toString()+"/dependencies"
+			}
+		}
+	
     // We want to configure all projects as java projects and use the same compile settings
     // etc, except for the root project which we just want to ignore (and for now media)
     if (project == rootProject) {
@@ -1700,9 +1439,7 @@ allprojects {
     // setup this dependency here.
     dependencies {
         testCompile group: "junit", name: "junit", version: "4.8.2"
-        if (BUILD_CLOSED && DO_JCOV)  {
-            testCompile name: "jcov"
-        }
+ 
     }
 
     compileJava.dependsOn verifyJava
@@ -1719,9 +1456,7 @@ allprojects {
         testLogging.exceptionFormat = "full";
         scanForTestClasses = false;
         include("**/*Test.*");
-        if (BUILD_CLOSED && DO_JCOV) {
-            addJCov(project, test)
-        }
+ 
 
         if (IS_HEADLESS_TEST) {
             systemProperty 'glass.platform', 'Monocle'
@@ -1824,7 +1559,7 @@ project(":base") {
     sourceSets.main.java.srcDirs += "$buildDir/gensrc/java"
 
     compileJava.dependsOn processVersionInfo
-    addMavenPublication(project, [])
+ 
 
 }
 
@@ -1838,7 +1573,7 @@ project(":graphics") {
     project.ext.includeSources = true
     project.ext.moduleRuntime = true
     project.ext.moduleName = "javafx.graphics"
-    project.ext.mavenPublish = true
+ 
 
     getConfigurations().create("antlr");
 
@@ -1853,8 +1588,9 @@ project(":graphics") {
 
     dependencies {
         stubCompile group: "junit", name: "junit", version: "4.8.2"
-
+		
         antlr group: "org.antlr", name: "antlr-complete", version: "3.5.2"
+
     }
 
     project.ext.moduleSourcePath = defaultModuleSourcePath_GraphicsOne
@@ -2210,9 +1946,7 @@ project(":graphics") {
         testLogging.exceptionFormat = "full"
         scanForTestClasses = false
         include "**/*Test.*"
-        if (BUILD_CLOSED && DO_JCOV) {
-            addJCov(project, test)
-        }
+ 
     }
 
     // To enable the IDEs to all be happy (no red squiggles) we need to have the libraries
@@ -2220,38 +1954,9 @@ project(":graphics") {
     // of the IDEs will be good enough that we won't need this hack anymore.
     classes {
         doLast {
-            // Copy all of the download libraries to the libs directory for the sake of the IDEs
-            File libsDir = rootProject.file("build/libs");
-
-            // In some IDEs (Eclipse for example), touching these libraries
-            // cauese a full build within the IDE. When gradle is used
-            // outside of the IDE, for example to build the native code,
-            // a full rebuild is caused within the IDE. The fix is to check
-            // for the presence of the target files in the lib directory
-            // and not copy the files if all are present.
-
-            libsDir.mkdirs();
-
-            def allLibsPresent = true
-            def libNames = [ "antlr-complete-3.5.2.jar" ]
-            libNames.each { name ->
-                File f = new File(libsDir, name)
-                if (!f.exists()) allLibsPresent = false
-            }
-            if (allLibsPresent) return;
-
-            for (File f : [configurations.compile.files, configurations.antlr.files].flatten()) {
-                copy {
-                    into libsDir
-                    from f.getParentFile()
-                    include "**/antlr-complete-3.5.2.jar"
-                    includeEmptyDirs = false
-                }
-            }
         }
     }
-
-    addMavenPublication(project, [ 'base' ])
+ 
 
 }
 
@@ -2311,8 +2016,7 @@ project(":controls") {
         into project.moduleShimsDir
         include "**/*.bss"
     })
-
-    addMavenPublication(project, [ 'graphics' ])
+ 
 
 }
 
@@ -2349,22 +2053,19 @@ project(":swing") {
 
     sourceSets.main.java.srcDirs += "$buildDir/gensrc/java"
     sourceSets.main.java {
-        if (!HAS_UNSUPPORTED_DESKTOP) {
-            exclude("com/sun/javafx/embed/swing/newimpl/**")
-        }
+		exclude("com/sun/javafx/embed/swing/newimpl/**")
     }
     task copyModuleInfo(type: Copy, description: "copy module-info file to gensrc") {
         from "src/main/module-info/module-info.java"
         into "$buildDir/gensrc/java/"
         filter { line->
-            !HAS_UNSUPPORTED_DESKTOP && line.contains('jdk.unsupported.desktop') ? null : line
+            line.contains('jdk.unsupported.desktop') ? null : line
         }
     }
     compileJava.dependsOn copyModuleInfo
 
     compileJava.options.compilerArgs.addAll(qualExportsSwing)
-
-    addMavenPublication(project, [ 'graphics' ])
+ 
 }
 
 project(":swt") {
@@ -3011,8 +2712,7 @@ project(":media") {
             dependsOn buildNativeTargets
         }
     }
-
-    addMavenPublication(project, [ 'graphics' ])
+ 
 
 }
 
@@ -3246,8 +2946,7 @@ project(":web") {
     if (IS_COMPILE_WEBKIT) {
         assemble.dependsOn compileJavaDOMBinding, drtJar
     }
-
-    addMavenPublication(project, [ 'controls', 'media' ])
+ 
 
 }
 
@@ -3269,7 +2968,6 @@ project(":systemTests") {
         testapp3
         testapp4
         testapp5
-        testapp6
     }
 
     project.ext.buildModule = false
@@ -3369,7 +3067,7 @@ project(":systemTests") {
     }
     test.dependsOn(createTestApps);
 
-    def modtestapps = [ "testapp2", "testapp3", "testapp4", "testapp5", "testapp6"  ]
+    def modtestapps = [ "testapp2", "testapp3", "testapp4", "testapp5"]
     modtestapps.each { testapp ->
         def testappCapital = testapp.capitalize()
         def copyTestAppTask = task("copy${testappCapital}", type: Copy) {
@@ -3728,9 +3426,8 @@ task findbugs() {
     dependsOn(sdk)
 
     doLast {
-        if (!BUILD_CLOSED) {
-            println "findbugs task is only run for a closed build"
-        }
+ 
+ 
     }
 }
 
@@ -3753,9 +3450,7 @@ task publicExports() {
 task perf() {
     dependsOn(sdk, apps)
     doLast {
-        if (!BUILD_CLOSED) {
-            println "perf task is only run for a closed build"
-        }
+ 
     }
 }
 
@@ -3824,36 +3519,6 @@ compileTargets { t ->
 project(":apps") {
     // The apps build is Ant based, we will exec ant from gradle.
 
-    // Download the Lucene libraries needed for the Ensemble8 app
-    getConfigurations().create("lucene");
-    dependencies {
-        lucene group: "org.apache.lucene", name: "lucene-core", version: "7.1.0"
-        lucene group: "org.apache.lucene", name: "lucene-grouping", version: "7.1.0"
-        lucene group: "org.apache.lucene", name: "lucene-queryparser", version: "7.1.0"
-    }
-
-    // Copy Lucene libraries into the Ensemble8/lib directory
-    File ensembleLibDir = rootProject.file("apps/samples/Ensemble8/lib");
-    def libNames = [ "lucene-core-7.1.0.jar",
-                     "lucene-grouping-7.1.0.jar",
-                     "lucene-queryparser-7.1.0.jar" ]
-
-
-    task getLucene(type: Copy) {
-        doFirst {
-            ensembleLibDir.mkdirs();
-        }
-        into ensembleLibDir
-        includeEmptyDirs = false
-        configurations.lucene.files.each { f ->
-            libNames.each { name ->
-                if (name == f.getName()) {
-                    from f.getPath()
-                }
-            }
-        }
-    }
-
     compileTargets { t ->
         List<String> params = []
 
@@ -3867,7 +3532,6 @@ project(":apps") {
         params << "-Drun.patch=@${rootProject.buildDir}/${RUNARGSFILE}"
 
         def appsJar = project.task("appsJar${t.capital}") {
-            dependsOn(sdk, getLucene)
             doLast() {
                 ant(t.name,
                       projectDir.path,
@@ -3883,7 +3547,6 @@ project(":apps") {
                       project.projectDir.path,
                       "clean",
                       params);
-                delete(ensembleLibDir);
             }
         }
         rootProject.clean.dependsOn(appsClean)
@@ -4156,9 +3819,7 @@ compileTargets { t ->
             }
             into "${modulesSrcDir}/${moduleName}"
             include "**/*.java"
-            if (!HAS_UNSUPPORTED_DESKTOP) {
-                exclude("com/sun/javafx/embed/swing/newimpl/**")
-            }  
+			exclude("com/sun/javafx/embed/swing/newimpl/**")
 
             if (project.hasProperty("sourceFilter")) {
                 filter(project.sourceFilter)
@@ -4300,42 +3961,7 @@ compileTargets { t ->
         include "**/*.java"
     }
     buildModules.dependsOn(zipSourceFilesTask)
-
-    // ============================================================
-
-    // Maven Publications
-    def publicationDirName = "${platformPrefix}publications"
-    def publicationDir = "${rootProject.buildDir}/${publicationDirName}"
-
-    moduleProjList.each { project -> 
-        // Create publications to be uploaded 
-
-        def moduleName = project.ext.moduleName
-        def buildDir = project.buildDir
-
-        def dstModularJarDir="${publicationDir}"
-        def srcClassesDir = "${buildDir}/${platformPrefix}module-classes"
-        def srcLibsDir = "${buildDir}/${platformPrefix}module-lib"
-
-        def modularEmptyPublicationJarName = "${moduleName}.jar"
-        def modularEmptyPublicationJarTask = project.task("moduleEmptyPublicationJar${t.capital}", type: Jar) {
-            destinationDir = file("${dstModularJarDir}")
-            archiveName = modularEmptyPublicationJarName
-        }
-
-        def modularPublicationJarName = "${moduleName}-${t.name}.jar"
-        def modularPublicationJarTask = project.task("modularPublicationJar${t.capital}", type: Jar, dependsOn: modularEmptyPublicationJarTask) {
-            destinationDir = file("${dstModularJarDir}")
-            archiveName = modularPublicationJarName
-            from srcLibsDir
-            from srcClassesDir
-        }
-
-        buildModulesTask.dependsOn(modularPublicationJarTask)
-
-    }
-    // ============================================================
-
+ 
     def buildRunArgsTask = task("buildRunArgs$t.capital",
             group: "Build", dependsOn: buildModulesTask) {
         outputs.file(runArgsFile);
@@ -4770,10 +4396,7 @@ task checkrepoall() {
  * file for producing official JavaFX builds.                                 *
  *                                                                            *
  *****************************************************************************/
-
-if (BUILD_CLOSED) {
-    apply from: supplementalBuildFile
-}
+ 
 
 task showFlags {
 }

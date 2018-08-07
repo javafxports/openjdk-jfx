@@ -30,7 +30,7 @@ cp -r "netbeans" "$build_dir" &
 cp -r "tools" "$build_dir"
 ant -f "$win_build_dir"/tools/blastCopy/build.xml
 ant -f "$win_build_dir"/tools/rebrand_javafx/build.xml
-java -jar "$win_build_dir"/tools/blastCopy/dist/blastCopy.jar -s "modules" -d "$win_build_dir\\modules"
+./blastcopy.sh -s "modules" -d "$win_build_dir\\modules" || exit 1
 
 for job in `jobs -p`
 do
@@ -41,4 +41,4 @@ rm -rf "$build_dir"/buildSrc/.gradle
 cd "$build_dir"
 java -jar "$win_build_dir"/tools/rebrand_javafx/dist/rebrand_javafx.jar "$win_build_dir" joslynfx aubree davis || exit 1
 
-gradle all
+gradle all test

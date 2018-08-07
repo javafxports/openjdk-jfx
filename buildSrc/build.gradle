@@ -44,30 +44,17 @@ void defineProperty(String name, String defaultValue) {
         project.ext.set(name, defaultValue);
     }
 }
-
-def closedDir = file("../../rt-closed")
-def buildClosed = closedDir.isDirectory()
-
-if (buildClosed) {
-    File supplementalBuildFile = new File("../../rt-closed/closed-properties.gradle");
-    apply from: supplementalBuildFile
-}
-
+ 
 apply plugin: "java"
 
 
 repositories {
-    if (buildClosed) {
-        ivy {
-            url jfxRepositoryURL
-            layout "pattern", {
-                artifact "[artifact]-[revision].[ext]"
-                artifact "[artifact].[ext]"
-            }
-        }
-    } else {
-        mavenCentral()
-    }
+        repositories {
+			flatDir {
+				dirs rootProject.getProjectDir().toString()+"/dependencies"
+			}
+		}
+
 }
 
 dependencies {

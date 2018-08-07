@@ -179,12 +179,6 @@
 
 #JDK_DOCS_LINK = file:///opt/javadocs/jdk10/docs/api
 
-# If you want to use a local repository for downloading dependencies
-# rather than maven central, you can set the JFX_DEPS_URL property
-# to point to your local server.
-
-#JFX_DEPS_URL=http:/local.server.my.compay.com/dependencies
-
 # Specify the build configuration: Release, Debug, or DebugNative. The default setting is Debug.
 
 #CONF = Release
