@@ -42,7 +42,6 @@ public class ModuleLauncherTest {
     private static final String modulePath3 = System.getProperty("launchertest.testapp3.module.path");
     private static final String modulePath4 = System.getProperty("launchertest.testapp4.module.path");
     private static final String modulePath5 = System.getProperty("launchertest.testapp5.module.path");
-    private static final String modulePath6 = System.getProperty("launchertest.testapp6.module.path");
     private static final String moduleName = "mymod";
 
     private final int testExitCode = ERROR_NONE;
@@ -247,31 +246,6 @@ public class ModuleLauncherTest {
     @Test (timeout = 15000)
     public void testModuleJSCallbackQualOpened() throws Exception {
         doTestLaunchModule(modulePath5, "myapp5.AppJSCallbackQualOpened");
-    }
-
-    @Test (timeout = 15000)
-    public void testModuleFXMLUnexported() throws Exception {
-        doTestLaunchModule(modulePath6, "myapp6.AppFXMLUnexported");
-    }
-
-    @Test (timeout = 15000)
-    public void testModuleFXMLExported() throws Exception {
-        doTestLaunchModule(modulePath6, "myapp6.AppFXMLExported");
-    }
-
-    @Test (timeout = 15000)
-    public void testModuleFXMLQualExported() throws Exception {
-        doTestLaunchModule(modulePath6, "myapp6.AppFXMLQualExported");
-    }
-
-    @Test (timeout = 15000)
-    public void testModuleFXMLOpened() throws Exception {
-        doTestLaunchModule(modulePath6, "myapp6.AppFXMLOpened");
-    }
-
-    @Test (timeout = 15000)
-    public void testModuleFXMLQualOpened() throws Exception {
-        doTestLaunchModule(modulePath6, "myapp6.AppFXMLQualOpened");
     }
 
 }

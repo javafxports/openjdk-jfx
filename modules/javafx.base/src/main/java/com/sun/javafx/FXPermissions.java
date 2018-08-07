@@ -54,9 +54,6 @@ public final class FXPermissions {
     public static final FXPermission LOAD_FONT_PERMISSION =
             new FXPermission("loadFont");
 
-    public static final FXPermission MODIFY_FXML_CLASS_LOADER_PERMISSION =
-            new FXPermission("modifyFXMLClassLoader");
-
     public static final FXPermission SET_WINDOW_ALWAYS_ON_TOP_PERMISSION =
             new FXPermission("setWindowAlwaysOnTop");
 

@@ -84,16 +84,6 @@ public enum ConditionalFeature {
 
 
     /**
-     * Indicates that XML libraries are present in the JRE and that the FXML
-     * API is available on the platform. Note that it is possible for FXML APIs
-     * to be present but unusable if the underlying Java Runtime Environment
-     * does not have XML support. In this case
-     * Platform.isSupported(ConditionalFeature.FXML) wll return false.
-     * @since JavaFX 8.0
-     */
-    FXML,
-
-    /**
      * Indicates that 3D is available on the platform.
      * If an application attempts to use 3D transforms or a 3D camera on a
      * platform that does not support 3D, then the transform or camera is

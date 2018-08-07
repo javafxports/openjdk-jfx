@@ -44,6 +44,4 @@ module javafx.web {
 
     exports javafx.scene.web;
 
-    exports com.sun.javafx.fxml.builder.web to
-        javafx.fxml;
 }

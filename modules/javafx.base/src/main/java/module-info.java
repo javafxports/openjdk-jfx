@@ -47,11 +47,9 @@ module javafx.base {
     exports com.sun.javafx to
         javafx.controls,
         javafx.graphics,
-        javafx.fxml,
         javafx.swing;
     exports com.sun.javafx.beans to
         javafx.controls,
-        javafx.fxml,
         javafx.graphics;
     exports com.sun.javafx.binding to
         javafx.controls,
@@ -67,12 +65,10 @@ module javafx.base {
     exports com.sun.javafx.logging to
         javafx.controls,
         javafx.graphics,
-        javafx.fxml,
         javafx.swing;
     exports com.sun.javafx.property to
         javafx.controls;
     exports com.sun.javafx.reflect to
-        javafx.fxml,
         javafx.web;
     exports com.sun.javafx.runtime to
         javafx.graphics;

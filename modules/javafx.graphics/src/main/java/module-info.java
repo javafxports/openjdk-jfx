@@ -127,7 +127,6 @@ module javafx.graphics {
         javafx.web;
     exports com.sun.javafx.util to
         javafx.controls,
-        javafx.fxml,
         javafx.media,
         javafx.swing,
         javafx.web;

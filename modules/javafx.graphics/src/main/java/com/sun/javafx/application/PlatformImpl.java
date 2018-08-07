@@ -82,7 +82,6 @@ public class PlatformImpl {
     private static Boolean isWebSupported;
     private static Boolean isSWTSupported;
     private static Boolean isSwingSupported;
-    private static Boolean isFXMLSupported;
     private static Boolean hasTwoLevelFocus;
     private static Boolean hasVirtualKeyboard;
     private static Boolean hasTouch;
@@ -919,12 +918,6 @@ public class PlatformImpl {
                         checkForClass("javafx.embed.swing.JFXPanel");
                 }
                 return isSwingSupported;
-            case FXML:
-                if (isFXMLSupported == null) {
-                    isFXMLSupported = checkForClass("javafx.fxml.FXMLLoader")
-                            && checkForClass("javax.xml.stream.XMLInputFactory");
-                }
-                return isFXMLSupported;
             case TWO_LEVEL_FOCUS:
                 if (hasTwoLevelFocus == null) {
                     return Toolkit.getToolkit().isSupported(feature);

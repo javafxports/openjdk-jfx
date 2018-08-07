@@ -28,7 +28,6 @@ package test.sandbox.app;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
-import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
@@ -48,7 +47,6 @@ public class Util {
     private static final int HEIGHT = 300;
 
     private static final String CSS_FILE_NAME = "test.css";
-    private static final String FXML_FILE_NAME = "test.fxml";
     private static final String HTML_FILE_NAME = "test.html";
 
     // Convert the requested resource name into a URL string, and verify
@@ -74,15 +72,12 @@ public class Util {
         Label label = new Label();
         label.setText("Label");
 
-        final URL fxmlFile = toURL(FXML_FILE_NAME);
-        Parent fxmlRoot = (Parent)FXMLLoader.load(fxmlFile);
-
         final String webURLString = toURL(HTML_FILE_NAME).toExternalForm();
         WebView webView = new WebView();
         WebEngine webEngine = webView.getEngine();
         webEngine.load(webURLString);
 
-        root.getChildren().addAll(label, fxmlRoot, webView);
+        root.getChildren().addAll(label, webView);
         return scene;
     }
 
