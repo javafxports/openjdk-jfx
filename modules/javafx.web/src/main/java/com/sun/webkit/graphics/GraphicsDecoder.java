@@ -25,10 +25,11 @@
 
 package com.sun.webkit.graphics;
 
+import com.sun.javafx.logging.PlatformLogger;
+
 import java.lang.annotation.Native;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.logging.Logger;
 
 public final class GraphicsDecoder  {
     @Native public final static int FILLRECT_FFFFI         = 0;
@@ -85,8 +86,8 @@ public final class GraphicsDecoder  {
     @Native public final static int SET_TEXT_MODE          = 55;
     @Native public final static int SET_PERSPECTIVE_TRANSFORM = 56;
 
-    private final static Logger log =
-        Logger.getLogger(GraphicsDecoder.class.getName());
+    private final static PlatformLogger log =
+            PlatformLogger.getLogger(GraphicsDecoder.class.getName());
 
     static void decode(WCGraphicsManager gm, WCGraphicsContext gc, BufferData bdata) {
         if (gc == null) {

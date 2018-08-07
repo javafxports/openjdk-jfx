@@ -28,6 +28,8 @@ package com.sun.webkit;
 import javafx.application.ConditionalFeature;
 import javafx.application.Platform;
 import com.sun.glass.utils.NativeLibLoader;
+import com.sun.javafx.logging.PlatformLogger;
+import com.sun.javafx.logging.PlatformLogger.Level;
 import com.sun.webkit.event.WCFocusEvent;
 import com.sun.webkit.event.WCInputMethodEvent;
 import com.sun.webkit.event.WCKeyEvent;
@@ -58,8 +60,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import netscape.javascript.JSException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -78,8 +78,8 @@ import org.w3c.dom.Element;
  */
 
 public final class WebPage {
-    private final static Logger log = Logger.getLogger(WebPage.class.getName());
-    private final static Logger paintLog = Logger.getLogger(WebPage.class.getName() + ".paint");
+    private final static PlatformLogger log = PlatformLogger.getLogger(WebPage.class.getName());
+    private final static PlatformLogger paintLog = PlatformLogger.getLogger(WebPage.class.getName() + ".paint");
 
     private static final int MAX_FRAME_QUEUE_SIZE = 10;
 
@@ -284,8 +284,7 @@ public final class WebPage {
 
     private void updateDirty(WCRectangle clip) {
         if (paintLog.isLoggable(Level.FINEST)) {
-            paintLog.log(Level.FINEST, "Entering, "
-                    + "dirtyRects: {0}, currentFrame: {1}",
+            paintLog.finest("Entering, dirtyRects: {0}, currentFrame: {1}",
                     new Object[] {dirtyRects, currentFrame});
         }
 
@@ -307,7 +306,7 @@ public final class WebPage {
             if (r.getWidth() <= 0 || r.getHeight() <= 0) {
                 continue;
             }
-            paintLog.log(Level.FINEST, "Updating: {0}", r);
+            paintLog.finest("Updating: {0}", r);
             WCRenderQueue rq = WCGraphicsManager.getGraphicsManager()
                     .createRenderQueue(r, true);
             twkUpdateContent(getPage(), rq, r.getIntX() - 1, r.getIntY() - 1,
@@ -324,15 +323,13 @@ public final class WebPage {
         }
 
         if (paintLog.isLoggable(Level.FINEST)) {
-            paintLog.log(Level.FINEST, "Dirty rects processed, "
-                    + "dirtyRects: {0}, currentFrame: {1}",
+            paintLog.finest("Dirty rects processed, dirtyRects: {0}, currentFrame: {1}",
                     new Object[] {dirtyRects, currentFrame});
         }
 
         if (currentFrame.getRQList().size() > 0) {
             synchronized (frameQueue) {
-                paintLog.log(Level.FINEST, "About to update frame queue, "
-                        + "frameQueue: {0}", frameQueue);
+                paintLog.finest("About to update frame queue, frameQueue: {0}", frameQueue);
 
                 Iterator<RenderFrame> it = frameQueue.iterator();
                 while (it.hasNext()) {
@@ -342,7 +339,7 @@ public final class WebPage {
                         if (rq.isOpaque()
                                 && rqRect.contains(frame.getEnclosingRect()))
                         {
-                            paintLog.log(Level.FINEST, "Dropping: {0}", frame);
+                            paintLog.finest("Dropping: {0}", frame);
                             frame.drop();
                             it.remove();
                             break;
@@ -354,20 +351,18 @@ public final class WebPage {
                 currentFrame = new RenderFrame();
 
                 if (frameQueue.size() > MAX_FRAME_QUEUE_SIZE) {
-                    paintLog.log(Level.FINEST, "Frame queue exceeded maximum "
+                    paintLog.finest("Frame queue exceeded maximum "
                             + "size, clearing and requesting full repaint");
                     dropRenderFrames();
                     repaintAll();
                 }
 
-                paintLog.log(Level.FINEST, "Frame queue updated, "
-                        + "frameQueue: {0}", frameQueue);
+                paintLog.finest("Frame queue updated, frameQueue: {0}", frameQueue);
             }
         }
 
         if (paintLog.isLoggable(Level.FINEST)) {
-            paintLog.log(Level.FINEST,
-                    "Exiting, dirtyRects: {0}, currentFrame: {1}",
+            paintLog.finest("Exiting, dirtyRects: {0}, currentFrame: {1}",
                     new Object[] {dirtyRects, currentFrame});
         }
     }
@@ -409,7 +404,7 @@ public final class WebPage {
                 for (WCRectangle r: dirtyRects) {
                     if (scrollRect.contains(r)) {
                         if (paintLog.isLoggable(Level.FINEST)) {
-                            paintLog.log(Level.FINEST, "translating old dirty rect by the delta: " + r);
+                            paintLog.finest("translating old dirty rect by the delta: " + r);
                         }
                         r.translate(dx, dy);
                     }
@@ -537,9 +532,9 @@ public final class WebPage {
     public void setBounds(int x, int y, int w, int h) {
         lockPage();
         try {
-            log.log(Level.FINE, "setBounds: " + x + " " + y + " " + w + " " + h);
+            log.fine("setBounds: " + x + " " + y + " " + w + " " + h);
             if (isDisposed) {
-                log.log(Level.FINE, "setBounds() request for a disposed web page.");
+                log.fine("setBounds() request for a disposed web page.");
                 return;
             }
             width = w;
@@ -572,9 +567,9 @@ public final class WebPage {
     public void setOpaque(long frameID, boolean isOpaque) {
         lockPage();
         try {
-            log.log(Level.FINE, "setOpaque: " + isOpaque);
+            log.fine("setOpaque: " + isOpaque);
             if (isDisposed) {
-                log.log(Level.FINE, "setOpaque() request for a disposed web page.");
+                log.fine("setOpaque() request for a disposed web page.");
                 return;
             }
             if (!frames.contains(frameID)) {
@@ -590,9 +585,9 @@ public final class WebPage {
     public void setBackgroundColor(long frameID, int backgroundColor) {
         lockPage();
         try {
-            log.log(Level.FINE, "setBackgroundColor: " + backgroundColor);
+            log.fine("setBackgroundColor: " + backgroundColor);
             if (isDisposed) {
-                log.log(Level.FINE, "setBackgroundColor() request for a disposed web page.");
+                log.fine("setBackgroundColor() request for a disposed web page.");
                 return;
             }
             if (!frames.contains(frameID)) {
@@ -608,10 +603,10 @@ public final class WebPage {
     public void setBackgroundColor(int backgroundColor) {
         lockPage();
         try {
-            log.log(Level.FINE, "setBackgroundColor: " + backgroundColor +
+            log.fine("setBackgroundColor: " + backgroundColor +
                    " for all frames");
             if (isDisposed) {
-                log.log(Level.FINE, "setBackgroundColor() request for a disposed web page.");
+                log.fine("setBackgroundColor() request for a disposed web page.");
                 return;
             }
 
@@ -632,7 +627,7 @@ public final class WebPage {
         try {
             ++updateContentCycleID;
 
-            paintLog.log(Level.FINEST, "toPaint: {0}", toPaint);
+            paintLog.finest("toPaint: {0}", toPaint);
             if (isDisposed) {
                 paintLog.fine("updateContent() request for a disposed web page.");
                 return;
@@ -729,10 +724,10 @@ public final class WebPage {
             frameQueue.clear();
         }
 
-        paintLog.log(Level.FINEST, "Frames to render: {0}", framesToRender);
+        paintLog.finest("Frames to render: {0}", framesToRender);
 
         for (RenderFrame frame : framesToRender) {
-            paintLog.log(Level.FINEST, "Rendering: {0}", frame);
+            paintLog.finest("Rendering: {0}", frame);
             for (WCRenderQueue rq : frame.getRQList()) {
                 gc.saveState();
                 if (rq.getClip() != null) {
@@ -765,9 +760,9 @@ public final class WebPage {
     public void dispatchFocusEvent(WCFocusEvent fe) {
         lockPage();
         try {
-            log.log(Level.FINEST, "dispatchFocusEvent: " + fe);
+            log.finest("dispatchFocusEvent: " + fe);
             if (isDisposed) {
-                log.log(Level.FINE, "Focus event for a disposed web page.");
+                log.fine("Focus event for a disposed web page.");
                 return;
             }
             twkProcessFocusEvent(getPage(), fe.getID(), fe.getDirection());
@@ -780,13 +775,13 @@ public final class WebPage {
     public boolean dispatchKeyEvent(WCKeyEvent ke) {
         lockPage();
         try {
-            log.log(Level.FINEST, "dispatchKeyEvent: " + ke);
+            log.finest("dispatchKeyEvent: " + ke);
             if (isDisposed) {
-                log.log(Level.FINE, "Key event for a disposed web page.");
+                log.fine("Key event for a disposed web page.");
                 return false;
             }
             if (WCKeyEvent.filterEvent(ke)) {
-                log.log(Level.FINEST, "filtered");
+                log.finest("filtered");
                 return false;
             }
             return twkProcessKeyEvent(getPage(), ke.getType(), ke.getText(),
@@ -802,9 +797,9 @@ public final class WebPage {
     public boolean dispatchMouseEvent(WCMouseEvent me) {
         lockPage();
         try {
-            log.log(Level.FINEST, "dispatchMouseEvent: " + me.getX() + "," + me.getY());
+            log.finest("dispatchMouseEvent: " + me.getX() + "," + me.getY());
             if (isDisposed) {
-                log.log(Level.FINE, "Mouse event for a disposed web page.");
+                log.fine("Mouse event for a disposed web page.");
                 return false;
             }
 
@@ -824,9 +819,9 @@ public final class WebPage {
     public boolean dispatchMouseWheelEvent(WCMouseWheelEvent me) {
         lockPage();
         try {
-            log.log(Level.FINEST, "dispatchMouseWheelEvent: " + me);
+            log.finest("dispatchMouseWheelEvent: " + me);
             if (isDisposed) {
-                log.log(Level.FINE, "MouseWheel event for a disposed web page.");
+                log.fine("MouseWheel event for a disposed web page.");
                 return false;
             }
             return twkProcessMouseWheelEvent(getPage(),
@@ -842,9 +837,9 @@ public final class WebPage {
     public boolean dispatchInputMethodEvent(WCInputMethodEvent ie) {
         lockPage();
         try {
-            log.log(Level.FINEST, "dispatchInputMethodEvent: " + ie);
+            log.finest("dispatchInputMethodEvent: " + ie);
             if (isDisposed) {
-                log.log(Level.FINE, "InputMethod event for a disposed web page.");
+                log.fine("InputMethod event for a disposed web page.");
                 return false;
             }
             switch (ie.getID()) {
@@ -885,11 +880,11 @@ public final class WebPage {
     {
         lockPage();
         try {
-            log.log(Level.FINEST, "dispatchDragOperation: " + x + "," + y
+            log.finest("dispatchDragOperation: " + x + "," + y
                     + " dndCommand:" + commandId
                     + " dndAction" + dndActionId);
             if (isDisposed) {
-                log.log(Level.FINE, "DnD event for a disposed web page.");
+                log.fine("DnD event for a disposed web page.");
                 return 0;
             }
             return twkProcessDrag(getPage(),
@@ -922,7 +917,7 @@ public final class WebPage {
         lockPage();
         try {
             if (isDisposed) {
-                log.log(Level.FINE, "getClientTextLocation() request for a disposed web page.");
+                log.fine("getClientTextLocation() request for a disposed web page.");
                 return new int[] { 0, 0, 0, 0 };
             }
             Invoker.getInvoker().checkEventThread();
@@ -937,7 +932,7 @@ public final class WebPage {
         lockPage();
         try {
             if (isDisposed) {
-                log.log(Level.FINE, "getClientLocationOffset() request for a disposed web page.");
+                log.fine("getClientLocationOffset() request for a disposed web page.");
                 return 0;
             }
             Invoker.getInvoker().checkEventThread();
@@ -952,7 +947,7 @@ public final class WebPage {
         lockPage();
         try {
             if (isDisposed) {
-                log.log(Level.FINE, "getClientInsertPositionOffset() request for a disposed web page.");
+                log.fine("getClientInsertPositionOffset() request for a disposed web page.");
                 return 0;
             }
             return twkGetInsertPositionOffset(getPage());
@@ -966,7 +961,7 @@ public final class WebPage {
         lockPage();
         try {
             if (isDisposed) {
-                log.log(Level.FINE, "getClientCommittedTextOffset() request for a disposed web page.");
+                log.fine("getClientCommittedTextOffset() request for a disposed web page.");
                 return 0;
             }
             return twkGetCommittedTextLength(getPage());
@@ -980,7 +975,7 @@ public final class WebPage {
         lockPage();
         try {
             if (isDisposed) {
-                log.log(Level.FINE, "getClientCommittedText() request for a disposed web page.");
+                log.fine("getClientCommittedText() request for a disposed web page.");
                 return "";
             }
             return twkGetCommittedText(getPage());
@@ -994,7 +989,7 @@ public final class WebPage {
         lockPage();
         try {
             if (isDisposed) {
-                log.log(Level.FINE, "getClientSelectedText() request for a disposed web page.");
+                log.fine("getClientSelectedText() request for a disposed web page.");
                 return "";
             }
             return twkGetSelectedText(getPage());
@@ -1011,7 +1006,7 @@ public final class WebPage {
     public void dispose() {
         lockPage();
         try {
-            log.log(Level.FINER, "dispose");
+            log.finer("dispose");
 
             stop();
             dropRenderFrames();
@@ -1021,7 +1016,7 @@ public final class WebPage {
             pPage = 0;
 
             for (long frameID : frames) {
-                log.log(Level.FINE, "Undestroyed frame view: " + frameID);
+                log.fine("Undestroyed frame view: " + frameID);
             }
             frames.clear();
 
@@ -1037,9 +1032,9 @@ public final class WebPage {
     public String getName(long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "Get Name: frame = " + frameID);
+            log.fine("Get Name: frame = " + frameID);
             if (isDisposed) {
-                log.log(Level.FINE, "getName() request for a disposed web page.");
+                log.fine("getName() request for a disposed web page.");
                 return null;
             }
             if (!frames.contains(frameID)) {
@@ -1055,9 +1050,9 @@ public final class WebPage {
     public String getURL(long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "Get URL: frame = " + frameID);
+            log.fine("Get URL: frame = " + frameID);
             if (isDisposed) {
-                log.log(Level.FINE, "getURL() request for a disposed web page.");
+                log.fine("getURL() request for a disposed web page.");
                 return null;
             }
             if (!frames.contains(frameID)) {
@@ -1073,9 +1068,9 @@ public final class WebPage {
     public String getEncoding() {
         lockPage();
         try {
-            log.log(Level.FINE, "Get encoding");
+            log.fine("Get encoding");
             if (isDisposed) {
-                log.log(Level.FINE, "getEncoding() request for a disposed web page.");
+                log.fine("getEncoding() request for a disposed web page.");
                 return null;
             }
             return twkGetEncoding(getPage());
@@ -1088,9 +1083,9 @@ public final class WebPage {
     public void setEncoding(String encoding) {
         lockPage();
         try {
-            log.log(Level.FINE, "Set encoding: encoding = " + encoding);
+            log.fine("Set encoding: encoding = " + encoding);
             if (isDisposed) {
-                log.log(Level.FINE, "setEncoding() request for a disposed web page.");
+                log.fine("setEncoding() request for a disposed web page.");
                 return;
             }
             if (encoding != null && !encoding.isEmpty()) {
@@ -1106,9 +1101,9 @@ public final class WebPage {
     public String getInnerText(long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "Get inner text: frame = " + frameID);
+            log.fine("Get inner text: frame = " + frameID);
             if (isDisposed) {
-                log.log(Level.FINE, "getInnerText() request for a disposed web page.");
+                log.fine("getInnerText() request for a disposed web page.");
                 return null;
             }
             if (!frames.contains(frameID)) {
@@ -1125,9 +1120,9 @@ public final class WebPage {
     public String getRenderTree(long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "Get render tree: frame = " + frameID);
+            log.fine("Get render tree: frame = " + frameID);
             if (isDisposed) {
-                log.log(Level.FINE, "getRenderTree() request for a disposed web page.");
+                log.fine("getRenderTree() request for a disposed web page.");
                 return null;
             }
             if (!frames.contains(frameID)) {
@@ -1144,9 +1139,9 @@ public final class WebPage {
     public int getUnloadEventListenersCount(long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "frame: " + frameID);
+            log.fine("frame: " + frameID);
             if (isDisposed) {
-                log.log(Level.FINE, "request for a disposed web page.");
+                log.fine("request for a disposed web page.");
                 return 0;
             }
             if (!frames.contains(frameID)) {
@@ -1162,9 +1157,9 @@ public final class WebPage {
     public String getContentType(long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "Get content type: frame = " + frameID);
+            log.fine("Get content type: frame = " + frameID);
             if (isDisposed) {
-                log.log(Level.FINE, "getContentType() request for a disposed web page.");
+                log.fine("getContentType() request for a disposed web page.");
                 return null;
             }
             if (!frames.contains(frameID)) {
@@ -1180,9 +1175,9 @@ public final class WebPage {
     public String getTitle(long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "Get title: frame = " + frameID);
+            log.fine("Get title: frame = " + frameID);
             if (isDisposed) {
-                log.log(Level.FINE, "getTitle() request for a disposed web page.");
+                log.fine("getTitle() request for a disposed web page.");
                 return null;
             }
             if (!frames.contains(frameID)) {
@@ -1198,9 +1193,9 @@ public final class WebPage {
     public WCImage getIcon(long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "Get icon: frame = " + frameID);
+            log.fine("Get icon: frame = " + frameID);
             if (isDisposed) {
-                log.log(Level.FINE, "getIcon() request for a disposed web page.");
+                log.fine("getIcon() request for a disposed web page.");
                 return null;
             }
             if (!frames.contains(frameID)) {
@@ -1221,9 +1216,9 @@ public final class WebPage {
     public void open(final long frameID, final String url) {
         lockPage();
         try {
-            log.log(Level.FINE, "Open URL: " + url);
+            log.fine("Open URL: " + url);
             if (isDisposed) {
-                log.log(Level.FINE, "open() request for a disposed web page.");
+                log.fine("open() request for a disposed web page.");
                 return;
             }
             if (!frames.contains(frameID)) {
@@ -1247,12 +1242,12 @@ public final class WebPage {
     public void load(final long frameID, final String text, final String contentType) {
         lockPage();
         try {
-            log.log(Level.FINE, "Load text: " + text);
+            log.fine("Load text: " + text);
             if (text == null) {
                 return;
             }
             if (isDisposed) {
-                log.log(Level.FINE, "load() request for a disposed web page.");
+                log.fine("load() request for a disposed web page.");
                 return;
             }
             if (!frames.contains(frameID)) {
@@ -1277,12 +1272,12 @@ public final class WebPage {
     public void stop(final long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "Stop loading: frame = " + frameID);
+            log.fine("Stop loading: frame = " + frameID);
 
             String url;
             String contentType;
             if (isDisposed) {
-                log.log(Level.FINE, "cancel() request for a disposed web page.");
+                log.fine("cancel() request for a disposed web page.");
                 return;
             }
             if (!frames.contains(frameID)) {
@@ -1304,9 +1299,9 @@ public final class WebPage {
     public void stop() {
         lockPage();
         try {
-            log.log(Level.FINE, "Stop loading sync");
+            log.fine("Stop loading sync");
             if (isDisposed) {
-                log.log(Level.FINE, "stopAll() request for a disposed web page.");
+                log.fine("stopAll() request for a disposed web page.");
                 return;
             }
             twkStopAll(getPage());
@@ -1319,9 +1314,9 @@ public final class WebPage {
     public void refresh(final long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "Refresh: frame = " + frameID);
+            log.fine("Refresh: frame = " + frameID);
             if (isDisposed) {
-                log.log(Level.FINE, "refresh() request for a disposed web page.");
+                log.fine("refresh() request for a disposed web page.");
                 return;
             }
             if (!frames.contains(frameID)) {
@@ -1341,9 +1336,9 @@ public final class WebPage {
     public boolean goBack() {
         lockPage();
         try {
-            log.log(Level.FINE, "Go back");
+            log.fine("Go back");
             if (isDisposed) {
-                log.log(Level.FINE, "goBack() request for a disposed web page.");
+                log.fine("goBack() request for a disposed web page.");
                 return false;
             }
             return twkGoBackForward(getPage(), -1);
@@ -1356,9 +1351,9 @@ public final class WebPage {
     public boolean goForward() {
         lockPage();
         try {
-            log.log(Level.FINE, "Go forward");
+            log.fine("Go forward");
             if (isDisposed) {
-                log.log(Level.FINE, "goForward() request for a disposed web page.");
+                log.fine("goForward() request for a disposed web page.");
                 return false;
             }
             return twkGoBackForward(getPage(), 1);
@@ -1371,9 +1366,9 @@ public final class WebPage {
     public boolean copy() {
         lockPage();
         try {
-            log.log(Level.FINE, "Copy");
+            log.fine("Copy");
             if (isDisposed) {
-                log.log(Level.FINE, "copy() request for a disposed web page.");
+                log.fine("copy() request for a disposed web page.");
                 return false;
             }
             long frameID = getMainFrame();
@@ -1391,10 +1386,10 @@ public final class WebPage {
     public boolean find(String stringToFind, boolean forward, boolean wrap, boolean matchCase) {
         lockPage();
         try {
-            log.log(Level.FINE, "Find in page: stringToFind = " + stringToFind + ", " +
+            log.fine("Find in page: stringToFind = " + stringToFind + ", " +
                     (forward ? "forward" : "backward") + (wrap ? ", wrap" : "") + (matchCase ? ", matchCase" : ""));
             if (isDisposed) {
-                log.log(Level.FINE, "find() request for a disposed web page.");
+                log.fine("find() request for a disposed web page.");
                 return false;
             }
             return twkFindInPage(getPage(), stringToFind, forward, wrap, matchCase);
@@ -1410,10 +1405,10 @@ public final class WebPage {
     {
         lockPage();
         try {
-            log.log(Level.FINE, "Find in frame: stringToFind = " + stringToFind + ", " +
+            log.fine("Find in frame: stringToFind = " + stringToFind + ", " +
                     (forward ? "forward" : "backward") + (wrap ? ", wrap" : "") + (matchCase ? ", matchCase" : ""));
             if (isDisposed) {
-                log.log(Level.FINE, "find() request for a disposed web page.");
+                log.fine("find() request for a disposed web page.");
                 return false;
             }
             if (!frames.contains(frameID)) {
@@ -1447,9 +1442,9 @@ public final class WebPage {
     public float getZoomFactor(boolean textOnly) {
         lockPage();
         try {
-            log.log(Level.FINE, "Get zoom factor, textOnly=" + textOnly);
+            log.fine("Get zoom factor, textOnly=" + textOnly);
             if (isDisposed) {
-                log.log(Level.FINE, "getZoomFactor() request for a disposed web page.");
+                log.fine("getZoomFactor() request for a disposed web page.");
                 return 1.0f;
             }
             long frameID = getMainFrame();
@@ -1467,7 +1462,7 @@ public final class WebPage {
         try {
             log.fine(String.format("Set zoom factor %.2f, textOnly=%b", zoomFactor, textOnly));
             if (isDisposed) {
-                log.log(Level.FINE, "setZoomFactor() request for a disposed web page.");
+                log.fine("setZoomFactor() request for a disposed web page.");
                 return;
             }
             long frameID = getMainFrame();
@@ -1489,9 +1484,9 @@ public final class WebPage {
     public void reset(long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "Reset: frame = " + frameID);
+            log.fine("Reset: frame = " + frameID);
             if (isDisposed) {
-                log.log(Level.FINE, "reset() request for a disposed web page.");
+                log.fine("reset() request for a disposed web page.");
                 return;
             }
             if ((frameID == 0) || !frames.contains(frameID)) {
@@ -1507,9 +1502,9 @@ public final class WebPage {
     public Object executeScript(long frameID, String script) throws JSException {
         lockPage();
         try {
-            log.log(Level.FINE, "execute script: \"" + script + "\" in frame = " + frameID);
+            log.fine("execute script: \"" + script + "\" in frame = " + frameID);
             if (isDisposed) {
-                log.log(Level.FINE, "executeScript() request for a disposed web page.");
+                log.fine("executeScript() request for a disposed web page.");
                 return null;
             }
             if ((frameID == 0) || !frames.contains(frameID)) {
@@ -1525,13 +1520,13 @@ public final class WebPage {
     public long getMainFrame() {
         lockPage();
         try {
-            log.log(Level.FINER, "getMainFrame: page = " + pPage);
+            log.finer("getMainFrame: page = " + pPage);
             if (isDisposed) {
-                log.log(Level.FINE, "getMainFrame() request for a disposed web page.");
+                log.fine("getMainFrame() request for a disposed web page.");
                 return 0L;
             }
             long mainFrameID = twkGetMainFrame(getPage());
-            log.log(Level.FINER, "Main frame = " + mainFrameID);
+            log.finer("Main frame = " + mainFrameID);
             frames.add(mainFrameID);
             return mainFrameID;
         } finally {
@@ -1542,9 +1537,9 @@ public final class WebPage {
     public long getParentFrame(long childID) {
         lockPage();
         try {
-            log.log(Level.FINE, "getParentFrame: child = " + childID);
+            log.fine("getParentFrame: child = " + childID);
             if (isDisposed) {
-                log.log(Level.FINE, "getParentFrame() request for a disposed web page.");
+                log.fine("getParentFrame() request for a disposed web page.");
                 return 0L;
             }
             if (!frames.contains(childID)) {
@@ -1559,9 +1554,9 @@ public final class WebPage {
     public List<Long> getChildFrames(long parentID) {
         lockPage();
         try {
-            log.log(Level.FINE, "getChildFrames: parent = " + parentID);
+            log.fine("getChildFrames: parent = " + parentID);
             if (isDisposed) {
-                log.log(Level.FINE, "getChildFrames() request for a disposed web page.");
+                log.fine("getChildFrames() request for a disposed web page.");
                 return null;
             }
             if (!frames.contains(parentID)) {
@@ -1627,9 +1622,9 @@ public final class WebPage {
     public Document getDocument(long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "getDocument");
+            log.fine("getDocument");
             if (isDisposed) {
-                log.log(Level.FINE, "getDocument() request for a disposed web page.");
+                log.fine("getDocument() request for a disposed web page.");
                 return null;
             }
 
@@ -1645,9 +1640,9 @@ public final class WebPage {
     public Element getOwnerElement(long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "getOwnerElement");
+            log.fine("getOwnerElement");
             if (isDisposed) {
-                log.log(Level.FINE, "getOwnerElement() request for a disposed web page.");
+                log.fine("getOwnerElement() request for a disposed web page.");
                 return null;
             }
 
@@ -1666,17 +1661,17 @@ public final class WebPage {
         lockPage();
         try {
             if (log.isLoggable(Level.FINE)) {
-                log.log(Level.FINE, "command: [{0}], value: [{1}]",
+                log.fine("command: [{0}], value: [{1}]",
                         new Object[] {command, value});
             }
             if (isDisposed) {
-                log.log(Level.FINE, "Web page is already disposed");
+                log.fine("Web page is already disposed");
                 return false;
             }
 
             boolean result = twkExecuteCommand(getPage(), command, value);
 
-            log.log(Level.FINE, "result: [{0}]", result);
+            log.fine("result: [{0}]", result);
             return result;
         } finally {
             unlockPage();
@@ -1686,15 +1681,15 @@ public final class WebPage {
     public boolean queryCommandEnabled(String command) {
         lockPage();
         try {
-            log.log(Level.FINE, "command: [{0}]", command);
+            log.fine("command: [{0}]", command);
             if (isDisposed) {
-                log.log(Level.FINE, "Web page is already disposed");
+                log.fine("Web page is already disposed");
                 return false;
             }
 
             boolean result = twkQueryCommandEnabled(getPage(), command);
 
-            log.log(Level.FINE, "result: [{0}]", result);
+            log.fine("result: [{0}]", result);
             return result;
         } finally {
             unlockPage();
@@ -1704,15 +1699,15 @@ public final class WebPage {
     public boolean queryCommandState(String command) {
         lockPage();
         try {
-            log.log(Level.FINE, "command: [{0}]", command);
+            log.fine("command: [{0}]", command);
             if (isDisposed) {
-                log.log(Level.FINE, "Web page is already disposed");
+                log.fine("Web page is already disposed");
                 return false;
             }
 
             boolean result = twkQueryCommandState(getPage(), command);
 
-            log.log(Level.FINE, "result: [{0}]", result);
+            log.fine("result: [{0}]", result);
             return result;
         } finally {
             unlockPage();
@@ -1722,15 +1717,15 @@ public final class WebPage {
     public String queryCommandValue(String command) {
         lockPage();
         try {
-            log.log(Level.FINE, "command: [{0}]", command);
+            log.fine("command: [{0}]", command);
             if (isDisposed) {
-                log.log(Level.FINE, "Web page is already disposed");
+                log.fine("Web page is already disposed");
                 return null;
             }
 
             String result = twkQueryCommandValue(getPage(), command);
 
-            log.log(Level.FINE, "result: [{0}]", result);
+            log.fine("result: [{0}]", result);
             return result;
         } finally {
             unlockPage();
@@ -1740,9 +1735,9 @@ public final class WebPage {
     public boolean isEditable() {
         lockPage();
         try {
-            log.log(Level.FINE, "isEditable");
+            log.fine("isEditable");
             if (isDisposed) {
-                log.log(Level.FINE, "isEditable() request for a disposed web page.");
+                log.fine("isEditable() request for a disposed web page.");
                 return false;
             }
 
@@ -1755,9 +1750,9 @@ public final class WebPage {
     public void setEditable(boolean editable) {
         lockPage();
         try {
-            log.log(Level.FINE, "setEditable");
+            log.fine("setEditable");
             if (isDisposed) {
-                log.log(Level.FINE, "setEditable() request for a disposed web page.");
+                log.fine("setEditable() request for a disposed web page.");
                 return;
             }
 
@@ -1774,9 +1769,9 @@ public final class WebPage {
     public String getHtml(long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "getHtml");
+            log.fine("getHtml");
             if (isDisposed) {
-                log.log(Level.FINE, "getHtml() request for a disposed web page.");
+                log.fine("getHtml() request for a disposed web page.");
                 return null;
             }
             if (!frames.contains(frameID)) {
@@ -1882,16 +1877,16 @@ public final class WebPage {
     public int getFrameHeight(long frameID) {
         lockPage();
         try {
-            log.log(Level.FINE, "Get page height");
+            log.fine("Get page height");
             if (isDisposed) {
-                log.log(Level.FINE, "getFrameHeight() request for a disposed web page.");
+                log.fine("getFrameHeight() request for a disposed web page.");
                 return 0;
             }
             if (!frames.contains(frameID)) {
                 return 0;
             }
             int height = twkGetFrameHeight(frameID);
-            log.log(Level.FINE, "Height = " + height);
+            log.fine("Height = " + height);
             return height;
         } finally {
             unlockPage();
@@ -1903,9 +1898,9 @@ public final class WebPage {
     {
         lockPage();
         try {
-            log.log(Level.FINE, "Adjust page height");
+            log.fine("Adjust page height");
             if (isDisposed) {
-                log.log(Level.FINE, "adjustFrameHeight() request for a disposed web page.");
+                log.fine("adjustFrameHeight() request for a disposed web page.");
                 return 0;
             }
             if (!frames.contains(frameID)) {
@@ -1951,9 +1946,7 @@ public final class WebPage {
         lockPage();
         try {
             boolean result = twkGetDeveloperExtrasEnabled(getPage());
-            log.log(Level.FINE,
-                    "Getting developerExtrasEnabled, result: [{0}]",
-                    result);
+            log.fine("Getting developerExtrasEnabled, result: [{0}]", result);
             return result;
         } finally {
             unlockPage();
@@ -1963,9 +1956,7 @@ public final class WebPage {
     public void setDeveloperExtrasEnabled(boolean enabled) {
         lockPage();
         try {
-            log.log(Level.FINE,
-                    "Setting developerExtrasEnabled, value: [{0}]",
-                    enabled);
+            log.fine("Setting developerExtrasEnabled, value: [{0}]", enabled);
             twkSetDeveloperExtrasEnabled(getPage(), enabled);
         } finally {
             unlockPage();
@@ -2058,7 +2049,7 @@ public final class WebPage {
     public void connectInspectorFrontend() {
         lockPage();
         try {
-            log.log(Level.FINE, "Connecting inspector frontend");
+            log.fine("Connecting inspector frontend");
             twkConnectInspectorFrontend(getPage());
         } finally {
             unlockPage();
@@ -2068,7 +2059,7 @@ public final class WebPage {
     public void disconnectInspectorFrontend() {
         lockPage();
         try {
-            log.log(Level.FINE, "Disconnecting inspector frontend");
+            log.fine("Disconnecting inspector frontend");
             twkDisconnectInspectorFrontend(getPage());
         } finally {
             unlockPage();
@@ -2079,10 +2070,8 @@ public final class WebPage {
         lockPage();
         try {
             if (log.isLoggable(Level.FINE)) {
-                log.log(Level.FINE,
-                        "Dispatching inspector message from frontend, "
-                        + "message: [{0}]",
-                        message);
+                log.fine("Dispatching inspector message from frontend, "
+                        + "message: [{0}]",  message);
             }
             twkDispatchInspectorMessageFromFrontend(getPage(), message);
         } finally {
@@ -2095,18 +2084,18 @@ public final class WebPage {
     // *************************************************************************
 
     private void fwkFrameCreated(long frameID) {
-        log.log(Level.FINE, "Frame created: frame = " + frameID);
+        log.fine("Frame created: frame = " + frameID);
         if (frames.contains(frameID)) {
-            log.log(Level.FINE, "Error in fwkFrameCreated: frame is already in frames");
+            log.fine("Error in fwkFrameCreated: frame is already in frames");
             return;
         }
         frames.add(frameID);
     }
 
     private void fwkFrameDestroyed(long frameID) {
-        log.log(Level.FINE, "Frame destroyed: frame = " + frameID);
+        log.fine("Frame destroyed: frame = " + frameID);
         if (!frames.contains(frameID)) {
-            log.log(Level.FINE, "Error in fwkFrameDestroyed: frame is not found in frames");
+            log.fine("Error in fwkFrameDestroyed: frame is not found in frames");
             return;
         }
         frames.remove(frameID);
@@ -2116,7 +2105,7 @@ public final class WebPage {
         lockPage();
         try {
             if (paintLog.isLoggable(Level.FINEST)) {
-                paintLog.log(Level.FINEST, "x: {0}, y: {1}, w: {2}, h: {3}",
+                paintLog.finest("x: {0}, y: {1}, w: {2}, h: {3}",
                         new Object[] {x, y, w, h});
             }
             addDirtyRect(new WCRectangle(x, y, w, h));
@@ -2138,7 +2127,7 @@ public final class WebPage {
     }
 
     private void fwkTransferFocus(boolean forward) {
-        log.log(Level.FINER, "Transfer focus " + (forward ? "forward" : "backward"));
+        log.finer("Transfer focus " + (forward ? "forward" : "backward"));
 
         if (pageClient != null) {
             pageClient.transferFocus(forward);
@@ -2146,7 +2135,7 @@ public final class WebPage {
     }
 
     private void fwkSetCursor(long id) {
-        log.log(Level.FINER, "Set cursor: " + id);
+        log.finer("Set cursor: " + id);
 
         if (pageClient != null) {
             pageClient.setCursor(id);
@@ -2154,7 +2143,7 @@ public final class WebPage {
     }
 
     private void fwkSetFocus(boolean focus) {
-        log.log(Level.FINER, "Set focus: " + (focus ? "true" : "false"));
+        log.finer("Set focus: " + (focus ? "true" : "false"));
 
         if (pageClient != null) {
             pageClient.setFocus(focus);
@@ -2162,7 +2151,7 @@ public final class WebPage {
     }
 
     private void fwkSetTooltip(String tooltip) {
-        log.log(Level.FINER, "Set tooltip: " + tooltip);
+        log.finer("Set tooltip: " + tooltip);
 
         if (pageClient != null) {
             pageClient.setTooltip(tooltip);
@@ -2170,7 +2159,7 @@ public final class WebPage {
     }
 
     private void fwkPrint() {
-        log.log(Level.FINER, "Print");
+        log.finer("Print");
 
         if (uiClient != null) {
             uiClient.print();
@@ -2178,7 +2167,7 @@ public final class WebPage {
     }
 
     private void fwkSetRequestURL(long pFrame, int id, String url) {
-        log.log(Level.FINER, "Set request URL: id = " + id + ", url = " + url);
+        log.finer("Set request URL: id = " + id + ", url = " + url);
 
         synchronized (requestURLs) {
             requestURLs.put(id, url);
@@ -2186,7 +2175,7 @@ public final class WebPage {
     }
 
     private void fwkRemoveRequestURL(long pFrame, int id) {
-        log.log(Level.FINER, "Set request URL: id = " + id);
+        log.finer("Set request URL: id = " + id);
 
         synchronized (requestURLs) {
             requestURLs.remove(id);
@@ -2196,7 +2185,7 @@ public final class WebPage {
 
     private WebPage fwkCreateWindow(
             boolean menu, boolean status, boolean toolbar, boolean resizable) {
-        log.log(Level.FINER, "Create window");
+        log.finer("Create window");
 
         if (uiClient != null) {
             return uiClient.createPage(menu, status, toolbar, resizable);
@@ -2205,7 +2194,7 @@ public final class WebPage {
     }
 
     private void fwkShowWindow() {
-        log.log(Level.FINER, "Show window");
+        log.finer("Show window");
 
         if (uiClient != null) {
             uiClient.showView();
@@ -2213,7 +2202,7 @@ public final class WebPage {
     }
 
     private void fwkCloseWindow() {
-        log.log(Level.FINER, "Close window");
+        log.finer("Close window");
 
         if (permitCloseWindowAction()) {
             if (uiClient != null) {
@@ -2223,7 +2212,7 @@ public final class WebPage {
     }
 
     private WCRectangle fwkGetWindowBounds() {
-        log.log(Level.FINE, "Get window bounds");
+        log.fine("Get window bounds");
 
         if (uiClient != null) {
             WCRectangle bounds = uiClient.getViewBounds();
@@ -2235,7 +2224,7 @@ public final class WebPage {
     }
 
     private void fwkSetWindowBounds(int x, int y, int w, int h) {
-        log.log(Level.FINER, "Set window bounds: " + x + " " + y + " " + w + " " + h);
+        log.finer("Set window bounds: " + x + " " + y + " " + w + " " + h);
 
         if (uiClient != null) {
             uiClient.setViewBounds(new WCRectangle(x, y, w, h));
@@ -2243,7 +2232,7 @@ public final class WebPage {
     }
 
     private WCRectangle fwkGetPageBounds() {
-        log.log(Level.FINER, "Get page bounds");
+        log.finer("Get page bounds");
         return new WCRectangle(0, 0, width, height);
     }
 
@@ -2252,7 +2241,7 @@ public final class WebPage {
     }
 
     private void fwkSetStatusbarText(String text) {
-        log.log(Level.FINER, "Set statusbar text: " + text);
+        log.finer("Set statusbar text: " + text);
 
         if (uiClient != null) {
             uiClient.setStatusbarText(text);
@@ -2260,7 +2249,7 @@ public final class WebPage {
     }
 
     private String[] fwkChooseFile(String initialFileName, boolean multiple, String mimeFilters) {
-        log.log(Level.FINER, "Choose file, initial=" + initialFileName);
+        log.finer("Choose file, initial=" + initialFileName);
 
         return uiClient != null
                 ? uiClient.chooseFile(initialFileName, multiple, mimeFilters)
@@ -2274,7 +2263,7 @@ public final class WebPage {
           String[] mimeTypes, Object[] values,
           boolean isImageSource)
     {
-        log.log(Level.FINER, "Start drag: ");
+        log.finer("Start drag: ");
         if (uiClient != null) {
             uiClient.startDrag(
                   WCImage.getImage(image),
@@ -2286,7 +2275,7 @@ public final class WebPage {
     }
 
     private WCPoint fwkScreenToWindow(WCPoint ptScreen) {
-        log.log(Level.FINER, "fwkScreenToWindow");
+        log.finer("fwkScreenToWindow");
 
         if (pageClient != null) {
             return pageClient.screenToWindow(ptScreen);
@@ -2295,7 +2284,7 @@ public final class WebPage {
     }
 
     private WCPoint fwkWindowToScreen(WCPoint ptWindow) {
-        log.log(Level.FINER, "fwkWindowToScreen");
+        log.finer("fwkWindowToScreen");
 
         if (pageClient != null) {
             return pageClient.windowToScreen(ptWindow);
@@ -2305,7 +2294,7 @@ public final class WebPage {
 
 
     private void fwkAlert(String text) {
-        log.log(Level.FINE, "JavaScript alert(): text = " + text);
+        log.fine("JavaScript alert(): text = " + text);
 
         if (uiClient != null) {
             uiClient.alert(text);
@@ -2313,7 +2302,7 @@ public final class WebPage {
     }
 
     private boolean fwkConfirm(String text) {
-        log.log(Level.FINE, "JavaScript confirm(): text = " + text);
+        log.fine("JavaScript confirm(): text = " + text);
 
         if (uiClient != null) {
             return uiClient.confirm(text);
@@ -2322,7 +2311,7 @@ public final class WebPage {
     }
 
     private String fwkPrompt(String text, String defaultValue) {
-        log.log(Level.FINE, "JavaScript prompt(): text = " + text + ", default = " + defaultValue);
+        log.fine("JavaScript prompt(): text = " + text + ", default = " + defaultValue);
 
         if (uiClient != null) {
             return uiClient.prompt(text, defaultValue);
@@ -2331,7 +2320,7 @@ public final class WebPage {
     }
 
     private boolean fwkCanRunBeforeUnloadConfirmPanel() {
-        log.log(Level.FINE, "JavaScript canRunBeforeUnloadConfirmPanel()");
+        log.fine("JavaScript canRunBeforeUnloadConfirmPanel()");
 
         if (uiClient != null) {
             return uiClient.canRunBeforeUnloadConfirmPanel();
@@ -2340,7 +2329,7 @@ public final class WebPage {
     }
 
     private boolean fwkRunBeforeUnloadConfirmPanel(String message) {
-        log.log(Level.FINE, "JavaScript runBeforeUnloadConfirmPanel(): message = " + message);
+        log.fine("JavaScript runBeforeUnloadConfirmPanel(): message = " + message);
 
         if (uiClient != null) {
             return uiClient.runBeforeUnloadConfirmPanel(message);
@@ -2351,7 +2340,7 @@ public final class WebPage {
     private void fwkAddMessageToConsole(String message, int lineNumber,
             String sourceId)
     {
-        log.log(Level.FINE, "fwkAddMessageToConsole(): message = " + message
+        log.fine("fwkAddMessageToConsole(): message = " + message
                 + ", lineNumber = " + lineNumber + ", sourceId = " + sourceId);
         if (pageClient != null) {
             pageClient.addMessageToConsole(message, lineNumber, sourceId);
@@ -2362,7 +2351,7 @@ public final class WebPage {
                                   String url, String contentType,
                                   double progress, int errorCode)
     {
-        log.log(Level.FINER, "Load event: pFrame = " + frameID + ", state = " + state +
+        log.finer("Load event: pFrame = " + frameID + ", state = " + state +
                 ", url = " + url + ", contenttype=" + contentType +
                 ", progress = " + progress + ", error = " + errorCode);
 
@@ -2373,13 +2362,13 @@ public final class WebPage {
                                           int id, String contentType,
                                           double progress, int errorCode)
     {
-        log.log(Level.FINER, "Resource load event: pFrame = " + frameID + ", state = " + state +
+        log.finer("Resource load event: pFrame = " + frameID + ", state = " + state +
                 ", id = " + id + ", contenttype=" + contentType +
                 ", progress = " + progress + ", error = " + errorCode);
 
         String url = requestURLs.get(id);
         if (url == null) {
-            log.log(Level.FINE, "Error in fwkFireResourceLoadEvent: unknown request id " + id);
+            log.fine("Error in fwkFireResourceLoadEvent: unknown request id " + id);
             return;
         }
 
@@ -2397,7 +2386,7 @@ public final class WebPage {
     }
 
     private boolean fwkPermitNavigateAction(long pFrame, String url) {
-        log.log(Level.FINE, "Policy: permit NAVIGATE: pFrame = " + pFrame + ", url = " + url);
+        log.fine("Policy: permit NAVIGATE: pFrame = " + pFrame + ", url = " + url);
 
         if (policyClient != null) {
             return policyClient.permitNavigateAction(pFrame, str2url(url));
@@ -2406,7 +2395,7 @@ public final class WebPage {
     }
 
     private boolean fwkPermitRedirectAction(long pFrame, String url) {
-        log.log(Level.FINE, "Policy: permit REDIRECT: pFrame = " + pFrame + ", url = " + url);
+        log.fine("Policy: permit REDIRECT: pFrame = " + pFrame + ", url = " + url);
 
         if (policyClient != null) {
             return policyClient.permitRedirectAction(pFrame, str2url(url));
@@ -2415,7 +2404,7 @@ public final class WebPage {
     }
 
     private boolean fwkPermitAcceptResourceAction(long pFrame, String url) {
-        log.log(Level.FINE, "Policy: permit ACCEPT_RESOURCE: pFrame + " + pFrame + ", url = " + url);
+        log.fine("Policy: permit ACCEPT_RESOURCE: pFrame + " + pFrame + ", url = " + url);
 
         if (policyClient != null) {
             return policyClient.permitAcceptResourceAction(pFrame, str2url(url));
@@ -2426,7 +2415,7 @@ public final class WebPage {
     private boolean fwkPermitSubmitDataAction(long pFrame, String url,
                                               String httpMethod, boolean isSubmit)
     {
-        log.log(Level.FINE, "Policy: permit " + (isSubmit ? "" : "RE") + "SUBMIT_DATA: pFrame = " +
+        log.fine("Policy: permit " + (isSubmit ? "" : "RE") + "SUBMIT_DATA: pFrame = " +
                 pFrame + ", url = " + url + ", httpMethod = " + httpMethod);
 
         if (policyClient != null) {
@@ -2440,7 +2429,7 @@ public final class WebPage {
     }
 
     private boolean fwkPermitEnableScriptsAction(long pFrame, String url) {
-        log.log(Level.FINE, "Policy: permit ENABLE_SCRIPTS: pFrame + " + pFrame + ", url = " + url);
+        log.fine("Policy: permit ENABLE_SCRIPTS: pFrame + " + pFrame + ", url = " + url);
 
         if (policyClient != null) {
             return policyClient.permitEnableScriptsAction(pFrame, str2url(url));
@@ -2449,7 +2438,7 @@ public final class WebPage {
     }
 
     private boolean fwkPermitNewWindowAction(long pFrame, String url) {
-        log.log(Level.FINE, "Policy: permit NEW_PAGE: pFrame = " + pFrame + ", url = " + url);
+        log.fine("Policy: permit NEW_PAGE: pFrame = " + pFrame + ", url = " + url);
 
         if (policyClient != null) {
             return policyClient.permitNewPageAction(pFrame, str2url(url));
@@ -2459,7 +2448,7 @@ public final class WebPage {
 
     // Called from fwkCloseWindow, that's why no "fwk" prefix
     private boolean permitCloseWindowAction() {
-        log.log(Level.FINE, "Policy: permit CLOSE_PAGE");
+        log.fine("Policy: permit CLOSE_PAGE");
 
         if (policyClient != null) {
             // Unfortunately, webkit doesn't provide an information about what
@@ -2470,23 +2459,22 @@ public final class WebPage {
     }
 
     private void fwkRepaintAll() {
-        log.log(Level.FINE, "Repainting the entire page");
+        log.fine("Repainting the entire page");
         repaintAll();
     }
 
     private boolean fwkSendInspectorMessageToFrontend(String message) {
         if (log.isLoggable(Level.FINE)) {
-            log.log(Level.FINE,
-                    "Sending inspector message to frontend, message: [{0}]",
+            log.fine("Sending inspector message to frontend, message: [{0}]",
                     message);
         }
         boolean result = false;
         if (inspectorClient != null) {
-            log.log(Level.FINE, "Invoking inspector client");
+            log.fine("Invoking inspector client");
             result = inspectorClient.sendMessageToFrontend(message);
         }
         if (log.isLoggable(Level.FINE)) {
-            log.log(Level.FINE, "Result: [{0}]", result);
+            log.fine("Result: [{0}]", result);
         }
         return result;
     }
@@ -2513,7 +2501,7 @@ public final class WebPage {
         try {
             return newURL(url);
         } catch (MalformedURLException ex) {
-            log.log(Level.FINE, "Exception while converting \"" + url + "\" to URL", ex);
+            log.fine("Exception while converting \"" + url + "\" to URL", ex);
         }
         return null;
     }

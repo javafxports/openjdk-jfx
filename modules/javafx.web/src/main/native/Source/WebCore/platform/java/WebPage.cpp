@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -164,7 +164,6 @@ WebPage::WebPage(std::unique_ptr<Page> page)
 
 WebPage::~WebPage()
 {
-    RenderThemeJava::setTheme(nullptr);
     debugEnded();
 }
 
@@ -242,10 +241,6 @@ static void drawDebugBorder(GraphicsContext& context,
 }
 
 void WebPage::prePaint() {
-    if (!m_jTheme) {
-        m_jTheme = RenderThemeJava::themeForPage(jobjectFromPage(m_page.get()));
-    }
-    RenderThemeJava::setTheme(m_jTheme);
     if (m_rootLayer) {
         if (m_syncLayers) {
             m_syncLayers = false;
@@ -260,6 +255,14 @@ void WebPage::prePaint() {
         // Updating layout & styles precedes normal painting.
         frameView->updateLayoutAndStyleIfNeededRecursive();
     }
+}
+
+RefPtr<RQRef> WebPage::jRenderTheme()
+{
+    if (!m_jRenderTheme) {
+        m_jRenderTheme = RenderThemeJava::themeForPage(jobjectFromPage(m_page.get()));
+    }
+    return m_jRenderTheme;
 }
 
 void WebPage::paint(jobject rq, jint x, jint y, jint w, jint h)
@@ -277,7 +280,7 @@ void WebPage::paint(jobject rq, jint x, jint y, jint w, jint h)
     }
 
     // Will be deleted by GraphicsContext destructor
-    PlatformContextJava* ppgc = new PlatformContextJava(rq);
+    PlatformContextJava* ppgc = new PlatformContextJava(rq, jRenderTheme());
     GraphicsContext gc(ppgc);
 
     // TODO: Following JS synchronization is not necessary for single thread model
@@ -301,7 +304,7 @@ void WebPage::postPaint(jobject rq, jint x, jint y, jint w, jint h)
     }
 
     // Will be deleted by GraphicsContext destructor
-    PlatformContextJava* ppgc = new PlatformContextJava(rq);
+    PlatformContextJava* ppgc = new PlatformContextJava(rq, jRenderTheme());
     GraphicsContext gc(ppgc);
 
     if (m_rootLayer) {
@@ -323,7 +326,6 @@ void WebPage::postPaint(jobject rq, jint x, jint y, jint w, jint h)
     }
 
     gc.platformContext()->rq().flushBuffer();
-    RenderThemeJava::setTheme(nullptr);
 }
 
 void WebPage::scroll(const IntSize& scrollDelta,
@@ -1521,9 +1523,10 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_WebPage_twkEndPrinting
 JNIEXPORT void JNICALL Java_com_sun_webkit_WebPage_twkPrint
     (JNIEnv* env, jobject self, jlong pPage, jobject rq, jint pageIndex, jfloat width)
 {
-    PlatformContextJava* ppgc = new PlatformContextJava(rq);
+    auto webPage = WebPage::webPageFromJLong(pPage);
+    PlatformContextJava* ppgc = new PlatformContextJava(rq, webPage->jRenderTheme());
     GraphicsContext gc(ppgc);
-    WebPage::webPageFromJLong(pPage)->print(gc, pageIndex, width);
+    webPage->print(gc, pageIndex, width);
 }
 
 JNIEXPORT jint JNICALL Java_com_sun_webkit_WebPage_twkGetFrameHeight
