@@ -4,36 +4,18 @@ image: Visual Studio 2017
 
 environment:
   JAVA_HOME: C:\jdk10
-  VCINSTALLDIR: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build
   APPVEYOR_CACHE_ENTRY_ZIP_ARGS: "-t7z -m0=lzma -mx=9"
 
 shallow_clone: true
 
 build_script:
   - ps: |
-      choco install ant
       $client = New-Object net.webclient
-      $client.DownloadFile('http://downloads.sourceforge.net/gnuwin32/zip-3.0-bin.zip', 'C:\Users\appveyor\zip-3.0.zip')
-      Expand-Archive -Path 'C:\Users\appveyor\zip-3.0.zip' -DestinationPath 'C:\Users\appveyor\zip'
-      $client.DownloadFile('http://downloads.sourceforge.net/gnuwin32/zip-3.0-dep.zip', 'C:\Users\appveyor\zip-3.0-deps.zip')
-      Expand-Archive -Path 'C:\Users\appveyor\zip-3.0-deps.zip' -DestinationPath 'C:\Users\appveyor\zip'
-      $env:PATH = "C:\Users\appveyor\zip\bin;$env:PATH"
-      $openJdk10 = 'https://github.com/AdoptOpenJDK/openjdk10-nightly/releases/download/jdk-10%2B23-20180524/OpenJDK10_x64_Win_20180524.zip'
+      $openJdk10 = "https://github.com/AdoptOpenJDK/openjdk10-releases/releases/download/201807101745/OpenJDK10_x64_Windows_201807101745.zip"
       $client.DownloadFile($openJdk10, 'C:\Users\appveyor\openjdk10.zip')
       Expand-Archive -Path 'C:\Users\appveyor\openjdk10.zip' -DestinationPath 'C:\Users\appveyor\openjdk10'
       Copy-Item -Path 'C:\Users\appveyor\openjdk10\*\' -Destination 'C:\jdk10' -Recurse -Force
-      choco install gradle --version 4.3.0
-      $msvcToolsVer = Get-Content "$env:VCINSTALLDIR\Microsoft.VCToolsVersion.default.txt"
-      if ([string]::IsNullOrWhitespace($msvcToolsVer)) {
-        # The MSVC tools version file can have txt *or* props extension.
-        $msvcToolsVer = Get-Content "$env:VCINSTALLDIR\Microsoft.VCToolsVersion.default.props"
-      }
-      $env:MSVC_VER = $msvcToolsVer
-      $env:VS150COMNTOOLS = $env:VCINSTALLDIR
-      $env:VSVARS32FILE = "$env:VCINSTALLDIR\vcvars32.bat"
-      refreshenv
-      # Must invoke gradle with cmd.exe so stderr output doesn't fail the build:
-  - cmd: gradlew all test -PCOMPILE_WEBKIT=false -PCONF=DebugNative --stacktrace -x :web:test --info --no-daemon
+      . .\tools\scripts\build.ps1 2>&1
 
 on_finish:
   - ps: |
