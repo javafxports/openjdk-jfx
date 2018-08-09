@@ -287,6 +287,12 @@ class D3DContext extends BaseShaderContext {
         int res;
         if (xform == null || (xform.isIdentity() && perspectiveTransform.isIdentity())) {
             res = nResetTransform(pContext);
+        } else if (perspectiveTransform.isIdentity()) {
+            res = nSetTransform(pContext,
+                xform.getMxx(), xform.getMxy(), xform.getMxz(), xform.getMxt(),
+                xform.getMyx(), xform.getMyy(), xform.getMyz(), xform.getMyt(),
+                xform.getMzx(), xform.getMzy(), xform.getMzz(), xform.getMzt(),
+                0.0, 0.0, 0.0, 1.0);
         } else {
             scratchTx.setIdentity().mul(xform).mul(perspectiveTransform);
             res = nSetTransform(pContext,

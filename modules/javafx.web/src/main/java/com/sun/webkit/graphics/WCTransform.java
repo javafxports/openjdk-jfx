@@ -29,6 +29,7 @@ import java.util.Arrays;
 
 public final class WCTransform extends Ref {
     private final double[] m;
+    private final boolean is3D;
 
     public WCTransform(double m11, double m12, double m13, double m14,
                        double m21, double m22, double m23, double m24,
@@ -56,6 +57,8 @@ public final class WCTransform extends Ref {
         m[13] = m24;
         m[14] = m34;
         m[15] = m44;
+
+        this.is3D = true;
     }
 
     public WCTransform(double m00, double m10, double m01, double m11,
@@ -67,6 +70,8 @@ public final class WCTransform extends Ref {
         m[3] = m11;
         m[4] = m02;
         m[5] = m12;
+
+        this.is3D = false;
     }
 
     public double [] getMatrix() {
@@ -76,14 +81,14 @@ public final class WCTransform extends Ref {
     @Override
     public String toString() {
          String val = "WCTransform:";
-         if (m.length == 6) {
-            val += "(" + m[0] + "," + m[1] + "," + m[2] + ")" +
-                   "(" + m[3] + "," + m[4] + "," + m[5] + ")";
-         } else {
+         if (is3D) {
             val += "(" + m[0] + "," + m[1] + "," + m[2] + "," + m[3] + ")" +
                    "(" + m[4] + "," + m[5] + "," + m[6] + "," + m[7] + ")" +
                    "(" + m[8] + "," + m[9] + "," + m[10] + "," + m[11] + ")" +
                    "(" + m[12] + "," + m[13] + "," + m[14] + "," + m[15] + ")";
+         } else {
+            val += "(" + m[0] + "," + m[1] + "," + m[2] + ")" +
+                   "(" + m[3] + "," + m[4] + "," + m[5] + ")";
          }
          return val;
     }
