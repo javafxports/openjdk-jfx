@@ -39,6 +39,9 @@ public abstract class NGCamera extends NGNode {
 
     protected Affine3D worldTransform = new Affine3D();
 
+    // Only used by web module to invalidate camera.
+    protected boolean valid = true;
+
     // Viewport -- note that, except in the case of GeneralCamera, this will
     // be set to the size of the panel.
     protected double viewWidth = 1.0;
@@ -129,4 +132,8 @@ public abstract class NGCamera extends NGNode {
 
 //    public abstract void validate(final int w, final int h);
     public abstract PickRay computePickRay(float x, float y, PickRay pickRay);
+
+    public boolean isValid() {
+        return valid;
+    }
 }

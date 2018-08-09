@@ -29,7 +29,6 @@ import com.sun.glass.ui.Screen;
 import com.sun.javafx.geom.Rectangle;
 import com.sun.javafx.geom.transform.Affine3D;
 import com.sun.javafx.geom.transform.BaseTransform;
-import com.sun.javafx.geom.transform.GeneralTransform3D;
 import com.sun.javafx.sg.prism.NGCamera;
 import com.sun.prism.CompositeMode;
 import com.sun.prism.PixelFormat;
@@ -192,12 +191,6 @@ public abstract class BaseShaderContext extends BaseContext {
         private float lastConst5 = Float.NaN;
         private float lastConst6 = Float.NaN;
         private boolean lastState3D = false;
-    }
-
-    @Override
-    protected void setPerspectiveTransform(GeneralTransform3D transform) {
-        state.isXformValid = false;
-        super.setPerspectiveTransform(transform);
     }
 
     protected void resetLastClip(State state) {
@@ -748,6 +741,7 @@ public abstract class BaseShaderContext extends BaseContext {
             state3D != state.lastState3D ||
             target != state.lastRenderTarget ||
             camera != state.lastCamera ||
+            (camera != null && !camera.isValid()) ||
             depthTest != state.lastDepthTest)
         {
             flushVertexBuffer();

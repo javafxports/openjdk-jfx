@@ -34,7 +34,6 @@ import com.sun.javafx.geom.RoundRectangle2D;
 import com.sun.javafx.geom.Shape;
 import com.sun.javafx.geom.transform.Affine3D;
 import com.sun.javafx.geom.transform.BaseTransform;
-import com.sun.javafx.geom.transform.GeneralTransform3D;
 import com.sun.javafx.sg.prism.NGCamera;
 import com.sun.javafx.sg.prism.NodePath;
 import com.sun.prism.BasicStroke;
@@ -136,11 +135,6 @@ public abstract class BaseGraphics implements RectShadowGraphics {
 
     public BaseTransform getTransformNoClone() {
         return transform3D;
-    }
-
-    @Override
-    public void setPerspectiveTransform(GeneralTransform3D transform) {
-        context.setPerspectiveTransform(transform);
     }
 
     public void setTransform(BaseTransform transform) {

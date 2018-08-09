@@ -63,7 +63,7 @@ public class WCCamera extends NGDefaultCamera {
     public static WCCamera attachToGraphics(Graphics g) {
         // flip the instances to invalidate state.isXformValid
         // Refer BaseShaderContext.setRenderTarget
-        final WCCamera cam = g.getCameraNoClone() == INSTANCE0 ? INSTANCE1 : INSTANCE0;
+        final WCCamera cam = INSTANCE0;
         g.setCamera(cam);
         return cam;
     }
@@ -85,12 +85,17 @@ public class WCCamera extends NGDefaultCamera {
     public void setPerspectiveTransform(GeneralTransform3D perspectiveTransform, BaseTransform xform) {
         this.perspectiveTransform.set(perspectiveTransform);
         this.xform.setTransform(xform);
+        valid = false;
     }
 
     @Override
     public GeneralTransform3D getProjViewTx(GeneralTransform3D tx) {
-        resultTx.setIdentity();
-        return resultTx.mul(projViewTx).mul(xform).mul(perspectiveTransform);
+        valid = true;
+        if (tx == null) {
+            tx = resultTx;
+        }
+        tx.set(projViewTx);
+        return tx.mul(xform).mul(perspectiveTransform);
     }
 }
 

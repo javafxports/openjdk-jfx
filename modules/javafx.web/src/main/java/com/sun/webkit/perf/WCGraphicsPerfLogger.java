@@ -233,6 +233,14 @@ public final class WCGraphicsPerfLogger extends WCGraphicsContext {
     }
 
     @Override
+    public void drawImageTexture(WCImage img, WCTransform tx,
+                          float dstx, float dsty, float dstw, float dsth) {
+        logger.resumeCount("DRAWIMAGETEXTURE");
+        gc.drawImageTexture(img, tx, dstx, dsty, dstw, dsth);
+        logger.suspendCount("DRAWIMAGETEXTURE");
+    }
+
+    @Override
     public void drawIcon(WCIcon icon, int x, int y) {
         logger.resumeCount("DRAWICON");
         gc.drawIcon(icon, x, y);
@@ -437,13 +445,6 @@ public final class WCGraphicsPerfLogger extends WCGraphicsContext {
         logger.resumeCount("FLUSH");
         gc.flush();
         logger.suspendCount("FLUSH");
-    }
-
-    @Override
-    public void setPerspectiveTransform(WCTransform t) {
-        logger.resumeCount("SETPERSPECTIVETRANSFORM");
-        gc.setPerspectiveTransform(t);
-        logger.suspendCount("SETPERSPECTIVETRANSFORM");
     }
 
     @Override

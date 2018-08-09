@@ -84,7 +84,7 @@ public final class GraphicsDecoder  {
     @Native public final static int SET_LINE_JOIN          = 53;
     @Native public final static int SET_MITER_LIMIT        = 54;
     @Native public final static int SET_TEXT_MODE          = 55;
-    @Native public final static int SET_PERSPECTIVE_TRANSFORM = 56;
+    @Native public final static int DRAWIMAGE_TEXTURE = 56;
 
     private final static PlatformLogger log =
             PlatformLogger.getLogger(GraphicsDecoder.class.getName());
@@ -327,12 +327,19 @@ public final class GraphicsDecoder  {
                             buf.getFloat(), buf.getFloat(), buf.getFloat(),
                             buf.getFloat(), buf.getFloat(), buf.getFloat()));
                     break;
-                case SET_PERSPECTIVE_TRANSFORM:
-                    gc.setPerspectiveTransform(new WCTransform(
-                            buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat(),
-                            buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat(),
-                            buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat(),
-                            buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat()));
+                case DRAWIMAGE_TEXTURE:
+                    drawImageTexture(gc,
+                            gm.getRef(buf.getInt()),
+                            new WCTransform(
+                                buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat(),
+                                buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat(),
+                                buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat(),
+                                buf.getFloat(), buf.getFloat(), buf.getFloat(), buf.getFloat()),
+                            // dst cords
+                            buf.getFloat(),
+                            buf.getFloat(),
+                            buf.getFloat(),
+                            buf.getFloat());
                     break;
                 case SET_TRANSFORM:
                     gc.setTransform(new WCTransform(
@@ -413,6 +420,30 @@ public final class GraphicsDecoder  {
                     patternTransform,
                     phase,
                     destRect);
+            } catch (OutOfMemoryError error) {
+                error.printStackTrace();
+            }
+        }
+    }
+
+    private static void drawImageTexture(
+            WCGraphicsContext gc,
+            Object imgFrame,
+            WCTransform tx,
+            float dstx, float dsty, float dstw, float dsth)
+    {
+        WCImage img = WCImage.getImage(imgFrame);
+        if (img != null) {
+            // RT-10059: drawImage() may have to create the texture
+            // lazily, and may fail with an OutOfMemory error
+            // if the texture is too large. This is a legitimate
+            // situation that should be handled gracefully. It should
+            // not cause us to quit painting other page components.
+            try {
+                gc.drawImageTexture(
+                    img,
+                    tx,
+                    dstx, dsty, dstw, dsth);
             } catch (OutOfMemoryError error) {
                 error.printStackTrace();
             }
