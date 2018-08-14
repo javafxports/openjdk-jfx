@@ -66,7 +66,9 @@ public class Stylesheet {
     final static int BINARY_CSS_VERSION = 6;
 
     private final String url;
-    /** The URL from which the stylesheet was loaded.
+    /**
+     *  The URL from which this {@code Stylesheet} was loaded.
+     *
      * @return A String representation of the URL from which the stylesheet was loaded, or null if
      *         the stylesheet was created from an inline style.
      */
@@ -75,11 +77,17 @@ public class Stylesheet {
     }
 
     /**
-     * True if this style came from user stylesheet, we need to know this so
+     * Specifies the origin of this {@code Stylesheet}. We need to know this so
      * that we can make user important styles have higher priority than
-     * author styles
+     * author styles.
      */
     private StyleOrigin origin = StyleOrigin.AUTHOR;
+
+    /**
+     * The origin of this {@code Stylesheet}.
+     *
+     * @return the origin of this {@code Stylesheet}
+     */
     public StyleOrigin getOrigin() {
         return origin;
     }
@@ -131,9 +139,10 @@ public class Stylesheet {
     }
 
     /**
-     * Constructs a Stylesheet interpreting the given String as the base URI. The
+     * Constructs a Stylesheet using the given URL as the base URI. The
      * parameter may not be null.
-     * @param url the base URI for this stylesheet.
+     *
+     * @param url the base URI for this stylesheet
      */
     Stylesheet(String url) {
 
@@ -141,10 +150,20 @@ public class Stylesheet {
 
     }
 
+    /**
+     * The rules that are defined in this {@code Stylesheet}
+     *
+     * @return a list of rules used by this {@code Stylesheet}
+     */
     public List<Rule> getRules() {
         return rules;
     }
 
+    /**
+     * The font faces used by this {@code Stylesheet}
+     *
+     * @return a list of font faces used by this {@code Stylesheet}
+     */
     public List<FontFace> getFontFaces() {
         return fontFaces;
     }
@@ -238,11 +257,13 @@ public class Stylesheet {
     private String[] stringStore;
     final String[] getStringStore() { return stringStore; }
 
-    /** Loads a binary stylesheet from a URL.
-     * @param url the URL from which the stylesheet will be loaded.
-     * @return the loaded stylesheet.
-     * @throws java.io.IOException if the binary stream corresponds to a more recent binary
-     * css version or if any other IO error occurs while reading from the stream.
+    /**
+     * Loads a binary stylesheet from a URL.
+     *
+     * @param url the URL from which the {@code Stylesheet} will be loaded
+     * @return the loaded {@code Stylesheet}
+     * @throws IOException if the binary stream corresponds to a more recent binary
+     * css version or if an I/O error occurs while reading from the stream
      */
     public static Stylesheet loadBinary(URL url) throws IOException {
 
@@ -294,12 +315,14 @@ public class Stylesheet {
     }
 
     /**
-     * Convert the .css file referenced by source to binary format and write to destination.
-     * @param source the JavaFX .css file to convert
-     * @param destination the file to which the binary version is written
-     * @throws IOException if any IO error occurs.
-     * @throws IllegalArgumentException if either parameter is null, if source and destination are the same,
-     * if source cannot be read, or if destination cannot be written.
+     * Convert the css file referenced by source to binary format and write to destination.
+     *
+     * @param source the JavaFX compliant css file to convert
+     * @param destination the file to which the binary formatted data is written
+     * @throws IOException if the destination file can not be created or if an I/O error occurs
+     * @throws IllegalArgumentException if either parameter is null, if {@code source} and
+     * {@code destination} are the same, if {@code source} cannot be read, or if {@code destination}
+     * cannot be written
      */
     public static void convertToBinary(File source, File destination) throws IOException {
 
