@@ -11,7 +11,7 @@ shallow_clone: true
 build_script:
   - ps: |
       $client = New-Object net.webclient
-      $openJdk10 = "https://github.com/AdoptOpenJDK/openjdk10-releases/releases/download/201807101745/OpenJDK10_x64_Windows_201807101745.zip"
+      $openJdk10 = 'https://github.com/AdoptOpenJDK/openjdk10-releases/releases/download/jdk-10.0.1%2B10/OpenJDK10_x64_Windows_201807101745.zip'
       $client.DownloadFile($openJdk10, 'C:\Users\appveyor\openjdk10.zip')
       Expand-Archive -Path 'C:\Users\appveyor\openjdk10.zip' -DestinationPath 'C:\Users\appveyor\openjdk10'
       Copy-Item -Path 'C:\Users\appveyor\openjdk10\*\' -Destination 'C:\jdk10' -Recurse -Force
