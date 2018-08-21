@@ -12,4 +12,9 @@ $env:MSVC_VER = $msvcToolsVer
 $env:VS150COMNTOOLS = $env:VCINSTALLDIR
 $env:VSVARS32FILE = "$env:VCINSTALLDIR\vcvars32.bat"
 refreshenv
-.\gradlew all test -PCOMPILE_WEBKIT=false -PCONF=DebugNative --stacktrace -x :web:test --info
+if ($env:APPVEYOR -eq "true") {
+  .\gradlew all test -PCOMPILE_WEBKIT=false -PCONF=DebugNative --stacktrace -x :web:test --info --no-daemon
+} else {
+  .\gradlew all test -PCOMPILE_WEBKIT=false -PCONF=DebugNative --stacktrace -x :web:test --info
+}
+
