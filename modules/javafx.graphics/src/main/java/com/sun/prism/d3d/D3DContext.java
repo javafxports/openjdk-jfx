@@ -283,9 +283,13 @@ class D3DContext extends BaseShaderContext {
 
     @Override
     protected void updateShaderTransform(Shader shader, BaseTransform xform) {
+        if (xform == null) {
+            xform = BaseTransform.IDENTITY_TRANSFORM;
+        }
+
         final GeneralTransform3D perspectiveTransform = getPerspectiveTransformNoClone();
         int res;
-        if (xform == null || (xform.isIdentity() && perspectiveTransform.isIdentity())) {
+        if (xform.isIdentity() && perspectiveTransform.isIdentity()) {
             res = nResetTransform(pContext);
         } else if (perspectiveTransform.isIdentity()) {
             res = nSetTransform(pContext,
