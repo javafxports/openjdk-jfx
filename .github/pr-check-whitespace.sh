@@ -12,7 +12,6 @@ fi
 ROOTDIR=$(git rev-parse --show-toplevel)
 cd $ROOTDIR
 
-# Check all files changes as part of this pull request, excluding the .ci/
-# directory which has executable shell scripts
+# Check all files changed as part of this pull request
 # FIXME: maybe remove the -v option at some point
-bash .github/pr-list-files.sh | grep -v ^.ci/ | bash tools/scripts/checkWhiteSpace -S -x -v
+bash .github/pr-list-files.sh | bash tools/scripts/checkWhiteSpace -S -x -v
