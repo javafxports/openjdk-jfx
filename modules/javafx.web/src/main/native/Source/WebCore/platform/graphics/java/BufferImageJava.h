@@ -61,11 +61,11 @@ public:
         const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendModeNormal) override;
 
     NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext* = nullptr) override;
+    void flushImageRQ(GraphicsContext& gc);
 
 private:
     BufferImage(RefPtr<RQRef> rqoImage, RefPtr<RenderingQueue> rq, int w, int h);
 
-    void flushImageRQ(GraphicsContext& gc);
 
     int m_width, m_height;
     RefPtr<RenderingQueue> m_rq;

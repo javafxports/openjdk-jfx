@@ -741,6 +741,7 @@ public abstract class BaseShaderContext extends BaseContext {
             state3D != state.lastState3D ||
             target != state.lastRenderTarget ||
             camera != state.lastCamera ||
+            (camera != null && !camera.isValid()) ||
             depthTest != state.lastDepthTest)
         {
             flushVertexBuffer();

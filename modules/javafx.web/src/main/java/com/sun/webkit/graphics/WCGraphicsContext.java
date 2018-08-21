@@ -74,6 +74,8 @@ public abstract class WCGraphicsContext {
     public abstract void drawImage(WCImage img,
                           float dstx, float dsty, float dstw, float dsth,
                           float srcx, float srcy, float srcw, float srch);
+    public abstract void drawImageTexture(WCImage img, WCTransform tx,
+                          float dstx, float dsty, float dstw, float dsth);
 
     public abstract void drawIcon(WCIcon icon, int x, int y);
 
