@@ -37,6 +37,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
@@ -98,12 +99,19 @@ public class RobotTest {
         test.testMouseClickPrimary();
         test.testMouseClickSecondary();
         test.testMouseClickMiddle();
+        test.testMouseClickForward();
+        test.testMouseClickBack();
         test.testMousePressThrowsISEOnWrongThread();
         test.testMousePressThrowsNPEForNullArgument();
         test.testMouseReleaseThrowsISEOnWrongThread();
         test.testMouseReleaseThrowsNPEForNullArgument();
         test.testMouseClickThrowsISEOnWrongThread();
         test.testMouseClickThrowsNPEForNullArgument();
+        test.testMouseDragPrimary();
+        test.testMouseDragSecondary();
+        test.testMouseDragMiddle();
+        test.testMouseDragForward();
+        test.testMouseDragBack();
         test.testMouseWheelPositiveAmount();
         test.testMouseWheelNegativeAmount();
         test.testMouseWheelThrowsISEOnWrongThread();
@@ -312,6 +320,16 @@ public class RobotTest {
         testMouseAction(MouseAction.CLICKED, MouseButton.MIDDLE);
     }
 
+    @Test
+    public void testMouseClickForward() {
+        testMouseAction(MouseAction.CLICKED, MouseButton.FORWARD);
+    }
+
+    @Test
+    public void testMouseClickBack() {
+        testMouseAction(MouseAction.CLICKED, MouseButton.BACK);
+    }
+
     private enum MouseAction {
         PRESSED,
         CLICKED
@@ -457,6 +475,65 @@ public class RobotTest {
             }
             Assert.fail("Expected NullPointerException");
         });
+    }
+
+    @Test
+    public void testMouseDragPrimary() {
+        testMouseDrag(MouseButton.PRIMARY);
+    }
+
+    @Test
+    public void testMouseDragSecondary() {
+        testMouseDrag(MouseButton.SECONDARY);
+    }
+
+    @Test
+    public void testMouseDragMiddle() {
+        testMouseDrag(MouseButton.MIDDLE);
+    }
+
+    @Test
+    public void testMouseDragForward() {
+        testMouseDrag(MouseButton.FORWARD);
+    }
+
+    @Test
+    public void testMouseDragBack() {
+        testMouseDrag(MouseButton.BACK);
+    }
+
+    public void testMouseDrag(MouseButton mouseButton) {
+        CountDownLatch mouseDragLatch = new CountDownLatch(1);
+        CountDownLatch setSceneLatch = new CountDownLatch(1);
+        Label label = new Label("Source");
+        InvalidationListener invalidationListener = observable -> setSceneLatch.countDown();
+        Util.runAndWait(() -> {
+            label.setOnMouseDragged(event -> {
+                if (event.getButton() == mouseButton) {
+                    mouseDragLatch.countDown();
+                }
+            });
+            scene = new Scene(new HBox(label));
+            stage.sceneProperty().addListener(observable -> {
+                setSceneLatch.countDown();
+                stage.sceneProperty().removeListener(invalidationListener);
+            });
+            stage.setScene(scene);
+        });
+        waitForLatch(setSceneLatch, 5, "Timeout while waiting for scene to be set on stage.");
+        Util.runAndWait(() -> {
+            int mouseX = (int) (scene.getWindow().getX() + scene.getX() +
+                    label.getLayoutX() + label.getLayoutBounds().getWidth() / 2);
+            int mouseY = (int) (scene.getWindow().getY() + scene.getY() +
+                    label.getLayoutY() + label.getLayoutBounds().getHeight() / 2);
+            robot.mouseMove(mouseX, mouseY);
+            robot.mousePress(mouseButton);
+            for (int i = 1; i <= 50; i++) {
+                robot.mouseMove(mouseX + i, mouseY);
+            }
+            robot.mouseRelease(mouseButton);
+        });
+        waitForLatch(mouseDragLatch, 5, "Timeout while waiting for button.onMouseDragged().");
     }
 
     @Test

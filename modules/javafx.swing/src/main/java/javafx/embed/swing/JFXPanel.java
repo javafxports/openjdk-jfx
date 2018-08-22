@@ -388,6 +388,9 @@ public class JFXPanel extends JComponent {
         boolean primaryBtnDown = (extModifiers & MouseEvent.BUTTON1_DOWN_MASK) != 0;
         boolean middleBtnDown = (extModifiers & MouseEvent.BUTTON2_DOWN_MASK) != 0;
         boolean secondaryBtnDown = (extModifiers & MouseEvent.BUTTON3_DOWN_MASK) != 0;
+        boolean backBtnDown = (extModifiers & MouseEvent.getMaskForButton(4)) != 0;
+        boolean forwardBtnDown = (extModifiers & MouseEvent.getMaskForButton(5)) != 0;
+
         // Fix for RT-16558: if a PRESSED event is consumed, e.g. by a Swing Popup,
         // subsequent DRAGGED and RELEASED events should not be sent to FX as well
         if (e.getID() == MouseEvent.MOUSE_DRAGGED) {
@@ -400,7 +403,7 @@ public class JFXPanel extends JComponent {
             if (!isCapturingMouse) {
                 return;
             }
-            isCapturingMouse = primaryBtnDown || middleBtnDown || secondaryBtnDown;
+            isCapturingMouse = primaryBtnDown || middleBtnDown || secondaryBtnDown || backBtnDown || forwardBtnDown;
         } else if (e.getID() == MouseEvent.MOUSE_CLICKED) {
             // Don't send click events to FX, as they are generated in Scene
             return;
@@ -427,6 +430,7 @@ public class JFXPanel extends JComponent {
                     SwingEvents.mouseIDToEmbedMouseType(e.getID()),
                     SwingEvents.mouseButtonToEmbedMouseButton(e.getButton(), extModifiers),
                     primaryBtnDown, middleBtnDown, secondaryBtnDown,
+                    backBtnDown, forwardBtnDown,
                     e.getX(), e.getY(), e.getXOnScreen(), e.getYOnScreen(),
                     (extModifiers & MouseEvent.SHIFT_DOWN_MASK) != 0,
                     (extModifiers & MouseEvent.CTRL_DOWN_MASK) != 0,
