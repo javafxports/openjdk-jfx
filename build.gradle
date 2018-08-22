@@ -4468,7 +4468,6 @@ compileTargets { t ->
                     'Automatic-Module-Name':"${moduleName}Empty"
                 )
             }
-
         }
 
         def modularPublicationJarName = "${moduleName}-${t.name}.jar"
