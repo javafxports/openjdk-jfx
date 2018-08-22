@@ -455,7 +455,11 @@ public class TableColumnHeader extends Region {
     NestedTableColumnHeader getNestedColumnHeader() { return nestedColumnHeader; }
     void setNestedColumnHeader(NestedTableColumnHeader nch) { nestedColumnHeader = nch; }
 
-    TableHeaderRow getTableHeaderRow() { return tableHeaderRow; }
+    /**
+     *
+     * @return The @link {@link TableHeaderRow} associated with this TableColumnHeader.
+     */
+    protected TableHeaderRow getTableHeaderRow() { return tableHeaderRow; }
     void setTableHeaderRow(TableHeaderRow thr) {
         tableHeaderRow = thr;
         updateTableSkin();
@@ -477,7 +481,7 @@ public class TableColumnHeader extends Region {
         }
     }
 
-    TableViewSkinBase<?,?,?,?,?> getTableSkin() {
+    protected TableViewSkinBase<?,?,?,?,?> getTableSkin() {
         return tableHeaderRow == null ? null : tableHeaderRow.tableSkin;
     }
 

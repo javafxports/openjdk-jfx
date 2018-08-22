@@ -508,7 +508,11 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      *                                                                         *
      **************************************************************************/
 
-    final TableHeaderRow getTableHeaderRow() {
+    /**
+     *
+     * @return The TableHeaderRow created using {@link #createTableHeaderRow()}.
+     */
+    protected final TableHeaderRow getTableHeaderRow() {
         return tableHeaderRow;
     }
 
@@ -816,18 +820,24 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
         }
     }
 
-    // Handles the horizontal scrolling when the selection mode is cell-based
-    // and the newly selected cell belongs to a column which is not totally
-    // visible.
+    /**
+     * Handles the horizontal scrolling when the selection mode is cell-based
+     * and the newly selected cell belongs to a column which is not totally
+     * visible.
+     */
     void scrollHorizontally() {
-        TableFocusModel<M,?> fm = getFocusModel();
+        TableFocusModel<M, ?> fm = getFocusModel();
         if (fm == null) return;
 
         TC col = getFocusedCell().getTableColumn();
         scrollHorizontally(col);
     }
 
-    void scrollHorizontally(TC col) {
+    /**
+     * Programmatically scroll to the given column.
+     * @param col
+     */
+    protected void scrollHorizontally(TC col) {
         if (col == null || !col.isVisible()) return;
 
         final Control control = getSkinnable();

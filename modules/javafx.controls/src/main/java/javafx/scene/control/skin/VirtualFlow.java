@@ -1735,10 +1735,10 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
      *                                                                         *
      **************************************************************************/
 
-    final VirtualScrollBar getHbar() {
+    protected final VirtualScrollBar getHbar() {
         return hbar;
     }
-    final VirtualScrollBar getVbar() {
+    protected final VirtualScrollBar getVbar() {
         return vbar;
     }
 
@@ -1855,7 +1855,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
         }
     }
 
-    private void resizeCellSize(T cell) {
+    protected void resizeCellSize(T cell) {
         if (cell == null) return;
 
         if (isVertical()) {
@@ -1867,12 +1867,12 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
         }
     }
 
-    private List<T> getCells() {
+    protected List<T> getCells() {
         return cells;
     }
 
     // Returns last visible cell whose bounds are entirely within the viewport
-    T getLastVisibleCellWithinViewPort() {
+    protected T getLastVisibleCellWithinViewPort() {
         if (cells.isEmpty() || getViewportLength() <= 0) return null;
 
         T cell;
@@ -1895,7 +1895,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     }
 
     // Returns first visible cell whose bounds are entirely within the viewport
-    T getFirstVisibleCellWithinViewPort() {
+    protected T getFirstVisibleCellWithinViewPort() {
         if (cells.isEmpty() || getViewportLength() <= 0) return null;
 
         T cell;
@@ -2110,7 +2110,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
         return filledWithNonEmpty;
     }
 
-    void reconfigureCells() {
+    protected void reconfigureCells() {
         needsReconfigureCells = true;
         requestLayout();
     }
@@ -2485,13 +2485,17 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
         }
     }
 
+
     /**
      * This method is an experts-only method - if the requested index is not
      * already an existing visible cell, it will create a cell for the
      * given index and insert it into the sheet. From that point on it will be
      * unmanaged, and is up to the caller of this method to manage it.
+     *
+     * @param index
+     * @return
      */
-    T getPrivateCell(int index)  {
+    protected T getPrivateCell(int index)  {
         T cell = null;
 
         // If there are cells, then we will attempt to get an existing cell

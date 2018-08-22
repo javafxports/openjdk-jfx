@@ -314,9 +314,15 @@ public class TableHeaderRow extends StackPane {
     private final ReadOnlyObjectProperty<NestedTableColumnHeader> rootHeaderProperty() {
         return rootHeader.getReadOnlyProperty();
     }
-    final NestedTableColumnHeader getRootHeader() {
+
+    /**
+     * @return The root header that is actually just one NestedTableColumnHeader that spans
+     * the entire width.
+     */
+    protected final NestedTableColumnHeader getRootHeader() {
         return rootHeader.get();
     }
+
     private final void setRootHeader(NestedTableColumnHeader value) {
         rootHeader.set(value);
     }
@@ -378,9 +384,10 @@ public class TableHeaderRow extends StackPane {
         return snappedTopInset() + headerPrefHeight + snappedBottomInset();
     }
 
-    // used to be protected to allow subclasses to modify the horizontal scrolling,
-    // but made private again for JDK 9
-    void updateScrollX() {
+       /**
+     * This method is called whenever a scroll is happening on the horizontal bar.
+     */
+    protected void updateScrollX() {
         scrollX = flow.getHbar().isVisible() ? -flow.getHbar().getValue() : 0.0F;
         requestLayout();
 
@@ -390,9 +397,11 @@ public class TableHeaderRow extends StackPane {
         layout();
     }
 
-    // used to be protected to allow subclass to customise the width, to allow for features
-    // such as row headers, but made private again for JDK 9
-    private void updateTableWidth() {
+
+    /**
+     * This method is called when the width is changing.
+     */
+    protected void updateTableWidth() {
         // snapping added for RT-19428
         final Control c = tableSkin.getSkinnable();
         if (c == null) {
