@@ -63,12 +63,12 @@ before_script:
   # run on xvfb screen (for linux).
   - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then export DISPLAY=:99.0 && sh -e /etc/init.d/xvfb start; fi
 
-before_install: .ci/before_install.sh
+before_install: bash .ci/before_install.sh
 
 # skip install stage.
 install: true
 
-script: .ci/script.sh
+script: bash .ci/script.sh
 
 notifications:
   email: false

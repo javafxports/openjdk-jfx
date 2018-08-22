@@ -34,4 +34,11 @@ if [[ ${RESULT} -ne 0 ]]; then
   exit ${RESULT}
 fi
 
+bash .github/pr-check-whitespace.sh
+RESULT=$?
+if [[ ${RESULT} -ne 0 ]]; then
+    echo "Error in white space check"
+    exit ${RESULT}
+fi
+
 # vim :set ts=2 sw=2 sts=2 et:
