@@ -3,7 +3,7 @@ version: "{branch} {build}"
 image: Visual Studio 2017
 
 environment:
-  JAVA_HOME: C:\jdk10
+  JAVA_HOME: C:\jdk11
   APPVEYOR_CACHE_ENTRY_ZIP_ARGS: "-t7z -m0=lzma -mx=9"
 
 shallow_clone: true
@@ -11,10 +11,12 @@ shallow_clone: true
 build_script:
   - ps: |
       $client = New-Object net.webclient
-      $openJdk10 = 'https://github.com/AdoptOpenJDK/openjdk10-releases/releases/download/jdk-10.0.1%2B10/OpenJDK10_x64_Windows_201807101745.zip'
-      $client.DownloadFile($openJdk10, 'C:\Users\appveyor\openjdk10.zip')
-      Expand-Archive -Path 'C:\Users\appveyor\openjdk10.zip' -DestinationPath 'C:\Users\appveyor\openjdk10'
-      Copy-Item -Path 'C:\Users\appveyor\openjdk10\*\' -Destination 'C:\jdk10' -Recurse -Force
+      $client.DownloadFile('http://jdk.java.net/11/', 'C:\Users\appveyor\openjdk11.html')
+      $openJdk11 = cat C:\Users\appveyor\openjdk11.html | where { $_ -match "href.*https://download.java.net.*jdk11.*windows-x64.*zip\`"" } | %{ $_ -replace "^.*https:", "https:" } | %{ $_ -replace ".zip\`".*$", ".zip" }
+      echo "Download boot JDK from: $openJdk11"
+      $client.DownloadFile($openJdk11, 'C:\Users\appveyor\openjdk11.zip')
+      Expand-Archive -Path 'C:\Users\appveyor\openjdk11.zip' -DestinationPath 'C:\Users\appveyor\openjdk11'
+      Copy-Item -Path 'C:\Users\appveyor\openjdk11\*\' -Destination 'C:\jdk11' -Recurse -Force
       . .\tools\scripts\build.ps1 2>&1
 
 on_finish:
