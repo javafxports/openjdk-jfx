@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,7 +69,7 @@ public class Stylesheet {
     /**
      *  The URL from which this {@code Stylesheet} was loaded.
      *
-     * @return A String representation of the URL from which the stylesheet was loaded, or null if
+     * @return A {@code String} representation of the URL from which the stylesheet was loaded, or {@code null} if
      *         the stylesheet was created from an inline style.
      */
     public String getUrl() {
@@ -151,7 +151,7 @@ public class Stylesheet {
     }
 
     /**
-     * The rules that are defined in this {@code Stylesheet}
+     * Returns the rules that are defined in this {@code Stylesheet}
      *
      * @return a list of rules used by this {@code Stylesheet}
      */
@@ -160,7 +160,7 @@ public class Stylesheet {
     }
 
     /**
-     * The font faces used by this {@code Stylesheet}
+     * Returns the font faces used by this {@code Stylesheet}
      *
      * @return a list of font faces used by this {@code Stylesheet}
      */
@@ -258,9 +258,9 @@ public class Stylesheet {
     final String[] getStringStore() { return stringStore; }
 
     /**
-     * Loads a binary stylesheet from a URL.
+     * Loads a binary stylesheet from a {@code URL}.
      *
-     * @param url the URL from which the {@code Stylesheet} will be loaded
+     * @param url the {@code URL} from which the {@code Stylesheet} will be loaded
      * @return the loaded {@code Stylesheet}
      * @throws IOException if the binary stream corresponds to a more recent binary
      * css version or if an I/O error occurs while reading from the stream
@@ -315,12 +315,12 @@ public class Stylesheet {
     }
 
     /**
-     * Convert the css file referenced by source to binary format and write to destination.
+     * Converts the css file referenced by {@code source} to binary format and writes it to {@code destination}.
      *
      * @param source the JavaFX compliant css file to convert
      * @param destination the file to which the binary formatted data is written
      * @throws IOException if the destination file can not be created or if an I/O error occurs
-     * @throws IllegalArgumentException if either parameter is null, if {@code source} and
+     * @throws IllegalArgumentException if either parameter is {@code null}, if {@code source} and
      * {@code destination} are the same, if {@code source} cannot be read, or if {@code destination}
      * cannot be written
      */
