@@ -84,7 +84,7 @@ public class Stylesheet {
     private StyleOrigin origin = StyleOrigin.AUTHOR;
 
     /**
-     * The origin of this {@code Stylesheet}.
+     * Returns the origin of this {@code Stylesheet}.
      *
      * @return the origin of this {@code Stylesheet}
      */
@@ -151,7 +151,7 @@ public class Stylesheet {
     }
 
     /**
-     * Returns the rules that are defined in this {@code Stylesheet}
+     * Returns the rules that are defined in this {@code Stylesheet}.
      *
      * @return a list of rules used by this {@code Stylesheet}
      */
@@ -160,7 +160,7 @@ public class Stylesheet {
     }
 
     /**
-     * Returns the font faces used by this {@code Stylesheet}
+     * Returns the font faces used by this {@code Stylesheet}.
      *
      * @return a list of font faces used by this {@code Stylesheet}
      */
