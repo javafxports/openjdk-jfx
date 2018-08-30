@@ -31,8 +31,8 @@
 
 // The following is derived from _HASH_SEED, which is an internal constant from
 // include/xhash; since this is an internal constant we define our own rather
-// that relying on something that Microsoft could remove (and apparately has in
-// newer version of Visual C++)
+// than relying on something that Microsoft could remove (and apparently has in
+// newer versions of Visual C++)
 #define GLASS_HASH_SEED (size_t)0xdeadbeef
 
 #include "GlassApplication.h"
