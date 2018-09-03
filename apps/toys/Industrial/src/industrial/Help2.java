@@ -36,7 +36,9 @@ import javafx.scene.text.Font;
  *
  * @author ddhill
  */
-public class Help {
+public class Help2 {
+
+    // Add some trailing white-space  
 
     static final String helpText =
             "Welcome to the Industrial Demo" +
