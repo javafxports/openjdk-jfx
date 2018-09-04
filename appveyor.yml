@@ -17,7 +17,8 @@ build_script:
       $client.DownloadFile($openJdk11, 'C:\Users\appveyor\openjdk11.zip')
       Expand-Archive -Path 'C:\Users\appveyor\openjdk11.zip' -DestinationPath 'C:\Users\appveyor\openjdk11'
       Copy-Item -Path 'C:\Users\appveyor\openjdk11\*\' -Destination 'C:\jdk11' -Recurse -Force
-      . .\tools\scripts\build.ps1 2>&1
+      # . .\tools\scripts\build.ps1 2>&1
+      echo "SKIPPING gradle build"
 
 on_finish:
   - ps: |
