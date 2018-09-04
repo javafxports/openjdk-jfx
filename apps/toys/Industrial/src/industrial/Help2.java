@@ -32,6 +32,8 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 
+// This has trailing white space  
+
 /**
  *
  * @author ddhill
