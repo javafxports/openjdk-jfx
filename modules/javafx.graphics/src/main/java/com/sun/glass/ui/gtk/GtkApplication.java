@@ -55,7 +55,7 @@ final class GtkApplication extends Application implements
                                     InvokeLaterDispatcher.InvokeLaterSubmitter {
     private static final String SWT_INTERNAL_CLASS =
             "org.eclipse.swt.internal.gtk.OS";
-    private static final int forcedGtkVersion;
+    private static int forcedGtkVersion;
 
 
     static  {
@@ -103,6 +103,10 @@ final class GtkApplication extends Application implements
             forcedGtkVersion = ver;
         } else {
             forcedGtkVersion = 0;
+        }
+        // fix for JDK-8210411
+        if ("wayland".equals(System.getenv("XDG_SESSION_TYPE"))) {
+            forcedGtkVersion = 2;
         }
 
         AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
