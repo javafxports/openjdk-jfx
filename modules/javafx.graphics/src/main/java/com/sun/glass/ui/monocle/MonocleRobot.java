@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -214,7 +214,7 @@ class MonocleRobot extends GlassRobot {
             int colStop = Math.min(x + width, scrWidth);
             for (int row = y; row < rowStop; row++) {
                 for (int col = x; col < colStop; col++) {
-                    data[row * scrWidth + col] = buffer.get(row * scrWidth + col);
+                    data[(row - y) * (colStop - x) + (col - x)] = buffer.get(row * scrWidth + col);
                 }
             }
         }
