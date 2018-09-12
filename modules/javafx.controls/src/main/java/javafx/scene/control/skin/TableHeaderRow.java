@@ -291,13 +291,28 @@ public class TableHeaderRow extends StackPane {
             dragHeader.setVisible(isReordering());
         }
     };
-    final void setReordering(boolean value) {
+
+    /**
+     * Inform this TableHeaderRow about a column being reordered.
+     * @param value true if a column is being reordered.
+     */
+    public final void setReordering(boolean value) {
         this.reordering.set(value);
     }
-    final boolean isReordering() {
+
+    /**
+     *
+     * @return true if a reorder is going on.
+     */
+    public final boolean isReordering() {
         return reordering.get();
     }
-    final BooleanProperty reorderingProperty() {
+
+    /**
+     *
+     * @return A BooleanProperty indicating whether a reorder is going on.
+     */
+    public final BooleanProperty reorderingProperty() {
         return reordering;
     }
 
@@ -433,7 +448,7 @@ public class TableHeaderRow extends StackPane {
      *                                                                         *
      **************************************************************************/
 
-    TableColumnHeader getReorderingRegion() {
+    protected TableColumnHeader getReorderingRegion() {
         return reorderingRegion;
     }
 
@@ -441,7 +456,7 @@ public class TableHeaderRow extends StackPane {
         dragHeaderLabel.setText(rc == null ? "" : rc.getText());
     }
 
-    void setReorderingRegion(TableColumnHeader reorderingRegion) {
+    protected void setReorderingRegion(TableColumnHeader reorderingRegion) {
         this.reorderingRegion = reorderingRegion;
 
         if (reorderingRegion != null) {

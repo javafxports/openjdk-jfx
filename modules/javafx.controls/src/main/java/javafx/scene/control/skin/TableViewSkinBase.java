@@ -577,28 +577,40 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
         tableHeaderRow.updateScrollX();
     }
 
-    void onFocusPreviousCell() {
+    /**
+     * Called when the focus is set on previous cell in order to scroll to it to make it visible.
+     */
+    protected void onFocusPreviousCell() {
+        TableFocusModel<M, ?> fm = getFocusModel();
+        if (fm == null) return;
+
+        flow.scrollTo(fm.getFocusedIndex());
+    }
+
+    /**
+     * Called when the focus is set on next cell in order to scroll to it to make it visible.
+     */
+    protected void onFocusNextCell() {
         TableFocusModel<M,?> fm = getFocusModel();
         if (fm == null) return;
 
         flow.scrollTo(fm.getFocusedIndex());
     }
 
-    void onFocusNextCell() {
-        TableFocusModel<M,?> fm = getFocusModel();
-        if (fm == null) return;
-
-        flow.scrollTo(fm.getFocusedIndex());
-    }
-
-    void onSelectPreviousCell() {
+    /**
+     * Called when the selection is set on previous cell in order to scroll to it to make it visible.
+     */
+    protected void onSelectPreviousCell() {
         SelectionModel<S> sm = getSelectionModel();
         if (sm == null) return;
 
         flow.scrollTo(sm.getSelectedIndex());
     }
 
-    void onSelectNextCell() {
+    /**
+     * Called when the focus is set on previous cell in order to scroll to it to make it visible.
+     */
+    protected void onSelectNextCell() {
         SelectionModel<S> sm = getSelectionModel();
         if (sm == null) return;
 
@@ -825,7 +837,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      * and the newly selected cell belongs to a column which is not totally
      * visible.
      */
-    void scrollHorizontally() {
+    protected void scrollHorizontally() {
         TableFocusModel<M, ?> fm = getFocusModel();
         if (fm == null) return;
 

@@ -1735,10 +1735,19 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
      *                                                                         *
      **************************************************************************/
 
-    protected final VirtualScrollBar getHbar() {
+    /**
+     *
+     * @return The scroll bar used for scrolling horizontally.
+     */
+    protected final ScrollBar getHbar() {
         return hbar;
     }
-    protected final VirtualScrollBar getVbar() {
+
+    /**
+     *
+     * @return The scroll bar used for scrolling vertically.
+     */
+    protected final ScrollBar getVbar() {
         return vbar;
     }
 
@@ -1855,6 +1864,10 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
         }
     }
 
+    /**
+     * Resize the given cell.
+     * @param cell
+     */
     protected void resizeCellSize(T cell) {
         if (cell == null) return;
 
@@ -1867,11 +1880,21 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
         }
     }
 
+    /**
+     * @return The list of cells representing those cells which actually make up the
+     * * current view. The cells are ordered such that the first cell in this
+     * * list is the first in the view, and the last cell is the last in the
+     * * view. When pixel scrolling, the list is simply shifted and items drop
+     * * off the beginning or the end, depending on the order of scrolling.
+     */
     protected List<T> getCells() {
         return cells;
     }
 
-    // Returns last visible cell whose bounds are entirely within the viewport
+    /**
+     *
+     * @return last visible cell whose bounds are entirely within the viewport
+     */
     protected T getLastVisibleCellWithinViewPort() {
         if (cells.isEmpty() || getViewportLength() <= 0) return null;
 
@@ -1894,7 +1917,10 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
         return null;
     }
 
-    // Returns first visible cell whose bounds are entirely within the viewport
+    /**
+     *
+     * @return first visible cell whose bounds are entirely within the viewport
+     */
     protected T getFirstVisibleCellWithinViewPort() {
         if (cells.isEmpty() || getViewportLength() <= 0) return null;
 
@@ -2110,22 +2136,34 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
         return filledWithNonEmpty;
     }
 
+    /**
+     * Inform the VirtualFlow that a layout should be done and cell contents are the same.
+     */
     protected void reconfigureCells() {
         needsReconfigureCells = true;
         requestLayout();
     }
 
-    void recreateCells() {
+    /**
+     * Inform the VirtualFlow that a layout should be done and cell factory has changed.
+     */
+    protected void recreateCells() {
         needsRecreateCells = true;
         requestLayout();
     }
 
-    void rebuildCells() {
+    /**
+     * Inform the VirtualFlow that a layout should be done and cell contents have changed.
+     */
+    protected void rebuildCells() {
         needsRebuildCells = true;
         requestLayout();
     }
 
-    void requestCellLayout() {
+    /**
+     * Inform the VirtualFlow that a layout should be done and only the cell layout will be triggered.
+     */
+    protected void requestCellLayout() {
         needsCellsLayout = true;
         requestLayout();
     }
