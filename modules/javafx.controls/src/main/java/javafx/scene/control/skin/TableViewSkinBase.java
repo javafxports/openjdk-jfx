@@ -617,20 +617,20 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
         flow.scrollTo(sm.getSelectedIndex());
     }
 
-    void onSelectLeftCell() {
+    protected void onSelectLeftCell() {
         scrollHorizontally();
     }
 
-    void onSelectRightCell() {
+    protected void onSelectRightCell() {
         scrollHorizontally();
     }
 
-    void onMoveToFirstCell() {
+    protected void onMoveToFirstCell() {
         flow.scrollTo(0);
         flow.setPosition(0);
     }
 
-    void onMoveToLastCell() {
+    protected void onMoveToLastCell() {
         int endPos = getItemCount();
         flow.scrollTo(endPos);
         flow.setPosition(1);
@@ -657,7 +657,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      * Function used to scroll the container down by one 'page', although
      * if this is a horizontal container, then the scrolling will be to the right.
      */
-    int onScrollPageDown(boolean isFocusDriven) {
+    protected int onScrollPageDown(boolean isFocusDriven) {
         TableSelectionModel<S> sm = getSelectionModel();
         if (sm == null) return -1;
 
@@ -704,7 +704,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      * Function used to scroll the container up by one 'page', although
      * if this is a horizontal container, then the scrolling will be to the left.
      */
-    int onScrollPageUp(boolean isFocusDriven) {
+    protected int onScrollPageUp(boolean isFocusDriven) {
         I firstVisibleCell = flow.getFirstVisibleCellWithinViewPort();
         if (firstVisibleCell == null) return -1;
 
@@ -837,7 +837,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      * and the newly selected cell belongs to a column which is not totally
      * visible.
      */
-    protected void scrollHorizontally() {
+    public void scrollHorizontally() {
         TableFocusModel<M, ?> fm = getFocusModel();
         if (fm == null) return;
 

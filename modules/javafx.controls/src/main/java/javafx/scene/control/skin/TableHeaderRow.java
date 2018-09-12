@@ -334,7 +334,7 @@ public class TableHeaderRow extends StackPane {
      * @return The root header that is actually just one NestedTableColumnHeader that spans
      * the entire width.
      */
-    protected final NestedTableColumnHeader getRootHeader() {
+    public final NestedTableColumnHeader getRootHeader() {
         return rootHeader.get();
     }
 
