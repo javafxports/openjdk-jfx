@@ -102,7 +102,6 @@ Issue key|Summary|Subcomponent
 [JDK-8201285](https://bugs.openjdk.java.net/browse/JDK-8201285)|DateCell text color are not updated correctly when DateCell with disable = true is reused|controls
 [JDK-8208610](https://bugs.openjdk.java.net/browse/JDK-8208610)|Incorrect check for calling class in FXMLLoader::getDefaultClassLoader|fxml
 [JDK-8129582](https://bugs.openjdk.java.net/browse/JDK-8129582)|Controls slow considerably when displaying RTL-languages text on Linux|graphics
-[JDK-8170026](https://bugs.openjdk.java.net/browse/JDK-8170026)|Some tests in RegionBackgroundFillUITest fail with fractional window scale|graphics
 [JDK-8195801](https://bugs.openjdk.java.net/browse/JDK-8195801)|Replace jdk.internal.misc.Unsafe with sun.misc.Unsafe in MarlinFX|graphics
 [JDK-8195802](https://bugs.openjdk.java.net/browse/JDK-8195802)|Eliminate use of jdk.internal.misc security utilities in javafx.graphics|graphics
 [JDK-8195806](https://bugs.openjdk.java.net/browse/JDK-8195806)|Eliminate dependency on sun.font.lookup in javafx.graphics|graphics
@@ -129,7 +128,6 @@ Issue key|Summary|Subcomponent
 [JDK-8195799](https://bugs.openjdk.java.net/browse/JDK-8195799)|Use System logger instead of platform logger in javafx modules|other
 [JDK-8195800](https://bugs.openjdk.java.net/browse/JDK-8195800)|Eliminate dependency on sun.reflect.misc in javafx modules|other
 [JDK-8195974](https://bugs.openjdk.java.net/browse/JDK-8195974)|Replace use of java.util.logging in javafx with System logger|other
-[JDK-8196130](https://bugs.openjdk.java.net/browse/JDK-8196130)|Eclipse configuration files need to be updated|other
 [JDK-8196297](https://bugs.openjdk.java.net/browse/JDK-8196297)|Remove obsolete JFR logger code|other
 [JDK-8199357](https://bugs.openjdk.java.net/browse/JDK-8199357)|Remove references to applets and Java Web Start from FX|other
 [JDK-8200587](https://bugs.openjdk.java.net/browse/JDK-8200587)|Fix mistakes in FX API docs|other
