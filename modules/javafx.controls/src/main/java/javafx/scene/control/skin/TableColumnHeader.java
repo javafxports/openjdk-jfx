@@ -456,10 +456,13 @@ public class TableColumnHeader extends Region {
     void setNestedColumnHeader(NestedTableColumnHeader nch) { nestedColumnHeader = nch; }
 
     /**
-     *
      * @return The @link {@link TableHeaderRow} associated with this TableColumnHeader.
+     * @since 12
      */
-    protected TableHeaderRow getTableHeaderRow() { return tableHeaderRow; }
+    protected TableHeaderRow getTableHeaderRow() {
+        return tableHeaderRow;
+    }
+
     void setTableHeaderRow(TableHeaderRow thr) {
         tableHeaderRow = thr;
         updateTableSkin();
@@ -482,10 +485,10 @@ public class TableColumnHeader extends Region {
     }
 
     /**
-     *
      * @return The {@link TableViewSkinBase} in which this TableColumnHeader is inserted.
+     * @since 12
      */
-    protected TableViewSkinBase<?,?,?,?,?> getTableSkin() {
+    protected TableViewSkinBase<?, ?, ?, ?, ?> getTableSkin() {
         return tableHeaderRow == null ? null : tableHeaderRow.tableSkin;
     }
 

@@ -294,23 +294,25 @@ public class TableHeaderRow extends StackPane {
 
     /**
      * Inform this TableHeaderRow about a column being reordered.
+     *
      * @param value true if a column is being reordered.
+     * @since 12
      */
     public final void setReordering(boolean value) {
         this.reordering.set(value);
     }
 
     /**
-     *
      * @return true if a reorder is going on.
+     * @since 12
      */
     public final boolean isReordering() {
         return reordering.get();
     }
 
     /**
-     *
      * @return A BooleanProperty indicating whether a reorder is going on.
+     * @since 12
      */
     public final BooleanProperty reorderingProperty() {
         return reordering;
@@ -333,6 +335,7 @@ public class TableHeaderRow extends StackPane {
     /**
      * @return The root header that is actually just one NestedTableColumnHeader that spans
      * the entire width.
+     * @since 12
      */
     public final NestedTableColumnHeader getRootHeader() {
         return rootHeader.get();
@@ -399,8 +402,9 @@ public class TableHeaderRow extends StackPane {
         return snappedTopInset() + headerPrefHeight + snappedBottomInset();
     }
 
-       /**
+    /**
      * This method is called whenever a scroll is happening on the horizontal bar.
+     * @since 12
      */
     protected void updateScrollX() {
         scrollX = flow.getHbar().isVisible() ? -flow.getHbar().getValue() : 0.0F;
@@ -415,6 +419,8 @@ public class TableHeaderRow extends StackPane {
 
     /**
      * This method is called when the width is changing.
+     *
+     * @since 12
      */
     protected void updateTableWidth() {
         // snapping added for RT-19428
@@ -448,6 +454,12 @@ public class TableHeaderRow extends StackPane {
      *                                                                         *
      **************************************************************************/
 
+    /**
+     * When a column reordering is taking place, it will return the current {@link TableColumnHeader} being moved.
+     *
+     * @return
+     * @since 12
+     */
     protected TableColumnHeader getReorderingRegion() {
         return reorderingRegion;
     }
@@ -456,6 +468,12 @@ public class TableHeaderRow extends StackPane {
         dragHeaderLabel.setText(rc == null ? "" : rc.getText());
     }
 
+    /**
+     * When a column reordering is taking place, inform this TableHeaderRow of which {@link TableColumnHeader} is being moved.
+     *
+     * @param reorderingRegion
+     * @since 12
+     */
     protected void setReorderingRegion(TableColumnHeader reorderingRegion) {
         this.reorderingRegion = reorderingRegion;
 

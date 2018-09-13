@@ -509,8 +509,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      **************************************************************************/
 
     /**
-     *
      * @return The TableHeaderRow created using {@link #createTableHeaderRow()}.
+     * @since 12
      */
     protected final TableHeaderRow getTableHeaderRow() {
         return tableHeaderRow;
@@ -579,6 +579,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
 
     /**
      * Called when the focus is set on previous cell in order to scroll to it to make it visible.
+     *
+     * @since 12
      */
     protected void onFocusPreviousCell() {
         TableFocusModel<M, ?> fm = getFocusModel();
@@ -589,9 +591,11 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
 
     /**
      * Called when the focus is set on next cell in order to scroll to it to make it visible.
+     *
+     * @since 12
      */
     protected void onFocusNextCell() {
-        TableFocusModel<M,?> fm = getFocusModel();
+        TableFocusModel<M, ?> fm = getFocusModel();
         if (fm == null) return;
 
         flow.scrollTo(fm.getFocusedIndex());
@@ -599,6 +603,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
 
     /**
      * Called when the selection is set on previous cell in order to scroll to it to make it visible.
+     *
+     * @since 12
      */
     protected void onSelectPreviousCell() {
         SelectionModel<S> sm = getSelectionModel();
@@ -609,6 +615,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
 
     /**
      * Called when the focus is set on previous cell in order to scroll to it to make it visible.
+     *
+     * @since 12
      */
     protected void onSelectNextCell() {
         SelectionModel<S> sm = getSelectionModel();
@@ -617,19 +625,39 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
         flow.scrollTo(sm.getSelectedIndex());
     }
 
+    /**
+     * Called when the selection is set on the left cell in order to scroll to it to make it visible.
+     *
+     * @since 12
+     */
     protected void onSelectLeftCell() {
         scrollHorizontally();
     }
 
+    /**
+     * Called when the selection is set on the right cell in order to scroll to it to make it visible.
+     *
+     * @since 12
+     */
     protected void onSelectRightCell() {
         scrollHorizontally();
     }
 
+    /**
+     * Called when the selection is set on the first cell in order to scroll to it to make it visible.
+     *
+     * @since 12
+     */
     protected void onMoveToFirstCell() {
         flow.scrollTo(0);
         flow.setPosition(0);
     }
 
+    /**
+     * Called when the selection is set on the last cell in order to scroll to it to make it visible.
+     *
+     * @since 12
+     */
     protected void onMoveToLastCell() {
         int endPos = getItemCount();
         flow.scrollTo(endPos);
@@ -656,6 +684,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     /**
      * Function used to scroll the container down by one 'page', although
      * if this is a horizontal container, then the scrolling will be to the right.
+     *
+     * @since 12
      */
     protected int onScrollPageDown(boolean isFocusDriven) {
         TableSelectionModel<S> sm = getSelectionModel();
@@ -703,6 +733,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     /**
      * Function used to scroll the container up by one 'page', although
      * if this is a horizontal container, then the scrolling will be to the left.
+     *
+     * @since 12
      */
     protected int onScrollPageUp(boolean isFocusDriven) {
         I firstVisibleCell = flow.getFirstVisibleCellWithinViewPort();
@@ -836,6 +868,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      * Handles the horizontal scrolling when the selection mode is cell-based
      * and the newly selected cell belongs to a column which is not totally
      * visible.
+     *
+     * @since 12
      */
     public void scrollHorizontally() {
         TableFocusModel<M, ?> fm = getFocusModel();
@@ -847,7 +881,9 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
 
     /**
      * Programmatically scroll to the given column.
+     *
      * @param col
+     * @since 12
      */
     protected void scrollHorizontally(TC col) {
         if (col == null || !col.isVisible()) return;

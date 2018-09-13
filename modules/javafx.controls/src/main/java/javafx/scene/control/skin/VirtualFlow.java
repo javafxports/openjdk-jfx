@@ -1736,16 +1736,16 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
      **************************************************************************/
 
     /**
-     *
      * @return The scroll bar used for scrolling horizontally.
+     * @since 12
      */
     protected final ScrollBar getHbar() {
         return hbar;
     }
 
     /**
-     *
      * @return The scroll bar used for scrolling vertically.
+     * @since 12
      */
     protected final ScrollBar getVbar() {
         return vbar;
@@ -1866,7 +1866,9 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
 
     /**
      * Resize the given cell.
+     *
      * @param cell
+     * @since 12
      */
     protected void resizeCellSize(T cell) {
         if (cell == null) return;
@@ -1886,14 +1888,15 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
      * * list is the first in the view, and the last cell is the last in the
      * * view. When pixel scrolling, the list is simply shifted and items drop
      * * off the beginning or the end, depending on the order of scrolling.
+     * @since 12
      */
     protected List<T> getCells() {
         return cells;
     }
 
     /**
-     *
      * @return last visible cell whose bounds are entirely within the viewport
+     * @since 12
      */
     protected T getLastVisibleCellWithinViewPort() {
         if (cells.isEmpty() || getViewportLength() <= 0) return null;
@@ -1918,8 +1921,8 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     }
 
     /**
-     *
      * @return first visible cell whose bounds are entirely within the viewport
+     * @since 12
      */
     protected T getFirstVisibleCellWithinViewPort() {
         if (cells.isEmpty() || getViewportLength() <= 0) return null;
@@ -2138,6 +2141,8 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
 
     /**
      * Inform the VirtualFlow that a layout should be done and cell contents are the same.
+     *
+     * @since 12
      */
     protected void reconfigureCells() {
         needsReconfigureCells = true;
@@ -2146,6 +2151,8 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
 
     /**
      * Inform the VirtualFlow that a layout should be done and cell factory has changed.
+     *
+     * @since 12
      */
     protected void recreateCells() {
         needsRecreateCells = true;
@@ -2154,6 +2161,8 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
 
     /**
      * Inform the VirtualFlow that a layout should be done and cell contents have changed.
+     *
+     * @since 12
      */
     protected void rebuildCells() {
         needsRebuildCells = true;
@@ -2162,6 +2171,8 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
 
     /**
      * Inform the VirtualFlow that a layout should be done and only the cell layout will be triggered.
+     *
+     * @since 12
      */
     protected void requestCellLayout() {
         needsCellsLayout = true;
@@ -2531,7 +2542,8 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
      * unmanaged, and is up to the caller of this method to manage it.
      *
      * @param index
-     * @return
+     * @return A cell for the given index inserted in the VirtualFlow.
+     * @since 12
      */
     protected T getPrivateCell(int index)  {
         T cell = null;
