@@ -8,6 +8,11 @@ As of JDK 11 the JavaFX modules are delivered separately from the JDK. These rel
 
 ## Important Changes
 
+### Running JavaFX applications
+
+Now that the JDK no longer includes JavaFX, it is necessary to explicitly include the JavaFX modules that your application uses. Please refer to the [Getting Started with JavaFX 11](http://docs.gluonhq.com/javafx11/index.html#introduction) page for instructions.
+
+
 ### Add APIs to customize step repeat timing for Spinner control
 
 The default duration that the mouse has to be pressed on a Spinner control arrow button before the value steps is modified in JavaFX 11. Two new properties, "initialDelay" and "repeatDelay", have been added to configure this behavior. 
@@ -51,7 +56,9 @@ FX Media support for libavcodec 53 and 55 was removed. These libraries are not p
 
 JavaFX crashes on Ubuntu 18.04 Linux machines when the XWayland window server is enabled. This happens whenever the FX window toolkit code uses GTK 3 on Linux, which is the default as of JavaFX 11.
 
-Workaround: explicitly force GTK 2 by passing the following system property on the command line:
+The recommended workaround is to use the Xorg server instead of the Wayland server when running JavaFX applications. Note that Wayland is not supported by JDK 10 or JDK 11.
+
+An alternative workaround is to explicitly force GTK 2 by passing the following system property on the command line:
 
 ```
     java -Djdk.gtk.version=2 ...
