@@ -32,6 +32,8 @@ import javafx.css.converter.DeriveSizeConverter;
 import javafx.css.converter.DurationConverter;
 import javafx.css.converter.EffectConverter;
 import javafx.css.converter.EnumConverter;
+import javafx.css.converter.FadeinColorConverter;
+import javafx.css.converter.FadeoutColorConverter;
 import javafx.css.converter.FontConverter;
 import javafx.css.converter.InsetsConverter;
 import javafx.css.converter.LadderConverter;
@@ -502,6 +504,14 @@ public class StyleConverter<F, T> {
         case "javafx.css.converter.DeriveSizeConverter":
         case "com.sun.javafx.css.parser.DeriveSizeConverter" :
             styleConverter = DeriveSizeConverter.getInstance();
+            break;
+        case "javafx.css.converter.FadeinColorConverter":
+        case "com.sun.javafx.css.parser.FadeinColorConverter":
+            styleConverter = FadeinColorConverter.getInstance();
+            break;
+        case "javafx.css.converter.FadeoutColorConverter":
+        case "com.sun.javafx.css.parser.FadeoutColorConverter":
+            styleConverter = FadeoutColorConverter.getInstance();
             break;
         case "javafx.css.converter.LadderConverter":
         case "com.sun.javafx.css.parser.LadderConverter" :

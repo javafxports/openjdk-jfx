@@ -223,7 +223,7 @@
             }
 
             /* Color Table Styles */
-            div.colorsquare { 
+            div.colorsquare {
                 display:inline-block;
                 width:20em;
                 margin: 3px 3px
@@ -1529,9 +1529,9 @@
     <p>JavaFX supports some color computation functions. These compute new
       colors from input colors at the time the color style is applied. This
       enables a color theme to be specified using a single base color and to
-      have variant colors computed from that base color. There are two color
-      functions: derive() and ladder().</p>
-    <p class="grammar">&lt;derive&gt; | &lt;ladder&gt;</p>
+      have variant colors computed from that base color. There are four color
+      functions: derive(), ladder(), fadein() and fadeout().</p>
+    <p class="grammar">&lt;derive&gt; | &lt;ladder&gt; | &lt;fadein&gt; | &lt;fadeout&gt;</p>
     <p><strong>Derive </strong><span class="grammar" style="font-size: smaller;">&lt;derive&gt;</span></p>
     <p class="grammar">derive( <a href="#typecolor" class="typelink">&lt;color&gt;</a>
       , <a href="#typenumber" class="typelink">&lt;number&gt;</a>% )</p>
@@ -1576,6 +1576,22 @@
           href="#typecolor"
           class="typelink">&lt;color&gt;</a>
         ) ]+ </span></p>
+    <p><strong>Fadein </strong><span class="grammar" style="font-size: smaller;">&lt;fadein&gt;</span></p>
+    <p class="grammar">fadein( <a href="#typecolor" class="typelink">&lt;color&gt;</a>
+        , <a href="#typenumber" class="typelink">&lt;number&gt;</a>% )</p>
+    <p>The fadein function takes a color and computes a more opaque version of that color.
+        The second parameter is the opacity, ranging from 0% to 100%. Has no effect on
+        fully opaque colors.</p>
+    <p class="example">fadein(rgba(35, 70, 112, 0.8), 10%)</p>
+    <p>Will result in the color rgba(35, 70, 112, 0.88)</p>
+    <p><strong>Fadeout </strong><span class="grammar" style="font-size: smaller;">&lt;fadeout&gt;</span></p>
+    <p class="grammar">fadeout( <a href="#typecolor" class="typelink">&lt;color&gt;</a>
+        , <a href="#typenumber" class="typelink">&lt;number&gt;</a>% )</p>
+    <p>The fadeout functions takes a color and computes a more transparent version of that
+        color. The second parameter is the transparency, ranging from 0% to 100%. Has no effect
+        on fully transparent colors.</p>
+    <p class="example">fadeout(rgba(35, 70, 112, 0.8), 10%)</p>
+    <p>Will result in the color rgba(35, 70, 112, 0.72)</p>
     <h2><a id="stage">Stage</a></h2>
     <table class="package" width="100%">
         <tbody>
