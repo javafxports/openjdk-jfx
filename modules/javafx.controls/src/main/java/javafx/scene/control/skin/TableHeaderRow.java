@@ -314,7 +314,7 @@ public class TableHeaderRow extends StackPane {
     private final ReadOnlyObjectProperty<NestedTableColumnHeader> rootHeaderProperty() {
         return rootHeader.getReadOnlyProperty();
     }
-    final NestedTableColumnHeader getRootHeader() {
+   public final NestedTableColumnHeader getRootHeader() {
         return rootHeader.get();
     }
     private final void setRootHeader(NestedTableColumnHeader value) {
@@ -444,7 +444,7 @@ public class TableHeaderRow extends StackPane {
         dragHeader.setTranslateX(dragHeaderX);
     }
 
-    TableColumnHeader getColumnHeaderFor(final TableColumnBase<?,?> col) {
+    public TableColumnHeader getColumnHeaderFor(final TableColumnBase<?,?> col) {
         if (col == null) return null;
         List<TableColumnBase<?,?>> columnChain = new ArrayList<>();
         columnChain.add(col);
