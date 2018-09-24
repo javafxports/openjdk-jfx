@@ -42,8 +42,7 @@ public abstract class InteropFactory {
     }
 
     private static final String[] factoryNames = {
-        "com.sun.javafx.embed.swing.newimpl.InteropFactoryN",
-    "com.sun.javafx.embed.swing.oldimpl.InteropFactoryO"
+        "com.sun.javafx.embed.swing.newimpl.InteropFactoryN"
     };
 
     public synchronized static InteropFactory getInstance() throws Exception {
