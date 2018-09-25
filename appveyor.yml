@@ -17,7 +17,7 @@ build_script:
       $client.DownloadFile($openJdk11, 'C:\Users\appveyor\openjdk11.zip')
       Expand-Archive -Path 'C:\Users\appveyor\openjdk11.zip' -DestinationPath 'C:\Users\appveyor\openjdk11'
       Copy-Item -Path 'C:\Users\appveyor\openjdk11\*\' -Destination 'C:\jdk11' -Recurse -Force
-      C:\Users\appveyor\openjdk11\bin\java -version
+      C:\Users\appveyor\openjdk11\jdk-11\bin\java -version
       echo "SKIPPING: .\tools\scripts\build.ps1"
 
 on_finish:
