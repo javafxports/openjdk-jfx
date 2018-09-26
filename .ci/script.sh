@@ -4,7 +4,8 @@ set -uo pipefail
 echo "which java: $(which java)"
 ulimit -c unlimited -S
 
-sh ./gradlew all test -PCONF=DebugNative -x :web:test --no-daemon --stacktrace --info
+# KCR: just a quick sanity build for this experiment
+sh ./gradlew test -x :web:test --no-daemon --stacktrace --info
 
 # Print core dumps when JVM crashes.
 RESULT=$?
