@@ -184,6 +184,53 @@ public abstract class Application {
     public static final String STYLESHEET_MODENA = "MODENA";
 
     /**
+     * Launch a standalone application with its custom preloader.
+     * This method is typically called
+     * from the main method(). It must not be called more than once or an
+     * exception will be thrown.
+     *
+     * <p>
+     * The launch method does not return until the application has exited,
+     * either via a call to Platform.exit or all of the application windows
+     * have been closed.
+     * The class specified by the {@code appClass} argument must be
+     * a public subclass of {@code Application}
+     * with a public no-argument constructor, in a package that is
+     * {@link Module#isExported(String,Module) exported}
+     * (or {@link Module#isOpen(String,Module) open}) to at least the
+     * {@code javafx.graphics} module, or a RuntimeException will be thrown.
+     *
+     * <p>
+     * Typical usage is:
+     * <pre>
+     *     public static void main(String[] args) {
+     *         Application.launch(MyApp.class, MyPreloader.class, args);
+     *     }
+     * </pre>
+     * where <code>MyApp</code> is a subclass of Application.
+     *
+     * @param appClass the application class that is constructed and executed
+     *        by the launcher.
+     * @param preloaderClass the preloader class that is constructed
+     *        and executed by the launcher during preloading phase.
+     * @param args the command line arguments passed to the application.
+     *             An application may get these parameters using the
+     *             {@link #getParameters()} method.
+     *
+     * @throws IllegalStateException if this method is called more than once.
+     * @throws IllegalArgumentException if <code>appClass</code> is not a
+     *         subclass of <code>Application</code>.
+     * @throws RuntimeException if there is an error launching the
+     * JavaFX runtime, or if the application class cannot be constructed
+     * (e.g., if the class is not public or is not in an exported package), or
+     * if an Exception or Error is thrown by the Application constructor, init
+     * method, start method, or stop method.
+     */
+    public static void launch(Class<? extends Application> appClass, Class<? extends Preloader> preloaderClass, String... args) {
+        LauncherImpl.launchApplication(appClass, preloaderClass, args);
+    }
+
+    /**
      * Launch a standalone application. This method is typically called
      * from the main method(). It must not be called more than once or an
      * exception will be thrown.
