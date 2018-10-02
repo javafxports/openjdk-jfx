@@ -3104,6 +3104,8 @@ project(":web") {
     commonModuleSetup(project, [ 'base', 'graphics', 'controls', 'media', 'web' ])
 
     dependencies {
+        testCompile group: "org.netbeans.html", name: "net.java.html.boot.fx", version: "1.5.1"
+        testCompile group: "org.netbeans.html", name: "net.java.html.json.tck", version: "1.5.1"
     }
 
     compileJava.dependsOn updateCacheIfNeeded
