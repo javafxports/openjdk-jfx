@@ -53,12 +53,12 @@ static void initRefs(JNIEnv* env)
                 "(Lcom/sun/webkit/WebPage;Z"
                 "Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
                 "[Lcom/sun/webkit/network/FormDataElement;J)"
-                "Lcom/sun/webkit/network/URLLoader;");
+                "Lcom/sun/webkit/network/URLLoaderBase;");
         ASSERT(loadMethod);
     }
     if (!urlLoaderClass) {
         urlLoaderClass = JLClass(env->FindClass(
-                "com/sun/webkit/network/URLLoader"));
+                "com/sun/webkit/network/URLLoaderBase"));
         ASSERT(urlLoaderClass);
 
         cancelMethod = env->GetMethodID(urlLoaderClass, "fwkCancel", "()V");

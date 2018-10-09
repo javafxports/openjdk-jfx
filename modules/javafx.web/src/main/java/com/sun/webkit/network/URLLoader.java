@@ -65,7 +65,7 @@ import javax.net.ssl.SSLHandshakeException;
 /**
  * A runnable that loads a resource specified by a URL.
  */
-final class URLLoader implements Runnable {
+final class URLLoader implements URLLoaderBase, Runnable {
 
     @Native public static final int ALLOW_UNASSIGNED = java.net.IDN.ALLOW_UNASSIGNED;
 
@@ -115,7 +115,8 @@ final class URLLoader implements Runnable {
     /**
      * Cancels this loader.
      */
-    private void fwkCancel() {
+    @Override
+    public void fwkCancel() {
         if (logger.isLoggable(Level.FINEST)) {
             logger.finest(String.format("data: [0x%016X]", data));
         }

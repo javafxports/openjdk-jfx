@@ -117,7 +117,7 @@ final class NetworkContext {
     /**
      * Starts an asynchronous load or executes a synchronous one.
      */
-    private static URLLoader fwkLoad(WebPage webPage,
+    private static URLLoaderBase fwkLoad(WebPage webPage,
                                      boolean asynchronous,
                                      String url,
                                      String method,
