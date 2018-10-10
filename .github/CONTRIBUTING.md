@@ -88,7 +88,7 @@ Please follow these formatting guidelines:
 * Don't worry too much about import order. Try not to change it but don't worry about fighting your IDE to stop it from doing so.
 
 
-OpenJFX uses the Gradle for its build. Before submitting your changes, run the test suite to make sure that nothing is broken, with:
+OpenJFX uses Gradle for its build. Before submitting your changes, run the test suite to make sure that nothing is broken, with:
 
 ```sh
 gradle all test
