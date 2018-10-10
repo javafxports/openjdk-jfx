@@ -143,6 +143,18 @@ final class NetworkContext {
                     data,
                     Util.formatHeaders(headers)));
         }
+
+        if (asynchronous && (url.startsWith("http://") || url.startsWith("https://"))) {
+            return new NewHTTPLoader(
+                webPage,
+                asynchronous,
+                url,
+                method,
+                headers,
+                formDataElements,
+                data);
+        }
+
         URLLoader loader = new URLLoader(
                 webPage,
                 byteBufferPool,

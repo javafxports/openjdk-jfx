@@ -65,7 +65,7 @@ import javax.net.ssl.SSLHandshakeException;
 /**
  * A runnable that loads a resource specified by a URL.
  */
-final class URLLoader implements URLLoaderBase, Runnable {
+final class URLLoader extends URLLoaderBase implements Runnable {
 
     @Native public static final int ALLOW_UNASSIGNED = java.net.IDN.ALLOW_UNASSIGNED;
 
@@ -903,40 +903,6 @@ final class URLLoader implements URLLoaderBase, Runnable {
             runnable.run();
         }
     }
-
-    private static native void twkDidSendData(long totalBytesSent,
-                                              long totalBytesToBeSent,
-                                              long data);
-
-    private static native boolean twkWillSendRequest(String newUrl,
-                                                     String newMethod,
-                                                     int status,
-                                                     String contentType,
-                                                     String contentEncoding,
-                                                     long contentLength,
-                                                     String headers,
-                                                     String url,
-                                                     long data);
-
-    private static native void twkDidReceiveResponse(int status,
-                                                     String contentType,
-                                                     String contentEncoding,
-                                                     long contentLength,
-                                                     String headers,
-                                                     String url,
-                                                     long data);
-
-    private static native void twkDidReceiveData(ByteBuffer byteBuffer,
-                                                 int position,
-                                                 int remaining,
-                                                 long data);
-
-    private static native void twkDidFinishLoading(long data);
-
-    private static native void twkDidFail(int errorCode,
-                                          String url,
-                                          String message,
-                                          long data);
 
     /**
      * Given a {@link URLConnection}, returns the connection status

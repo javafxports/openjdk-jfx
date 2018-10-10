@@ -25,9 +25,46 @@
 
 package com.sun.webkit.network;
 
-interface URLLoaderBase {
+import java.nio.ByteBuffer;
+
+abstract class URLLoaderBase {
     /**
      * Cancels the loader.
      */
-    void fwkCancel();
+    protected abstract void fwkCancel();
+
+    protected static native void twkDidSendData(long totalBytesSent,
+                                              long totalBytesToBeSent,
+                                              long data);
+
+    protected static native boolean twkWillSendRequest(String newUrl,
+                                                     String newMethod,
+                                                     int status,
+                                                     String contentType,
+                                                     String contentEncoding,
+                                                     long contentLength,
+                                                     String headers,
+                                                     String url,
+                                                     long data);
+
+    protected static native void twkDidReceiveResponse(int status,
+                                                     String contentType,
+                                                     String contentEncoding,
+                                                     long contentLength,
+                                                     String headers,
+                                                     String url,
+                                                     long data);
+
+    protected static native void twkDidReceiveData(ByteBuffer byteBuffer,
+                                                 int position,
+                                                 int remaining,
+                                                 long data);
+
+    protected static native void twkDidFinishLoading(long data);
+
+    protected static native void twkDidFail(int errorCode,
+                                          String url,
+                                          String message,
+                                          long data);
+
 }

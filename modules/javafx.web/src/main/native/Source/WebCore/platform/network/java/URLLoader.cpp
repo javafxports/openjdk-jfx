@@ -454,6 +454,7 @@ static void setupResponse(ResourceResponse& response,
             String key = s.left(j);
             String val = s.substring(j + 1);
             response.setHTTPHeaderField(key, val);
+            // fprintf(stderr, "headers %s:%s\n", key.utf8().data(), val.utf8().data());
         }
         headersString = headersString.substring(splitPos + 1);
         splitPos = headersString.find("\n");
@@ -468,7 +469,7 @@ static void setupResponse(ResourceResponse& response,
     }
 }
 
-JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoader_twkDidSendData
+JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidSendData
   (JNIEnv*, jclass, jlong totalBytesSent, jlong totalBytesToBeSent, jlong data)
 {
     URLLoader::Target* target =
@@ -477,7 +478,7 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoader_twkDidSendData
     target->didSendData(totalBytesSent, totalBytesToBeSent);
 }
 
-JNIEXPORT jboolean JNICALL Java_com_sun_webkit_network_URLLoader_twkWillSendRequest
+JNIEXPORT jboolean JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkWillSendRequest
   (JNIEnv* env, jclass, jstring newUrl, jstring newMethod, jint status,
    jstring contentType, jstring contentEncoding, jlong contentLength,
    jstring headers, jstring url, jlong data)
@@ -503,7 +504,7 @@ JNIEXPORT jboolean JNICALL Java_com_sun_webkit_network_URLLoader_twkWillSendRequ
             response));
 }
 
-JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoader_twkDidReceiveResponse
+JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidReceiveResponse
   (JNIEnv* env, jclass, jint status, jstring contentType,
    jstring contentEncoding, jlong contentLength, jstring headers,
    jstring url, jlong data)
@@ -526,7 +527,7 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoader_twkDidReceiveRespon
     target->didReceiveResponse(response);
 }
 
-JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoader_twkDidReceiveData
+JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidReceiveData
   (JNIEnv* env, jclass, jobject byteBuffer, jint position, jint remaining,
    jlong data)
 {
@@ -538,7 +539,7 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoader_twkDidReceiveData
     target->didReceiveData(address + position, remaining);
 }
 
-JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoader_twkDidFinishLoading
+JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidFinishLoading
   (JNIEnv*, jclass, jlong data)
 {
     URLLoader::Target* target =
@@ -547,7 +548,7 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoader_twkDidFinishLoading
     target->didFinishLoading();
 }
 
-JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoader_twkDidFail
+JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidFail
   (JNIEnv* env, jclass, jint errorCode, jstring url, jstring message,
    jlong data)
 {
