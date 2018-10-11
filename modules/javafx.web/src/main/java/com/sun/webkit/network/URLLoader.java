@@ -38,7 +38,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.lang.annotation.Native;
 import java.net.ConnectException;
 import java.net.HttpRetryException;
 import java.net.HttpURLConnection;
@@ -66,8 +65,6 @@ import javax.net.ssl.SSLHandshakeException;
  * A runnable that loads a resource specified by a URL.
  */
 final class URLLoader extends URLLoaderBase implements Runnable {
-
-    @Native public static final int ALLOW_UNASSIGNED = java.net.IDN.ALLOW_UNASSIGNED;
 
     private static final PlatformLogger logger =
             PlatformLogger.getLogger(URLLoader.class.getName());

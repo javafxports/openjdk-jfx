@@ -20,7 +20,7 @@
 #include "ResourceHandleClient.h"
 #include "WebPage.h"
 #include "com_sun_webkit_LoadListenerClient.h"
-#include "com_sun_webkit_network_URLLoader.h"
+#include "com_sun_webkit_network_URLLoaderBase.h"
 
 namespace WebCore {
 class Page;

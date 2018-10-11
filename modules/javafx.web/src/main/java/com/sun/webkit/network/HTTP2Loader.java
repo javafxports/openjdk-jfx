@@ -81,9 +81,7 @@ import static java.net.http.HttpResponse.BodySubscribers;
 /**
  * A runnable that loads a resource specified by a URL.
  */
-final class NewHTTPLoader extends URLLoaderBase {
-
-    @Native public static final int ALLOW_UNASSIGNED = java.net.IDN.ALLOW_UNASSIGNED;
+final class HTTP2Loader extends URLLoaderBase {
 
     private static final PlatformLogger logger =
             PlatformLogger.getLogger(URLLoader.class.getName());
@@ -103,6 +101,8 @@ final class NewHTTPLoader extends URLLoaderBase {
     private final long data;
     private volatile boolean canceled = false;
 
+    // FIXME: Check for any security implications, otherwise
+    // use one instance per WebPage instead of Singleton.
     private static HttpClient HTTP_CLIENT = HttpClient.newBuilder()
                    .version(Version.HTTP_2)  // this is the default
                    .followRedirects(Redirect.NORMAL)
@@ -111,7 +111,7 @@ final class NewHTTPLoader extends URLLoaderBase {
     /**
      * Creates a new {@code URLLoader}.
      */
-    NewHTTPLoader(WebPage webPage,
+    HTTP2Loader(WebPage webPage,
               boolean asynchronous,
               String url,
               String method,
@@ -128,7 +128,7 @@ final class NewHTTPLoader extends URLLoaderBase {
         this.data = data;
 
         final String parsedHeaders[] = Arrays.stream(headers.split("\n"))
-                                .filter(s -> !s.toLowerCase().startsWith("referer:"))
+                                .filter(s -> !s.toLowerCase().startsWith("referer:")) // Depends on JDK-8203850
                                 .map(s -> { int i = s.indexOf(":"); return new String[] {s.substring(0, i), s.substring(i + 2)};})
                                 .flatMap(Arrays::stream)
                                 .toArray(String[]::new);

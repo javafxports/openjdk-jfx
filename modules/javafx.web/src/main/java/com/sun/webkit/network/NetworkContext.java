@@ -144,8 +144,9 @@ final class NetworkContext {
                     Util.formatHeaders(headers)));
         }
 
+        // FIXME: As of now only asynchronous requests are supported.
         if (asynchronous && (url.startsWith("http://") || url.startsWith("https://"))) {
-            return new NewHTTPLoader(
+            return new HTTP2Loader(
                 webPage,
                 asynchronous,
                 url,

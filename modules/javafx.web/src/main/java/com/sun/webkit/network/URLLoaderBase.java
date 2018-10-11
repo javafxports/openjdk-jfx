@@ -25,9 +25,12 @@
 
 package com.sun.webkit.network;
 
+import java.lang.annotation.Native;
 import java.nio.ByteBuffer;
 
 abstract class URLLoaderBase {
+    @Native public static final int ALLOW_UNASSIGNED = java.net.IDN.ALLOW_UNASSIGNED;
+
     /**
      * Cancels the loader.
      */
