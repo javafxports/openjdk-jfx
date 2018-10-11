@@ -107,6 +107,7 @@ final class HTTP2Loader extends URLLoaderBase {
     private static HttpClient HTTP_CLIENT = HttpClient.newBuilder()
                    .version(Version.HTTP_2)  // this is the default
                    .followRedirects(Redirect.NORMAL)
+                   .connectTimeout(Duration.ofSeconds(30))
                    .build();
 
     /**
@@ -129,33 +130,38 @@ final class HTTP2Loader extends URLLoaderBase {
         this.data = data;
 
         final String parsedHeaders[] = Arrays.stream(headers.split("\n"))
-                                .filter(s -> !s.toLowerCase().startsWith("referer:")) // Depends on JDK-8203850
+                                .filter(s -> !s.matches("(?i)^origin:.*|^referer:.*")) // Depends on JDK-8203850
                                 .flatMap(s -> { int i = s.indexOf(":"); return Stream.of(s.substring(0, i), s.substring(i + 2));})
                                 .toArray(String[]::new);
         final var request = HttpRequest.newBuilder()
                        .uri(URI.create(url))
                        .headers(parsedHeaders)
-                       .timeout(Duration.ofSeconds(10))
+                       .version(Version.HTTP_2)  // this is the default
                        .build();
 
-        final BodyHandler<Void> bh = rsp -> {
-            // System.err.println("status:" + rsp.statusCode() + ", rsp.headers:" + rsp.headers());
+        final BodyHandler<Void> bodyHandler = rsp -> {
             callBack(() -> {
-                twkDidReceiveResponse(
-                        rsp.statusCode(),
-                        rsp.headers().firstValue("content-type").orElse("application/octet-stream"),
-                        "",
-                        rsp.headers().firstValueAsLong("content-length").orElse(-1),
-                        rsp.headers().map().entrySet().stream().map(e -> String.format("%s:%s", e.getKey(), e.getValue().stream().collect(Collectors.joining(",")))).collect(Collectors.joining("\n")),
-                        this.url,
-                        data);
+                if (!canceled) {
+                    twkDidReceiveResponse(
+                            rsp.statusCode(),
+                            rsp.headers().firstValue("content-type").orElse("application/octet-stream"),
+                            "",
+                            rsp.headers().firstValueAsLong("content-length").orElse(-1),
+                            rsp.headers().map().entrySet().stream().map(e -> String.format("%s:%s", e.getKey(), e.getValue().stream().collect(Collectors.joining(",")))).collect(Collectors.joining("\n")),
+                            this.url,
+                            data);
+                }
             });
             return BodySubscribers.fromSubscriber(new Flow.Subscriber<List<ByteBuffer>>() {
-                  private Flow.Subscription su;
+                  private Flow.Subscription subscription;
                   @Override
                   public void onComplete() {
                       // System.err.println("Done");
-                      callBack(() -> twkDidFinishLoading(data));
+                      callBack(() -> {
+                          if (!canceled) {
+                              twkDidFinishLoading(data);
+                          }
+                      });
                   }
 
                   @Override
@@ -165,32 +171,32 @@ final class HTTP2Loader extends URLLoaderBase {
 
                   @Override
                   public void onNext(final List<ByteBuffer> b) {
-                      // System.err.println("onNext:" + Thread.currentThread() + b);
-                      su.request(1);
                       callBack(() -> {
-                          b.stream().map(bb -> { final var newbb = ByteBuffer.allocateDirect(bb.capacity()); return newbb.put(bb);}).forEach(bb -> twkDidReceiveData(bb.flip(), bb.position(), bb.remaining(), data));
+                          b.stream().filter((bb) -> !canceled).map(bb -> ByteBuffer.allocateDirect(bb.capacity()).put(bb)).forEach(bb -> twkDidReceiveData(bb.flip(), bb.position(), bb.remaining(), data));
                       });
+                      requestIfNotCancelled();
                   }
 
                   @Override
-                  public void onSubscribe(Flow.Subscription su) {
-                      this.su = su;
-                      // System.err.println("onSubscribe:" + su);
-                      su.request(1);
+                  public void onSubscribe(Flow.Subscription subscription) {
+                      this.subscription = subscription;
+                      requestIfNotCancelled();
+                  }
+
+                  private void requestIfNotCancelled() {
+                      if (canceled) {
+                          subscription.cancel();
+                      } else {
+                          subscription.request(1);
+                      }
                   }
         });};
 
-        var res = HTTP_CLIENT.sendAsync(request, bh)
-                  .thenAccept(response -> {
-                       // System.err.println("Response status code: " + response.statusCode());
-                       // System.err.println("Response headers: " + response.headers());
-                       // System.err.println("Response body: " + response.body());
-                       // System.err.println("Thread:" + Thread.currentThread());}
-                    })
+        var res = HTTP_CLIENT.sendAsync(request, bodyHandler)
+                  .thenAccept(response -> { })
                   .exceptionally(ex -> {
                        System.err.println("@@@@ Exception:" + ex + ", cause0:" + ex.getCause() + ", cause1:" + ex.getCause().getCause()); return null; });
 
-        // try {
     }
 
 
