@@ -71,6 +71,11 @@ final class NetworkContext {
      * The thread pool used to execute asynchronous loaders.
      */
     private static final ThreadPoolExecutor threadPool;
+
+    /**
+     * Can use HTTP2Loader
+     */
+    private static final boolean useHTTP2Loader;
     static {
         threadPool = new ThreadPoolExecutor(
                 THREAD_POOL_SIZE,
@@ -80,6 +85,8 @@ final class NetworkContext {
                 new LinkedBlockingQueue<Runnable>(),
                 new URLLoaderThreadFactory());
         threadPool.allowCoreThreadTimeOut(true);
+
+        useHTTP2Loader = AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> Boolean.valueOf(System.getProperty("com.sun.webkit.useHTTP2Loader", "true")));
     }
 
     /**
@@ -145,7 +152,7 @@ final class NetworkContext {
         }
 
         // FIXME: As of now only asynchronous requests are supported.
-        if (asynchronous && (url.startsWith("http://") || url.startsWith("https://"))) {
+        if (useHTTP2Loader && asynchronous && (url.startsWith("http://") || url.startsWith("https://"))) {
             return new HTTP2Loader(
                 webPage,
                 asynchronous,

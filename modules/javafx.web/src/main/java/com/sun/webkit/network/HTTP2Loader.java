@@ -70,6 +70,7 @@ import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
@@ -129,8 +130,7 @@ final class HTTP2Loader extends URLLoaderBase {
 
         final String parsedHeaders[] = Arrays.stream(headers.split("\n"))
                                 .filter(s -> !s.toLowerCase().startsWith("referer:")) // Depends on JDK-8203850
-                                .map(s -> { int i = s.indexOf(":"); return new String[] {s.substring(0, i), s.substring(i + 2)};})
-                                .flatMap(Arrays::stream)
+                                .flatMap(s -> { int i = s.indexOf(":"); return Stream.of(s.substring(0, i), s.substring(i + 2));})
                                 .toArray(String[]::new);
         final var request = HttpRequest.newBuilder()
                        .uri(URI.create(url))
