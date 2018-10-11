@@ -103,7 +103,7 @@ final class NewHTTPLoader extends URLLoaderBase {
     private final long data;
     private volatile boolean canceled = false;
 
-    private HttpClient httpClient = HttpClient.newBuilder()
+    private static HttpClient HTTP_CLIENT = HttpClient.newBuilder()
                    .version(Version.HTTP_2)  // this is the default
                    .followRedirects(Redirect.NORMAL)
                    .build();
@@ -180,7 +180,7 @@ final class NewHTTPLoader extends URLLoaderBase {
                   }
         });};
 
-        var res = httpClient.sendAsync(request, bh)
+        var res = HTTP_CLIENT.sendAsync(request, bh)
                   .thenAccept(response -> {
                        // System.err.println("Response status code: " + response.statusCode());
                        // System.err.println("Response headers: " + response.headers());
