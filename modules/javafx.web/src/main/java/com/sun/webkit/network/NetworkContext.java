@@ -63,6 +63,12 @@ final class NetworkContext {
     private static final int DEFAULT_HTTP_MAX_CONNECTIONS = 5;
 
     /**
+     * The default value of the maximum concurrent connections for
+     * new gen HTTP2 client
+     */
+    private static final int DEFAULT_HTTP2_MAX_CONNECTIONS = 20;
+
+    /**
      * The buffer size for the shared pool of byte buffers.
      */
     private static final int BYTE_BUFFER_SIZE = 1024 * 40;
@@ -207,6 +213,10 @@ final class NetworkContext {
         // system property.
         int propValue = AccessController.doPrivileged(
                 (PrivilegedAction<Integer>) () -> Integer.getInteger("http.maxConnections", -1));
+
+        if (useHTTP2Loader) {
+            return propValue >= 0 ? propValue : DEFAULT_HTTP2_MAX_CONNECTIONS;
+        }
         return propValue >= 0 ? propValue : DEFAULT_HTTP_MAX_CONNECTIONS;
     }
 
