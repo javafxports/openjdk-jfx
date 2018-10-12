@@ -158,10 +158,9 @@ final class URLLoader extends URLLoaderBase implements Runnable {
                 URLConnection c = urlObject.openConnection();
                 prepareConnection(c);
 
-                boolean redirect = false;
                 try {
                     sendRequest(c, streaming);
-                    redirect = receiveResponse(c);
+                    receiveResponse(c);
                 } catch (HttpRetryException ex) {
                     // RT-19914
                     if (streaming) {
@@ -180,10 +179,6 @@ final class URLLoader extends URLLoaderBase implements Runnable {
                     }
                 } finally {
                     close(c);
-                }
-
-                if (redirect) {
-                    willSendRequest("", "", c);
                 }
                 break;
             }
@@ -396,11 +391,11 @@ final class URLLoader extends URLLoaderBase implements Runnable {
     /**
      * Receives response from the server.
      */
-    private boolean receiveResponse(URLConnection c)
+    private void receiveResponse(URLConnection c)
         throws IOException, InterruptedException
     {
         if (canceled) {
-            return false;
+            return;
         }
 
         InputStream errorStream = null;
@@ -414,7 +409,7 @@ final class URLLoader extends URLLoaderBase implements Runnable {
             }
 
             if (canceled) {
-                return false;
+                return;
             }
 
             // See RT-17435
@@ -423,12 +418,13 @@ final class URLLoader extends URLLoaderBase implements Runnable {
                 case 302: // Found
                 case 303: // See Other
                 case 307: // Temporary Redirect
-                    return true;
+                    willSendRequest(c);
+                    break;
 
                 case 304: // Not Modified
                     didReceiveResponse(c);
                     didFinishLoading();
-                    return false;
+                    return;
             }
 
             if (code >= 400 && !method.equals(HEAD)) {
@@ -476,7 +472,7 @@ final class URLLoader extends URLLoaderBase implements Runnable {
 
         if (method.equals(HEAD)) {
             didFinishLoading();
-            return false;
+            return;
         }
 
         InputStream inputStream = null;
@@ -571,7 +567,6 @@ final class URLLoader extends URLLoaderBase implements Runnable {
                 allocator.release(byteBuffer);
             }
         }
-        return false;
     }
 
     /**
@@ -625,9 +620,7 @@ final class URLLoader extends URLLoaderBase implements Runnable {
         twkDidSendData(totalBytesSent, totalBytesToBeSent, data);
     }
 
-    private void willSendRequest(String newUrl,
-                                 final String newMethod,
-                                 URLConnection c) throws InterruptedException
+    private void willSendRequest(URLConnection c) throws InterruptedException
     {
         final int status = extractStatus(c);
         final String contentType = c.getContentType();
@@ -638,8 +631,6 @@ final class URLLoader extends URLLoaderBase implements Runnable {
         callBack(() -> {
             if (!canceled) {
                 notifyWillSendRequest(
-                        "",
-                        newMethod,
                         status,
                         contentType,
                         contentEncoding,
@@ -650,9 +641,7 @@ final class URLLoader extends URLLoaderBase implements Runnable {
         });
     }
 
-    private void notifyWillSendRequest(String newUrl,
-                                          String newMethod,
-                                          int status,
+    private void notifyWillSendRequest(int status,
                                           String contentType,
                                           String contentEncoding,
                                           long contentLength,
@@ -661,17 +650,13 @@ final class URLLoader extends URLLoaderBase implements Runnable {
     {
         if (logger.isLoggable(Level.FINEST)) {
             logger.finest(String.format(
-                    "newUrl: [%s], "
-                    + "newMethod: [%s], "
-                    + "status: [%d], "
+                    "status: [%d], "
                     + "contentType: [%s], "
                     + "contentEncoding: [%s], "
                     + "contentLength: [%d], "
                     + "url: [%s], "
                     + "data: [0x%016X], "
                     + "headers:%n%s",
-                    newUrl,
-                    newMethod,
                     status,
                     contentType,
                     contentEncoding,
@@ -681,8 +666,6 @@ final class URLLoader extends URLLoaderBase implements Runnable {
                     Util.formatHeaders(headers)));
         }
         twkWillSendRequest(
-                newUrl,
-                newMethod,
                 status,
                 contentType,
                 contentEncoding,

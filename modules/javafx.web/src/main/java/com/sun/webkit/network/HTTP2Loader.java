@@ -103,6 +103,7 @@ final class HTTP2Loader extends URLLoaderBase {
     // use one instance per WebPage instead of Singleton.
     private static HttpClient HTTP_CLIENT = HttpClient.newBuilder()
                    .version(Version.HTTP_2)  // this is the default
+                   // .followRedirects(Redirect.NORMAL)
                    .connectTimeout(Duration.ofSeconds(30))
                    .build();
 
@@ -268,15 +269,13 @@ final class HTTP2Loader extends URLLoaderBase {
     }
 
     private static String getHeadersAsString(final HttpResponse.ResponseInfo rsp) {
-        return rsp.headers().map().entrySet().stream().map(e -> String.format("%s:%s", e.getKey(), e.getValue().stream().collect(Collectors.joining(",")))).collect(Collectors.joining("\n"));
+        return rsp.headers().map().entrySet().stream().map(e -> String.format("%s:%s", e.getKey(), e.getValue().stream().collect(Collectors.joining(",")))).collect(Collectors.joining("\n")) + "\n";
     }
 
     private void willSendRequest(final HttpResponse.ResponseInfo rsp) {
         callBack(() -> {
             if (!canceled) {
                 twkWillSendRequest(
-                        "",
-                        "",
                         rsp.statusCode(),
                         getContentType(rsp),
                         "",

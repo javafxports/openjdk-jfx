@@ -255,10 +255,7 @@ void URLLoader::AsynchronousTarget::didSendData(long totalBytesSent,
 }
 
 
-bool URLLoader::AsynchronousTarget::willSendRequest(
-        const String&,
-        const String&,
-        const ResourceResponse& response)
+bool URLLoader::AsynchronousTarget::willSendRequest(const ResourceResponse& response)
 {
     m_handle->willSendRequest(response);
     return false;
@@ -313,15 +310,14 @@ void URLLoader::SynchronousTarget::didSendData(long, long)
 {
 }
 
-bool URLLoader::SynchronousTarget::willSendRequest(
-        const String& newUrl,
-        const String&,
-        const ResourceResponse&)
+bool URLLoader::SynchronousTarget::willSendRequest(const ResourceResponse& response)
 {
     // The following code was adapted from the Windows port
     // FIXME: This needs to be fixed to follow redirects correctly even
     // for cross-domain requests
-    if (!protocolHostAndPortAreEqual(m_request.url(), URL(URL(), newUrl))) {
+    String location = response.httpHeaderField(HTTPHeaderName::Location);
+    URL newURL = URL(response.url(), location);
+    if (!protocolHostAndPortAreEqual(m_request.url(), newURL)) {
         didFail(ResourceError(
                 String(),
                 com_sun_webkit_LoadListenerClient_INVALID_RESPONSE,
@@ -361,8 +357,7 @@ using namespace WebCore;
 extern "C" {
 #endif
 
-static void setupResponse(ResourceResponse& response,
-                          JNIEnv* env,
+static ResourceResponse setupResponse(JNIEnv* env,
                           jint status,
                           jstring contentType,
                           jstring contentEncoding,
@@ -370,6 +365,8 @@ static void setupResponse(ResourceResponse& response,
                           jstring headers,
                           jstring url)
 {
+    ResourceResponse response { };
+
     if (status > 0) {
         response.setHTTPStatusCode(status);
     }
@@ -409,7 +406,6 @@ static void setupResponse(ResourceResponse& response,
             String key = s.left(j);
             String val = s.substring(j + 1);
             response.setHTTPHeaderField(key, val);
-            // fprintf(stderr, "headers %s:%s\n", key.utf8().data(), val.utf8().data());
         }
         headersString = headersString.substring(splitPos + 1);
         splitPos = headersString.find("\n");
@@ -422,6 +418,7 @@ static void setupResponse(ResourceResponse& response,
     if (/*kurl.hasPath()*/kurl.pathEnd() != kurl.pathStart() && kurl.protocol() == String("file")) {
         response.setMimeType(MIMETypeRegistry::getMIMETypeForPath(kurl.path()));
     }
+    return response;
 }
 
 JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidSendData
@@ -433,8 +430,8 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidSendData
     target->didSendData(totalBytesSent, totalBytesToBeSent);
 }
 
-JNIEXPORT jboolean JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkWillSendRequest
-  (JNIEnv* env, jclass, jstring newUrl, jstring newMethod, jint status,
+JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkWillSendRequest
+  (JNIEnv* env, jclass, jint status,
    jstring contentType, jstring contentEncoding, jlong contentLength,
    jstring headers, jstring url, jlong data)
 {
@@ -442,9 +439,7 @@ JNIEXPORT jboolean JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkWillSend
             static_cast<URLLoader::Target*>(jlong_to_ptr(data));
     ASSERT(target);
 
-    ResourceResponse response;
-    setupResponse(
-            response,
+    ResourceResponse response = setupResponse(
             env,
             status,
             contentType,
@@ -453,10 +448,7 @@ JNIEXPORT jboolean JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkWillSend
             headers,
             url);
 
-    return bool_to_jbool(target->willSendRequest(
-            String(env, newUrl),
-            String(env, newMethod),
-            response));
+    target->willSendRequest(response);
 }
 
 JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidReceiveResponse
@@ -468,9 +460,7 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidReceiveRe
             static_cast<URLLoader::Target*>(jlong_to_ptr(data));
     ASSERT(target);
 
-    ResourceResponse response;
-    setupResponse(
-            response,
+    ResourceResponse response = setupResponse(
             env,
             status,
             contentType,

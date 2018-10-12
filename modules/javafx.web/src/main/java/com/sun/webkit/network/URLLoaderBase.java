@@ -40,9 +40,7 @@ abstract class URLLoaderBase {
                                               long totalBytesToBeSent,
                                               long data);
 
-    protected static native boolean twkWillSendRequest(String newUrl,
-                                                     String newMethod,
-                                                     int status,
+    protected static native void twkWillSendRequest(int status,
                                                      String contentType,
                                                      String contentEncoding,
                                                      long contentLength,
