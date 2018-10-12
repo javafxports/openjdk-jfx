@@ -84,25 +84,6 @@ static void initRefs(JNIEnv* env)
     }
 }
 
-static bool shouldRedirectAsGET(const ResourceRequest& request, const ResourceResponse& response, bool crossOrigin)
-{
-    if (request.httpMethod() == "GET" || request.httpMethod() == "HEAD")
-        return false;
-
-    if (!request.url().protocolIsInHTTPFamily())
-        return true;
-
-    if (response.isSeeOther())
-        return true;
-
-    if ((response.isMovedPermanently() || response.isFound()) && (request.httpMethod() == "POST"))
-        return true;
-
-    if (crossOrigin && (request.httpMethod() == "DELETE"))
-        return true;
-
-    return false;
-}
 }
 
 URLLoader::URLLoader()
@@ -280,6 +261,7 @@ bool URLLoader::AsynchronousTarget::willSendRequest(
         const ResourceResponse& response)
 {
     m_handle->willSendRequest(response);
+    return false;
 }
 
 void URLLoader::AsynchronousTarget::didReceiveResponse(
