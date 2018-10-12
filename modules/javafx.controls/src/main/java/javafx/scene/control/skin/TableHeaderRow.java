@@ -293,9 +293,9 @@ public class TableHeaderRow extends StackPane {
     };
 
     /**
-     * Inform this TableHeaderRow about a column being reordered.
+     * Informs this {@code TableHeaderRow} about a column being reordered.
      *
-     * @param value true if a column is being reordered.
+     * @param value {@code true} if a column is being reordered.
      * @since 12
      */
     public final void setReordering(boolean value) {
@@ -303,6 +303,8 @@ public class TableHeaderRow extends StackPane {
     }
 
     /**
+     * Returns {@code true} if a column is currently reordered.
+     *
      * @return true if a reorder is going on.
      * @since 12
      */
@@ -311,7 +313,9 @@ public class TableHeaderRow extends StackPane {
     }
 
     /**
-     * @return A BooleanProperty indicating whether a reorder is going on.
+     * Returns a {@code BooleanProperty} indicating whether a reorder is going on.
+     *
+     * @return A {@code BooleanProperty} indicating whether a reorder is going on.
      * @since 12
      */
     public final BooleanProperty reorderingProperty() {
@@ -333,8 +337,11 @@ public class TableHeaderRow extends StackPane {
     }
 
     /**
-     * @return The root header that is actually just one NestedTableColumnHeader that spans
-     * the entire width.
+     * Returns the root header for all columns.
+     * <p>
+     * The root header is actually a {@link NestedTableColumnHeader} that spans the entire width.
+     *
+     * @return The root header
      * @since 12
      */
     public final NestedTableColumnHeader getRootHeader() {
@@ -403,7 +410,8 @@ public class TableHeaderRow extends StackPane {
     }
 
     /**
-     * This method is called whenever a scroll is happening on the horizontal bar.
+     * Called whenever a scroll is happening on the horizontal bar.
+     *
      * @since 12
      */
     protected void updateScrollX() {
@@ -418,7 +426,10 @@ public class TableHeaderRow extends StackPane {
 
 
     /**
-     * This method is called when the width is changing.
+     * Updates the table width when a resize operation occurs.
+     * <p>
+     * This method is called continuously when the control width is changing in order to properly clip this {@code
+     * TableHeaderRow}. Overriding this method in a subclass allows to specify a resizing behavior.
      *
      * @since 12
      */
@@ -455,9 +466,9 @@ public class TableHeaderRow extends StackPane {
      **************************************************************************/
 
     /**
-     * When a column reordering is taking place, it will return the current {@link TableColumnHeader} being moved.
+     * Returns the current {@link TableColumnHeader} being moved when a reordering is happening.
      *
-     * @return
+     * @return the current {@code TableColumnHeader} being moved.
      * @since 12
      */
     protected TableColumnHeader getReorderingRegion() {
@@ -469,9 +480,9 @@ public class TableHeaderRow extends StackPane {
     }
 
     /**
-     * When a column reordering is taking place, inform this TableHeaderRow of which {@link TableColumnHeader} is being moved.
+     * Sets the {@code TableColumnHeader} being reordered.
      *
-     * @param reorderingRegion
+     * @param reorderingRegion the {@code TableColumnHeader} being reordered.
      * @since 12
      */
     protected void setReorderingRegion(TableColumnHeader reorderingRegion) {

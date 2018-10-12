@@ -1736,6 +1736,8 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
      **************************************************************************/
 
     /**
+     * Returns the scroll bar used for scrolling horizontally.
+     *
      * @return The scroll bar used for scrolling horizontally.
      * @since 12
      */
@@ -1744,6 +1746,8 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     }
 
     /**
+     * Returns the scroll bar used for scrolling vertically.
+     *
      * @return The scroll bar used for scrolling vertically.
      * @since 12
      */
@@ -1865,9 +1869,9 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     }
 
     /**
-     * Resize the given cell.
+     * Resizes the given cell.
      *
-     * @param cell
+     * @param cell the cell to resize.
      * @since 12
      */
     protected void resizeCellSize(T cell) {
@@ -1883,11 +1887,13 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     }
 
     /**
-     * @return The list of cells representing those cells which actually make up the
-     * * current view. The cells are ordered such that the first cell in this
-     * * list is the first in the view, and the last cell is the last in the
-     * * view. When pixel scrolling, the list is simply shifted and items drop
-     * * off the beginning or the end, depending on the order of scrolling.
+     * Returns the list of cells displayed in the current view.
+     * <p>
+     * The cells are ordered such that the first cell in this list is the first in the view, and the last cell is the
+     * last in the view. When pixel scrolling, the list is simply shifted and items drop off the beginning or the end,
+     * depending on the order of scrolling.
+     *
+     * @return the cells displayed in the current view.
      * @since 12
      */
     protected List<T> getCells() {
@@ -1895,7 +1901,9 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     }
 
     /**
-     * @return last visible cell whose bounds are entirely within the viewport
+     * Returns the last visible cell whose bounds are entirely within the viewport.
+     *
+     * @return last visible cell whose bounds are entirely within the viewport.
      * @since 12
      */
     protected T getLastVisibleCellWithinViewPort() {
@@ -1921,7 +1929,9 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     }
 
     /**
-     * @return first visible cell whose bounds are entirely within the viewport
+     * Returns the first visible cell whose bounds are entirely within the viewport.
+     *
+     * @return first visible cell whose bounds are entirely within the viewport.
      * @since 12
      */
     protected T getFirstVisibleCellWithinViewPort() {
@@ -2140,7 +2150,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     }
 
     /**
-     * Inform the VirtualFlow that a layout should be done and cell contents are the same.
+     * Informs the VirtualFlow that a layout should be done and cell contents are the same.
      *
      * @since 12
      */
@@ -2150,7 +2160,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     }
 
     /**
-     * Inform the VirtualFlow that a layout should be done and cell factory has changed.
+     * Informs the VirtualFlow that a layout should be done and cell factory has changed.
      *
      * @since 12
      */
@@ -2160,7 +2170,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     }
 
     /**
-     * Inform the VirtualFlow that a layout should be done and cell contents have changed.
+     * Informs the VirtualFlow that a layout should be done and cell contents have changed.
      *
      * @since 12
      */
@@ -2170,7 +2180,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     }
 
     /**
-     * Inform the VirtualFlow that a layout should be done and only the cell layout will be triggered.
+     * Informs the VirtualFlow that a layout should be done and only the cell layout will be triggered.
      *
      * @since 12
      */
@@ -2536,12 +2546,13 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
 
 
     /**
-     * This method is an experts-only method - if the requested index is not
-     * already an existing visible cell, it will create a cell for the
-     * given index and insert it into the sheet. From that point on it will be
-     * unmanaged, and is up to the caller of this method to manage it.
+     * Creates and returns a new cell for the given index.
+     * <p>
+     * This method is an experts-only method - if the requested index is not already an existing visible cell, it will
+     * create a cell for the given index and insert it into the sheet. From that point on it will be unmanaged, and is
+     * up to the caller of this method to manage it.
      *
-     * @param index
+     * @param index the cell index
      * @return A cell for the given index inserted in the VirtualFlow.
      * @since 12
      */

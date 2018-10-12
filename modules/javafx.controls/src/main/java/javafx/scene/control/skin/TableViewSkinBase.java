@@ -509,7 +509,9 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      **************************************************************************/
 
     /**
-     * @return The TableHeaderRow created using {@link #createTableHeaderRow()}.
+     * Returns the {@code TableHeaderRow}created using {@link #createTableHeaderRow()}.
+     *
+     * @return The TableHeaderRow for this TableViewSkinBase.
      * @since 12
      */
     protected final TableHeaderRow getTableHeaderRow() {
@@ -614,7 +616,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the focus is set on previous cell in order to scroll to it to make it visible.
+     * Called when the selection is set on previous cell in order to scroll to it to make it visible.
      *
      * @since 12
      */
@@ -682,9 +684,14 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Function used to scroll the container down by one 'page', although
-     * if this is a horizontal container, then the scrolling will be to the right.
+     * Scrolls the container down by one 'page'. Although if this is a horizontal container, then the scrolling will be
+     * to the right.
+     * <p>
+     * If the last visible cell is selected (or focused if param {@code isFocusDriven} is true), it will be made visible
+     * at the very top.
      *
+     * @param isFocusDriven {@code true} if focused cell should be considered over selection.
+     * @return the new selected index.
      * @since 12
      */
     protected int onScrollPageDown(boolean isFocusDriven) {
@@ -731,9 +738,11 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Function used to scroll the container up by one 'page', although
-     * if this is a horizontal container, then the scrolling will be to the left.
+     * Scrolls the container up by one 'page'. Although if this is a horizontal container, then the scrolling will be to
+     * the left.
      *
+     * @param isFocusDriven {@code true} if focused cell should be considered over selection.
+     * @return the new selected index.
      * @since 12
      */
     protected int onScrollPageUp(boolean isFocusDriven) {
@@ -865,9 +874,10 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Handles the horizontal scrolling when the selection mode is cell-based
-     * and the newly selected cell belongs to a column which is not totally
-     * visible.
+     * Scrolls to the column containing the current focused cell.
+     * <p>
+     * Handles the horizontal scrolling when the selection mode is cell-based and the newly selected cell belongs to a
+     * column which is not totally visible.
      *
      * @since 12
      */
@@ -880,9 +890,9 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Programmatically scroll to the given column.
+     * Programmatically scrolls to the given column.
      *
-     * @param col
+     * @param col the column to scroll to.
      * @since 12
      */
     protected void scrollHorizontally(TC col) {
