@@ -107,6 +107,11 @@ public:
     void willSendRequest(ResourceRequest&&, ResourceResponse&&, CompletionHandler<void(ResourceRequest&&)>&&);
 #endif
 
+#if PLATFORM(JAVA)
+    void continueAfterWillSendRequest(ResourceRequest&& request);
+    void willSendRequest(const ResourceResponse& response);
+#endif
+
     void didReceiveResponse(ResourceResponse&&, CompletionHandler<void()>&&);
 
     bool shouldUseCredentialStorage();

@@ -46,6 +46,7 @@ import java.net.MalformedURLException;
 import java.net.NoRouteToHostException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLDecoder;
@@ -86,11 +87,7 @@ final class HTTP2Loader extends URLLoaderBase {
 
     private static final PlatformLogger logger =
             PlatformLogger.getLogger(URLLoader.class.getName());
-    private static final int MAX_REDIRECTS = 10;
     private static final int MAX_BUF_COUNT = 3;
-    private static final String GET = "GET";
-    private static final String HEAD = "HEAD";
-    private static final String DELETE = "DELETE";
 
 
     private final WebPage webPage;
@@ -102,18 +99,41 @@ final class HTTP2Loader extends URLLoaderBase {
     private final long data;
     private volatile boolean canceled = false;
 
-    // FIXME: Check for any security implications, otherwise
+    // TODO: Check for security implications, otherwise
     // use one instance per WebPage instead of Singleton.
     private static HttpClient HTTP_CLIENT = HttpClient.newBuilder()
                    .version(Version.HTTP_2)  // this is the default
-                   .followRedirects(Redirect.NORMAL)
                    .connectTimeout(Duration.ofSeconds(30))
                    .build();
 
     /**
-     * Creates a new {@code URLLoader}.
+     * Creates a new {@code HTTP2Loader}.
      */
-    HTTP2Loader(WebPage webPage,
+    static HTTP2Loader create(WebPage webPage,
+              ByteBufferPool byteBufferPool,
+              boolean asynchronous,
+              String url,
+              String method,
+              String headers,
+              FormDataElement[] formDataElements,
+              long data) {
+        // FIXME: As of now only asynchronous requests are supported.
+        if (formDataElements == null && asynchronous && (url.startsWith("http://") || url.startsWith("https://"))) {
+            return new HTTP2Loader(
+                webPage,
+                byteBufferPool,
+                asynchronous,
+                url,
+                method,
+                headers,
+                formDataElements,
+                data);
+        }
+        return null;
+    }
+
+    private HTTP2Loader(WebPage webPage,
+              ByteBufferPool byteBufferPool,
               boolean asynchronous,
               String url,
               String method,
@@ -133,35 +153,31 @@ final class HTTP2Loader extends URLLoaderBase {
                                 .filter(s -> !s.matches("(?i)^origin:.*|^referer:.*")) // Depends on JDK-8203850
                                 .flatMap(s -> { int i = s.indexOf(":"); return Stream.of(s.substring(0, i), s.substring(i + 2));})
                                 .toArray(String[]::new);
-        final var request = HttpRequest.newBuilder()
-                       .uri(URI.create(url))
+        URI uriObj;
+        try {
+            uriObj = newURL(url).toURI();
+        } catch(URISyntaxException | MalformedURLException e) {
+            uriObj = URI.create(url);
+        }
+        final var requestBuilder = HttpRequest.newBuilder()
+                       .uri(uriObj)
                        .headers(parsedHeaders)
-                       .version(Version.HTTP_2)  // this is the default
-                       .build();
+                       .version(Version.HTTP_2);  // this is the default
+
+        // TODO: POST with formDataElements has to be handled
+        requestBuilder.method(method, HttpRequest.BodyPublishers.noBody());
+
+        final var request = requestBuilder.build();
 
         final BodyHandler<Void> bodyHandler = rsp -> {
-            callBack(() -> {
-                if (!canceled) {
-                    twkDidReceiveResponse(
-                            rsp.statusCode(),
-                            rsp.headers().firstValue("content-type").orElse("application/octet-stream"),
-                            "",
-                            rsp.headers().firstValueAsLong("content-length").orElse(-1),
-                            rsp.headers().map().entrySet().stream().map(e -> String.format("%s:%s", e.getKey(), e.getValue().stream().collect(Collectors.joining(",")))).collect(Collectors.joining("\n")),
-                            this.url,
-                            data);
-                }
-            });
+            if(!handleRedirectionIfNeeded(rsp)) {
+                didReceiveResponse(rsp);
+            }
             return BodySubscribers.fromSubscriber(new Flow.Subscriber<List<ByteBuffer>>() {
                   private Flow.Subscription subscription;
                   @Override
                   public void onComplete() {
-                      // System.err.println("Done");
-                      callBack(() -> {
-                          if (!canceled) {
-                              twkDidFinishLoading(data);
-                          }
-                      });
+                      didFinishLoading();
                   }
 
                   @Override
@@ -171,9 +187,7 @@ final class HTTP2Loader extends URLLoaderBase {
 
                   @Override
                   public void onNext(final List<ByteBuffer> b) {
-                      callBack(() -> {
-                          b.stream().filter((bb) -> !canceled).map(bb -> ByteBuffer.allocateDirect(bb.capacity()).put(bb)).forEach(bb -> twkDidReceiveData(bb.flip(), bb.position(), bb.remaining(), data));
-                      });
+                      didReceiveData(b);
                       requestIfNotCancelled();
                   }
 
@@ -199,7 +213,6 @@ final class HTTP2Loader extends URLLoaderBase {
 
     }
 
-
     /**
      * Cancels this loader.
      */
@@ -211,11 +224,96 @@ final class HTTP2Loader extends URLLoaderBase {
         canceled = true;
     }
 
-    protected void callBack(Runnable runnable) {
+    private void callBack(Runnable runnable) {
         if (asynchronous) {
             Invoker.getInvoker().invokeOnEventThread(runnable);
         } else {
             runnable.run();
         }
+    }
+
+    private URL asURL(final String uri) throws MalformedURLException {
+        URL newUrl;
+        try {
+            newUrl = newURL(uri);
+        } catch (MalformedURLException mue) {
+            newUrl = newURL(new URL(this.url), uri);
+        }
+        return newUrl;
+    }
+
+    private boolean handleRedirectionIfNeeded(final HttpResponse.ResponseInfo rsp) {
+        switch(rsp.statusCode()) {
+                case 301: // Moved Permanently
+                case 302: // Found
+                case 303: // See Other
+                case 307: // Temporary Redirect
+                    willSendRequest(rsp);
+                    return true;
+
+                case 304: // Not Modified
+                    didReceiveResponse(rsp);
+                    didFinishLoading();
+                    return true;
+        }
+        return false;
+    }
+
+    private static long getContentLength(final HttpResponse.ResponseInfo rsp) {
+        return rsp.headers().firstValueAsLong("content-length").orElse(-1);
+    }
+
+    private static String getContentType(final HttpResponse.ResponseInfo rsp) {
+        return rsp.headers().firstValue("content-type").orElse("application/octet-stream");
+    }
+
+    private static String getHeadersAsString(final HttpResponse.ResponseInfo rsp) {
+        return rsp.headers().map().entrySet().stream().map(e -> String.format("%s:%s", e.getKey(), e.getValue().stream().collect(Collectors.joining(",")))).collect(Collectors.joining("\n"));
+    }
+
+    private void willSendRequest(final HttpResponse.ResponseInfo rsp) {
+        callBack(() -> {
+            if (!canceled) {
+                twkWillSendRequest(
+                        "",
+                        "",
+                        rsp.statusCode(),
+                        getContentType(rsp),
+                        "",
+                        getContentLength(rsp),
+                        getHeadersAsString(rsp),
+                        this.url,
+                        data);
+            }
+        });
+    }
+
+    private void didReceiveResponse(final HttpResponse.ResponseInfo rsp) {
+        callBack(() -> {
+            if (!canceled) {
+                twkDidReceiveResponse(
+                        rsp.statusCode(),
+                        getContentType(rsp),
+                        "",
+                        getContentLength(rsp),
+                        getHeadersAsString(rsp),
+                        this.url,
+                        data);
+            }
+        });
+    }
+
+    private void didReceiveData(final List<ByteBuffer> b) {
+        callBack(() -> {
+            b.stream().filter((bb) -> !canceled).map(bb -> ByteBuffer.allocateDirect(bb.capacity()).put(bb)).forEach(bb -> twkDidReceiveData(bb.flip(), bb.position(), bb.remaining(), data));
+        });
+    }
+
+    private void didFinishLoading() {
+        callBack(() -> {
+            if (!canceled) {
+                twkDidFinishLoading(data);
+            }
+        });
     }
 }

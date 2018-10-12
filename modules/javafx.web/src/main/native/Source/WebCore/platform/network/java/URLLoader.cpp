@@ -115,14 +115,15 @@ URLLoader::~URLLoader()
 }
 
 std::unique_ptr<URLLoader> URLLoader::loadAsynchronously(NetworkingContext* context,
-                                                    ResourceHandle* handle)
+                                                    ResourceHandle* handle,
+                                                    const ResourceRequest& request)
 {
     std::unique_ptr<URLLoader> result = std::unique_ptr<URLLoader>(new URLLoader());
     result->m_target = std::unique_ptr<AsynchronousTarget>(new AsynchronousTarget(handle));
     result->m_ref = load(
             true,
             context,
-            handle->firstRequest(),
+            request,
             result->m_target.get());
     return result;
 }
@@ -274,38 +275,11 @@ void URLLoader::AsynchronousTarget::didSendData(long totalBytesSent,
 
 
 bool URLLoader::AsynchronousTarget::willSendRequest(
-        const String& newUrl,
-        const String& newMethod,
+        const String&,
+        const String&,
         const ResourceResponse& response)
 {
-    using namespace URLLoaderJavaInternal;
-    ASSERT(isMainThread());
-    ResourceHandleClient* client = m_handle->client();
-    if (client) {
-        ResourceRequest request = m_handle->firstRequest();
-        String location = response.httpHeaderField(HTTPHeaderName::Location);
-        URL newURL = URL(URL(), newUrl);
-        bool crossOrigin = !protocolHostAndPortAreEqual(request.url(), newURL);
-
-        ResourceRequest newRequest = request;
-        newRequest.setURL(newURL);
-
-        if (shouldRedirectAsGET(newRequest, response, crossOrigin)) {
-            newRequest.setHTTPMethod("GET");
-            newRequest.setHTTPBody(nullptr);
-            newRequest.clearHTTPContentType();
-        } else {
-            newRequest.setHTTPMethod(newMethod);
-        }
-
-        // Should not set Referer after a redirect from a secure resource to non-secure one.
-        if (!newURL.protocolIs("https") && protocolIs(newRequest.httpReferrer(), "https") && m_handle->context()->shouldClearReferrerOnHTTPSToHTTPRedirect())
-            newRequest.clearHTTPReferrer();
-
-        client->willSendRequestAsync(m_handle, WTFMove(newRequest), ResourceResponse(response), [] (ResourceRequest&&) {
-        });
-    }
-    return true;
+    m_handle->willSendRequest(response);
 }
 
 void URLLoader::AsynchronousTarget::didReceiveResponse(
@@ -313,8 +287,7 @@ void URLLoader::AsynchronousTarget::didReceiveResponse(
 {
     ResourceHandleClient* client = m_handle->client();
     if (client) {
-        client->didReceiveResponseAsync(m_handle, ResourceResponse(response), [] () {
-        });
+        client->didReceiveResponseAsync(m_handle, ResourceResponse(response), [] () {});
     }
 }
 

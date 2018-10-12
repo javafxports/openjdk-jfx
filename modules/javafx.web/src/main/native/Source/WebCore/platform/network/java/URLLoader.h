@@ -20,7 +20,8 @@ class ResourceResponse;
 class URLLoader {
 public:
     static std::unique_ptr<URLLoader> loadAsynchronously(NetworkingContext* context,
-                                                    ResourceHandle* handle);
+                                                    ResourceHandle* handle,
+                                                    const ResourceRequest& request);
     void cancel();
     static void loadSynchronously(NetworkingContext* context,
                                   const ResourceRequest& request,
