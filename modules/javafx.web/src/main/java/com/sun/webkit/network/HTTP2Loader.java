@@ -151,7 +151,7 @@ final class HTTP2Loader extends URLLoaderBase {
         this.data = data;
 
         final String parsedHeaders[] = Arrays.stream(headers.split("\n"))
-                                .filter(s -> !s.matches("(?i)^origin:.*|^referer:.*")) // Depends on JDK-8203850
+                                // .filter(s -> !s.matches("(?i)^origin:.*|^referer:.*")) // Depends on JDK-8203850
                                 .flatMap(s -> { int i = s.indexOf(":"); return Stream.of(s.substring(0, i), s.substring(i + 2));})
                                 .toArray(String[]::new);
         URI uriObj;
@@ -210,7 +210,7 @@ final class HTTP2Loader extends URLLoaderBase {
         var res = HTTP_CLIENT.sendAsync(request, bodyHandler)
                   .thenAccept(response -> { })
                   .exceptionally(ex -> {
-                       System.err.println("@@@@ Exception:" + ex + ", cause0:" + ex.getCause() + ", cause1:" + ex.getCause().getCause()); return null; });
+                       System.err.println("@@@@ Exception:" + ex + ", cause0:" + ex.getCause() + ", cause1:" + ex.getCause().getCause() + ", url:" + url); return null; });
 
     }
 
