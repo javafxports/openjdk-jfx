@@ -130,7 +130,32 @@ final class HTTP2Loader extends URLLoaderBase {
                 formDataElements,
                 data);
         }
+        System.err.println("Fallback to URLLoader:" + url);
+
         return null;
+    }
+
+    private URI toURI() throws MalformedURLException {
+        URI uriObj;
+        try {
+            uriObj = new URI(this.url);
+        } catch(URISyntaxException | IllegalArgumentException e) {
+            // slow path
+            try {
+                var urlObj = newURL(this.url);
+                uriObj = new URI(
+                        urlObj.getProtocol(),
+                        urlObj.getUserInfo(),
+                        urlObj.getHost(),
+                        urlObj.getPort(),
+                        urlObj.getPath(),
+                        urlObj.getQuery(),
+                        urlObj.getRef());
+            } catch(URISyntaxException | MalformedURLException | IllegalArgumentException ex) {
+                throw new MalformedURLException(this.url);
+            }
+        }
+        return uriObj;
     }
 
     private HTTP2Loader(WebPage webPage,
@@ -150,18 +175,20 @@ final class HTTP2Loader extends URLLoaderBase {
         this.formDataElements = formDataElements;
         this.data = data;
 
+        URI uri;
+        try {
+            uri = toURI();
+        } catch(MalformedURLException e) {
+            didFail(e);
+            return;
+        }
+
         final String parsedHeaders[] = Arrays.stream(headers.split("\n"))
                                 // .filter(s -> !s.matches("(?i)^origin:.*|^referer:.*")) // Depends on JDK-8203850
                                 .flatMap(s -> { int i = s.indexOf(":"); return Stream.of(s.substring(0, i), s.substring(i + 2));})
                                 .toArray(String[]::new);
-        URI uriObj;
-        try {
-            uriObj = newURL(url).toURI();
-        } catch(URISyntaxException | MalformedURLException e) {
-            uriObj = URI.create(url);
-        }
         final var requestBuilder = HttpRequest.newBuilder()
-                       .uri(uriObj)
+                       .uri(uri)
                        .headers(parsedHeaders)
                        .version(Version.HTTP_2);  // this is the default
 
@@ -314,5 +341,28 @@ final class HTTP2Loader extends URLLoaderBase {
                 twkDidFinishLoading(data);
             }
         });
+    }
+
+    private void didFail(final Throwable th) {
+        callBack(() -> {
+            if (!canceled) {
+                notifyDidFail(0, url, th.getMessage());
+            }
+        });
+    }
+
+    private void notifyDidFail(int errorCode, String url, String message) {
+        if (logger.isLoggable(Level.FINEST)) {
+            logger.finest(String.format(
+                    "errorCode: [%d], "
+                    + "url: [%s], "
+                    + "message: [%s], "
+                    + "data: [0x%016X]",
+                    errorCode,
+                    url,
+                    message,
+                    data));
+        }
+        twkDidFail(errorCode, url, message, data);
     }
 }
