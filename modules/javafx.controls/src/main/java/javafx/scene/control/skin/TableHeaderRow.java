@@ -48,6 +48,7 @@ import javafx.scene.control.Control;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableColumnBase;
+import javafx.scene.layout.Border;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
@@ -276,7 +277,16 @@ public class TableHeaderRow extends StackPane {
      *                                                                         *
      **************************************************************************/
 
-    // --- reordering
+
+    /**
+     * Indicates if a reordering operation of a column is in progress. The value is {@code true} during a column
+     * reordering operation, and {@code false} otherwise. When a column is reordered (for example, by dragging its
+     * header), this property is updated automatically. Setting the value manually should be done when a subclass
+     * overrides the default reordering behavior. Don't forget to also call {@link #setReorderingRegion(TableColumnHeader)}
+     * in that case.
+     *
+     * @since 12
+     */
     private BooleanProperty reordering = new SimpleBooleanProperty(this, "reordering", false) {
         @Override protected void invalidated() {
             TableColumnHeader r = getReorderingRegion();
@@ -292,32 +302,14 @@ public class TableHeaderRow extends StackPane {
         }
     };
 
-    /**
-     * Informs this {@code TableHeaderRow} about a column being reordered.
-     *
-     * @param value {@code true} if a column is being reordered.
-     * @since 12
-     */
     public final void setReordering(boolean value) {
         this.reordering.set(value);
     }
 
-    /**
-     * Returns {@code true} if a column is currently reordered.
-     *
-     * @return true if a reorder is going on.
-     * @since 12
-     */
     public final boolean isReordering() {
         return reordering.get();
     }
 
-    /**
-     * Returns a {@code BooleanProperty} indicating whether a reorder is going on.
-     *
-     * @return A {@code BooleanProperty} indicating whether a reorder is going on.
-     * @since 12
-     */
     public final BooleanProperty reorderingProperty() {
         return reordering;
     }
@@ -337,11 +329,14 @@ public class TableHeaderRow extends StackPane {
     }
 
     /**
-     * Returns the root header for all columns.
-     * <p>
-     * The root header is actually a {@link NestedTableColumnHeader} that spans the entire width.
+     * Returns the root header for all columns. The root header is a {@link NestedTableColumnHeader} that contains the
+     * {@code NestedTableColumnHeaders} that represent each column. It spans the entire width of the {@code TableView}.
+     * This allow any developer overriding a {@code TableColumnHeader} to easily access the root header and all others
+     * {@code TableColumnHeaders}.
      *
-     * @return The root header
+     * @return the root header
+     * @implNote this design enforces that column reordering occurs only within a single {@link NestedTableColumnHeader}
+     * and only at that level
      * @since 12
      */
     public final NestedTableColumnHeader getRootHeader() {
@@ -410,7 +405,12 @@ public class TableHeaderRow extends StackPane {
     }
 
     /**
-     * Called whenever a scroll is happening on the horizontal bar.
+     * Called whenever the value of the horizontal scrollbar changes in order to request layout changes - shifting the
+     * {@code TableColumnHeaders}.
+     * <p>
+     * For example, if you have added custom components around a {@code TableColumnHeader} (such as icons above), you
+     * will also want to shift them. When overriding, calling super() is required to shift the {@code
+     * TableColumnHeaders} and it's up to the developer to notify its own custom components.
      *
      * @since 12
      */
@@ -426,10 +426,15 @@ public class TableHeaderRow extends StackPane {
 
 
     /**
-     * Updates the table width when a resize operation occurs.
+     * Updates the table width when a resize operation occurs. This method is called continuously when the control width
+     * is resizing in order to properly clip this {@code TableHeaderRow}. Overriding this method in a subclass allows to
+     * specify a resizing behavior.
      * <p>
-     * This method is called continuously when the control width is changing in order to properly clip this {@code
-     * TableHeaderRow}. Overriding this method in a subclass allows to specify a resizing behavior.
+     * Normally, the {@code TableHeaderRow} is using the full space ({@code TableView} width) but in some cases, you may
+     * want to reduce that space. For example if you introduce a Vertical header that will display the row number. In
+     * that particular case, The {@code TableHeaderRow} would need to be clipped a bit shorter in order not to overlap
+     * on that Vertical header. Calling super() when overriding allows you to have the right width in {@link #getClip()}
+     * } in order to apply your transformation.
      *
      * @since 12
      */
@@ -466,9 +471,9 @@ public class TableHeaderRow extends StackPane {
      **************************************************************************/
 
     /**
-     * Returns the current {@link TableColumnHeader} being moved when a reordering is happening.
+     * Returns the current {@link TableColumnHeader} being moved during reordering.
      *
-     * @return the current {@code TableColumnHeader} being moved.
+     * @return the current {@code TableColumnHeader} being moved
      * @since 12
      */
     protected TableColumnHeader getReorderingRegion() {
@@ -480,9 +485,12 @@ public class TableHeaderRow extends StackPane {
     }
 
     /**
-     * Sets the {@code TableColumnHeader} being reordered.
+     * Sets the {@code TableColumnHeader} that is being moved during a reordering operation. This is automatically set
+     * by the {@code TableColumnHeader} when a reordering is taking place. You should only set it manually if you
+     * override the default reordering behavior. Don't forget to also call {@link #setReordering(boolean)} in that
+     * case.
      *
-     * @param reorderingRegion the {@code TableColumnHeader} being reordered.
+     * @param reorderingRegion the {@code TableColumnHeader} being reordered
      * @since 12
      */
     protected void setReorderingRegion(TableColumnHeader reorderingRegion) {

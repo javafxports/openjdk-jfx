@@ -456,9 +456,9 @@ public class TableColumnHeader extends Region {
     void setNestedColumnHeader(NestedTableColumnHeader nch) { nestedColumnHeader = nch; }
 
     /**
-     * Returns The {@link TableHeaderRow} associated with this {@code TableColumnHeader}.
+     * Returns the {@link TableHeaderRow} associated with this {@code TableColumnHeader}.
      *
-     * @return The {@code TableHeaderRow} associated with this {@code TableColumnHeader}.
+     * @return the {@code TableHeaderRow} associated with this {@code TableColumnHeader}
      * @since 12
      */
     protected TableHeaderRow getTableHeaderRow() {
@@ -489,7 +489,7 @@ public class TableColumnHeader extends Region {
     /**
      * Returns the {@code TableViewSkinBase} in which this {@code TableColumnHeader} is inserted.
      *
-     * @return The {@code TableViewSkinBase} in which this {@code TableColumnHeader} is inserted.
+     * @return the {@code TableViewSkinBase} in which this {@code TableColumnHeader} is inserted
      * @since 12
      */
     protected TableViewSkinBase<?, ?, ?, ?, ?> getTableSkin() {

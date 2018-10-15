@@ -509,9 +509,9 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      **************************************************************************/
 
     /**
-     * Returns the {@code TableHeaderRow}created using {@link #createTableHeaderRow()}.
+     * Returns the {@code TableHeaderRow} created using {@link #createTableHeaderRow()}.
      *
-     * @return The TableHeaderRow for this TableViewSkinBase.
+     * @return the {@code TableHeaderRow} for this {@code TableViewSkinBase}
      * @since 12
      */
     protected final TableHeaderRow getTableHeaderRow() {
@@ -580,7 +580,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the focus is set on previous cell in order to scroll to it to make it visible.
+     * Called when the focus is set on previous cell in order to scroll to it to make it visible. This usually happens
+     * when the focus is set on the cell above the current focused cell.
      *
      * @since 12
      */
@@ -592,7 +593,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the focus is set on next cell in order to scroll to it to make it visible.
+     * Called when the focus is set on next cell in order to scroll to it to make it visible. This usually happens when
+     * the focus is set on the cell below the current focused cell.
      *
      * @since 12
      */
@@ -604,7 +606,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the selection is set on previous cell in order to scroll to it to make it visible.
+     * Called when the selection is set on previous cell in order to scroll to it to make it visible. This usually
+     * happens when the selection is set on the cell below the current focused cell.
      *
      * @since 12
      */
@@ -616,7 +619,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the selection is set on previous cell in order to scroll to it to make it visible.
+     * Called when the selection is set on next cell in order to scroll to it to make it visible. This usually happens
+     * when the selection is set on the cell below the current focused cell.
      *
      * @since 12
      */
@@ -628,7 +632,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the selection is set on the left cell in order to scroll to it to make it visible.
+     * Called when the selection is set on the left cell of the current selected one in order to horizontally scroll to
+     * it to make it visible.
      *
      * @since 12
      */
@@ -637,7 +642,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the selection is set on the right cell in order to scroll to it to make it visible.
+     * Called when the selection is set on the right cell of the current selected one in order to horizontally scroll to
+     * it to make it visible.
      *
      * @since 12
      */
@@ -646,7 +652,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the selection is set on the first cell in order to scroll to it to make it visible.
+     * Called when the selection is set on the first cell of the table (first row and first column) in order to scroll
+     * to it to make it visible.
      *
      * @since 12
      */
@@ -656,7 +663,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the selection is set on the last cell in order to scroll to it to make it visible.
+     * Called when the selection is set on the last cell of the table (last row and last column) in order to scroll to
+     * it to make it visible.
      *
      * @since 12
      */
@@ -684,14 +692,14 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Scrolls the container down by one 'page'. Although if this is a horizontal container, then the scrolling will be
-     * to the right.
+     * Scrolls the container down by one 'page'. The direction is determined by the orientation ({@link
+     * VirtualFlow#isVertical()}) of the {@code VirtualFlow} (down for vertical, right for horizontal).
      * <p>
-     * If the last visible cell is selected (or focused if param {@code isFocusDriven} is true), it will be made visible
-     * at the very top.
+     * If the last visible cell is selected (or f{@code isFocusDriven} is {@code true}), it will be made visible at the
+     * very top.
      *
-     * @param isFocusDriven {@code true} if focused cell should be considered over selection.
-     * @return the new selected index.
+     * @param isFocusDriven {@code true} if focused cell should be considered over selection
+     * @return the newly selected index
      * @since 12
      */
     protected int onScrollPageDown(boolean isFocusDriven) {
@@ -738,11 +746,11 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Scrolls the container up by one 'page'. Although if this is a horizontal container, then the scrolling will be to
-     * the left.
+     * Scrolls the container up by one 'page'. The direction is determined by the orientation ({@link *
+     * VirtualFlow#isVertical()}) of the {@code VirtualFlow} (down for vertical, right for horizontal).
      *
-     * @param isFocusDriven {@code true} if focused cell should be considered over selection.
-     * @return the new selected index.
+     * @param isFocusDriven {@code true} if focused cell should be considered over selection
+     * @return the newly selected index
      * @since 12
      */
     protected int onScrollPageUp(boolean isFocusDriven) {
@@ -890,9 +898,10 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Programmatically scrolls to the given column.
+     * Programmatically scrolls to the given column. It will ensure the column is aligned on the left edge of the {@code
+     * TableView} and also that the columns don't become detached from the right edge of the table.
      *
-     * @param col the column to scroll to.
+     * @param col the column to scroll to
      * @since 12
      */
     protected void scrollHorizontally(TC col) {
