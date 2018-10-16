@@ -27,7 +27,9 @@ package com.sun.webkit;
 
 import com.sun.javafx.logging.PlatformLogger;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import static java.lang.String.format;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -50,6 +52,19 @@ final class FileSystem {
 
     private static boolean fwkFileExists(String path) {
         return new File(path).exists();
+    }
+
+    private static RandomAccessFile fwkOpenFile(String path, String mode) throws FileNotFoundException {
+        return new RandomAccessFile(path, mode);
+    }
+
+    private static void fwkCloseFile(RandomAccessFile raf) throws IOException {
+        raf.close();
+    }
+
+    private static int fwkreadFromFile(RandomAccessFile raf, byte[] arr, int off, int len) throws IOException {
+        int length = raf.read(arr, off, len);
+        return length;
     }
 
     private static long fwkGetFileSize(String path) {

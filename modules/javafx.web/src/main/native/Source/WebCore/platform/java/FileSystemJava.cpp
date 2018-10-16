@@ -232,21 +232,76 @@ String openTemporaryFile(const String&, PlatformFileHandle& handle)
     return String();
 }
 
-PlatformFileHandle openFile(const String&, FileOpenMode)
+PlatformFileHandle openFile(const String& path, FileOpenMode mode)
 {
-    notImplemented();
-    return invalidPlatformFileHandle;
+    JNIEnv* env = WebCore_GetJavaEnv();
+    static jmethodID mid = env->GetStaticMethodID(
+            GetFileSystemClass(env),
+            "fwkOpenFile",
+            "(Ljava/lang/String;Ljava/lang/String;)Ljava/io/RandomAccessFile;");
+    ASSERT(mid);
+
+    // fileMode initialized to NULL to avoid compilation warning
+    jstring fileMode = NULL;
+    if (mode == FileOpenMode::Read) {
+        fileMode = env->NewStringUTF("r");
+    } else if (mode == FileOpenMode::Write) {
+        fileMode = env->NewStringUTF("rw");
+    }
+    ASSERT(fileMode);
+
+    PlatformFileHandle result = env->CallStaticObjectMethod(
+            GetFileSystemClass(env),
+            mid,
+            (jstring)path.toJavaString(env), fileMode);
+
+    result = env->NewGlobalRef(result);
+    CheckAndClearException(env);
+    env->DeleteLocalRef(fileMode);
+    return result;
 }
 
-void closeFile(PlatformFileHandle&)
+void closeFile(PlatformFileHandle& handle)
 {
-    notImplemented();
+    if (isHandleValid(handle)) {
+        JNIEnv* env = WebCore_GetJavaEnv();
+        static jmethodID mid = env->GetStaticMethodID(
+                GetFileSystemClass(env),
+                "fwkCloseFile",
+                "(Ljava/io/RandomAccessFile;)V");
+        ASSERT(mid);
+
+        env->CallStaticVoidMethod(
+                GetFileSystemClass(env),
+                mid, handle);
+        CheckAndClearException(env);
+        env->DeleteGlobalRef(handle);
+        handle = invalidPlatformFileHandle;
+    }
 }
 
-int readFromFile(PlatformFileHandle, char*, int)
+int readFromFile(PlatformFileHandle handle, char* data, int length)
 {
-    notImplemented();
-    return -1;
+    JNIEnv* env = WebCore_GetJavaEnv();
+    unsigned char* fileData;
+    jbyteArray tempData = env->NewByteArray(length);
+
+    static jmethodID mid = env->GetStaticMethodID(
+            GetFileSystemClass(env),
+            "fwkreadFromFile",
+            "(Ljava/io/RandomAccessFile;[BII)I");
+    ASSERT(mid);
+
+    int result = env->CallStaticIntMethod(
+            GetFileSystemClass(env),
+            mid,
+            handle, tempData, 0, length);
+    CheckAndClearException(env);
+
+    fileData = (unsigned char*) (env->GetByteArrayElements(tempData, NULL));
+    memcpy(data, fileData, length);
+    env->DeleteLocalRef(tempData);
+    return result;
 }
 
 int writeToFile(PlatformFileHandle, const char*, int)
