@@ -27,9 +27,10 @@ package com.sun.webkit;
 
 import com.sun.javafx.logging.PlatformLogger;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.InputStream;
 import static java.lang.String.format;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -54,17 +55,30 @@ final class FileSystem {
         return new File(path).exists();
     }
 
-    private static RandomAccessFile fwkOpenFile(String path, String mode) throws FileNotFoundException {
-        return new RandomAccessFile(path, mode);
+    private static InputStream fwkOpenFile(String path) {
+        try {
+            return new FileInputStream(new File(path));
+        } catch (FileNotFoundException | SecurityException ex) {
+            logger.fine(format("Error while creating InputStream for file [%s]", path), ex);
+        }
+        return null;
     }
 
-    private static void fwkCloseFile(RandomAccessFile raf) throws IOException {
-        raf.close();
+    private static void fwkCloseFile(InputStream in) {
+        try {
+            in.close();
+        } catch (IOException ex) {
+            logger.fine(format("Error while closing InputStream for file [%s]", in), ex);
+        }
     }
 
-    private static int fwkreadFromFile(RandomAccessFile raf, byte[] arr, int off, int len) throws IOException {
-        int length = raf.read(arr, off, len);
-        return length;
+    private static int fwkReadFromFile(InputStream in, byte[] arr, int len) {
+        try {
+            return in.read(arr, 0, len);
+        } catch (IOException ex) {
+            logger.fine(format("Error while reading InputStream for file [%s]", in), ex);
+        }
+        return -1;
     }
 
     private static long fwkGetFileSize(String path) {

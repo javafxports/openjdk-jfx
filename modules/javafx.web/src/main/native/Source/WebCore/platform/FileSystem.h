@@ -72,8 +72,8 @@ typedef HANDLE PlatformFileHandle;
 // avoid using Windows headers in headers.  We'd rather move this into the .cpp.
 const PlatformFileHandle invalidPlatformFileHandle = reinterpret_cast<HANDLE>(-1);
 #elif PLATFORM(JAVA)
-typedef jobject PlatformFileHandle;
-const PlatformFileHandle invalidPlatformFileHandle = NULL;
+typedef JGObject PlatformFileHandle;
+const PlatformFileHandle invalidPlatformFileHandle { nullptr };
 #else
 typedef int PlatformFileHandle;
 const PlatformFileHandle invalidPlatformFileHandle = -1;

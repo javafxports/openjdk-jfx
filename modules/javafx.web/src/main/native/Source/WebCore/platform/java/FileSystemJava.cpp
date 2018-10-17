@@ -234,31 +234,24 @@ String openTemporaryFile(const String&, PlatformFileHandle& handle)
 
 PlatformFileHandle openFile(const String& path, FileOpenMode mode)
 {
+    if (mode != FileOpenMode::Read) {
+        return invalidPlatformFileHandle;
+    }
+
     JNIEnv* env = WebCore_GetJavaEnv();
     static jmethodID mid = env->GetStaticMethodID(
             GetFileSystemClass(env),
             "fwkOpenFile",
-            "(Ljava/lang/String;Ljava/lang/String;)Ljava/io/RandomAccessFile;");
+            "(Ljava/lang/String;)Ljava/io/InputStream;");
     ASSERT(mid);
-
-    // fileMode initialized to NULL to avoid compilation warning
-    jstring fileMode = NULL;
-    if (mode == FileOpenMode::Read) {
-        fileMode = env->NewStringUTF("r");
-    } else if (mode == FileOpenMode::Write) {
-        fileMode = env->NewStringUTF("rw");
-    }
-    ASSERT(fileMode);
 
     PlatformFileHandle result = env->CallStaticObjectMethod(
             GetFileSystemClass(env),
             mid,
-            (jstring)path.toJavaString(env), fileMode);
+            (jstring)path.toJavaString(env));
 
-    result = env->NewGlobalRef(result);
     CheckAndClearException(env);
-    env->DeleteLocalRef(fileMode);
-    return result;
+    return result ? result : invalidPlatformFileHandle;
 }
 
 void closeFile(PlatformFileHandle& handle)
@@ -268,39 +261,45 @@ void closeFile(PlatformFileHandle& handle)
         static jmethodID mid = env->GetStaticMethodID(
                 GetFileSystemClass(env),
                 "fwkCloseFile",
-                "(Ljava/io/RandomAccessFile;)V");
+                "(Ljava/io/InputStream;)V");
         ASSERT(mid);
 
         env->CallStaticVoidMethod(
                 GetFileSystemClass(env),
                 mid, handle);
         CheckAndClearException(env);
-        env->DeleteGlobalRef(handle);
         handle = invalidPlatformFileHandle;
     }
 }
 
 int readFromFile(PlatformFileHandle handle, char* data, int length)
 {
+    if (length < 0) {
+        return -1;
+    }
+
     JNIEnv* env = WebCore_GetJavaEnv();
-    unsigned char* fileData;
-    jbyteArray tempData = env->NewByteArray(length);
+
+    JLocalRef<jbyteArray> tempData(env->NewByteArray(length));
 
     static jmethodID mid = env->GetStaticMethodID(
             GetFileSystemClass(env),
-            "fwkreadFromFile",
-            "(Ljava/io/RandomAccessFile;[BII)I");
+            "fwkReadFromFile",
+            "(Ljava/io/InputStream;[BI)I");
     ASSERT(mid);
 
     int result = env->CallStaticIntMethod(
             GetFileSystemClass(env),
             mid,
-            handle, tempData, 0, length);
+            handle, tempData, length);
+
     CheckAndClearException(env);
 
-    fileData = (unsigned char*) (env->GetByteArrayElements(tempData, NULL));
-    memcpy(data, fileData, length);
-    env->DeleteLocalRef(tempData);
+    if (result < 0) {
+        return -1;
+    }
+
+    env->GetByteArrayRegion(tempData, 0, length, reinterpret_cast<jbyte*>(data));
     return result;
 }
 
