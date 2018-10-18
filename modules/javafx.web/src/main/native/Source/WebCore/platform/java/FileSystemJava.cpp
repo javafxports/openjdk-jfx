@@ -242,13 +242,15 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
     static jmethodID mid = env->GetStaticMethodID(
             GetFileSystemClass(env),
             "fwkOpenFile",
-            "(Ljava/lang/String;)Ljava/io/InputStream;");
+            "(Ljava/lang/String;Ljava/lang/String;)Ljava/io/RandomAccessFile;");
     ASSERT(mid);
+
+    JLocalRef<jstring> fileMode = env->NewStringUTF("r");
 
     PlatformFileHandle result = env->CallStaticObjectMethod(
             GetFileSystemClass(env),
             mid,
-            (jstring)path.toJavaString(env));
+            (jstring)path.toJavaString(env), fileMode);
 
     CheckAndClearException(env);
     return result ? result : invalidPlatformFileHandle;
@@ -261,7 +263,7 @@ void closeFile(PlatformFileHandle& handle)
         static jmethodID mid = env->GetStaticMethodID(
                 GetFileSystemClass(env),
                 "fwkCloseFile",
-                "(Ljava/io/InputStream;)V");
+                "(Ljava/io/RandomAccessFile;)V");
         ASSERT(mid);
 
         env->CallStaticVoidMethod(
@@ -280,18 +282,16 @@ int readFromFile(PlatformFileHandle handle, char* data, int length)
 
     JNIEnv* env = WebCore_GetJavaEnv();
 
-    JLocalRef<jbyteArray> tempData(env->NewByteArray(length));
-
     static jmethodID mid = env->GetStaticMethodID(
             GetFileSystemClass(env),
             "fwkReadFromFile",
-            "(Ljava/io/InputStream;[BI)I");
+            "(Ljava/io/RandomAccessFile;Ljava/nio/ByteBuffer;)I");
     ASSERT(mid);
 
     int result = env->CallStaticIntMethod(
             GetFileSystemClass(env),
             mid,
-            handle, tempData, length);
+            handle, (jobject)JLObject(env->NewDirectByteBuffer(data, length)));
 
     CheckAndClearException(env);
 
@@ -299,7 +299,6 @@ int readFromFile(PlatformFileHandle handle, char* data, int length)
         return -1;
     }
 
-    env->GetByteArrayRegion(tempData, 0, length, reinterpret_cast<jbyte*>(data));
     return result;
 }
 

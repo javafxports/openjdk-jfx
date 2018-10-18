@@ -27,11 +27,12 @@ package com.sun.webkit;
 
 import com.sun.javafx.logging.PlatformLogger;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.RandomAccessFile;
 import static java.lang.String.format;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;
@@ -55,28 +56,29 @@ final class FileSystem {
         return new File(path).exists();
     }
 
-    private static InputStream fwkOpenFile(String path) {
+    private static RandomAccessFile fwkOpenFile(String path, String mode) {
         try {
-            return new FileInputStream(new File(path));
+            return new RandomAccessFile(path, mode);
         } catch (FileNotFoundException | SecurityException ex) {
-            logger.fine(format("Error while creating InputStream for file [%s]", path), ex);
+            logger.fine(format("Error while creating RandomAccessFile for file [%s]", path), ex);
         }
         return null;
     }
 
-    private static void fwkCloseFile(InputStream in) {
+    private static void fwkCloseFile(RandomAccessFile raf) {
         try {
-            in.close();
+            raf.close();
         } catch (IOException ex) {
-            logger.fine(format("Error while closing InputStream for file [%s]", in), ex);
+            logger.fine(format("Error while closing RandomAccessFile for file [%s]", raf), ex);
         }
     }
 
-    private static int fwkReadFromFile(InputStream in, byte[] arr, int len) {
+    private static int fwkReadFromFile(RandomAccessFile raf, ByteBuffer byteBuffer) {
         try {
-            return in.read(arr, 0, len);
+            FileChannel fc = raf.getChannel();
+            return fc.read(byteBuffer);
         } catch (IOException ex) {
-            logger.fine(format("Error while reading InputStream for file [%s]", in), ex);
+            logger.fine(format("Error while reading RandomAccessFile for file [%s]", raf), ex);
         }
         return -1;
     }
