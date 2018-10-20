@@ -59,11 +59,11 @@ Once your changes and tests are ready to submit for review:
 
 2. Rebase your changes
 
-    Update your local repository with the most recent code from the main [repository]((https://github.com/javafxports/openjdk-jfx)), and rebase your branch on top of the latest `develop` branch. We prefer your initial changes to be squashed into a single commit. Later, if we ask you to make changes, add them as separate commits. This makes them easier to review.
+    Update your local repository with the most recent code from the main [repository]((https://github.com/javafxports/openjdk-jfx)), and rebase your branch on top of the latest `develop` branch. We prefer your initial changes to be squashed into a single commit. See the [GitHub help page](https://help.github.com/articles/about-git-rebase/) for help. Later, if we ask you to make changes, add them as separate commits. This makes them easier to review.
 
 3. File a bug in JBS
 
-    If there isn't already a bug filed in [JBS](https://bugs.openjdk.java.net), then please file one at [bugreport.java.com](http://bugreport.java.com/). A JBS bug ID is needed even if you have already filed an issue in the GitHub issue tracker. A GitHub issue can be used as a convenience, but JBS is the official bug database for the OpenJFX Project.
+    If there isn't already a bug filed in [JBS](https://bugs.openjdk.java.net), then please file one at [bugreport.java.com](http://bugreport.java.com/). A JBS bug ID is needed even if you have already filed an issue in the GitHub issue tracker. A GitHub issue can be used as a convenience, but JBS is the official bug database for the OpenJFX Project. Once you submit a pull request, you can add the "github-bug" label on the JBS bug, along with an Issue link to the PR. If you don't have direct JBS access, one of the Project Committers will do this for you.
 
 4. Submit a pull request
 
@@ -101,7 +101,7 @@ with the environment variable `JAVA_HOME` referencing the path to Java home for
 your JDK 11 installation. By default, tests use the same runtime as `JAVA_HOME`.
 Currently OpenJFX builds are running on JDK 11 (recommended) and JDK 12.
 
-We support development in any major Java IDE (Eclipse, IntelliJ, NetBeans). IDEs can automatically configure projects based on Gradle setup.
+It is possible to develop in any major Java IDE (Eclipse, IntelliJ, NetBeans). IDEs can automatically configure projects based on Gradle setup.
 
 The following formatting rules are enforced for source code files by
 the white-space checker that is run as part of our CI test builds:
