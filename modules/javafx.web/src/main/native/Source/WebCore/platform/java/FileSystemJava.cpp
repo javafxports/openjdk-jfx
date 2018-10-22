@@ -237,7 +237,6 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
     if (mode != FileOpenMode::Read) {
         return invalidPlatformFileHandle;
     }
-
     JNIEnv* env = WebCore_GetJavaEnv();
     static jmethodID mid = env->GetStaticMethodID(
             GetFileSystemClass(env),
@@ -246,7 +245,6 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
     ASSERT(mid);
 
     JLocalRef<jstring> fileMode = env->NewStringUTF("r");
-
     PlatformFileHandle result = env->CallStaticObjectMethod(
             GetFileSystemClass(env),
             mid,
@@ -279,9 +277,7 @@ int readFromFile(PlatformFileHandle handle, char* data, int length)
     if (length < 0) {
         return -1;
     }
-
     JNIEnv* env = WebCore_GetJavaEnv();
-
     static jmethodID mid = env->GetStaticMethodID(
             GetFileSystemClass(env),
             "fwkReadFromFile",
@@ -292,13 +288,11 @@ int readFromFile(PlatformFileHandle handle, char* data, int length)
             GetFileSystemClass(env),
             mid,
             handle, (jobject)JLObject(env->NewDirectByteBuffer(data, length)));
-
     CheckAndClearException(env);
 
     if (result < 0) {
         return -1;
     }
-
     return result;
 }
 
@@ -337,7 +331,6 @@ long long seekFile(PlatformFileHandle handle, long long offset, FileSeekOrigin)
         return (long long)(-1);
     }
     JNIEnv* env = WebCore_GetJavaEnv();
-
     static jmethodID mid = env->GetStaticMethodID(
             GetFileSystemClass(env),
             "fwkSeekFromFile",
