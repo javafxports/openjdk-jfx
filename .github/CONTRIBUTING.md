@@ -63,7 +63,7 @@ Once your changes and tests are ready to submit for review:
 
 3. File a bug in JBS
 
-    If there isn't already a bug filed in [JBS](https://bugs.openjdk.java.net), then please file one at [bugreport.java.com](http://bugreport.java.com/). A JBS bug ID is needed even if you have already filed an issue in the GitHub issue tracker. A GitHub issue can be used as a convenience, but JBS is the official bug database for the OpenJFX Project. Once you submit a pull request, you can add the "github-bug" label on the JBS bug, along with an Issue link to the PR. If you don't have direct JBS access, one of the Project Committers will do this for you.
+    If there isn't already a bug filed in [JBS](https://bugs.openjdk.java.net), then please file one at [bugreport.java.com](http://bugreport.java.com/). A JBS bug ID is needed even if you have already filed an issue in the GitHub issue tracker. A GitHub issue can be used as a convenience, but JBS is the official bug database for the OpenJFX Project. Once you submit a pull request, you can add the "github-bug" label on the JBS bug, along with an Issue link to the PR. If you don't have direct JBS access, one of the Project Committers or Authors will do this for you.
 
 4. Submit a pull request
 
