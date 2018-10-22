@@ -83,6 +83,14 @@ final class FileSystem {
         return -1;
     }
 
+    private static void fwkSeekFromFile(RandomAccessFile raf, long pos) {
+        try {
+            raf.seek(pos);
+        } catch (IOException ex) {
+            logger.fine(format("Error while seek RandomAccessFile for file [%s]", raf), ex);
+        }
+    }
+
     private static long fwkGetFileSize(String path) {
         try {
             File file = new File(path);

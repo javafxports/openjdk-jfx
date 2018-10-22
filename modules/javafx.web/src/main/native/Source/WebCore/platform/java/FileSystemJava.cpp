@@ -327,10 +327,32 @@ String pathGetFileName(const String& path)
     return String(env, result);
 }
 
-long long seekFile(PlatformFileHandle, long long, FileSeekOrigin)
+long long seekFile(PlatformFileHandle handle, long long offset, FileSeekOrigin)
 {
-    notImplemented();
-    return (long long)(-1);
+    // Currently we are ignoring FileSeekOrigin as FileSeekOrigin::Beginning
+    // is passed from FileStream::openForRead() method and
+    // FileSeekOrigin::Current / FileSeekOrigin::End is not used anywhere.
+
+    if (offset < 0) {
+        return (long long)(-1);
+    }
+    JNIEnv* env = WebCore_GetJavaEnv();
+
+    static jmethodID mid = env->GetStaticMethodID(
+            GetFileSystemClass(env),
+            "fwkSeekFromFile",
+            "(Ljava/io/RandomAccessFile;J)V");
+    ASSERT(mid);
+
+    env->CallStaticVoidMethod(
+            GetFileSystemClass(env),
+            mid,
+            handle, offset);
+    if (env->ExceptionOccurred()) {
+        offset = -1;
+    }
+    CheckAndClearException(env);
+    return offset;
 }
 
 std::optional<int32_t> getFileDeviceId(const CString&)
