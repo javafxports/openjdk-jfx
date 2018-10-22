@@ -282,8 +282,8 @@ public class TableHeaderRow extends StackPane {
      * Indicates if a reordering operation of a column is in progress. The value is {@code true} during a column
      * reordering operation, and {@code false} otherwise. When a column is reordered (for example, by dragging its
      * header), this property is updated automatically. Setting the value manually should be done when a subclass
-     * overrides the default reordering behavior. Don't forget to also call {@link #setReorderingRegion(TableColumnHeader)}
-     * in that case.
+     * overrides the default reordering behavior. Calling {@link #setReorderingRegion(TableColumnHeader)} before setting
+     * this property is required as well.
      *
      * @since 12
      */
@@ -335,7 +335,7 @@ public class TableHeaderRow extends StackPane {
      * {@code TableColumnHeaders}.
      *
      * @return the root header
-     * @implNote this design enforces that column reordering occurs only within a single {@link NestedTableColumnHeader}
+     * @implNote this design enforces that column reordering occurs only within a single {@node NestedTableColumnHeader}
      * and only at that level
      * @since 12
      */
@@ -408,9 +408,9 @@ public class TableHeaderRow extends StackPane {
      * Called whenever the value of the horizontal scrollbar changes in order to request layout changes - shifting the
      * {@code TableColumnHeaders}.
      * <p>
-     * For example, if you have added custom components around a {@code TableColumnHeader} (such as icons above), you
-     * will also want to shift them. When overriding, calling super() is required to shift the {@code
-     * TableColumnHeaders} and it's up to the developer to notify its own custom components.
+     * For example, if custom components are added around a {@code TableColumnHeader} (such as icons above), they will
+     * also need to be shifted. When overriding, calling {@code super()} is required to shift the {@code
+     * TableColumnHeaders}, and it's up to the developer to notify its own custom components of this change.
      *
      * @since 12
      */
@@ -430,11 +430,11 @@ public class TableHeaderRow extends StackPane {
      * is resizing in order to properly clip this {@code TableHeaderRow}. Overriding this method in a subclass allows to
      * specify a resizing behavior.
      * <p>
-     * Normally, the {@code TableHeaderRow} is using the full space ({@code TableView} width) but in some cases, you may
-     * want to reduce that space. For example if you introduce a Vertical header that will display the row number. In
-     * that particular case, The {@code TableHeaderRow} would need to be clipped a bit shorter in order not to overlap
-     * on that Vertical header. Calling super() when overriding allows you to have the right width in {@link #getClip()}
-     * } in order to apply your transformation.
+     * Normally, the {@code TableHeaderRow} is using the full space ({@code TableView} width), but in some cases that
+     * space may be reduced. For example, if a vertical header that will display the row number is introduced, the
+     * {@code TableHeaderRow} would need to be clipped a bit shorter in order not to overlap that vertical header.
+     * Calling first {@code super()} when overriding allows to have the right width in {@link #getClip()} in order to
+     * apply a transformation.
      *
      * @since 12
      */
@@ -486,9 +486,8 @@ public class TableHeaderRow extends StackPane {
 
     /**
      * Sets the {@code TableColumnHeader} that is being moved during a reordering operation. This is automatically set
-     * by the {@code TableColumnHeader} when a reordering is taking place. You should only set it manually if you
-     * override the default reordering behavior. Don't forget to also call {@link #setReordering(boolean)} in that
-     * case.
+     * by the {@code TableColumnHeader} when a reordering starts. This method should only be called manually if the
+     * default reordering behavior is overridden. Calling {@link #setReordering(boolean)} after the call is required.
      *
      * @param reorderingRegion the {@code TableColumnHeader} being reordered
      * @since 12

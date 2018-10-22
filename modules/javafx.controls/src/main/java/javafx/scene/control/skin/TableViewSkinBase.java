@@ -580,8 +580,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the focus is set on previous cell in order to scroll to it to make it visible. This usually happens
-     * when the focus is set on the cell above the current focused cell.
+     * Called when the focus is set on the previous cell in order to scroll to it to make it visible. This happens when
+     * the focus is set on the cell above the current focused cell.
      *
      * @since 12
      */
@@ -593,8 +593,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the focus is set on next cell in order to scroll to it to make it visible. This usually happens when
-     * the focus is set on the cell below the current focused cell.
+     * Called when the focus is set on the next cell in order to scroll to it to make it visible. This happens when the
+     * focus is set on the cell below the current focused cell.
      *
      * @since 12
      */
@@ -606,8 +606,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the selection is set on previous cell in order to scroll to it to make it visible. This usually
-     * happens when the selection is set on the cell below the current focused cell.
+     * Called when the selection is set on the previous cell in order to scroll to it to make it visible. This      *
+     * happens when the selection is set on the cell above the current focused cell.
      *
      * @since 12
      */
@@ -619,8 +619,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the selection is set on next cell in order to scroll to it to make it visible. This usually happens
-     * when the selection is set on the cell below the current focused cell.
+     * Called when the selection is set on the next cell in order to scroll to it to make it visible. This happens when
+     * the selection is set on the cell below the current focused cell.
      *
      * @since 12
      */
@@ -692,14 +692,13 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Scrolls the container down by one 'page'. The direction is determined by the orientation ({@link
-     * VirtualFlow#isVertical()}) of the {@code VirtualFlow} (down for vertical, right for horizontal).
-     * <p>
-     * If the last visible cell is selected (or f{@code isFocusDriven} is {@code true}), it will be made visible at the
-     * very top.
+     * Returns the index of the selected (or focused, if {@code isFocusDriven} is {@code true}) cell after a page scroll
+     * operation. If the selected/focused cell is not the last fully visible cell, then the last fully visible cell is
+     * selected/focused. Otherwise, the content is scrolled such that the cell is made visible at the top of the
+     * viewport (and the new last fully visible cell is selected/focused instead).
      *
      * @param isFocusDriven {@code true} if focused cell should be considered over selection
-     * @return the newly selected index
+     * @return the newly index to select or to focus if {@code isFocusDriven} is {@code true}
      * @since 12
      */
     protected int onScrollPageDown(boolean isFocusDriven) {
@@ -746,11 +745,13 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Scrolls the container up by one 'page'. The direction is determined by the orientation ({@link *
-     * VirtualFlow#isVertical()}) of the {@code VirtualFlow} (down for vertical, right for horizontal).
+     * Returns the index of the selected (or focused, if {@code isFocusDriven} is {@code true}) cell after a page scroll
+     * operation. If the selected/focused cell is not the first fully visible cell, then the first fully visible cell is
+     * selected/focused. Otherwise, the content is scrolled such that the cell is made visible at the bottom of the
+     * viewport (and the new first fully visible cell is selected/focused instead).
      *
      * @param isFocusDriven {@code true} if focused cell should be considered over selection
-     * @return the newly selected index
+     * @return the newly index to select or to focus if {@code isFocusDriven} is {@code true}
      * @since 12
      */
     protected int onScrollPageUp(boolean isFocusDriven) {
@@ -885,7 +886,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      * Scrolls to the column containing the current focused cell.
      * <p>
      * Handles the horizontal scrolling when the selection mode is cell-based and the newly selected cell belongs to a
-     * column which is not totally visible.
+     * column which is not completely visible.
      *
      * @since 12
      */
@@ -898,8 +899,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Programmatically scrolls to the given column. It will ensure the column is aligned on the left edge of the {@code
-     * TableView} and also that the columns don't become detached from the right edge of the table.
+     * Programmatically scrolls to the given column. This call will ensure that the column is aligned on the left edge
+     * of the {@code TableView} and also that the columns don't become detached from the right edge of the table.
      *
      * @param col the column to scroll to
      * @since 12
