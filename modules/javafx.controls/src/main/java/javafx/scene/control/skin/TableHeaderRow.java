@@ -335,7 +335,7 @@ public class TableHeaderRow extends StackPane {
      * {@code TableColumnHeaders}.
      *
      * @return the root header
-     * @implNote this design enforces that column reordering occurs only within a single {@node NestedTableColumnHeader}
+     * @implNote this design enforces that column reordering occurs only within a single {@code NestedTableColumnHeader}
      * and only at that level
      * @since 12
      */
@@ -486,7 +486,7 @@ public class TableHeaderRow extends StackPane {
 
     /**
      * Sets the {@code TableColumnHeader} that is being moved during a reordering operation. This is automatically set
-     * by the {@code TableColumnHeader} when a reordering starts. This method should only be called manually if the
+     * by the {@code TableColumnHeader} when reordering starts. This method should only be called manually if the
      * default reordering behavior is overridden. Calling {@link #setReordering(boolean)} after the call is required.
      *
      * @param reorderingRegion the {@code TableColumnHeader} being reordered

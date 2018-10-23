@@ -698,7 +698,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      * viewport (and the new last fully visible cell is selected/focused instead).
      *
      * @param isFocusDriven {@code true} if focused cell should be considered over selection
-     * @return the newly index to select or to focus if {@code isFocusDriven} is {@code true}
+     * @return the new index to select, or to focus if {@code isFocusDriven} is {@code true}
      * @since 12
      */
     protected int onScrollPageDown(boolean isFocusDriven) {
@@ -751,7 +751,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      * viewport (and the new first fully visible cell is selected/focused instead).
      *
      * @param isFocusDriven {@code true} if focused cell should be considered over selection
-     * @return the newly index to select or to focus if {@code isFocusDriven} is {@code true}
+     * @return the new index to select, or to focus if {@code isFocusDriven} is {@code true}
      * @since 12
      */
     protected int onScrollPageUp(boolean isFocusDriven) {
