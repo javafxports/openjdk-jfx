@@ -31,6 +31,7 @@ import com.sun.webkit.WebPage;
 import com.sun.webkit.graphics.WCImage;
 import com.sun.webkit.graphics.WCRectangle;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -182,7 +183,30 @@ final class UIClientImpl implements UIClient {
      */
     @Override
     public String[] chooseFile(String initialFileName, boolean multiple, String mimeFilters) {
-        throw new UnsupportedOperationException("Not supported yet");
+        if (!DumpRenderTree.drt.complete()) {
+            DumpRenderTree.out.printf("OPEN FILE PANEL\n");
+        }
+        String[] openPanelFiles = DumpRenderTree.drt.openPanelFiles();
+        if (openPanelFiles == null || openPanelFiles.length == 0) {
+            return null;
+        }
+
+        File testURLFile = new File(DumpRenderTree.drt.testURL());
+        String testURLFileParent = testURLFile.getParent();
+        int idx = 0;
+        if (multiple) {
+            String[] result = new String[openPanelFiles.length];
+            for (String str: openPanelFiles) {
+                result[idx++] = testURLFileParent + "\\" + str;
+            }
+            return result;
+        } else {
+            String testFile = testURLFileParent + "\\" + openPanelFiles[0];
+            File f = new File(testFile);
+            return f != null
+                    ? new String[] { f.getAbsolutePath() }
+                    : null;
+        }
     }
 
     /**

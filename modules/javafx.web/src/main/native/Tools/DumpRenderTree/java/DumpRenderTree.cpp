@@ -135,6 +135,26 @@ JNIEXPORT jboolean JNICALL Java_com_sun_javafx_webkit_drt_DumpRenderTree_shouldS
     return bool_to_jbool(gTestRunner->shouldStayOnPageAfterHandlingBeforeUnload());
 }
 
+JNIEXPORT jobjectArray JNICALL Java_com_sun_javafx_webkit_drt_DumpRenderTree_openPanelFiles
+    (JNIEnv* env, jclass)
+{
+    ASSERT(gTestRunner);
+    jobjectArray ret = (jobjectArray)env->NewObjectArray(gTestRunner->openPanelFiles().size(),
+                        env->FindClass("java/lang/String"), env->NewStringUTF(""));
+    int idx = 0;
+    for (auto i : gTestRunner->openPanelFiles()) {
+        env->SetObjectArrayElement(ret, idx++, env->NewStringUTF(static_cast<const char*>(i.c_str())));
+    }
+    return ret;
+}
+
+JNIEXPORT jstring JNICALL Java_com_sun_javafx_webkit_drt_DumpRenderTree_testURL
+    (JNIEnv* env, jclass)
+{
+    ASSERT(gTestRunner);
+    return env->NewStringUTF(static_cast<const char*>(gTestRunner->testURL().c_str()));
+}
+
 #ifdef __cplusplus
 }
 #endif
