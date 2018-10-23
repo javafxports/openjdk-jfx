@@ -248,7 +248,7 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
     PlatformFileHandle result = env->CallStaticObjectMethod(
             GetFileSystemClass(env),
             mid,
-            (jstring)path.toJavaString(env), fileMode);
+            (jstring)path.toJavaString(env), (jstring)fileMode);
 
     CheckAndClearException(env);
     return result ? result : invalidPlatformFileHandle;
@@ -340,7 +340,7 @@ long long seekFile(PlatformFileHandle handle, long long offset, FileSeekOrigin)
     env->CallStaticVoidMethod(
             GetFileSystemClass(env),
             mid,
-            handle, offset);
+            handle, (jlong)offset);
     if (env->ExceptionOccurred()) {
         offset = -1;
     }
