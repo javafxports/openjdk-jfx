@@ -139,20 +139,14 @@ JNIEXPORT jobjectArray JNICALL Java_com_sun_javafx_webkit_drt_DumpRenderTree_ope
     (JNIEnv* env, jclass)
 {
     ASSERT(gTestRunner);
-    jobjectArray ret = (jobjectArray)env->NewObjectArray(gTestRunner->openPanelFiles().size(),
-                        env->FindClass("java/lang/String"), env->NewStringUTF(""));
-    int idx = 0;
-    for (auto i : gTestRunner->openPanelFiles()) {
-        env->SetObjectArrayElement(ret, idx++, env->NewStringUTF(static_cast<const char*>(i.c_str())));
+    const auto& openFiles = gTestRunner->openPanelFiles();
+    static JGClass stringCls = env->FindClass("java/lang/String");
+    ASSERT(stringCls);
+    jobjectArray files = env->NewObjectArray(openFiles.size(), stringCls, env->NewStringUTF(""));
+    for (auto i = 0; i < openFiles.size(); i++) {
+        env->SetObjectArrayElement(files, i, env->NewStringUTF(openFiles[i].c_str()));
     }
-    return ret;
-}
-
-JNIEXPORT jstring JNICALL Java_com_sun_javafx_webkit_drt_DumpRenderTree_testURL
-    (JNIEnv* env, jclass)
-{
-    ASSERT(gTestRunner);
-    return env->NewStringUTF(static_cast<const char*>(gTestRunner->testURL().c_str()));
+    return files;
 }
 
 #ifdef __cplusplus

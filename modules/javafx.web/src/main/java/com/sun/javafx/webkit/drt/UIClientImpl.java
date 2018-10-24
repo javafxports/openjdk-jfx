@@ -183,29 +183,25 @@ final class UIClientImpl implements UIClient {
      */
     @Override
     public String[] chooseFile(String initialFileName, boolean multiple, String mimeFilters) {
-        if (!DumpRenderTree.drt.complete()) {
-            DumpRenderTree.out.printf("OPEN FILE PANEL\n");
+        if (DumpRenderTree.drt.complete()) {
+            return null;
         }
+        DumpRenderTree.out.printf("OPEN FILE PANEL\n");
         String[] openPanelFiles = DumpRenderTree.drt.openPanelFiles();
         if (openPanelFiles == null || openPanelFiles.length == 0) {
             return null;
         }
 
-        File testURLFile = new File(DumpRenderTree.drt.testURL());
+        File testURLFile = new File(DumpRenderTree.drt.getTestURL());
         String testURLFileParent = testURLFile.getParent();
-        int idx = 0;
         if (multiple) {
             String[] result = new String[openPanelFiles.length];
-            for (String str: openPanelFiles) {
-                result[idx++] = testURLFileParent + "\\" + str;
+            for (int i = 0; i < openPanelFiles.length; i++) {
+                result[i] = new File(testURLFileParent, openPanelFiles[i]).getAbsolutePath();
             }
             return result;
         } else {
-            String testFile = testURLFileParent + "\\" + openPanelFiles[0];
-            File f = new File(testFile);
-            return f != null
-                    ? new String[] { f.getAbsolutePath() }
-                    : null;
+            return new String[] { new File(testURLFileParent, openPanelFiles[0]).getAbsolutePath()};
         }
     }
 

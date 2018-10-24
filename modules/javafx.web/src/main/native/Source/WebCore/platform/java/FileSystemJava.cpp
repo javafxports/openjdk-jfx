@@ -244,11 +244,10 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
             "(Ljava/lang/String;Ljava/lang/String;)Ljava/io/RandomAccessFile;");
     ASSERT(mid);
 
-    JLocalRef<jstring> fileMode = env->NewStringUTF("r");
     PlatformFileHandle result = env->CallStaticObjectMethod(
             GetFileSystemClass(env),
             mid,
-            (jstring)path.toJavaString(env), (jstring)fileMode);
+            (jstring)path.toJavaString(env), (jstring)(env->NewStringUTF("r")));
 
     CheckAndClearException(env);
     return result ? result : invalidPlatformFileHandle;
@@ -266,7 +265,7 @@ void closeFile(PlatformFileHandle& handle)
 
         env->CallStaticVoidMethod(
                 GetFileSystemClass(env),
-                mid, handle);
+                mid, (jobject)handle);
         CheckAndClearException(env);
         handle = invalidPlatformFileHandle;
     }
@@ -287,7 +286,8 @@ int readFromFile(PlatformFileHandle handle, char* data, int length)
     int result = env->CallStaticIntMethod(
             GetFileSystemClass(env),
             mid,
-            handle, (jobject)JLObject(env->NewDirectByteBuffer(data, length)));
+            (jobject)handle,
+            (jobject)(env->NewDirectByteBuffer(data, length)));
     CheckAndClearException(env);
 
     if (result < 0) {
@@ -323,10 +323,8 @@ String pathGetFileName(const String& path)
 
 long long seekFile(PlatformFileHandle handle, long long offset, FileSeekOrigin)
 {
-    // Currently we are ignoring FileSeekOrigin as FileSeekOrigin::Beginning
-    // is passed from FileStream::openForRead() method and
-    // FileSeekOrigin::Current / FileSeekOrigin::End is not used anywhere.
-
+    // we always get positive value for offset from webkit.
+    // Below check for offset < 0 might be redundant?
     if (offset < 0) {
         return (long long)(-1);
     }
@@ -340,7 +338,7 @@ long long seekFile(PlatformFileHandle handle, long long offset, FileSeekOrigin)
     env->CallStaticVoidMethod(
             GetFileSystemClass(env),
             mid,
-            handle, (jlong)offset);
+            (jobject)handle, (jlong)offset);
     if (env->ExceptionOccurred()) {
         offset = -1;
     }
