@@ -339,10 +339,9 @@ long long seekFile(PlatformFileHandle handle, long long offset, FileSeekOrigin)
             GetFileSystemClass(env),
             mid,
             (jobject)handle, (jlong)offset);
-    if (env->ExceptionOccurred()) {
+    if (CheckAndClearException(env)) {
         offset = -1;
     }
-    CheckAndClearException(env);
     return offset;
 }
 

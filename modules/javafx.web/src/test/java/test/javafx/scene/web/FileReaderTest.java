@@ -32,11 +32,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.Base64;
 import java.util.concurrent.CountDownLatch;
 import javafx.concurrent.Worker.State;
 import javafx.scene.web.WebEngineShim;
 
 import static javafx.concurrent.Worker.State.SUCCEEDED;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -52,33 +55,31 @@ public class FileReaderTest extends TestBase {
         return submit(() -> getEngine().getLoadWorker().getState());
     }
 
-    private String getScriptString(String readAPI, String func, boolean abort) {
-        String scriptContent = String.format("<script type=\"text/javascript\">" +
-                                    "var result = null;" +
+    private String getScriptString(String readAPI, String slice, boolean abort) {
+        String scriptContent = String.format("<script type='text/javascript'>" +
+                                    "var result;" +
                                     "window.addEventListener('click', (e) => {" +
                                         "document.getElementById('file').click();" +
                                     "});" +
-                                    "function ReadFile()" +
+                                    "function readFile()" +
                                     "{" +
                                         "file = event.target.files[0];" +
                                         "var reader = new FileReader();" +
-                                        "reader.onloadstart = function ()" +
-                                        "{ %s" +
+                                        "reader.onloadstart = () => {" +
+                                        "%s" +
                                         "};" +
-                                        "reader.onload = function ()" +
-                                        "{" +
+                                        "reader.onload = () => {" +
                                             "result = reader.result;" +
                                             "latch.countDown();" +
                                         "};" +
-                                        "reader.onerror = function ()" +
-                                        "{" +
+                                        "reader.onerror = () => {" +
                                             "result = reader.result;" +
                                             "latch.countDown();" +
                                         "};" +
-                                        "reader." + readAPI + "(file" + func + ");" +
+                                        "reader." + readAPI + "(file" + slice + ");" +
                                     "}" +
                                "</script>" +
-                               "<body> <input type='file' id='file' onchange='ReadFile()'/></body>", (abort ? "reader.abort();" : ""));
+                               "<body> <input type='file' id='file' onchange='readFile()'/></body>", (abort ? "reader.abort();" : ""));
         return scriptContent;
     }
 
@@ -89,12 +90,13 @@ public class FileReaderTest extends TestBase {
     }
 
     private void testLatch(CountDownLatch latch) {
-        assertTrue("Load task completed successfully", getLoadState() == SUCCEEDED);
+        assertTrue("Page load is not finished yet", getLoadState() == SUCCEEDED);
         assertNotNull("Document should not be null", getEngine().getDocument());
         submit(() -> {
             final JSObject window = (JSObject) getEngine().executeScript("window");
             assertNotNull(window);
             window.setMember("latch", latch);
+            // we send a dummy mouse click event at (0,0) to simulate click on file chooser button.
             WebPageShim.click(page, 0, 0);
         });
 
@@ -105,147 +107,145 @@ public class FileReaderTest extends TestBase {
         }
     }
 
-    @Test public void testreadAsText() {
-        loadContent(getScriptString("readAsText", "", false));
-        testLatch(latch);
+    @Test public void testReadAsTextWithoutSlice() {
+        loadFileReaderTestScript(getScriptString("readAsText", "", false));
         submit(() -> {
-            assertEquals("File Content matches", "Hello World", getEngine().executeScript("window.result"));
+            assertEquals("Unexpected file content received", "Hello World", getEngine().executeScript("window.result"));
         });
     }
 
-    @Test public void testreadAsText_slice_no_parameters() {
-        loadContent(getScriptString("readAsText", ".slice()", false));
-        testLatch(latch);
+    @Test public void testReadAsTextWithSlice() {
+        loadFileReaderTestScript(getScriptString("readAsText", ".slice()", false));
         submit(() -> {
-            assertEquals("File Content matches", "Hello World", getEngine().executeScript("window.result"));
+            assertEquals("Unexpected file content received", "Hello World", getEngine().executeScript("window.result"));
         });
     }
 
-    @Test public void testreadAsText_slice_valid_parameters_1() {
-        loadContent(getScriptString("readAsText", ".slice(3, 7)", false));
-        testLatch(latch);
+    @Test public void testReadAsTexWithSliceWithValidStartAndEnd() {
+        loadFileReaderTestScript(getScriptString("readAsText", ".slice(3, 7)", false));
         submit(() -> {
-            assertEquals("File Content matches", "lo W", getEngine().executeScript("window.result"));
+            assertEquals("Unexpected file content received", "lo W", getEngine().executeScript("window.result"));
         });
     }
 
-    @Test public void testreadAsText_slice_valid_parameters_2() {
-        loadContent(getScriptString("readAsText", ".slice(3, file.length)", false));
-        testLatch(latch);
+    @Test public void testReadAsTexWithSliceWithEndAsFileLength() {
+        loadFileReaderTestScript(getScriptString("readAsText", ".slice(3, file.length)", false));
         submit(() -> {
-            assertEquals("File Content matches", "lo World", getEngine().executeScript("window.result"));
+            assertEquals("Unexpected file content received", "lo World", getEngine().executeScript("window.result"));
         });
     }
 
-    @Test public void testreadAsText_slice_valid_parameters_3() {
-        loadContent(getScriptString("readAsText", ".slice(file.length)", false));
-        testLatch(latch);
+    @Test public void testReadAsTexWithSliceWithOnlyStartAsFileLength() {
+        loadFileReaderTestScript(getScriptString("readAsText", ".slice(file.length)", false));
         submit(() -> {
-            assertEquals("File Content matches", "Hello World", getEngine().executeScript("window.result"));
+            assertEquals("Unexpected file content received", "Hello World", getEngine().executeScript("window.result"));
         });
     }
 
-    @Test public void testreadAsText_slice_valid_parameters_4() {
-        loadContent(getScriptString("readAsText", ".slice(-7, file.length)", false));
-        testLatch(latch);
+    @Test public void testReadAsTexWithSliceWithStartAsNegetiveValue() {
+        loadFileReaderTestScript(getScriptString("readAsText", ".slice(-7, file.length)", false));
         submit(() -> {
-            assertEquals("File Content matches", "o World", getEngine().executeScript("window.result"));
+            assertEquals("Unexpected file content received", "o World", getEngine().executeScript("window.result"));
         });
     }
 
-    @Test public void testreadAsText_slice_valid_parameters_5() {
-        loadContent(getScriptString("readAsText", ".slice(file.length, 3)", false));
-        testLatch(latch);
+    @Test public void testReadAsTexWithSliceWithStartAsFileLength() {
+        loadFileReaderTestScript(getScriptString("readAsText", ".slice(file.length, 3)", false));
         submit(() -> {
-            assertEquals("File Content matches", "Hel", getEngine().executeScript("window.result"));
+            assertEquals("Unexpected file content received", "Hel", getEngine().executeScript("window.result"));
         });
     }
 
-    @Test public void testreadAsText_slice_valid_parameters_6() {
-        loadContent(getScriptString("readAsText", ".slice(file.length, -3)", false));
-        testLatch(latch);
+    @Test public void testReadAsTexWithSliceWithEndAsNegetiveValue() {
+        loadFileReaderTestScript(getScriptString("readAsText", ".slice(file.length, -3)", false));
         submit(() -> {
-            assertEquals("File Content matches", "Hello Wo", getEngine().executeScript("window.result"));
+            assertEquals("Unexpected file content received", "Hello Wo", getEngine().executeScript("window.result"));
         });
     }
 
-    @Test public void testreadAsText_slice_valid_parameters_7() {
-        loadContent(getScriptString("readAsText", ".slice(file.length, -100)", false));
-        testLatch(latch);
+    @Test public void testReadAsTexWithSliceWithEndAsBeyondFileLength() {
+        loadFileReaderTestScript(getScriptString("readAsText", ".slice(file.length, -100)", false));
         submit(() -> {
-            assertEquals("File Content matches", "", getEngine().executeScript("window.result"));
+            assertEquals("Unexpected file content received", "", getEngine().executeScript("window.result"));
         });
     }
 
-    @Test public void testreadAsText_slice_single_parameter() {
-        loadContent(getScriptString("readAsText", ".slice(6)", false));
-        testLatch(latch);
+    @Test public void testReadAsTexWithSliceWithBeginAsValidValue() {
+        loadFileReaderTestScript(getScriptString("readAsText", ".slice(6)", false));
         submit(() -> {
-            assertEquals("File Content matches", "World", getEngine().executeScript("window.result"));
+            assertEquals("Unexpected file content received", "World", getEngine().executeScript("window.result"));
         });
     }
 
-    @Test public void testreadAsText_slice_negetive_parameter_1() {
-        loadContent(getScriptString("readAsText", ".slice(-3)", false));
-        testLatch(latch);
+    @Test public void testReadAsTexWithSliceWithOnlyStartAsNegetiveValue() {
+        loadFileReaderTestScript(getScriptString("readAsText", ".slice(-3)", false));
         submit(() -> {
-            assertEquals("File Content matches", "rld", getEngine().executeScript("window.result"));
+            assertEquals("Unexpected file content received", "rld", getEngine().executeScript("window.result"));
         });
     }
 
-    @Test public void testreadAsText_slice_negetive_parameter_2() {
-        loadContent(getScriptString("readAsText", ".slice(-3, -7)", false));
-        testLatch(latch);
+    @Test public void testReadAsTexWithSliceWithStartAndEndAsNegetiveValues() {
+        loadFileReaderTestScript(getScriptString("readAsText", ".slice(-3, -7)", false));
         submit(() -> {
-            assertEquals("File Content matches", "", getEngine().executeScript("window.result"));
+            assertEquals("Unexpected file content received", "", getEngine().executeScript("window.result"));
         });
     }
 
     @Test public void testreadAsBinaryString() throws FileNotFoundException, IOException {
         String binaryFile[] = {new File("src/test/resources/test/html/BinaryFile.dat").getAbsolutePath()};
         FileReaderShim.test_setChooseFiles(binaryFile);
-        loadContent(getScriptString("readAsBinaryString", "", false));
-        testLatch(latch);
+        loadFileReaderTestScript(getScriptString("readAsBinaryString", "", false));
         FileInputStream in = new FileInputStream(binaryFile[0]);
         final byte[] expectedBinaryData = in.readAllBytes();
+        assertNotNull("BinaryFile content should not be null", expectedBinaryData);
         submit(() -> {
             final String obj = (String) getEngine().executeScript("window.result");
             final byte[] binBytes = obj.getBytes();
-            for (int i = 0; i < expectedBinaryData.length; i++) {
-                assertEquals("File Content matches", expectedBinaryData[i], binBytes[i]);
-            }
+            assertNotNull("BinaryFile content read should not be null", binBytes);
+            assertArrayEquals("Unexpected file content received", expectedBinaryData, binBytes);
         });
     }
 
     @Test public void testreadAsArrayBuffer() throws FileNotFoundException, IOException {
-        loadContent(getScriptString("readAsArrayBuffer", "", false));
-        testLatch(latch);
+        loadFileReaderTestScript(getScriptString("readAsArrayBuffer", "", false));
         FileInputStream in = new FileInputStream(fileList[0]);
         final byte[] expectedArrayBuffer = in.readAllBytes();
         submit(() -> {
             final JSObject obj = (JSObject) getEngine().executeScript("new Uint8Array(window.result)");
-            assertEquals("Expected File Content matches", expectedArrayBuffer.length, 11);
-            assertEquals("File Content matches", obj.getMember("length"), 11);
+            assertEquals(String.format("%s length must be equal in both Java & JavaScript", fileList),
+                                       expectedArrayBuffer.length, obj.getMember("length"));
             for (int i = 0; i < expectedArrayBuffer.length; i++) {
-                assertEquals("File Content matches", expectedArrayBuffer[i], ((Number)(obj.getSlot(i))).byteValue());
+                assertEquals("Unexpected file content received", expectedArrayBuffer[i], ((Number)(obj.getSlot(i))).byteValue());
             }
         });
     }
 
-    @Test public void testreadAsDataURL() {
-        loadContent(getScriptString("readAsDataURL", "", false));
-        testLatch(latch);
+    @Test public void testreadAsDataURL() throws FileNotFoundException, IOException {
+        loadFileReaderTestScript(getScriptString("readAsDataURL", "", false));
+		FileInputStream in = new FileInputStream(fileList[0]);
+        final byte[] expectedArrayBuffer = in.readAllBytes();
         submit(() -> {
-            assertEquals("File Content matches", "data:text/plain;base64,SGVsbG8gV29ybGQ=",
-                          getEngine().executeScript("window.result"));
+            try {
+                String encodedData = (String) getEngine().executeScript("window.result");
+                assertNotNull("window.result must have base64 encoded data", encodedData);
+                assertEquals("Base64 EncodedData is not same as window.result",
+                                   "data:text/plain;base64,SGVsbG8gV29ybGQ=", encodedData);
+                encodedData = encodedData.split(",")[1];
+                assertNotNull(encodedData);
+                final byte[] decodedData = Base64.getDecoder().decode(encodedData);
+                assertNotNull("Base64 decoded data must be valid", decodedData);
+                assertEquals("Base64 DecodedData is not same as File Content",
+                        new String(expectedArrayBuffer, "utf-8"), new String(decodedData, "utf-8"));
+            } catch (UnsupportedEncodingException e) {
+                System.out.println("Error :" + e.getMessage());
+            }
         });
     }
 
     @Test public void testAbort() {
-        loadContent(getScriptString("readAsText", "", true));
-        testLatch(latch);
+        loadFileReaderTestScript(getScriptString("readAsText", "", true));
         submit(() -> {
-            assertEquals("File Content matches", null,
+            assertEquals("Unexpected file content received", null,
                           getEngine().executeScript("window.result"));
         });
     }
