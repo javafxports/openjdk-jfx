@@ -227,7 +227,7 @@ public class FileReaderTest extends TestBase {
 
     @Test public void testreadAsDataURL() throws FileNotFoundException, IOException {
         loadFileReaderTestScript(getScriptString("readAsDataURL", "", false));
-		FileInputStream in = new FileInputStream(fileList[0]);
+        FileInputStream in = new FileInputStream(fileList[0]);
         final byte[] expectedArrayBuffer = in.readAllBytes();
         submit(() -> {
             try {
