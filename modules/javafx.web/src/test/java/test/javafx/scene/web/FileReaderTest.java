@@ -89,6 +89,11 @@ public class FileReaderTest extends TestBase {
         FileReaderShim.test_setChooseFiles(fileList);
     }
 
+    private void loadFileReaderTestScript(String testScript) {
+        loadContent(testScript);
+        testLatch(latch);
+    }
+
     private void testLatch(CountDownLatch latch) {
         assertTrue("Page load is not finished yet", getLoadState() == SUCCEEDED);
         assertNotNull("Document should not be null", getEngine().getDocument());
