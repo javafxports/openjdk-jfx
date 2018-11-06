@@ -33,7 +33,8 @@
 #import "GlassStatics.h"
 
 
-//#define VERBOSE
+// KCR: Temporarily enable VERBOSE logging (revert this when done debugging)
+#define VERBOSE
 #ifndef VERBOSE
     #define LOG(MSG, ...)
 #else
@@ -107,21 +108,30 @@ typedef struct
 static CGEventRef listenTouchEvents(CGEventTapProxy proxy, CGEventType type,
                              CGEventRef event, void* refcon)
 {
-    if (type == kCGEventTapDisabledByTimeout)
-    {   // OS may disable event tap if it handles events too slowly.
+    if (type == kCGEventTapDisabledByTimeout ||
+        type == kCGEventTapDisabledByUserInput)
+    {
+        // OS may disable event tap if it handles events too slowly
+        // or for some other reason based on user input.
         // This is undesirable, so enable event tap after such a reset.
         [glassTouches enableTouchInputEventTap];
-        LOG("TOUCHES: listenTouchEvents: recover after timeout\n");
+        LOG("TOUCHES: listenTouchEvents: re-enable event tap, type = %d\n", type);
         return event;
     }
 
-    NSEvent* theEvent = [NSEvent eventWithCGEvent:event];
-    if (theEvent)
+    if (type == NSEventTypeGesture)
     {
-        if (glassTouches)
+        LOG("TOUCHES: listenTouchEvents: process NSEventTypeGesture\n");
+        NSEvent* theEvent = [NSEvent eventWithCGEvent:event];
+        if (theEvent)
         {
-            [glassTouches sendJavaTouchEvent:theEvent];
+            if (glassTouches)
+            {
+                [glassTouches sendJavaTouchEvent:theEvent];
+            }
         }
+    } else {
+        LOG("TOUCHES: listenTouchEvents: unknown event ignored, type = %d\n", type);
     }
 
     return event;
