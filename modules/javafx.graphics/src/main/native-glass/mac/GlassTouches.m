@@ -33,8 +33,7 @@
 #import "GlassStatics.h"
 
 
-// KCR: Temporarily enable VERBOSE logging (revert this when done debugging)
-#define VERBOSE
+//#define VERBOSE
 #ifndef VERBOSE
     #define LOG(MSG, ...)
 #else
