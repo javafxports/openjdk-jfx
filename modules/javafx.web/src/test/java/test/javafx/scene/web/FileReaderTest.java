@@ -73,7 +73,7 @@ public class FileReaderTest extends TestBase {
                                             "latch.countDown();" +
                                         "};" +
                                         "reader.onerror = () => {" +
-                                            "result = reader.result;" +
+                                            "result = 'failed due to error';" +
                                             "latch.countDown();" +
                                         "};" +
                                         "reader." + readAPI + "(file" + slice + ");" +
@@ -213,44 +213,50 @@ public class FileReaderTest extends TestBase {
 
     @Test public void testreadAsArrayBuffer() throws FileNotFoundException, IOException {
         loadFileReaderTestScript(getScriptString("readAsArrayBuffer", "", false));
-        FileInputStream in = new FileInputStream(fileList[0]);
-        final byte[] expectedArrayBuffer = in.readAllBytes();
-        submit(() -> {
-            final JSObject obj = (JSObject) getEngine().executeScript("new Uint8Array(window.result)");
-            assertEquals(String.format("%s length must be equal in both Java & JavaScript", fileList),
+        try (FileInputStream in = new FileInputStream(fileList[0])) {
+            final byte[] expectedArrayBuffer = in.readAllBytes();
+            submit(() -> {
+                final JSObject obj = (JSObject) getEngine().executeScript("new Uint8Array(window.result)");
+                assertEquals(String.format("%s length must be equal in both Java & JavaScript", fileList),
                                        expectedArrayBuffer.length, obj.getMember("length"));
-            for (int i = 0; i < expectedArrayBuffer.length; i++) {
-                assertEquals("Unexpected file content received", expectedArrayBuffer[i], ((Number)(obj.getSlot(i))).byteValue());
-            }
-        });
+                for (int i = 0; i < expectedArrayBuffer.length; i++) {
+                    assertEquals("Unexpected file content received", expectedArrayBuffer[i], ((Number)(obj.getSlot(i))).byteValue());
+                }
+            });
+        } catch (IOException ex){
+            throw new AssertionError(ex);
+        }
     }
 
     @Test public void testreadAsDataURL() throws FileNotFoundException, IOException {
         loadFileReaderTestScript(getScriptString("readAsDataURL", "", false));
-        FileInputStream in = new FileInputStream(fileList[0]);
-        final byte[] expectedArrayBuffer = in.readAllBytes();
-        submit(() -> {
-            try {
-                String encodedData = (String) getEngine().executeScript("window.result");
-                assertNotNull("window.result must have base64 encoded data", encodedData);
-                assertEquals("Base64 EncodedData is not same as window.result",
+        try (FileInputStream in = new FileInputStream(fileList[0])) {
+            final byte[] expectedArrayBuffer = in.readAllBytes();
+            submit(() -> {
+                try {
+                    String encodedData = (String) getEngine().executeScript("window.result");
+                    assertNotNull("window.result must have base64 encoded data", encodedData);
+                    assertEquals("Base64 EncodedData is not same as window.result",
                                    "data:text/plain;base64,SGVsbG8gV29ybGQ=", encodedData);
-                encodedData = encodedData.split(",")[1];
-                assertNotNull(encodedData);
-                final byte[] decodedData = Base64.getDecoder().decode(encodedData);
-                assertNotNull("Base64 decoded data must be valid", decodedData);
-                assertEquals("Base64 DecodedData is not same as File Content",
+                    encodedData = encodedData.split(",")[1];
+                    assertNotNull(encodedData);
+                    final byte[] decodedData = Base64.getDecoder().decode(encodedData);
+                    assertNotNull("Base64 decoded data must be valid", decodedData);
+                    assertEquals("Base64 DecodedData is not same as File Content",
                         new String(expectedArrayBuffer, "utf-8"), new String(decodedData, "utf-8"));
-            } catch (UnsupportedEncodingException e) {
-                System.out.println("Error :" + e.getMessage());
-            }
-        });
+                } catch (UnsupportedEncodingException e) {
+                    System.out.println("Error :" + e.getMessage());
+                }
+            });
+        } catch (IOException ex){
+            throw new AssertionError(ex);
+        }
     }
 
     @Test public void testAbort() {
         loadFileReaderTestScript(getScriptString("readAsText", "", true));
         submit(() -> {
-            assertEquals("Unexpected file content received", null,
+            assertEquals("Unexpected file content received", "failed due to error",
                           getEngine().executeScript("window.result"));
         });
     }

@@ -83,7 +83,7 @@ final class FileSystem {
         return -1;
     }
 
-    private static void fwkSeekFromFile(RandomAccessFile raf, long pos) {
+    private static void fwkSeekFile(RandomAccessFile raf, long pos) {
         try {
             raf.seek(pos);
         } catch (IOException ex) {

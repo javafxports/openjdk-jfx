@@ -273,7 +273,7 @@ void closeFile(PlatformFileHandle& handle)
 
 int readFromFile(PlatformFileHandle handle, char* data, int length)
 {
-    if (length < 0) {
+    if (length < 0 || !isHandleValid(handle) || data == nullptr) {
         return -1;
     }
     JNIEnv* env = WebCore_GetJavaEnv();
@@ -325,13 +325,13 @@ long long seekFile(PlatformFileHandle handle, long long offset, FileSeekOrigin)
 {
     // we always get positive value for offset from webkit.
     // Below check for offset < 0 might be redundant?
-    if (offset < 0) {
+    if (offset < 0 || !isHandleValid(handle)) {
         return (long long)(-1);
     }
     JNIEnv* env = WebCore_GetJavaEnv();
     static jmethodID mid = env->GetStaticMethodID(
             GetFileSystemClass(env),
-            "fwkSeekFromFile",
+            "fwkSeekFile",
             "(Ljava/io/RandomAccessFile;J)V");
     ASSERT(mid);
 
