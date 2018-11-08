@@ -89,7 +89,7 @@ public final class JFRPulseLogger extends Logger {
 
     /**
      * Finishes the current phase and starts a new one if phaseName is not null.
-     * 
+     *
      * @param phaseName The name for the new phase.
      */
     @Override

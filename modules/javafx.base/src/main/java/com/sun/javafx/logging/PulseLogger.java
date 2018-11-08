@@ -32,7 +32,7 @@ import java.util.List;
 
 public class PulseLogger {
     public static final boolean PULSE_LOGGING_ENABLED;
-    
+
     private static final String [] DEFAULT_LOGGERS = {"com.sun.javafx.logging.PrintLogger", "com.sun.javafx.logging.jfr.JFRPulseLogger"};
     private static final Logger[] loggers;
 
@@ -95,7 +95,7 @@ public class PulseLogger {
             logger.newInput(name);
         }
     }
-    
+
     // Loading known loggers reflectively, in case an expected module isn't available
     private static Logger loadLogger(String className) {
         try {
