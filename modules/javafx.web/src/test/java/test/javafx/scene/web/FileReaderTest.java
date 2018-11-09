@@ -206,11 +206,12 @@ public class FileReaderTest extends TestBase {
         submit(() -> {
             try {
                 final String obj = (String) getEngine().executeScript("window.result");
+                // setting encoding scheme to ISO-8859-1 for binary data as webkit uses the same.
                 final byte[] binBytes = obj.getBytes("ISO-8859-1");
                 assertNotNull("BinaryFile content read should not be null", binBytes);
                 assertArrayEquals("Unexpected file content received", expectedBinaryData, binBytes);
-            } catch (UnsupportedEncodingException e) {
-                System.out.println("Error :" + e.getMessage());
+            } catch (UnsupportedEncodingException ex) {
+                throw new AssertionError(ex);
             }
         });
     }
