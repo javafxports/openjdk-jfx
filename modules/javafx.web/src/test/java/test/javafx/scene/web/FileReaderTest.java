@@ -204,10 +204,14 @@ public class FileReaderTest extends TestBase {
         final byte[] expectedBinaryData = in.readAllBytes();
         assertNotNull("BinaryFile content should not be null", expectedBinaryData);
         submit(() -> {
-            final String obj = (String) getEngine().executeScript("window.result");
-            final byte[] binBytes = obj.getBytes();
-            assertNotNull("BinaryFile content read should not be null", binBytes);
-            assertArrayEquals("Unexpected file content received", expectedBinaryData, binBytes);
+            try {
+                final String obj = (String) getEngine().executeScript("window.result");
+                final byte[] binBytes = obj.getBytes("ISO-8859-1");
+                assertNotNull("BinaryFile content read should not be null", binBytes);
+                assertArrayEquals("Unexpected file content received", expectedBinaryData, binBytes);
+            } catch (UnsupportedEncodingException e) {
+                System.out.println("Error :" + e.getMessage());
+            }
         });
     }
 
