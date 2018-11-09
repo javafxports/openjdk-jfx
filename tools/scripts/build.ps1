@@ -2,13 +2,15 @@
 choco install ant
 choco install vswhere
 choco install zip
-choco install visualstudio2017community
-choco install visualstudio2017-workload-nativedesktop
-choco install windows-sdk-7.1
-choco install cygwin
+if ($env:APPVEYOR -ne "true") {
+  choco install visualstudio2017community
+  choco install visualstudio2017-workload-nativedesktop
+  choco install windows-sdk-7.1
+  choco install cygwin
 
-$cygwinPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Cygwin\setup").rootdir
-$env:Path += ";$($cygwinPath)\bin"
+  $cygwinPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Cygwin\setup").rootdir
+  $env:Path += ";$($cygwinPath)\bin"
+}
 
 $env:WINSDK_DIR = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows Kits\Installed Roots").KitsRoot10
 $vsRoot = "$(vswhere -legacy -latest -property installationPath)"
@@ -29,7 +31,7 @@ $env:VS150COMNTOOLS = $env:VCINSTALLDIR
 $env:VSVARS32FILE = "$env:VCINSTALLDIR\vcvars32.bat"
 refreshenv
 if ($env:APPVEYOR -eq "true") {
-  .\gradlew all test -PCOMPILE_WEBKIT=false -PCONF=Debug --stacktrace -x :web:test --info --no-daemon
+  .\gradlew all test -PCOMPILE_WEBKIT=false -PCONF=DebugNative --stacktrace -x :web:test --info --no-daemon
   if ($lastexitcode -ne 0) {
     exit $lastexitcode
   }
