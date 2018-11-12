@@ -1,20 +1,39 @@
-.\gradlew --stop
 choco install ant
 choco install vswhere
 choco install zip
-if ($env:APPVEYOR -ne "true") {
-  choco install visualstudio2017community
-  choco install visualstudio2017-workload-nativedesktop
-  choco install windows-sdk-7.1
-  choco install cygwin
 
-  $cygwinPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Cygwin\setup").rootdir
-  $env:Path += ";$($cygwinPath)\bin"
+$vsRoot = "$(vswhere -latest -requires Microsoft.VisualStudio.Workload.NativeDesktop -property installationPath)"
+if ([string]::IsNullOrWhitespace($vsRoot)) {
+  $vs = "$(vswhere -latest -property installationPath)"
+  if ([string]::IsNullOrWhitespace($vs)) {
+    choco install visualstudio2017community
+    choco install visualstudio2017-workload-nativedesktop
+  }
+  else {
+    choco install visualstudio2017-workload-nativedesktop
+  }
+  $vsRoot = "$(vswhere -latest -requires Microsoft.VisualStudio.Workload.NativeDesktop -property installationPath)"
 }
 
-$env:WINSDK_DIR = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows Kits\Installed Roots").KitsRoot10
-$vsRoot = "$(vswhere -legacy -latest -property installationPath)"
+$winSdk = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows Kits\Installed Roots").KitsRoot10 2>$null
+if ([string]::IsNullOrWhitespace($winSdk)) {
+  choco install windows-sdk-7.1
+  $winSdk = ((Get-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows Kits\Installed Roots" -ErrorAction Stop).KitsRoot10) 
+}
+
+# Cygwin required for chmod
+$cygwinPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Cygwin\setup").rootdir 2>$null
+if ([string]::IsNullOrWhitespace($cygwinPath)) {
+  choco install cygwin
+  $cygwinPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Cygwin\setup"  -ErrorAction Stop).rootdir
+}
+
+if ($env:Path -NotLike "*$($cygwinPath)*") {
+  $env:Path += ";$($cygwinPath)\bin"
+}
+$env:WINSDK_DIR = $winSdk
 $env:VCINSTALLDIR = "$($vsRoot)\VC\Auxiliary\Build"
+
 $msvcToolsVer = Get-Content "$env:VCINSTALLDIR\Microsoft.VCToolsVersion.default.txt"
 $msvcRedistVer = Get-Content "$env:VCINSTALLDIR\Microsoft.VCRedistVersion.default.txt"
 if ([string]::IsNullOrWhitespace($msvcToolsVer)) {
@@ -36,5 +55,5 @@ if ($env:APPVEYOR -eq "true") {
     exit $lastexitcode
   }
 } else {
-  .\gradlew all test -PCOMPILE_WEBKIT=false -PCONF=Debug --stacktrace -x :web:test --info
+  .\gradlew all test -PCOMPILE_WEBKIT=false -PCONF=Debug --stacktrace -x :web:test --info --no-daemon
 }
