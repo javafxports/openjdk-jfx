@@ -25,7 +25,7 @@
 
 package test.javafx.scene.web;
 
-import com.sun.javafx.webkit.FileReaderShim;
+import com.sun.javafx.webkit.UIClientImplShim;
 import com.sun.webkit.WebPage;
 import com.sun.webkit.WebPageShim;
 import java.io.File;
@@ -50,7 +50,7 @@ import org.junit.Test;
 public class FileReaderTest extends TestBase {
     private final WebPage page = WebEngineShim.getPage(getEngine());
     private String[] fileList = {new File("src/test/resources/test/html/HelloWorld.txt").getAbsolutePath()};
-    CountDownLatch latch;
+    private CountDownLatch latch;
     private State getLoadState() {
         return submit(() -> getEngine().getLoadWorker().getState());
     }
@@ -86,7 +86,7 @@ public class FileReaderTest extends TestBase {
     @Before
     public void before() {
         latch = new CountDownLatch(1);
-        FileReaderShim.test_setChooseFiles(fileList);
+        UIClientImplShim.test_setChooseFiles(fileList);
     }
 
     private void loadFileReaderTestScript(String testScript) {
@@ -197,8 +197,8 @@ public class FileReaderTest extends TestBase {
     }
 
     @Test public void testreadAsBinaryString() throws FileNotFoundException, IOException {
-        String binaryFile[] = {new File("src/test/resources/test/html/BinaryFile.dat").getAbsolutePath()};
-        FileReaderShim.test_setChooseFiles(binaryFile);
+        String binaryFile[] = { new File("src/test/resources/test/html/BinaryFile.dat").getAbsolutePath() };
+        UIClientImplShim.test_setChooseFiles(binaryFile);
         loadFileReaderTestScript(getScriptString("readAsBinaryString", "", false));
         FileInputStream in = new FileInputStream(binaryFile[0]);
         final byte[] expectedBinaryData = in.readAllBytes();
@@ -250,7 +250,7 @@ public class FileReaderTest extends TestBase {
                     assertEquals("Base64 DecodedData is not same as File Content",
                         new String(expectedArrayBuffer, "utf-8"), new String(decodedData, "utf-8"));
                 } catch (UnsupportedEncodingException e) {
-                    System.out.println("Error :" + e.getMessage());
+                    throw new AssertionError(e);
                 }
             });
         } catch (IOException ex){

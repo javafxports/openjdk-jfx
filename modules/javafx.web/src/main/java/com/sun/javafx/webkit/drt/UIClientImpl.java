@@ -192,7 +192,7 @@ final class UIClientImpl implements UIClient {
             return null;
         }
 
-        File testURLFile = new File(DumpRenderTree.drt.getTestURL());
+        final File testURLFile = new File(DumpRenderTree.drt.getTestURL());
         String testURLFileParent = testURLFile.getParent();
         if (multiple) {
             String[] result = new String[openPanelFiles.length];
@@ -201,7 +201,7 @@ final class UIClientImpl implements UIClient {
             }
             return result;
         } else {
-            return new String[] { new File(testURLFileParent, openPanelFiles[0]).getAbsolutePath()};
+            return new String[] { new File(testURLFileParent, openPanelFiles[0]).getAbsolutePath() };
         }
     }
 

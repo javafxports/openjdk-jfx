@@ -326,7 +326,7 @@ long long seekFile(PlatformFileHandle handle, long long offset, FileSeekOrigin)
     // we always get positive value for offset from webkit.
     // Below check for offset < 0 might be redundant?
     if (offset < 0 || !isHandleValid(handle)) {
-        return (long long)(-1);
+        return -1;
     }
     JNIEnv* env = WebCore_GetJavaEnv();
     static jmethodID mid = env->GetStaticMethodID(
