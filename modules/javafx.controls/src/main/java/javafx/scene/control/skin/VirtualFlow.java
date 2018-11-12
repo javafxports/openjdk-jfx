@@ -1690,7 +1690,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
             }
         }
         setCellIndex(accumCell, index);
-        resizeCellSize(accumCell);
+        resizeCell(accumCell);
         return accumCell;
     }
 
@@ -1881,7 +1881,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
      * @param cell the cell to resize
      * @since 12
      */
-    protected void resizeCellSize(T cell) {
+    protected void resizeCell(T cell) {
         if (cell == null) return;
 
         if (isVertical()) {
@@ -1914,7 +1914,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
      * @return last visible cell whose bounds are entirely within the viewport
      * @since 12
      */
-    protected T getLastVisibleCellWithinViewPort() {
+    protected T getLastVisibleCellWithinViewport() {
         if (cells.isEmpty() || getViewportLength() <= 0) return null;
 
         T cell;
@@ -1943,7 +1943,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
      * @return first visible cell whose bounds are entirely within the viewport
      * @since 12
      */
-    protected T getFirstVisibleCellWithinViewPort() {
+    protected T getFirstVisibleCellWithinViewport() {
         if (cells.isEmpty() || getViewportLength() <= 0) return null;
 
         T cell;
@@ -1993,7 +1993,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
         while (index >= 0 && (offset > 0 || first)) {
             cell = getAvailableCell(index);
             setCellIndex(cell, index);
-            resizeCellSize(cell); // resize must be after config
+            resizeCell(cell); // resize must be after config
             cells.addFirst(cell);
 
             // A little gross but better than alternatives because it reduces
@@ -2088,7 +2088,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
             }
             T cell = getAvailableCell(index);
             setCellIndex(cell, index);
-            resizeCellSize(cell); // resize happens after config!
+            resizeCell(cell); // resize happens after config!
             cells.addLast(cell);
 
             // Position the cell and update the max pref
@@ -2121,7 +2121,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
                 index--;
                 T cell = getAvailableCell(index);
                 setCellIndex(cell, index);
-                resizeCellSize(cell); // resize must be after config
+                resizeCell(cell); // resize must be after config
                 cells.addFirst(cell);
                 double cellLength = getCellLength(cell);
                 start -= cellLength;
@@ -2159,8 +2159,9 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     }
 
     /**
-     * Informs the {@code VirtualFlow} that a layout pass should be done and cell contents (for example, in the {@code
-     * TableView}, if no cells have been added inside a row) are the same.
+     * Informs the {@code VirtualFlow} that a layout pass should be done, and the cell contents have not changed. For
+     * example, this might be called from a {@code TableView} or {@code ListView} when a layout is needed and no cells
+     * have been added or removed.
      *
      * @since 12
      */
@@ -2606,7 +2607,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
 
         if (cell != null) {
             setCellIndex(cell, index);
-            resizeCellSize(cell);
+            resizeCell(cell);
             cell.setVisible(false);
             sheetChildren.add(cell);
             privateCells.add(cell);

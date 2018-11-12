@@ -330,13 +330,13 @@ public class TableHeaderRow extends StackPane {
 
     /**
      * Returns the root header for all columns. The root header is a {@link NestedTableColumnHeader} that contains the
-     * {@code NestedTableColumnHeaders} that represent each column. It spans the entire width of the {@code TableView}.
-     * This allow any developer overriding a {@code TableColumnHeader} to easily access the root header and all others
-     * {@code TableColumnHeaders}.
+     * {@code NestedTableColumnHeader}s that represent each column. It spans the entire width of the {@code TableView}.
+     * This allows any developer overriding a {@code TableColumnHeader} to easily access the root header and all others
+     * {@code TableColumnHeader}s.
      *
      * @return the root header
-     * @implNote this design enforces that column reordering occurs only within a single {@code NestedTableColumnHeader}
-     * and only at that level
+     * @implNote This design enforces that column reordering occurs only within a single {@code NestedTableColumnHeader}
+     * and only at that level.
      * @since 12
      */
     public final NestedTableColumnHeader getRootHeader() {
@@ -405,12 +405,12 @@ public class TableHeaderRow extends StackPane {
     }
 
     /**
-     * Called whenever the value of the horizontal scrollbar changes in order to request layout changes - shifting the
-     * {@code TableColumnHeaders}.
+     * Called whenever the value of the horizontal scrollbar changes in order to request layout changes, shifting the
+     * {@code TableColumnHeader}s.
      * <p>
      * For example, if custom components are added around a {@code TableColumnHeader} (such as icons above), they will
      * also need to be shifted. When overriding, calling {@code super()} is required to shift the {@code
-     * TableColumnHeaders}, and it's up to the developer to notify its own custom components of this change.
+     * TableColumnHeader}s, and it's up to the developer to notify its own custom components of this change.
      *
      * @since 12
      */
@@ -427,14 +427,14 @@ public class TableHeaderRow extends StackPane {
 
     /**
      * Updates the table width when a resize operation occurs. This method is called continuously when the control width
-     * is resizing in order to properly clip this {@code TableHeaderRow}. Overriding this method in a subclass allows to
-     * specify a resizing behavior.
+     * is resizing in order to properly clip this {@code TableHeaderRow}. Overriding this method allows a subclass to
+     * customize the resizing behavior.
      * <p>
      * Normally, the {@code TableHeaderRow} is using the full space ({@code TableView} width), but in some cases that
      * space may be reduced. For example, if a vertical header that will display the row number is introduced, the
      * {@code TableHeaderRow} would need to be clipped a bit shorter in order not to overlap that vertical header.
-     * Calling first {@code super()} when overriding allows to have the right width in {@link #getClip()} in order to
-     * apply a transformation.
+     * Calling {@code super()} first when overriding this method allows {@link #getClip()} to compute the right width in
+     * order apply a transformation.
      *
      * @since 12
      */

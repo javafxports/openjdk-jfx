@@ -34,7 +34,6 @@ import javafx.collections.ListChangeListener;
 import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
-import javafx.geometry.Insets;
 import javafx.scene.AccessibleAttribute;
 import javafx.scene.Node;
 import javafx.scene.control.*;
@@ -49,7 +48,6 @@ import com.sun.javafx.scene.control.skin.resources.ControlResources;
 import java.lang.ref.WeakReference;
 import java.util.List;
 import javafx.beans.WeakInvalidationListener;
-import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.geometry.HPos;
 import javafx.geometry.VPos;
@@ -514,7 +512,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      * @return the {@code TableHeaderRow} for this {@code TableViewSkinBase}
      * @since 12
      */
-    protected final TableHeaderRow getTableHeaderRow() {
+    protected TableHeaderRow getTableHeaderRow() {
         return tableHeaderRow;
     }
 
@@ -606,8 +604,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the selection is set on the previous cell in order to scroll to it to make it visible. This      *
-     * happens when the selection is set on the cell above the current focused cell.
+     * Called when the selection is set on the previous cell in order to scroll to it to make it visible. This happens
+     * when the selection is set on the cell above the current focused cell.
      *
      * @since 12
      */
@@ -707,7 +705,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
 
         final int itemCount = getItemCount();
 
-        I lastVisibleCell = flow.getLastVisibleCellWithinViewPort();
+        I lastVisibleCell = flow.getLastVisibleCellWithinViewport();
         if (lastVisibleCell == null) return -1;
 
         int lastVisibleCellIndex = lastVisibleCell.getIndex();
@@ -733,7 +731,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
                 // to be the top-most cell, or at least as far to the top as we can go.
                 flow.scrollToTop(lastVisibleCell);
 
-                I newLastVisibleCell = flow.getLastVisibleCellWithinViewPort();
+                I newLastVisibleCell = flow.getLastVisibleCellWithinViewport();
                 lastVisibleCell = newLastVisibleCell == null ? lastVisibleCell : newLastVisibleCell;
             }
         }
@@ -755,7 +753,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      * @since 12
      */
     protected int onScrollPageUp(boolean isFocusDriven) {
-        I firstVisibleCell = flow.getFirstVisibleCellWithinViewPort();
+        I firstVisibleCell = flow.getFirstVisibleCellWithinViewport();
         if (firstVisibleCell == null) return -1;
 
         int firstVisibleCellIndex = firstVisibleCell.getIndex();
@@ -776,7 +774,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
                 // to be the bottom-most cell, or at least as far to the bottom as we can go.
                 flow.scrollToBottom(firstVisibleCell);
 
-                I newFirstVisibleCell = flow.getFirstVisibleCellWithinViewPort();
+                I newFirstVisibleCell = flow.getFirstVisibleCellWithinViewport();
                 firstVisibleCell = newFirstVisibleCell == null ? firstVisibleCell : newFirstVisibleCell;
             }
         }
