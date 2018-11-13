@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -296,7 +296,12 @@ final class HTTP2Loader extends URLLoaderBase {
     }
 
     private static String getHeadersAsString(final HttpResponse.ResponseInfo rsp) {
-        return rsp.headers().map().entrySet().stream().map(e -> String.format("%s:%s", e.getKey(), e.getValue().stream().collect(Collectors.joining(",")))).collect(Collectors.joining("\n")) + "\n";
+        return rsp.headers()
+                  .map()
+                  .entrySet()
+                  .stream()
+                  .map(e -> String.format("%s:%s", e.getKey(), e.getValue().stream().collect(Collectors.joining(","))))
+                  .collect(Collectors.joining("\n")) + "\n";
     }
 
     private void willSendRequest(final HttpResponse.ResponseInfo rsp) {
@@ -331,7 +336,10 @@ final class HTTP2Loader extends URLLoaderBase {
 
     private void didReceiveData(final List<ByteBuffer> b) {
         callBack(() -> {
-            b.stream().filter((bb) -> !canceled).map(bb -> ByteBuffer.allocateDirect(bb.capacity()).put(bb)).forEach(bb -> twkDidReceiveData(bb.flip(), bb.position(), bb.remaining(), data));
+            b.stream()
+             .filter($ -> !canceled)
+             .map(bb -> ByteBuffer.allocateDirect(bb.capacity()).put(bb))
+             .forEach(bb -> twkDidReceiveData(bb.flip(), bb.position(), bb.remaining(), data));
         });
     }
 
