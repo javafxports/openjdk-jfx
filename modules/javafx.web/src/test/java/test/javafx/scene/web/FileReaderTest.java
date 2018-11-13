@@ -49,7 +49,7 @@ import org.junit.Test;
 
 public class FileReaderTest extends TestBase {
     private final WebPage page = WebEngineShim.getPage(getEngine());
-    private String[] fileList = {new File("src/test/resources/test/html/HelloWorld.txt").getAbsolutePath()};
+    private String[] fileList = { new File("src/test/resources/test/html/HelloWorld.txt").getAbsolutePath() };
     private CountDownLatch latch;
     private State getLoadState() {
         return submit(() -> getEngine().getLoadWorker().getState());
