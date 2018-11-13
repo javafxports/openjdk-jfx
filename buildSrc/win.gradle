@@ -41,26 +41,30 @@ WIN.modLibDest = "lib"
 
 setupTools("windows_tools",
     { propFile ->
-        // Create the properties file
-        ByteArrayOutputStream results = new ByteArrayOutputStream();
-        String winsdkDir = System.getenv().get("WINSDK_DIR");
-        exec({
-            environment([
-                    "WINSDKPATH" : winsdkDir == null ? "" : winsdkDir,
-                    "CONF"       : "/$CONF", // TODO does this mean the generated properties must be reset when in a different configuration?
-                    "VCARCH"     : IS_64 ? "amd64" : "x86",
-                    "SDKARCH"    : IS_64 ? "/x64" : "/x86",
-            ]);
-            commandLine("cmd", "/q", "/c", "buildSrc\\genVSproperties.bat");
-            setStandardOutput(results);
-        });
-        BufferedReader reader = new BufferedReader(new StringReader(results.toString().trim()));
-        reader.readLine();
-        reader.readLine();
-        String line;
-        while ((line = reader.readLine()) != null && !line.startsWith("######")) {
-            line = line.replace("\\", "/").replace("/@@ENDOFLINE@@", "").replace("@@ENDOFLINE@@", "").replace("//", "/").replace("windows.vs.", "WINDOWS_VS_");
-            propFile << line << "\r\n";
+        if (project.hasProperty('setupWinTools')) {
+            setupWinTools(propFile)
+        } else {
+            // Create the properties file
+            ByteArrayOutputStream results = new ByteArrayOutputStream();
+            String winsdkDir = System.getenv().get("WINSDK_DIR");
+            exec({
+                environment([
+                        "WINSDKPATH" : winsdkDir == null ? "" : winsdkDir,
+                        "CONF"       : "/$CONF", // TODO does this mean the generated properties must be reset when in a different configuration?
+                        "VCARCH"     : IS_64 ? "amd64" : "x86",
+                        "SDKARCH"    : IS_64 ? "/x64" : "/x86",
+                ]);
+                commandLine("cmd", "/q", "/c", "buildSrc\\genVSproperties.bat");
+                setStandardOutput(results);
+            });
+            BufferedReader reader = new BufferedReader(new StringReader(results.toString().trim()));
+            reader.readLine();
+            reader.readLine();
+            String line;
+            while ((line = reader.readLine()) != null && !line.startsWith("######")) {
+                line = line.replace("\\", "/").replace("/@@ENDOFLINE@@", "").replace("@@ENDOFLINE@@", "").replace("//", "/").replace("windows.vs.", "WINDOWS_VS_");
+                propFile << line << "\r\n";
+            }
         }
     },
     { properties ->
@@ -133,7 +137,9 @@ ext.WINDOWS_NATIVE_COMPILE_ENVIRONMENT = [
 ];
 def msvcVer = System.getenv("MSVC_VER") ?: "14.10.25017"
 def msvcBinDir = ""
-if (winVsVer == 150) {
+if (hasProperty('toolchainDir')) {
+    msvcBinDir = "$WINDOWS_VS_VSINSTALLDIR/VC/bin/${IS_64 ? 'x64' : 'x86'}"
+} else if (winVsVer == 150) {
     msvcBinDir = (IS_64
                       ? "$WINDOWS_VS_VSINSTALLDIR/VC/Tools/MSVC/$msvcVer/bin/HostX64/x64"
                       : "$WINDOWS_VS_VSINSTALLDIR/VC/Tools/MSVC/$msvcVer/bin/HostX86/x86")
@@ -155,7 +161,6 @@ if (!file(cygpath("$winSdkBinDir/RC.Exe")).exists()) {
         winSdkBinDir += "/" + (IS_64 ? "x64" : "x86")
     }
 }
-println "winSdkBinDir=$winSdkBinDir"
 
 ext.RC = cygpath("$winSdkBinDir/rc.exe")
 def rcCompiler = RC
@@ -427,6 +432,8 @@ WIN.media.linker = IS_COMPILE_PARFAIT ? "${parfaitPath}/parfait-link.exe" : "lin
 WIN.media.ar = IS_COMPILE_PARFAIT ? "${parfaitPath}/parfait-lib.exe" : "lib.exe";
 
 WIN.webkit = [:]
+WIN.webkit.compiler = compiler
+WIN.webkit.linker = linker
 WIN.webkit.rcCompiler = rcCompiler
 WIN.webkit.rcSource = defaultRcSource
 WIN.webkit.rcFlags = ["/d", "JFX_FNAME=jfxwebkit.dll", "/d", "JFX_INTERNAL_NAME=webkit", rcFlags].flatten();
