@@ -578,12 +578,12 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the focus is set on the previous cell in order to scroll to it to make it visible. This happens when
-     * the focus is set on the cell above the current focused cell.
+     * Called when the focus is set on the cell above the current focused cell in order to scroll to it to make it
+     * visible.
      *
      * @since 12
      */
-    protected void onFocusPreviousCell() {
+    protected void onFocusAboveCell() {
         TableFocusModel<M, ?> fm = getFocusModel();
         if (fm == null) return;
 
@@ -591,12 +591,12 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the focus is set on the next cell in order to scroll to it to make it visible. This happens when the
-     * focus is set on the cell below the current focused cell.
+     * Called when the focus is set on the cell below the current focused cell in order to scroll to it to make it
+     * visible.
      *
      * @since 12
      */
-    protected void onFocusNextCell() {
+    protected void onFocusBelowCell() {
         TableFocusModel<M, ?> fm = getFocusModel();
         if (fm == null) return;
 
@@ -604,12 +604,12 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the selection is set on the previous cell in order to scroll to it to make it visible. This happens
-     * when the selection is set on the cell above the current focused cell.
+     * Called when the selection is set on the the cell above the current focused cell in order to scroll to it to make
+     * it visible.
      *
      * @since 12
      */
-    protected void onSelectPreviousCell() {
+    protected void onSelectAboveCell() {
         SelectionModel<S> sm = getSelectionModel();
         if (sm == null) return;
 
@@ -617,12 +617,12 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     /**
-     * Called when the selection is set on the next cell in order to scroll to it to make it visible. This happens when
-     * the selection is set on the cell below the current focused cell.
+     * Called when the selection is set on the cell below the current focused cell in order to scroll to it to make it
+     * visible.
      *
      * @since 12
      */
-    protected void onSelectNextCell() {
+    protected void onSelectBelowCell() {
         SelectionModel<S> sm = getSelectionModel();
         if (sm == null) return;
 
@@ -646,6 +646,26 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      * @since 12
      */
     protected void onSelectRightCell() {
+        scrollHorizontally();
+    }
+
+    /**
+     * Called when the focus is set on the left cell of the current selected one in order to horizontally scroll to it
+     * to make it visible.
+     *
+     * @since 12
+     */
+    protected void onFocusLeftCell() {
+        scrollHorizontally();
+    }
+
+    /**
+     * Called when the focus is set on the right cell of the current selected one in order to horizontally scroll to it
+     * to make it visible.
+     *
+     * @since 12
+     */
+    protected void onFocusRightCell() {
         scrollHorizontally();
     }
 
