@@ -6,4 +6,4 @@ if [ -z "$TRAVIS_BRANCH" ]; then
 fi
 
 # Produce a list of added and modified files by a GitHub pull request
-git diff --name-only --diff-filter=AM $(git merge-base HEAD $TRAVIS_BRANCH)..HEAD
+git --no-pager diff --no-renames --name-only --diff-filter=AM $(git merge-base HEAD $TRAVIS_BRANCH)..HEAD
