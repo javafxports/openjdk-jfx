@@ -28,6 +28,7 @@ package com.sun.javafx.application;
 import java.awt.Desktop;
 import java.io.File;
 import java.net.URI;
+
 import javafx.application.Application;
 
 public abstract class HostServicesDelegate {
@@ -122,8 +123,14 @@ public abstract class HostServicesDelegate {
             return toURIString(System.getProperty("user.dir"));
         }
 
-        static final String[] browsers = {"google-chrome", "firefox", "opera",
-            "konqueror", "mozilla"};
+        static final String[] browsers = {
+                "xdg-open",
+                "google-chrome",
+                "firefox",
+                "opera",
+                "konqueror",
+                "mozilla"
+        };
 
         @Override
         public void showDocument(final String uri) {
