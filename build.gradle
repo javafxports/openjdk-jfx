@@ -713,7 +713,7 @@ void fetchExternalTools(String configName, List packages, File destdir, boolean 
                 } else {
                     throw new GradleException("Unhandled package type for compile package ${pkgname}")
                 }
-                srcball.deleteOnExit();
+                srcball.delete();
             }
         } else {
             logger.quiet "all tool packages are present $packages"
