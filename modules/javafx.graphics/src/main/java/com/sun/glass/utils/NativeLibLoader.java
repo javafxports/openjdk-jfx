@@ -240,7 +240,8 @@ public class NativeLibLoader {
             }
         }
         if (!cacheDirOk) {
-            String tmpCache = System.getProperty("java.io.tmpdir") + "/.openjfx/cache/" + jfxVersion;
+            String username = System.getProperty("user.name", "anonymous");
+            String tmpCache = System.getProperty("java.io.tmpdir") + "/.openjfx/"+username+"/cache/" + jfxVersion;
             cacheDir = new File(tmpCache);
             if (cacheDir.exists()) {
                 if (!cacheDir.isDirectory()) {
