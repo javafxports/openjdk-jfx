@@ -239,6 +239,10 @@ public class NativeLibLoader {
                 cacheDirOk = false;
             }
         }
+        if (!cacheDir.canRead()) {
+            // on some systems, directories in user.home can be written but not read.
+            cacheDirOk = false;
+        }
         if (!cacheDirOk) {
             String username = System.getProperty("user.name", "anonymous");
             String tmpCache = System.getProperty("java.io.tmpdir") + "/.openjfx_" + username + "/cache/" + jfxVersion;
