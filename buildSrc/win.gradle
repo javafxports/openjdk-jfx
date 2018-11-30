@@ -39,6 +39,8 @@ WIN.library = { name -> return "${name}.dll" as String }
 WIN.libDest = "bin"
 WIN.modLibDest = "lib"
 
+def CPU_BITS = IS_64 ? "x64" : "x86"
+
 setupTools("windows_tools",
     { propFile ->
         if (project.hasProperty('setupWinTools')) {
@@ -79,6 +81,7 @@ setupTools("windows_tools",
         defineProperty("WINDOWS_DXSDK_DIR", properties, System.getenv().get("DXSDK_DIR"))
         defineProperty("WINDOWS_VS_INCLUDE", properties, "$WINDOWS_VS_VCINSTALLDIR/INCLUDE;" + "$WINDOWS_SDK_DIR/include;")
         defineProperty("WINDOWS_VS_VER", properties, "150")
+        defineProperty("WINDOWS_CRT_VER", properties, "150")
         defineProperty("WINDOWS_VS_LIB", properties, "$WINDOWS_VS_VCINSTALLDIR/LIB;" + "$WINDOWS_SDK_DIR/lib;")
         defineProperty("WINDOWS_VS_LIBPATH", properties, "$WINDOWS_VS_VCINSTALLDIR/LIB;")
         def parfaitPath = IS_COMPILE_PARFAIT ? System.getenv().get("PARFAIT_PATH") + ";" : "";
@@ -138,11 +141,9 @@ ext.WINDOWS_NATIVE_COMPILE_ENVIRONMENT = [
 def msvcVer = System.getenv("MSVC_VER") ?: "14.10.25017"
 def msvcBinDir = ""
 if (hasProperty('toolchainDir')) {
-    msvcBinDir = "$WINDOWS_VS_VSINSTALLDIR/VC/bin/${IS_64 ? 'x64' : 'x86'}"
+    msvcBinDir = "$WINDOWS_VS_VSINSTALLDIR/VC/bin/$CPU_BITS"
 } else if (winVsVer == 150) {
-    msvcBinDir = (IS_64
-                      ? "$WINDOWS_VS_VSINSTALLDIR/VC/Tools/MSVC/$msvcVer/bin/HostX64/x64"
-                      : "$WINDOWS_VS_VSINSTALLDIR/VC/Tools/MSVC/$msvcVer/bin/HostX86/x86")
+    msvcBinDir = "$WINDOWS_VS_VSINSTALLDIR/VC/Tools/MSVC/$msvcVer/bin/Host${CPU_BITS}/$CPU_BITS"
 } else if (winVsVer <= 120) {
     msvcBinDir = (IS_64
                       ? "$WINDOWS_VS_VSINSTALLDIR/VC/BIN/amd64"
@@ -152,13 +153,13 @@ def compiler = IS_COMPILE_PARFAIT ? "cl.exe" : cygpath("$msvcBinDir/cl.exe")
 def linker = IS_COMPILE_PARFAIT ? "link.exe" : cygpath("$msvcBinDir/link.exe")
 def winSdkBinDir = "$WINDOWS_SDK_DIR/Bin"
 if (WINDOWS_VS_VER != "100") {
-    winSdkBinDir += "/" + (IS_64 ? "x64" : "x86")
+    winSdkBinDir += "/$CPU_BITS"
 }
 
 if (!file(cygpath("$winSdkBinDir/RC.Exe")).exists()) {
     winSdkBinDir = "$WINDOWS_SDK_DIR/Bin/$WINDOWS_SDK_VERSION"
     if (WINDOWS_VS_VER != "100") {
-        winSdkBinDir += "/" + (IS_64 ? "x64" : "x86")
+        winSdkBinDir += "/$CPU_BITS"
     }
 }
 
@@ -178,20 +179,21 @@ ext.MC = cygpath("$winSdkBinDir/mt.exe")
 if (!file(RC).exists()) throw new GradleException("FAIL: cannot find RC: " + RC)
 if (!file(FXC).exists()) throw new GradleException("FAIL: cannot find FXC: " + FXC)
 
-def msvcRedistVer = System.getenv("MSVC_REDIST_VER") ?: "14.10.25008"
-String msvcRedstDir = (IS_64
-                  ? "$WINDOWS_VS_VSINSTALLDIR/VC/Redist/MSVC/$msvcRedistVer/x64"
-                  : "$WINDOWS_VS_VSINSTALLDIR/VC/Redist/MSVC/$msvcRedistVer/x86")
+def msvcRedstDir
+if (hasProperty('toolchainDir')) {
+    msvcRedstDir = "$WINDOWS_VS_VSINSTALLDIR/VC/Redist/$CPU_BITS"
+} else {
+    def msvcRedistVer = System.getenv("MSVC_REDIST_VER") ?: "14.10.25008"
+    msvcRedstDir = "$WINDOWS_VS_VSINSTALLDIR/VC/Redist/MSVC/$msvcRedistVer/$CPU_BITS"
+}
 
-String winSdkDllDir = (IS_64
-                  ? "$WINDOWS_VS_WINSDKDLLINSTALLDIR/x64"
-                  : "$WINDOWS_VS_WINSDKDLLINSTALLDIR/x86")
+def winSdkDllDir = "$WINDOWS_VS_WINSDKDLLINSTALLDIR/$CPU_BITS"
 
 def WINDOWS_DLL_VER = WINDOWS_VS_VER
 ext.MSVCR = null
 ext.MSVCP = null
 
-def windowsCRTVer = System.getenv("WINDOWS_CRT_VER") ?: "150"
+def windowsCRTVer = System.getenv("WINDOWS_CRT_VER") ?: WINDOWS_CRT_VER
 if (WINDOWS_VS_VER == "150") {
     WINDOWS_DLL_VER = "140"
     ext.MSVCR = cygpath("${msvcRedstDir}/Microsoft.VC${windowsCRTVer}.CRT/vcruntime${WINDOWS_DLL_VER}.dll")
