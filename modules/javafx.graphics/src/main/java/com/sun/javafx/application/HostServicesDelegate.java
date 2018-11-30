@@ -28,7 +28,6 @@ package com.sun.javafx.application;
 import java.awt.Desktop;
 import java.io.File;
 import java.net.URI;
-
 import javafx.application.Application;
 
 public abstract class HostServicesDelegate {
