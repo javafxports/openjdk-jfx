@@ -136,7 +136,11 @@ public abstract class HostServicesDelegate {
             String osName = System.getProperty("os.name");
             try {
                 if (osName.startsWith("Mac OS")) {
-                    Desktop.getDesktop().browse(URI.create(uri));
+                    try {
+                        Runtime.getRuntime().exec(new String[]{"open", uri});
+                    } catch (Exception e) {
+                        Desktop.getDesktop().browse(URI.create(uri));
+                    }
                 } else if (osName.startsWith("Windows")) {
                     Runtime.getRuntime().exec(
                             "rundll32 url.dll,FileProtocolHandler " + uri);
