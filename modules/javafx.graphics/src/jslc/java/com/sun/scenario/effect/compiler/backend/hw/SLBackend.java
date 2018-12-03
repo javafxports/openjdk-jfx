@@ -81,8 +81,20 @@ public abstract class SLBackend extends TreeScanner {
         sb.append(s);
     }
 
+
+    static String PIXCOORD = "vec2 pixcoord = vec2(\n"+
+        "    gl_FragCoord.x-jsl_pixCoordOffset.x,\n" +
+        "    ((jsl_pixCoordOffset.z-gl_FragCoord.y)*jsl_pixCoordOffset.w)-jsl_pixCoordOffset.y);\n";
+
+    static String MAIN = "void main() {\n";
+
+
     public final String getShader() {
-        return getHeader() + sb.toString();
+        String answer = getHeader() + sb.toString();
+        if (isPixcoordReferenced) {
+            answer = answer.replace(MAIN, MAIN + PIXCOORD);
+        }
+        return answer;
     }
 
     protected final JSLParser getParser() {
