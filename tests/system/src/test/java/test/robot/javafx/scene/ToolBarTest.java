@@ -62,28 +62,32 @@ public class ToolBarTest {
     }
 
     private void testOverflow() {
-        Pane pane = (Pane) toolBar.queryAccessibleAttribute(AccessibleAttribute.OVERFLOW_BUTTON);
-        if(pane!=null) {
-            boolean visibleOverflow = pane.isVisible();
-            assertFalse(visibleOverflow);
-        }
+        assertOverflowNotShown();
 
         Util.runAndWait(() -> {
             setFixSize(labelA, CHILDREN_SIZE_TOO_BIG);
             labelA.setStyle(MODIFIED_STYLE);
         });
 
-        pane = (Pane) toolBar.queryAccessibleAttribute(AccessibleAttribute.OVERFLOW_BUTTON);
-        assertNotNull(pane);
-        boolean visibleOverflow = pane.isVisible();
-        assertTrue(visibleOverflow);
+        assertOverflowShown();
 
         Util.runAndWait(() -> {
             setFixSize(labelA, ORIGINAL_CHILDREN_SIZE);
-            labelA.setStyle(ORIGINAL_CHILDREN_SIZE);
+            labelA.setStyle(ORIGINAL_STYLE);
         });
 
-        pane = (Pane) toolBar.queryAccessibleAttribute(AccessibleAttribute.OVERFLOW_BUTTON);
+        assertOverflowNotShown();
+    }
+
+    private void assertOverflowShown() {
+        Pane pane = (Pane) toolBar.queryAccessibleAttribute(AccessibleAttribute.OVERFLOW_BUTTON);
+        assertNotNull(pane);
+        boolean visibleOverflow = pane.isVisible();
+        assertTrue(visibleOverflow);
+    }
+
+    private void assertOverflowNotShown() {
+        Pane pane = (Pane) toolBar.queryAccessibleAttribute(AccessibleAttribute.OVERFLOW_BUTTON);
         if(pane!=null) {
             boolean visibleOverflow = pane.isVisible();
             assertFalse(visibleOverflow);
