@@ -501,16 +501,19 @@ public class RobotTest {
 
     @Test
     public void testMouseDragMiddle() {
+        Assume.assumeTrue(!PlatformUtil.isMac()); // See JDK-8215376
         testMouseDrag(MouseButton.MIDDLE);
     }
 
     @Test
     public void testMouseDragForward() {
+        Assume.assumeTrue(!PlatformUtil.isMac()); // See JDK-8215376
         testMouseDrag(MouseButton.FORWARD);
     }
 
     @Test
     public void testMouseDragBack() {
+        Assume.assumeTrue(!PlatformUtil.isMac()); // See JDK-8215376
         testMouseDrag(MouseButton.BACK);
     }
 
