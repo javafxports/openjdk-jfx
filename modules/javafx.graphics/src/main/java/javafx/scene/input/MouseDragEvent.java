@@ -131,8 +131,8 @@ public final class MouseDragEvent extends MouseEvent{
     /**
      * Constructs new MouseDragEvent event.
      *
-     * @param source the source of the event. Can be null
-     * @param target the target of the event. Can be null
+     * @param source the source of the event, which can be {@code null}
+     * @param target the target of the event, which can be {@code null}
      * @param eventType The type of the event
      * @param x The x with respect to the scene
      * @param y The y with respect to the scene
@@ -140,7 +140,7 @@ public final class MouseDragEvent extends MouseEvent{
      * @param screenY The y coordinate relative to screen
      * @param button the mouse button used
      * @param clickCount number of click counts
-     * @param shiftDown true if shift modifier was pressed.
+     * @param shiftDown true if shift modifier was pressed
      * @param controlDown true if control modifier was pressed
      * @param altDown true if alt modifier was pressed
      * @param metaDown true if meta modifier was pressed
@@ -179,8 +179,8 @@ public final class MouseDragEvent extends MouseEvent{
     /**
      * Constructs new MouseDragEvent event.
      *
-     * @param source the source of the event. Can be null
-     * @param target the target of the event. Can be null
+     * @param source the source of the event, which can be {@code null}
+     * @param target the target of the event, which can be {@code null}
      * @param eventType The type of the event
      * @param x The x with respect to the scene
      * @param y The y with respect to the scene
@@ -188,7 +188,7 @@ public final class MouseDragEvent extends MouseEvent{
      * @param screenY The y coordinate relative to screen
      * @param button the mouse button used
      * @param clickCount number of click counts
-     * @param shiftDown true if shift modifier was pressed.
+     * @param shiftDown true if shift modifier was pressed
      * @param controlDown true if control modifier was pressed
      * @param altDown true if alt modifier was pressed
      * @param metaDown true if meta modifier was pressed
