@@ -96,6 +96,8 @@ public class RobotTest {
         test.testMousePressPrimary();
         test.testMousePressSecondary();
         test.testMousePressMiddle();
+        test.testMousePressBack();
+        test.testMousePressForward();
         test.testMouseClickPrimary();
         test.testMouseClickSecondary();
         test.testMouseClickMiddle();
@@ -303,6 +305,16 @@ public class RobotTest {
     @Test
     public void testMousePressMiddle() {
         testMouseAction(MouseAction.PRESSED, MouseButton.MIDDLE);
+    }
+
+    @Test
+    public void testMousePressBack() {
+        testMouseAction(MouseAction.PRESSED, MouseButton.BACK);
+    }
+
+    @Test
+    public void testMousePressForward() {
+        testMouseAction(MouseAction.PRESSED, MouseButton.FORWARD);
     }
 
     @Test
