@@ -63,5 +63,5 @@ public enum MouseButton {
      *
      * @since 12
      */
-    FORWARD,
+    FORWARD;
 }

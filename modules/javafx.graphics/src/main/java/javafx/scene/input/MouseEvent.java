@@ -297,6 +297,10 @@ public class MouseEvent extends InputEvent {
 
     /**
      * Constructs new MouseEvent event with null source and target.
+     *
+     * Both {@link #isBackButtonDown()}  and {@link #isForwardButtonDown()}
+     * will return {@literal false} for this event.
+     *
      * @param eventType The type of the event.
      * @param x The x with respect to the scene.
      * @param y The y with respect to the scene.
@@ -396,6 +400,10 @@ public class MouseEvent extends InputEvent {
 
     /**
      * Constructs new MouseEvent event.
+     *
+     * Both {@link #isBackButtonDown()}  and {@link #isForwardButtonDown()}
+     * will return {@literal false} for this event.
+     *
      * @param source the source of the event. Can be null.
      * @param target the target of the event. Can be null.
      * @param eventType The type of the event.
