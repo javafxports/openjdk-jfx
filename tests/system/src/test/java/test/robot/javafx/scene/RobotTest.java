@@ -486,33 +486,33 @@ public class RobotTest {
     }
 
     @Test
-    @Ignore("Flaky")
+    @Ignore("Flaky - see JDK-8215376")
     public void testMouseDragPrimary() {
         testMouseDrag(MouseButton.PRIMARY);
     }
 
     @Test
-    @Ignore("Flaky")
+    @Ignore("Flaky - see JDK-8215376")
     public void testMouseDragSecondary() {
         testMouseDrag(MouseButton.SECONDARY);
     }
 
     @Test
-    @Ignore("Flaky")
+    @Ignore("Flaky - see JDK-8215376")
     public void testMouseDragMiddle() {
         Assume.assumeTrue(!PlatformUtil.isMac() ); // See JDK-8215376
         testMouseDrag(MouseButton.MIDDLE);
     }
 
     @Test
-    @Ignore("Flaky")
+    @Ignore("Flaky - see JDK-8215376")
     public void testMouseDragForward() {
         Assume.assumeTrue(!PlatformUtil.isMac()); // See JDK-8215376
         testMouseDrag(MouseButton.FORWARD);
     }
 
     @Test
-    @Ignore("Flaky")
+    @Ignore("Flaky - see JDK-8215376")
     public void testMouseDragBack() {
         Assume.assumeTrue(!PlatformUtil.isMac()); // See JDK-8215376
         testMouseDrag(MouseButton.BACK);
