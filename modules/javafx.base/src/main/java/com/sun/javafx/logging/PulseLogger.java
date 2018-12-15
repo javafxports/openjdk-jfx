@@ -27,6 +27,8 @@ package com.sun.javafx.logging;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -96,6 +98,14 @@ public class PulseLogger {
         }
     }
 
+    /**
+     * @return true if the user requested pulse logging by setting the system
+     *         property javafx.pulseLogger to true, false otherwise.
+     */
+    public static boolean isPulseLoggingRequested() {
+        return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> Boolean.getBoolean("javafx.pulseLogger"));
+    }
+    
     // Loading known loggers reflectively, in case an expected module isn't available
     private static Logger loadLogger(String className) {
         try {

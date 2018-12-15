@@ -25,6 +25,7 @@
 package com.sun.javafx.logging.jfr;
 
 import com.sun.javafx.logging.Logger;
+import com.sun.javafx.logging.PulseLogger;
 
 import jdk.jfr.FlightRecorder;
 
@@ -38,9 +39,10 @@ public final class JFRPulseLogger extends Logger {
     private Thread fxThread;
 
     public static Logger createInstance() {
-        // Since events are off by default, and overhead is low, we can always
-        // have this pulse logger available.
-        return new JFRPulseLogger();
+        if (FlightRecorder.isInitialized() || PulseLogger.isPulseLoggingRequested()) {
+            return new JFRPulseLogger();
+        }
+        return null;
     }
 
     private JFRPulseLogger() {
