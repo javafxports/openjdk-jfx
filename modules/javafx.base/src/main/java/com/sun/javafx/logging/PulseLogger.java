@@ -105,7 +105,7 @@ public class PulseLogger {
     public static boolean isPulseLoggingRequested() {
         return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> Boolean.getBoolean("javafx.pulseLogger"));
     }
-    
+
     // Loading known loggers reflectively, in case an expected module isn't available
     private static Logger loadLogger(String className) {
         try {
