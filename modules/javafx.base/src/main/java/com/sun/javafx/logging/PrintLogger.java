@@ -143,7 +143,7 @@ class PrintLogger extends Logger {
     }
 
     public static Logger createInstance() {
-        boolean enabled = AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> Boolean.getBoolean("javafx.pulseLogger"));
+        boolean enabled = PulseLogger.isPulseLoggingRequested();
         if (enabled) {
             return new PrintLogger();
         }
