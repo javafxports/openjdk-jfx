@@ -131,6 +131,9 @@ public final class MouseDragEvent extends MouseEvent{
     /**
      * Constructs new MouseDragEvent event.
      *
+     * Both {@link #isBackButtonDown()}  and {@link #isForwardButtonDown()}
+     * will return {@literal false} for this event
+     *
      * @param source the source of the event, which can be {@code null}
      * @param target the target of the event, which can be {@code null}
      * @param eventType The type of the event
@@ -231,6 +234,9 @@ public final class MouseDragEvent extends MouseEvent{
 
     /**
      * Constructs new MouseDragEvent event with null source and target.
+     *
+     * Both {@link #isBackButtonDown()}  and {@link #isForwardButtonDown()}
+     * will return {@literal false} for this event.
      *
      * @param eventType The type of the event
      * @param x The x with respect to the scene
