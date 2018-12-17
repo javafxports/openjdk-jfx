@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,33 +23,11 @@
  * questions.
  */
 
-package com.sun.javafx.embed.swing;
+package com.sun.javafx.webkit;
 
-import java.awt.EventQueue;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import com.sun.javafx.embed.swing.newimpl.SwingFXUtilsImplInteropN;
+public class UIClientImplShim {
 
-public class SwingFXUtilsImpl {
-
-    private static SwingFXUtilsImplInteropN swFXUtilIOP;
-
-    static {
-        swFXUtilIOP = new SwingFXUtilsImplInteropN();
-    }
-
-    private static EventQueue getEventQueue() {
-        return AccessController.doPrivileged(
-                (PrivilegedAction<EventQueue>) () -> java.awt.Toolkit.getDefaultToolkit().getSystemEventQueue());
-    }
-
-    //Called with reflection from PlatformImpl to avoid dependency
-    public static void installFwEventQueue() {
-        swFXUtilIOP.setFwDispatcher(getEventQueue());
-    }
-
-    //Called with reflection from PlatformImpl to avoid dependency
-    public static void removeFwEventQueue() {
-        swFXUtilIOP.setFwDispatcher(getEventQueue());
+    public static void test_setChooseFiles(String[] files) {
+        UIClientImpl.test_setChooseFiles(files);
     }
 }
