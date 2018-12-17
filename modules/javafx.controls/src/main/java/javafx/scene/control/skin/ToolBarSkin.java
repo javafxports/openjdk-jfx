@@ -537,13 +537,6 @@ public class ToolBarSkin extends SkinBase<ToolBar> {
         }
     }
 
-    private void correctOverflow(double length) {
-        boolean overflowed = isOverflowed(length);
-        if (overflowed != overflow) {
-            organizeOverflow(length, overflow);
-        }
-    }
-
     /***************************************************************************
      *                                                                         *
      * Private implementation                                                  *
@@ -574,42 +567,11 @@ public class ToolBarSkin extends SkinBase<ToolBar> {
         getSkinnable().requestLayout();
     }
 
-    private void addNodesToToolBar() {
-        final ToolBar toolbar = getSkinnable();
-        double toolbarLength = getToolbarLength(toolbar);
-
-        // Is there overflow ?
-        boolean hasOverflow = isOverflowed(toolbarLength);
-
-        organizeOverflow(toolbarLength, hasOverflow);
-    }
-
-    private double getToolbarLength(ToolBar toolbar) {
-        double length;
-        if (getSkinnable().getOrientation() == Orientation.VERTICAL) {
-            length = snapSizeY(toolbar.getHeight()) - snappedTopInset() - snappedBottomInset() + getSpacing();
-        } else {
-            length = snapSizeX(toolbar.getWidth()) - snappedLeftInset() - snappedRightInset() + getSpacing();
+    private void correctOverflow(double length) {
+        boolean overflowed = isOverflowed(length);
+        if (overflowed != overflow) {
+            organizeOverflow(length, overflow);
         }
-        return length;
-    }
-
-    private boolean isOverflowed(double length) {
-        double x = 0;
-        boolean hasOverflow = false;
-        for (Node node : getSkinnable().getItems()) {
-            if (!node.isManaged()) continue;
-            if (getSkinnable().getOrientation() == Orientation.VERTICAL) {
-                x += snapSizeY(node.prefHeight(-1)) + getSpacing();
-            } else {
-                x += snapSizeX(node.prefWidth(-1)) + getSpacing();
-            }
-            if (x > length) {
-                hasOverflow = true;
-                break;
-            }
-        }
-        return hasOverflow;
     }
 
     private void organizeOverflow(double length, boolean hasOverflow) {
@@ -712,6 +674,43 @@ public class ToolBarSkin extends SkinBase<ToolBar> {
         overflowMenu.setManaged(overflow);
     }
 
+    private void addNodesToToolBar() {
+        final ToolBar toolbar = getSkinnable();
+        double toolbarLength = getToolbarLength(toolbar);
+
+        // Is there overflow ?
+        boolean hasOverflow = isOverflowed(toolbarLength);
+
+        organizeOverflow(toolbarLength, hasOverflow);
+    }
+
+    private double getToolbarLength(ToolBar toolbar) {
+        double length;
+        if (getSkinnable().getOrientation() == Orientation.VERTICAL) {
+            length = snapSizeY(toolbar.getHeight()) - snappedTopInset() - snappedBottomInset() + getSpacing();
+        } else {
+            length = snapSizeX(toolbar.getWidth()) - snappedLeftInset() - snappedRightInset() + getSpacing();
+        }
+        return length;
+    }
+
+    private boolean isOverflowed(double length) {
+        double x = 0;
+        boolean hasOverflow = false;
+        for (Node node : getSkinnable().getItems()) {
+            if (!node.isManaged()) continue;
+            if (getSkinnable().getOrientation() == Orientation.VERTICAL) {
+                x += snapSizeY(node.prefHeight(-1)) + getSpacing();
+            } else {
+                x += snapSizeX(node.prefWidth(-1)) + getSpacing();
+            }
+            if (x > length) {
+                hasOverflow = true;
+                break;
+            }
+        }
+        return hasOverflow;
+    }
 
     /***************************************************************************
      *                                                                         *
