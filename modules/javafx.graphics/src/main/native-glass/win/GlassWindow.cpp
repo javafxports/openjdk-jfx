@@ -499,6 +499,7 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_LBUTTONDOWN:
         case WM_RBUTTONDOWN:
         case WM_MBUTTONDOWN:
+        case WM_XBUTTONDOWN:
             CheckUngrab(); // check if other owned windows hierarchy holds the grab
             if (IsChild() && !IsFocused() && IsFocusable()) {
                 RequestFocus(com_sun_glass_events_WindowEvent_FOCUS_GAINED);
@@ -510,7 +511,6 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_RBUTTONDBLCLK:
         case WM_MBUTTONUP:
         case WM_MBUTTONDBLCLK:
-        case WM_XBUTTONDOWN:
         case WM_XBUTTONUP:
         case WM_XBUTTONDBLCLK:
         case WM_MOUSEWHEEL:
