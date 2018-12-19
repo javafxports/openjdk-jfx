@@ -179,13 +179,13 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinRobot__1mousePress
     // Support for extra buttons
     if (buttons & (1 << 3)) {
         dwFlags |= MOUSEEVENTF_XDOWN;
-        mouseData |= XBUTTON1;
+        mouseFlags |= XBUTTON1;
     }
     if (buttons & (1 << 4)) {
         dwFlags |= MOUSEEVENTF_XDOWN;
-        mouseData |= XBUTTON2;
+        mouseFlags |= XBUTTON2;
     }
-    mouseInput.mi.mouseData = mouseData;
+    mouseInput.mi.mouseData = mouseFlags;
 
     ::SendInput(1, &mouseInput, sizeof(mouseInput));
 }
@@ -224,13 +224,13 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinRobot__1mouseRelease
     // Support for extra buttons
     if (buttons & (1 << 3)) {
         dwFlags |= MOUSEEVENTF_XUP;
-        mouseData |= XBUTTON1;
+        mouseFlags |= XBUTTON1;
     }
     if (buttons & (1 << 4)) {
         dwFlags |= MOUSEEVENTF_XUP;
-        mouseData |= XBUTTON2;
+        mouseFlags |= XBUTTON2;
     }
-    mouseInput.mi.mouseData = mouseData;
+    mouseInput.mi.mouseData = mouseFlags;
 
     ::SendInput(1, &mouseInput, sizeof(mouseInput));
 }
