@@ -24,6 +24,8 @@
  */
 package test.robot.javafx.scene;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -76,6 +78,8 @@ public class RobotTest {
     static volatile Stage stage;
     static volatile Scene scene;
     static Robot robot;
+    static Set<MouseButton> pressedButtons = new HashSet<>();
+
     // A tolerance is needed because on macOS the pixel colors are affected by the configured "color profile"
     // of the display.
     private static final double TOLERANCE = 0.07;
@@ -406,6 +410,7 @@ public class RobotTest {
             switch (mouseAction) {
                 case PRESSED:
                     robot.mousePress(mouseButton);
+                    pressedButtons.add(mouseButton);
                     break;
                 case CLICKED:
                     robot.mousePress(mouseButton);
@@ -810,8 +815,10 @@ public class RobotTest {
     @After
     public void cleanup() {
         Util.runAndWait(() -> {
-            robot.mouseRelease(MouseButton.PRIMARY, MouseButton.SECONDARY, MouseButton.MIDDLE,
-                    MouseButton.BACK, MouseButton.FORWARD);
+            if (!pressedButtons.isEmpty()) {
+                robot.mouseRelease(pressedButtons.toArray(new MouseButton[]{}));
+                pressedButtons.clear();
+            }
             robot.keyRelease(KeyCode.A);
         });
     }

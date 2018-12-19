@@ -154,6 +154,8 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinRobot__1mousePress
     (JNIEnv *env, jobject jrobot, jint buttons)
 {
     DWORD dwFlags = 0L;
+    DWORD mouseFlags = 0L;
+
     // According to MSDN: Software Driving Software
     // application should consider SM_SWAPBUTTON to correctly emulate user with
     // left handed mouse setup
@@ -168,12 +170,6 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinRobot__1mousePress
     if (buttons & (1 << 2)) {
         dwFlags |= MOUSEEVENTF_MIDDLEDOWN;
     }
-    if (buttons & (1 << 3)) {
-        dwFlags |= MOUSEEVENTF_XDOWN;
-    }
-    if (buttons & (1 << 4)) {
-        dwFlags |= MOUSEEVENTF_XDOWN;
-    }
 
     INPUT mouseInput = {0};
     mouseInput.type = INPUT_MOUSE;
@@ -182,11 +178,14 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinRobot__1mousePress
 
     // Support for extra buttons
     if (buttons & (1 << 3)) {
-        mouseInput.mi.mouseData = XBUTTON1;
+        dwFlags |= MOUSEEVENTF_XDOWN;
+        mouseData |= XBUTTON1;
     }
     if (buttons & (1 << 4)) {
-        mouseInput.mi.mouseData = XBUTTON2;
+        dwFlags |= MOUSEEVENTF_XDOWN;
+        mouseData |= XBUTTON2;
     }
+    mouseInput.mi.mouseData = mouseData;
 
     ::SendInput(1, &mouseInput, sizeof(mouseInput));
 }
@@ -200,6 +199,8 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinRobot__1mouseRelease
     (JNIEnv *env, jobject jrobot, jint buttons)
 {
     DWORD dwFlags = 0L;
+    DWORD mouseFlags = 0L;
+
     // According to MSDN: Software Driving Software
     // application should consider SM_SWAPBUTTON to correctly emulate user with
     // left handed mouse setup
@@ -214,12 +215,6 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinRobot__1mouseRelease
     if (buttons & (1 << 2)) {
         dwFlags |= MOUSEEVENTF_MIDDLEUP;
     }
-    if (buttons & (1 << 3)) {
-        dwFlags |= MOUSEEVENTF_XUP;
-    }
-    if (buttons & (1 << 4)) {
-        dwFlags |= MOUSEEVENTF_XUP;
-    }
 
     INPUT mouseInput = {0};
     mouseInput.type = INPUT_MOUSE;
@@ -228,11 +223,14 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinRobot__1mouseRelease
 
     // Support for extra buttons
     if (buttons & (1 << 3)) {
-        mouseInput.mi.mouseData = XBUTTON1;
+        dwFlags |= MOUSEEVENTF_XUP;
+        mouseData |= XBUTTON1;
     }
     if (buttons & (1 << 4)) {
-        mouseInput.mi.mouseData = XBUTTON2;
+        dwFlags |= MOUSEEVENTF_XUP;
+        mouseData |= XBUTTON2;
     }
+    mouseInput.mi.mouseData = mouseData;
 
     ::SendInput(1, &mouseInput, sizeof(mouseInput));
 }
