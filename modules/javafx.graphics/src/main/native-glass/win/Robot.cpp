@@ -170,12 +170,6 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinRobot__1mousePress
     if (buttons & (1 << 2)) {
         dwFlags |= MOUSEEVENTF_MIDDLEDOWN;
     }
-
-    INPUT mouseInput = {0};
-    mouseInput.type = INPUT_MOUSE;
-    mouseInput.mi.time = 0;
-    mouseInput.mi.dwFlags = dwFlags;
-
     // Support for extra buttons
     if (buttons & (1 << 3)) {
         dwFlags |= MOUSEEVENTF_XDOWN;
@@ -185,6 +179,11 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinRobot__1mousePress
         dwFlags |= MOUSEEVENTF_XDOWN;
         mouseFlags |= XBUTTON2;
     }
+
+    INPUT mouseInput = {0};
+    mouseInput.type = INPUT_MOUSE;
+    mouseInput.mi.time = 0;
+    mouseInput.mi.dwFlags = dwFlags;
     mouseInput.mi.mouseData = mouseFlags;
 
     ::SendInput(1, &mouseInput, sizeof(mouseInput));
@@ -215,12 +214,6 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinRobot__1mouseRelease
     if (buttons & (1 << 2)) {
         dwFlags |= MOUSEEVENTF_MIDDLEUP;
     }
-
-    INPUT mouseInput = {0};
-    mouseInput.type = INPUT_MOUSE;
-    mouseInput.mi.time = 0;
-    mouseInput.mi.dwFlags = dwFlags;
-
     // Support for extra buttons
     if (buttons & (1 << 3)) {
         dwFlags |= MOUSEEVENTF_XUP;
@@ -230,6 +223,11 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinRobot__1mouseRelease
         dwFlags |= MOUSEEVENTF_XUP;
         mouseFlags |= XBUTTON2;
     }
+
+    INPUT mouseInput = {0};
+    mouseInput.type = INPUT_MOUSE;
+    mouseInput.mi.time = 0;
+    mouseInput.mi.dwFlags = dwFlags;
     mouseInput.mi.mouseData = mouseFlags;
 
     ::SendInput(1, &mouseInput, sizeof(mouseInput));
