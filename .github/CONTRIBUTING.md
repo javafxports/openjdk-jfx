@@ -123,13 +123,13 @@ Please also follow these formatting guidelines:
 OpenJFX uses Gradle for its build. Before submitting your changes, run the test suite to make sure that nothing is broken, with:
 
 ```sh
-gradle all test
+bash ./gradlew all test
 ```
 
 If you are changing anything that might possibly affect rendering, you should run a full test with robot enabled:
 
 ```sh
-gradle -PFULL_TEST=true -PUSE_ROBOT=true all test
+bash ./gradlew -PFULL_TEST=true -PUSE_ROBOT=true all test
 ```
 
 Even more documentation on OpenJFX projects and its build system can be found on the
