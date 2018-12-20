@@ -29,7 +29,6 @@ import javafx.css.CssMetaData;
 import static test.com.sun.javafx.scene.control.infrastructure.ControlTestUtils.*;
 
 import javafx.scene.AccessibleAttribute;
-import javafx.scene.control.Label;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import test.com.sun.javafx.scene.control.infrastructure.KeyEventFirer;
@@ -82,11 +81,6 @@ public class ToolbarTest {
         node1 = new Rectangle();
         node2 = new Rectangle(2.0,4.0);
         toolBarWithItems = new ToolBar(node1,node2);
-
-        root = new StackPane();
-        scene = new Scene(root);
-        stage = new Stage();
-        stage.setScene(scene);
     }
 
 
@@ -258,8 +252,14 @@ public class ToolbarTest {
     }
 
     private void initializeToolBar() {
+        root = new StackPane(toolBar);
         root.setPrefSize(400, 400);
-        root.getChildren().add(toolBar);
+
+        scene = new Scene(root);
+
+        stage = new Stage();
+        stage.setScene(scene);
+
         toolBar.getItems().addAll(node1, node2);
         setFixSize(toolBar, TOOLBAR_SIZE);
     }
