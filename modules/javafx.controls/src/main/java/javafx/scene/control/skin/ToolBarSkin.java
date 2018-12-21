@@ -575,7 +575,6 @@ public class ToolBarSkin extends SkinBase<ToolBar> {
     }
 
     private void organizeOverflow(double length, boolean hasOverflow) {
-        double x;
         if (hasOverflow) {
             if (getSkinnable().getOrientation() == Orientation.VERTICAL) {
                 length -= snapSizeY(overflowMenu.prefHeight(-1));
@@ -586,7 +585,8 @@ public class ToolBarSkin extends SkinBase<ToolBar> {
         }
 
         // Determine which node goes to the toolbar and which goes to the overflow.
-        x = 0;
+
+        double x = 0;
         overflowMenuItems.clear();
         box.getChildren().clear();
         for (Node node : getSkinnable().getItems()) {
