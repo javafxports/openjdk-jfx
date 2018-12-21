@@ -296,9 +296,8 @@ public class ToolbarTest {
 
     private void assertOverflowNotShown() {
         Pane pane = (Pane) toolBar.queryAccessibleAttribute(AccessibleAttribute.OVERFLOW_BUTTON);
-        if (pane!=null) {
-            assertFalse(pane.isVisible());
-        }
+        assertNotNull(pane);
+        assertFalse(pane.isVisible());
     }
 
     private void assertOverflowShown() {
