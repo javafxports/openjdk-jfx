@@ -280,11 +280,11 @@ public class ToolbarTest {
     }
 
     private void setFixSize(Node node, double size) {
-        if(node instanceof Region) {
+        if (node instanceof Region) {
             ((Region) node).setMinSize(Pane.USE_PREF_SIZE, Pane.USE_PREF_SIZE);
             ((Region) node).setMaxSize(Pane.USE_PREF_SIZE, Pane.USE_PREF_SIZE);
             ((Region) node).setPrefSize(size, size);
-        } else if(node instanceof Rectangle) {
+        } else if (node instanceof Rectangle) {
             ((Rectangle) node).setHeight(size);
             ((Rectangle) node).setWidth(size);
         }
@@ -296,16 +296,14 @@ public class ToolbarTest {
 
     private void assertOverflowNotShown() {
         Pane pane = (Pane) toolBar.queryAccessibleAttribute(AccessibleAttribute.OVERFLOW_BUTTON);
-        if(pane!=null) {
-            boolean visibleOverflow = pane.isVisible();
-            assertFalse(visibleOverflow);
+        if (pane!=null) {
+            assertFalse(pane.isVisible());
         }
     }
 
     private void assertOverflowShown() {
         Pane pane = (Pane) toolBar.queryAccessibleAttribute(AccessibleAttribute.OVERFLOW_BUTTON);
         assertNotNull(pane);
-        boolean visibleOverflow = pane.isVisible();
-        assertTrue(visibleOverflow);
+        assertTrue(pane.isVisible());
     }
 }
