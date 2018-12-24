@@ -291,12 +291,15 @@ char *StringForMsg(UINT msg) {
         case WM_LBUTTONDOWN: return "WM_LBUTTONDOWN";
         case WM_RBUTTONDOWN: return "WM_RBUTTONDOWN";
         case WM_MBUTTONDOWN: return "WM_MBUTTONDOWN";
+        case WM_XBUTTONDOWN: return "WM_XBUTTONDOWN";
         case WM_LBUTTONUP: return "WM_LBUTTONUP";
         case WM_LBUTTONDBLCLK: return "WM_LBUTTONDBLCLK";
         case WM_RBUTTONUP: return "WM_RBUTTONUP";
         case WM_RBUTTONDBLCLK: return "WM_RBUTTONDBLCLK";
         case WM_MBUTTONUP: return "WM_MBUTTONUP";
         case WM_MBUTTONDBLCLK: return "WM_MBUTTONDBLCLK";
+        case WM_XBUTTONUP: return "WM_XBUTTONUP";
+        case WM_XBUTTONDBLCLK: return "WM_XBUTTONDBLCLK";
         case WM_MOUSEWHEEL: return "WM_MOUSEWHEEL";
         case WM_MOUSEHWHEEL: return "WM_MOUSEHWHEEL";
         case WM_MOUSELEAVE: return "WM_MOUSELEAVE";

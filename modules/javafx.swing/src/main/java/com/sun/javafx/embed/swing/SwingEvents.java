@@ -71,6 +71,12 @@ public class SwingEvents {
             case MouseEvent.BUTTON3:
                 abstractButton = AbstractEvents.MOUSEEVENT_SECONDARY_BUTTON;
                 break;
+            case 4:
+                abstractButton = AbstractEvents.MOUSEEVENT_BACK_BUTTON;
+                break;
+            case 5:
+                abstractButton = AbstractEvents.MOUSEEVENT_FORWARD_BUTTON;
+                break;
             default:
                 break;
         }
@@ -201,6 +207,10 @@ public class SwingEvents {
                 return MouseEvent.BUTTON3;
             case MIDDLE:
                 return MouseEvent.BUTTON2;
+            case BACK:
+                return 4;
+            case FORWARD:
+                return 5;
         }
         return 0;
     }
