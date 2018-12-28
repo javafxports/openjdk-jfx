@@ -64,8 +64,6 @@ public class ToolbarTest {
     private ToolBar toolBarWithItems;//Items
 
     private Toolkit tk;
-    private Scene scene;
-    private Stage stage;
     private StackPane root;
 
     private Node node1;
@@ -255,9 +253,8 @@ public class ToolbarTest {
         root = new StackPane(toolBar);
         root.setPrefSize(400, 400);
 
-        scene = new Scene(root);
-
-        stage = new Stage();
+        Scene scene = new Scene(root);
+        Stage stage = new Stage();
         stage.setScene(scene);
 
         toolBar.getItems().addAll(node1, node2);
