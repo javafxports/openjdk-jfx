@@ -1024,6 +1024,10 @@ public abstract class PrismFontFactory implements FontFactory {
         fontRegInfo[0].add(jreFontDir + jreDefaultFontFile);
         fontRegInfo[1].add(jreDefaultFont);
 
+        // Add Arial Unicode to Windows fallback list
+        fontRegInfo[0].add(getPathNameWindows("arialuni.ttf"));
+        fontRegInfo[1].add("Arial Unicode MS");
+
         if (PlatformUtil.isWinVistaOrLater()) {
             // CJK Ext B Supplementary character fallbacks.
             fontRegInfo[0].add(getPathNameWindows("mingliub.ttc"));
