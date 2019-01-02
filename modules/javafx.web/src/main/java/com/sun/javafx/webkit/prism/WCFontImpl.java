@@ -126,6 +126,9 @@ final class WCFontImpl extends WCFont {
     }
 
     @Override public int[] getGlyphCodes(char[] chars) {
+        // Calling TextLayout.getRuns will lead to loading correct fallback
+        // font from native font engine.
+        TextUtilities.createLayout(new String(chars), getPlatformFont()).getRuns();
         int[] glyphs = new int[chars.length];
         CharToGlyphMapper mapper = getFontStrike().getFontResource().getGlyphMapper();
         mapper.charsToGlyphs(chars.length, chars, glyphs);
