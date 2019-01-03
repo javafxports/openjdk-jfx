@@ -845,6 +845,13 @@ jobject newD2D1_MATRIX_3X2_F(JNIEnv *env, D2D1_MATRIX_3X2_F *lpStruct)
 /*                                                                        */
 /**************************************************************************/
 
+static void WICImagingFactoryFlsCallback(void *data)
+{
+    IWICImagingFactory *iwicImagingFactory = (IWICImagingFactory *)data;
+    iwicImagingFactory->Release();
+    CoUninitialize();
+}
+
 JNIEXPORT jlong JNICALL OS_NATIVE(_1WICCreateImagingFactory)
     (JNIEnv *env, jclass that)
 {
@@ -866,10 +873,20 @@ JNIEXPORT jlong JNICALL OS_NATIVE(_1WICCreateImagingFactory)
             CLSCTX_INPROC_SERVER,
             IID_PPV_ARGS(&result)
             );
+    if (!SUCCEEDED(hr)) goto fail;
 
-    /* Unload COM as no other COM objects will be create directly */
+    /* Setup a fibre local storage slot to call WICImagingFactoryFlsCallback()
+     * with the created IWICImagingFactory on thread exit. */
+    DWORD flsIndex = FlsAlloc(WICImagingFactoryFlsCallback);
+    if (flsIndex == FLS_OUT_OF_INDEXES) goto fail;
+    FlsSetValue(flsIndex, result);
+
+    return (jlong)result;
+
+fail:
+    if (result) result->Release();
     CoUninitialize();
-    return SUCCEEDED(hr) ? (jlong)result : NULL;
+    return NULL;
 }
 
 JNIEXPORT jlong JNICALL OS_NATIVE(_1D2D1CreateFactory)
