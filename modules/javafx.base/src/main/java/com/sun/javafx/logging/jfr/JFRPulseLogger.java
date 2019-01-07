@@ -30,7 +30,7 @@ import com.sun.javafx.logging.PulseLogger;
 import jdk.jfr.FlightRecorder;
 
 public final class JFRPulseLogger extends Logger {
-    private final ThreadLocal<JFRPulseEvent> currentPulseEvent;
+    private final ThreadLocal<JFRPulsePhaseEvent> currentPulsePhaseEvent;
     private final ThreadLocal<JFRInputEvent> currentInputEvent;
 
     private int pulseNumber;
@@ -47,11 +47,11 @@ public final class JFRPulseLogger extends Logger {
 
     private JFRPulseLogger() {
         FlightRecorder.register(JFRInputEvent.class);
-        FlightRecorder.register(JFRPulseEvent.class);
-        currentPulseEvent = new ThreadLocal<JFRPulseEvent>() {
+        FlightRecorder.register(JFRPulsePhaseEvent.class);
+        currentPulsePhaseEvent = new ThreadLocal<JFRPulsePhaseEvent>() {
             @Override
-            public JFRPulseEvent initialValue() {
-                return new JFRPulseEvent();
+            public JFRPulsePhaseEvent initialValue() {
+                return new JFRPulsePhaseEvent();
             }
         };
         currentInputEvent = new ThreadLocal<JFRInputEvent>() {
@@ -96,7 +96,7 @@ public final class JFRPulseLogger extends Logger {
      */
     @Override
     public void newPhase(String phaseName) {
-        JFRPulseEvent event = currentPulseEvent.get();
+        JFRPulsePhaseEvent event = currentPulsePhaseEvent.get();
 
         /* Cleanup if no longer enabled */
         if (!event.isEnabled()) {
@@ -115,11 +115,11 @@ public final class JFRPulseLogger extends Logger {
             return;
         }
 
-        event = new JFRPulseEvent();
+        event = new JFRPulsePhaseEvent();
         event.begin();
         event.setPhaseName(phaseName);
         event.setPulseId(Thread.currentThread() == fxThread ? fxPulseNumber : renderPulseNumber);
-        currentPulseEvent.set(event);
+        currentPulsePhaseEvent.set(event);
     }
 
     @Override

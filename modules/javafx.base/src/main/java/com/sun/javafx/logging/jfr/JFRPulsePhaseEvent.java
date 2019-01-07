@@ -33,13 +33,13 @@ import jdk.jfr.Label;
 import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 
-@Name("javafx.Pulse")
+@Name("javafx.PulsePhase")
 @Label("JavaFX Pulse Phase")
 @Category("JavaFX")
 @Description("Describes a phase in JavaFX pulse processing")
 @StackTrace(false)
 @Enabled(false)
-public final class JFRPulseEvent extends Event {
+public final class JFRPulsePhaseEvent extends Event {
     @PulseId
     @Label("Pulse Id")
     private int pulseId;
