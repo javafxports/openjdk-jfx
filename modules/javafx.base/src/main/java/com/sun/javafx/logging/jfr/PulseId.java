@@ -42,7 +42,7 @@ import jdk.jfr.Relational;
  * related events.
  */
 @Relational
-@Name("javafx.jfr.PulseId")
+@Name("javafx.PulseId")
 @Retention(RUNTIME)
 @Target(FIELD)
 @Description("Binds events with same pulse id together")

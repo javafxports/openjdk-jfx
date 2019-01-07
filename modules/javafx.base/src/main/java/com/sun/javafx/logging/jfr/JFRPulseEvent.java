@@ -30,8 +30,10 @@ import jdk.jfr.Description;
 import jdk.jfr.Enabled;
 import jdk.jfr.Event;
 import jdk.jfr.Label;
+import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 
+@Name("javafx.Pulse")
 @Label("JavaFX Pulse Phase")
 @Category("JavaFX")
 @Description("Describes a phase in JavaFX pulse processing")
