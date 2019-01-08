@@ -1078,9 +1078,20 @@ public abstract class Node implements EventTarget, Styleable {
         // isTreeShowing needs to take into account of Window's showing
         if (oldScene != null) {
             oldScene.windowProperty().removeListener(sceneWindowChangedListener);
+
+            Window window = oldScene.windowProperty().get();
+            if(window != null) {
+                window.showingProperty().removeListener(windowShowingChangedListener);
+            }
         }
         if (newScene != null) {
             newScene.windowProperty().addListener(sceneWindowChangedListener);
+
+            Window window = newScene.windowProperty().get();
+            if(window != null) {
+                window.showingProperty().addListener(windowShowingChangedListener);
+            }
+
         }
         updateTreeShowing();
 
