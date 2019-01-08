@@ -112,6 +112,7 @@ ImageBuffer::ImageBuffer(
     float resolutionScale,
     ColorSpace,
     RenderingMode,
+    const HostWindow*,
     bool& success
 )
     : m_data(size, *this, resolutionScale)
@@ -491,7 +492,7 @@ Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double
         static jmethodID midToData = env->GetMethodID(
                 PG_GetImageClass(env),
                 "toData",
-                "(Ljava/lang/String;)Ljava/lang/String;");
+                "(Ljava/lang/String;)[B");
         ASSERT(midToData);
 
         JLocalRef<jbyteArray> jdata((jbyteArray)env->CallObjectMethod(

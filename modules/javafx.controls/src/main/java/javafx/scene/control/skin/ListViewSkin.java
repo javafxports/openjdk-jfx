@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -570,7 +570,7 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
      * if this is a horizontal container, then the scrolling will be to the right.
      */
     private int onScrollPageDown(boolean isFocusDriven) {
-        ListCell<T> lastVisibleCell = flow.getLastVisibleCellWithinViewPort();
+        ListCell<T> lastVisibleCell = flow.getLastVisibleCellWithinViewport();
         if (lastVisibleCell == null) return -1;
 
         final SelectionModel<T> sm = getSkinnable().getSelectionModel();
@@ -597,7 +597,7 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
                 // to be the top-most cell, or at least as far to the top as we can go.
                 flow.scrollToTop(lastVisibleCell);
 
-                ListCell<T> newLastVisibleCell = flow.getLastVisibleCellWithinViewPort();
+                ListCell<T> newLastVisibleCell = flow.getLastVisibleCellWithinViewport();
                 lastVisibleCell = newLastVisibleCell == null ? lastVisibleCell : newLastVisibleCell;
             }
         } else {
@@ -616,7 +616,7 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
      * if this is a horizontal container, then the scrolling will be to the left.
      */
     private int onScrollPageUp(boolean isFocusDriven) {
-        ListCell<T> firstVisibleCell = flow.getFirstVisibleCellWithinViewPort();
+        ListCell<T> firstVisibleCell = flow.getFirstVisibleCellWithinViewport();
         if (firstVisibleCell == null) return -1;
 
         final SelectionModel<T> sm = getSkinnable().getSelectionModel();
@@ -642,7 +642,7 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
                 // to be the bottom-most cell, or at least as far to the bottom as we can go.
                 flow.scrollToBottom(firstVisibleCell);
 
-                ListCell<T> newFirstVisibleCell = flow.getFirstVisibleCellWithinViewPort();
+                ListCell<T> newFirstVisibleCell = flow.getFirstVisibleCellWithinViewport();
                 firstVisibleCell = newFirstVisibleCell == null ? firstVisibleCell : newFirstVisibleCell;
             }
         } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import com.sun.javafx.scene.control.VirtualScrollBar;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.control.IndexedCell;
+import javafx.scene.control.ScrollBar;
 import javafx.scene.layout.StackPane;
 
 public class VirtualFlowShim<T extends IndexedCell> extends VirtualFlow<T> {
@@ -59,11 +60,11 @@ public class VirtualFlowShim<T extends IndexedCell> extends VirtualFlow<T> {
         return super.getMaxPrefBreadth();
     }
 
-    public VirtualScrollBar shim_getHbar() {
+    public ScrollBar shim_getHbar() {
         return super.getHbar();
     }
 
-    public VirtualScrollBar shim_getVbar() {
+    public ScrollBar shim_getVbar() {
         return super.getVbar();
     }
 

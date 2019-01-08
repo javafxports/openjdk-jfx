@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -138,9 +138,6 @@ public class ES2Backend extends GLSLBackend {
         // at the top of the program, if needed
         if (isPixcoordReferenced) {
             sb.append("uniform vec4 jsl_pixCoordOffset;\n");
-            sb.append("vec2 pixcoord = vec2(\n");
-            sb.append("    gl_FragCoord.x-jsl_pixCoordOffset.x,\n");
-            sb.append("    ((jsl_pixCoordOffset.z-gl_FragCoord.y)*jsl_pixCoordOffset.w)-jsl_pixCoordOffset.y);\n");
         }
 
         return sb.toString();

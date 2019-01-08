@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -118,16 +118,18 @@ public class TableViewSkin<T> extends TableViewSkinBase<T, T, TableView<T>, Tabl
         flow.getHbar().addEventFilter(MouseEvent.MOUSE_PRESSED, ml);
 
         // init the behavior 'closures'
-        behavior.setOnFocusPreviousRow(() -> onFocusPreviousCell());
-        behavior.setOnFocusNextRow(() -> onFocusNextCell());
+        behavior.setOnFocusPreviousRow(() -> onFocusAboveCell());
+        behavior.setOnFocusNextRow(() -> onFocusBelowCell());
         behavior.setOnMoveToFirstCell(() -> onMoveToFirstCell());
         behavior.setOnMoveToLastCell(() -> onMoveToLastCell());
         behavior.setOnScrollPageDown(isFocusDriven -> onScrollPageDown(isFocusDriven));
         behavior.setOnScrollPageUp(isFocusDriven -> onScrollPageUp(isFocusDriven));
-        behavior.setOnSelectPreviousRow(() -> onSelectPreviousCell());
-        behavior.setOnSelectNextRow(() -> onSelectNextCell());
+        behavior.setOnSelectPreviousRow(() -> onSelectAboveCell());
+        behavior.setOnSelectNextRow(() -> onSelectBelowCell());
         behavior.setOnSelectLeftCell(() -> onSelectLeftCell());
         behavior.setOnSelectRightCell(() -> onSelectRightCell());
+        behavior.setOnFocusLeftCell(() -> onFocusLeftCell());
+        behavior.setOnFocusRightCell(() -> onFocusRightCell());
 
         registerChangeListener(control.fixedCellSizeProperty(), e -> flow.setFixedCellSize(getSkinnable().getFixedCellSize()));
 
