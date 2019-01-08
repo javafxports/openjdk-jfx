@@ -157,15 +157,10 @@ JLObject URLLoader::load(bool asynchronous,
     ASSERT(webPage);
 
     String headerString;
-    const HTTPHeaderMap& headerMap = request.httpHeaderFields();
-    for (
-        HTTPHeaderMap::const_iterator it = headerMap.begin();
-        headerMap.end() != it;
-        ++it)
-    {
-        headerString.append(it->key);
+    for (const auto& header : request.httpHeaderFields()) {
+        headerString.append(header.key);
         headerString.append(": ");
-        headerString.append(it->value);
+        headerString.append(header.value);
         headerString.append("\n");
     }
 
@@ -351,13 +346,7 @@ void URLLoader::SynchronousTarget::didFail(const ResourceError& error)
 
 } // namespace WebCore
 
-using namespace WebCore;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-static ResourceResponse setupResponse(JNIEnv* env,
+static WebCore::ResourceResponse setupResponse(JNIEnv* env,
                           jint status,
                           jstring contentType,
                           jstring contentEncoding,
@@ -365,6 +354,7 @@ static ResourceResponse setupResponse(JNIEnv* env,
                           jstring headers,
                           jstring url)
 {
+    using namespace WebCore;
     ResourceResponse response { };
 
     if (status > 0) {
@@ -423,6 +413,7 @@ static ResourceResponse setupResponse(JNIEnv* env,
 JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidSendData
   (JNIEnv*, jclass, jlong totalBytesSent, jlong totalBytesToBeSent, jlong data)
 {
+    using namespace WebCore;
     URLLoader::Target* target =
             static_cast<URLLoader::Target*>(jlong_to_ptr(data));
     ASSERT(target);
@@ -434,6 +425,7 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkWillSendRequ
    jstring contentType, jstring contentEncoding, jlong contentLength,
    jstring headers, jstring url, jlong data)
 {
+    using namespace WebCore;
     URLLoader::Target* target =
             static_cast<URLLoader::Target*>(jlong_to_ptr(data));
     ASSERT(target);
@@ -455,6 +447,7 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidReceiveRe
    jstring contentEncoding, jlong contentLength, jstring headers,
    jstring url, jlong data)
 {
+    using namespace WebCore;
     URLLoader::Target* target =
             static_cast<URLLoader::Target*>(jlong_to_ptr(data));
     ASSERT(target);
@@ -475,6 +468,7 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidReceiveDa
   (JNIEnv* env, jclass, jobject byteBuffer, jint position, jint remaining,
    jlong data)
 {
+    using namespace WebCore;
     URLLoader::Target* target =
             static_cast<URLLoader::Target*>(jlong_to_ptr(data));
     ASSERT(target);
@@ -486,6 +480,7 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidReceiveDa
 JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidFinishLoading
   (JNIEnv*, jclass, jlong data)
 {
+    using namespace WebCore;
     URLLoader::Target* target =
             static_cast<URLLoader::Target*>(jlong_to_ptr(data));
     ASSERT(target);
@@ -496,6 +491,7 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidFail
   (JNIEnv* env, jclass, jint errorCode, jstring url, jstring message,
    jlong data)
 {
+    using namespace WebCore;
     URLLoader::Target* target =
             static_cast<URLLoader::Target*>(jlong_to_ptr(data));
     ASSERT(target);
@@ -505,7 +501,3 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_URLLoaderBase_twkDidFail
             URL(env, url),
             String(env, message)));
 }
-
-#ifdef __cplusplus
-}
-#endif
