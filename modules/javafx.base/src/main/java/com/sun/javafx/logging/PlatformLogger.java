@@ -118,22 +118,22 @@ public class PlatformLogger implements System.Logger {
      */
     @Override
     public String getName() {
-       throw new UnsupportedOperationException("not implemented");
+        return loggerProxy.getName();
     }
 
     @Override
     public boolean isLoggable(System.Logger.Level level) {
-        throw new UnsupportedOperationException("not implemented");
+        return loggerProxy.isLoggable(level);
     }
 
     @Override
     public void log(System.Logger.Level level, ResourceBundle bundle, String format, Object... params) {
-        throw new UnsupportedOperationException("not implemented");
+        loggerProxy.log(level, bundle, format, params);
     }
 
     @Override
     public void log(System.Logger.Level level, ResourceBundle bundle, String msg, Throwable thrown) {
-        throw new UnsupportedOperationException("not implemented");
+        loggerProxy.log(level, bundle, msg, thrown);
     }
 
     // ------------------------------------------------------------------------
