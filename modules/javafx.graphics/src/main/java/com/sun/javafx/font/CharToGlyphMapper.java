@@ -25,6 +25,8 @@
 
 package com.sun.javafx.font;
 
+import com.sun.javafx.text.GlyphLayout;
+
 /*
  * NB the versions that take a char as an int are used by the opentype
  * layout engine. If that remains in native these methods may not be
@@ -32,17 +34,29 @@ package com.sun.javafx.font;
  */
 public abstract class CharToGlyphMapper {
 
-    public static final int HI_SURROGATE_SHIFT = 10;
-    public static final int HI_SURROGATE_START = 0xD800;
-    public static final int HI_SURROGATE_END = 0xDBFF;
-    public static final int LO_SURROGATE_START = 0xDC00;
-    public static final int LO_SURROGATE_END = 0xDFFF;
-    public static final int SURROGATES_START = 0x10000;
-
     public static final int MISSING_GLYPH = 0;
     public static final int INVISIBLE_GLYPH_ID = 0xffff;
 
+    public static final int SVS_START = 0xFE00;  // VS1
+    public static final int SVS_END   = 0xFE0F;  // VS16
+    public static final int IVS_START = 0xE0100; // VS17
+    public static final int IVS_END   = 0xE01EF; // VS256
+    public static final int FVS_START = 0x180B;  // FVS1
+    public static final int FVS_END   = 0x180D;  // FVS3
+
     protected int missingGlyph = MISSING_GLYPH;
+
+    public static boolean isVS(int code) {
+        return (isIVS(code) || isSVS(code));
+    }
+
+    public static boolean isSVS(int code) {
+        return (code >= SVS_START && code <= SVS_END);
+    }
+
+    public static boolean isIVS(int code) {
+        return (code >= IVS_START && code <= IVS_END);
+    }
 
     public boolean canDisplay(char cp) {
         int glyph = charToGlyph(cp);
@@ -53,35 +67,82 @@ public abstract class CharToGlyphMapper {
         return missingGlyph;
     }
 
-    public abstract int getGlyphCode(int charCode);
+    public abstract int getGlyphCode(int charCode, int vs);
 
-    public int charToGlyph(char unicode) {
-        return getGlyphCode(unicode);
+    public final int charToGlyph(char unicode) {
+        return getGlyphCode(unicode, (char)0);
     }
 
-    public int charToGlyph(int unicode) {
-        return getGlyphCode(unicode);
+    public final int charToGlyph(int unicode) {
+        return getGlyphCode(unicode, 0);
+    }
+
+    public int charToGlyph(char unicode, char vs) {
+        return getGlyphCode(unicode, vs);
+    }
+
+    public int charToGlyph(int unicode, int vs) {
+        return getGlyphCode(unicode, vs);
     }
 
     public void charsToGlyphs(int start, int count, char[] unicodes,
                               int[] glyphs, int glyphStart) {
-        for (int i=0; i<count; i++) {
-            int code = unicodes[start + i]; // char is unsigned.
-            if (code >= HI_SURROGATE_START &&
-                code <= HI_SURROGATE_END && i + 1 < count) {
-                char low = unicodes[start + i + 1];
 
-                if (low >= LO_SURROGATE_START &&
-                    low <= LO_SURROGATE_END) {
-                    code = ((code - HI_SURROGATE_START) << HI_SURROGATE_SHIFT) +
-                        low - LO_SURROGATE_START + SURROGATES_START;
-                    glyphs[glyphStart + i] = getGlyphCode(code);
-                    i += 1; // Empty glyph slot after surrogate
-                    glyphs[glyphStart + i] = INVISIBLE_GLYPH_ID;
-                    continue;
+        /* implement following patterns
+         * (A) Normal char  (All chars except SurrogatePair, IVS, SVS)
+         * (B) Surrogate_high + Surrogate_low
+         *
+         * (C) CJK + IVS_high + IVS_low
+         * (D) IVS_high + IVS_low  (IVS only, not CJK + IVS)
+         * (E) Surrogate_high + Surrogate_low + IVS_high + IVS_low
+         *
+         * (F) CJK + SVS
+         * (G) SVS  (SVS only, not CJK + SVS)
+         * (H) Surrogate_high + Surrogate_low + SVS
+         */
+        int prevSurrogate = 0; // store surrogate pair to handle (E)(H)
+        for (int i=0; i<count; i++) {
+            int st = start + i;
+            int code = unicodes[st]; // char is unsigned.
+            boolean isSURROGATE = false;
+
+            if (Character.isHighSurrogate(unicodes[st]) &&
+                i + 1 < count && Character.isLowSurrogate(unicodes[st + 1])) {
+                code = Character.toCodePoint(unicodes[st], unicodes[st + 1]);
+                isSURROGATE = true;
+            }
+
+            if (isSURROGATE == false && isSVS(code) == false) {
+                glyphs[glyphStart + i] = getGlyphCode(code, 0); // (A) ASCII etc
+                prevSurrogate = 0;
+            } else if (isSURROGATE && isIVS(code) == false) {
+                glyphs[glyphStart + i] = getGlyphCode(code, 0); // (B) Surrogate
+                prevSurrogate = code; // store surrogate pair
+            } else { // == else if (isIVS || isSVS)
+                int glSt;
+                glSt = glyphStart + i;
+                if (prevSurrogate == 0) {
+                    if (i > 0 && GlyphLayout.isIdeographic(unicodes[st - 1])) {
+                        glyphs[glSt - 1] =
+                          getGlyphCode(unicodes[st - 1], code); // (C) (F) VS
+                        glyphs[glSt] = INVISIBLE_GLYPH_ID;
+                    } else {
+                        glyphs[glSt] = getGlyphCode(code, 0); // (D) (G) VS only
+                    }
+                } else { // Surrogate + VS
+                    glyphs[glSt - 2] =
+                      getGlyphCode(prevSurrogate, code); // (E) (H)
+                    glyphs[glSt - 1] = INVISIBLE_GLYPH_ID;
+                    glyphs[glSt] = INVISIBLE_GLYPH_ID;
+                    prevSurrogate = 0;
                 }
             }
-            glyphs[glyphStart + i] = getGlyphCode(code);
+
+            if (isSURROGATE) {
+                i += 1; // Empty glyph slot after surrogate
+                glyphs[glyphStart + i] = INVISIBLE_GLYPH_ID;
+                continue;
+            }
         }
     }
 

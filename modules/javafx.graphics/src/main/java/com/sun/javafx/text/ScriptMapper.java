@@ -24,6 +24,7 @@
  */
 
 package com.sun.javafx.text;
+import com.sun.javafx.PlatformUtil;
 
 public class ScriptMapper {
 
@@ -80,7 +81,8 @@ public class ScriptMapper {
      * in the case where the caller interprets 'layout' to mean where
      * one 'char' (ie the java type char) does not map to one glyph
      */
-    private static final int MAX_LAYOUT_CHARCODE = 0x206F;
+    private static final int MAX_LAYOUT_CHARCODE
+     = (PlatformUtil.isWindows() || PlatformUtil.isMac()) ? 0xE01EF : 0x206F;
 
     /* If the character code falls into any of a number of unicode ranges
      * where we know that simple left->right layout mapping chars to glyphs
@@ -164,6 +166,14 @@ public class ScriptMapper {
             return true;
         }
         else if (code >= 0x206a && code <= 0x206f) { // directional control
+            return true;
+        }
+        else if (code >= 0xfe00 && code <= 0xfe0f) {
+            // SVS (Standardized Variation Sequence)
+            return true;
+        }
+        else if (code >= 0xe0100 && code <= 0xe01ef) {
+            // IVS (Ideographic Variation Sequence)
             return true;
         }
         return false;

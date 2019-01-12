@@ -405,7 +405,7 @@ public abstract class GlyphLayout {
         }
     }
 
-    private static boolean isIdeographic(int codePoint) {
+    public static boolean isIdeographic(int codePoint) {
         if (isIdeographicMethod != null) {
             try {
                 return (boolean) isIdeographicMethod.invoke(null, codePoint);

@@ -42,12 +42,13 @@ import com.sun.javafx.font.FontFileReader.Buffer;
 abstract class CMap {
 
     static final char noSuchChar = (char)0xfffd;
+    static final int BYTEMASK  = 0x000000ff;
     static final int SHORTMASK = 0x0000ffff;
     static final int INTMASK   = 0xffffffff;
 
     private static final int MAX_CODE_POINTS = 0x10ffff;
 
-    static CMap initialize(PrismFontFile font) {
+    static CMap initialize(PrismFontFile font, int[] offset_format, int create_cmap) {
 
         CMap cmap = null;
 
@@ -58,6 +59,11 @@ abstract class CMap {
 
         Buffer cmapBuffer = font.readTable(FontConstants.cmapTag);
         short numberSubTables = cmapBuffer.getShort(2);
+
+        /* create CMap14 */
+        if (create_cmap == 14 && offset_format[0] != 0) {
+            return createCMap(cmapBuffer, offset_format[0]);
+        }
 
         /* Locate the offsets of supported 3,* Microsoft platform encodings,
          * and any 0,* Unicode platform encoding. The latter is used by
@@ -76,6 +82,9 @@ abstract class CMap {
                 zeroStar = true;
                 encodingID = cmapBuffer.getShort();
                 zeroStarOffset = cmapBuffer.getInt();
+                if (encodingID == 5) {
+                    offset_format[0] = zeroStarOffset;
+                }
             }
             else if (platformID == 3) {
                 threeStar = true;
@@ -133,12 +142,20 @@ abstract class CMap {
         case 8:  return new CMapFormat8(buffer, offset);
         case 10: return new CMapFormat10(buffer, offset);
         case 12: return new CMapFormat12(buffer, offset);
+        case 14: return new CMapFormat14(buffer, offset);
         default: throw new RuntimeException("Cmap format unimplemented: " +
                                             (int)buffer.getChar(offset));
         }
     }
 
     abstract char getGlyph(int charCode);
+
+    char getGlyph(int charCode, int vs) {
+        return getGlyph(charCode);
+    }
+
+    void setDefCMap(CMap defCmap) {
+    }
 
     /* Format 4 Header is
      * ushort format (off=0)
@@ -589,6 +606,167 @@ abstract class CMap {
             return 0;
         }
 
+    }
+
+    // Format 14: Table for Variation Selector (SVS and IVS)
+    static class CMapFormat14 extends CMap {
+
+        Buffer buffer;
+        int offset;
+
+        int numSelector;
+        int[] varSelector;
+
+        /* default glyphs */
+        int[] defaultOff, numRanges;
+        int[][] defUniStart;
+        short[][] additionalCnt;
+
+        /* non default glyphs */
+        int[] nonDefOff, numMappings;
+        int[][] uniStart;
+        char[][] glyphID;
+        /* e.g.
+         *  uniStart[numSelector-1] = U+fe00(=VS1)
+         *  uniStart[numSelector-1][numMappings-1] = U+795e
+         *  glyphID[numSelector-1][numMappings-1] = 12345
+         */
+
+        CMap defCmap;
+        void setDefCMap(CMap cmap) {
+            this.defCmap = cmap;
+        }
+
+        CMapFormat14(Buffer buffer, int offset) {
+            this.buffer = buffer;
+            this.offset = offset;
+
+            buffer.position(offset+6);
+            /* get count of Variation Selector */
+            numSelector = buffer.getInt();
+
+            varSelector = new int[numSelector]; // e.g. {0xfe00,0xfe01,0xe0100}
+            defaultOff = new int[numSelector];
+            nonDefOff = new int[numSelector];
+
+            /* get Variation Selector and Table offset */
+            for (int i=0; i<numSelector; i++) {
+                varSelector[i] = ((buffer.getShort() & SHORTMASK)<<8) |
+                                  (buffer.get() & BYTEMASK);
+                defaultOff[i] = buffer.getInt();
+                nonDefOff[i] = buffer.getInt();
+            }
+
+            /* nonDefault glyphs table, get Unicode and glyphID */
+            numMappings = new int[numSelector];
+            uniStart = new int[numSelector][];
+            glyphID = new char[numSelector][];
+            for (int i=0; i<numSelector; i++) {
+                if (nonDefOff[i] == 0) {
+                    numMappings[i] = 0;
+                    continue;
+                }
+                buffer.position(offset+nonDefOff[i]);
+                numMappings[i] = buffer.getInt();
+            }
+
+            /* Default glyphs table, get Unicode and count */
+            numRanges = new int[numSelector];
+            defUniStart = new int[numSelector][];
+            additionalCnt = new short[numSelector][];
+            for (int i=0; i<numSelector; i++) {
+                if (defaultOff[i] == 0) {
+                    numRanges[i] = 0;
+                    continue;
+                }
+                buffer.position(offset+defaultOff[i]);
+                numRanges[i] = buffer.getInt();
+            }
+        }
+
+        /* init Non Default Glyphs Table of pointed VS(e.g. fe00, e0100.) */
+        void initNonDef(int i) {
+            buffer.position(offset+nonDefOff[i]+4); // +4 = skip numMappings
+            uniStart[i] = new int[numMappings[i]];
+            glyphID[i] = new char[numMappings[i]];
+
+            /* nonDefault glyphs table, get Unicode and glyphID */
+            for (int j=0; j<numMappings[i]; j++) {
+                uniStart[i][j] = ((buffer.getShort() & SHORTMASK)<<8) |
+                                  (buffer.get() & BYTEMASK);
+                glyphID[i][j] = buffer.getChar();
+            }
+        }
+
+        void initDef(int i) {
+            buffer.position(offset+defaultOff[i]+4); // +4 = skip numRanges
+            defUniStart[i] = new int[numRanges[i]];
+            additionalCnt[i] = new short[numRanges[i]];
+
+            for (int j=0; j<numRanges[i]; j++) {
+                defUniStart[i][j] = ((buffer.getShort() & SHORTMASK)<<8) |
+                                     (buffer.get() & BYTEMASK);
+                additionalCnt[i][j] = (short)(buffer.get() & BYTEMASK);
+            }
+        }
+
+        char getGlyph(int charCode) {
+            return getGlyph(charCode, 0);
+        }
+
+        char getGlyph(int charCode, int vs) {
+            if (vs == 0) return 0;
+            int c;
+
+            for (int v=0; v<numSelector; v++) {
+                if (varSelector[v] < vs) continue;
+                if (varSelector[v] > vs) break;
+
+                /* non default glyphs table */
+                if (numMappings[v] > 0) {
+                    if (uniStart[v] == null || glyphID[v] == null) {
+                        try {
+                            initNonDef(v);
+                        } catch (Exception e) {
+                            return 0;
+                        }
+                    }
+
+                    /* search non default glyphs table */
+                    c = java.util.Arrays.binarySearch(uniStart[v], charCode);
+                    if (c >= 0) {
+                        return glyphID[v][c];
+                    }
+                }
+
+                /* default glyphs table */
+                if (defCmap == null) break;
+                if (numRanges[v] > 0) {
+                    if (defUniStart[v] == null || additionalCnt[v] == null) {
+                        try {
+                            initDef(v);
+                        } catch (Exception e) {
+                            return 0;
+                        }
+                    }
+
+                    /* search default glyphs table */
+                    c = java.util.Arrays.binarySearch(defUniStart[v], charCode);
+                    if (c <= -2) {
+                        c = -c - 2;
+                        if (charCode >= defUniStart[v][c] &&
+                            charCode <= defUniStart[v][c]+additionalCnt[v][c]) {
+                            return defCmap.getGlyph(charCode);
+                        }
+                    } else if (c >= 0) {
+                        return defCmap.getGlyph(charCode);
+                    }
+                }
+
+                break;
+            }
+            return 0;
+        }
     }
 
     /* Used to substitute for bad Cmaps. */
