@@ -23,26 +23,33 @@
  * questions.
  */
 
-#include <jni.h>
-#include "com_sun_prism_j2d_print_J2DPrinterJob.h"
+#pragma once
 
-/*
- * Class com_sun_prism_j2d_print_J2DPrinterJob2D
- * Method: getAlwaysOnTop
- * Signature (Ljava/lang/Class;J)Ljavax.print.attribute.standard.DialogOwner;
- */
-JNIEXPORT jobject JNICALL
-Java_com_sun_prism_j2d_print_J2DPrinterJob_getAlwaysOnTop(
- JNIEnv *env, jclass cls, jclass ownerClass, jlong id) {
+#include "BitmapTexture.h"
+#include "ImageBuffer.h"
+#include "IntRect.h"
+#include "IntSize.h"
 
-    jmethodID cons;
-    if (ownerClass == NULL) {
-        return NULL;
-    }
-    cons = (*env)->GetMethodID(env, ownerClass, "<init>", "(J)V");
-    if (cons == NULL || (*env)->ExceptionCheck(env)) {
-        return NULL;
-    }
-    return (*env)->NewObject(env, ownerClass, cons, id);
+namespace WebCore {
+
+class GraphicsContext;
+
+class BitmapTextureJava : public BitmapTexture {
+public:
+    static Ref<BitmapTexture> create() { return adoptRef(*new BitmapTextureJava); }
+    IntSize size() const override { return m_image->internalSize(); }
+    void didReset() override;
+    bool isValid() const override { return m_image.get(); }
+    inline GraphicsContext* graphicsContext() { return m_image ? &(m_image->context()) : nullptr; }
+    void updateContents(Image*, const IntRect&, const IntPoint&, UpdateContentsFlag) override;
+    void updateContents(TextureMapper&, GraphicsLayer*, const IntRect& target, const IntPoint& offset, UpdateContentsFlag, float scale = 1) override;
+    void updateContents(const void*, const IntRect& target, const IntPoint& sourceOffset, int bytesPerLine, UpdateContentsFlag) override;
+    RefPtr<BitmapTexture> applyFilters(TextureMapper&, const FilterOperations&) override;
+    ImageBuffer* image() const { return m_image.get(); }
+
+private:
+    BitmapTextureJava() { }
+    std::unique_ptr<ImageBuffer> m_image;
+};
+
 }
-
