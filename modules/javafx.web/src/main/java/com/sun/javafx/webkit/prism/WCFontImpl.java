@@ -125,15 +125,21 @@ final class WCFontImpl extends WCFont {
         return getFontStrike().getMetrics().getXHeight();
     }
 
+    private static boolean needsTextLayout(final int glyphs[]) {
+        for (int g : glyphs) {
+            if (g != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override public int[] getGlyphCodes(char[] chars) {
         int[] glyphs = new int[chars.length];
         CharToGlyphMapper mapper = getFontStrike().getFontResource().getGlyphMapper();
         mapper.charsToGlyphs(chars.length, chars, glyphs);
-        long validGlyphCount = Arrays.stream(glyphs).filter(g -> g != 0).count();
-        if (validGlyphCount == 0) {
-            // Calling TextLayout.getRuns will lead to loading correct fallback
-            // font from native font engine. Call charsToGlyphs once again
-            // after doing layout if all glyph indices are zero.
+        if (needsTextLayout(glyphs)) {
+            // Call charsToGlyphs once again after doing layout if all glyph indexs are zero
             TextUtilities.createLayout(new String(chars), getPlatformFont()).getRuns();
             mapper.charsToGlyphs(chars.length, chars, glyphs);
         }
