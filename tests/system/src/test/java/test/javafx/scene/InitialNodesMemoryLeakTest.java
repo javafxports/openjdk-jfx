@@ -31,30 +31,33 @@ import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
+
 import junit.framework.Assert;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import test.util.Util;
+import static org.junit.Assert.fail;
 
 import java.lang.ref.WeakReference;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.fail;
 
 public class InitialNodesMemoryLeakTest {
 
     static CountDownLatch startupLatch;
-    static WeakReference<Group> toCleanUp;
+    static WeakReference<Group> groupWRef;
+    static Stage stage;
 
     public static class TestApp extends Application {
 
         @Override
-        public void start(Stage stage) throws Exception {
-            toCleanUp = new WeakReference<>(new Group());
-
-            Group root = new Group(toCleanUp.get());
-
+        public void start(Stage primaryStage) throws Exception {
+            stage = primaryStage;
+            Group group = new Group();
+            groupWRef = new WeakReference<>(group);
+            Group root = new Group(group);
             stage.setScene(new Scene(root));
 
             stage.addEventHandler(WindowEvent.WINDOW_SHOWN, e -> {
@@ -63,9 +66,7 @@ public class InitialNodesMemoryLeakTest {
                     startupLatch.countDown();
                 });
             });
-
             stage.show();
-
         }
     }
 
@@ -83,20 +84,25 @@ public class InitialNodesMemoryLeakTest {
     }
 
     @Test
-    public void testCleanup() throws Exception {
-        System.out.println("got: " + toCleanUp.get());
-
+    public void testRootNodeMemoryLeak() throws Exception {
         for (int j = 0; j < 10; j++) {
             System.gc();
             System.runFinalization();
 
-            if (toCleanUp.get() == null) {
+            if (groupWRef.get() == null) {
                 break;
             }
 
             Util.sleep(500);
         }
+        Assert.assertNull("Couldn't collect Node", groupWRef.get());
+    }
 
-        Assert.assertTrue("Couldn't collect Node", toCleanUp.get() == null);
+    @AfterClass
+    public static void teardownOnce() {
+        Platform.runLater(() -> {
+            stage.hide();
+            Platform.exit();
+        });
     }
 }
