@@ -138,6 +138,7 @@ bool ScrollbarThemeJava::paint(Scrollbar& scrollbar, GraphicsContext& gc, const 
     }
 
     JLObject jtheme = getJScrollBarTheme(scrollbar);
+    m_usesOverlayScrollbars = !jtheme;
     if (!jtheme) {
         return false;
     }
