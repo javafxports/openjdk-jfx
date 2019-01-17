@@ -127,11 +127,11 @@ final class WCFontImpl extends WCFont {
 
     private static boolean needsTextLayout(final int glyphs[]) {
         for (int g : glyphs) {
-            if (g != 0) {
-                return false;
+            if (g == 0) {
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
     @Override public int[] getGlyphCodes(char[] chars) {
@@ -139,7 +139,7 @@ final class WCFontImpl extends WCFont {
         CharToGlyphMapper mapper = getFontStrike().getFontResource().getGlyphMapper();
         mapper.charsToGlyphs(chars.length, chars, glyphs);
         if (needsTextLayout(glyphs)) {
-            // Call charsToGlyphs once again after doing layout if all glyph indexs are zero
+            // Call charsToGlyphs once again after doing layout if any of the glyph index is zero
             TextUtilities.createLayout(new String(chars), getPlatformFont()).getRuns();
             mapper.charsToGlyphs(chars.length, chars, glyphs);
         }
