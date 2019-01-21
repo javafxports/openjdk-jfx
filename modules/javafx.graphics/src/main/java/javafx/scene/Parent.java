@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -292,6 +292,10 @@ public abstract class Parent extends Node {
     // Call this method if children view order is needed for picking.
     // The returned list should be treated as read only.
     private List<Node> getOrderedChildren() {
+        if (isDirty(DirtyBits.PARENT_CHILDREN_VIEW_ORDER)) {
+            //Fix for JDK-8205092
+            computeViewOrderChidrenAndUpdatePeer();
+        }
         if (!viewOrderChildren.isEmpty()) {
             return viewOrderChildren;
         }
