@@ -742,7 +742,7 @@ public class ParentTest {
 
         assertSame(scene, ParentShim.getChildren(child).get(3).getScene());
     }
-    
+
     @Test
     public void testPickingChildNode(){
         Rectangle rect1 = new Rectangle();
@@ -750,7 +750,7 @@ public class ParentTest {
         rect1.setY(10);
         rect1.setWidth(100);
         rect1.setHeight(100);
-        
+
         Rectangle rect2 = new Rectangle();
         rect2.setX(10);
         rect2.setY(10);
@@ -772,7 +772,7 @@ public class ParentTest {
         NodeHelper.pickNode(g, new PickRay(0, 0, 1, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY), res);
         assertNull(res.getIntersectedNode());
     }
-    
+
     @Test
     public void testPickingChildNodeWithViewOrderSet(){
         Rectangle rect1 = new Rectangle();
@@ -781,7 +781,7 @@ public class ParentTest {
         rect1.setWidth(100);
         rect1.setHeight(100);
         rect1.setViewOrder(-1);
-        
+
         Rectangle rect2 = new Rectangle();
         rect2.setX(10);
         rect2.setY(10);
@@ -803,7 +803,7 @@ public class ParentTest {
         NodeHelper.pickNode(g, new PickRay(0, 0, 1, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY), res);
         assertNull(res.getIntersectedNode());
     }
-    
+
     @Test
     public void testPickingChildNodeWithDirtyViewOrder(){
         //JDK-8205092
@@ -813,7 +813,7 @@ public class ParentTest {
         rect1.setWidth(100);
         rect1.setHeight(100);
         rect1.setViewOrder(-1);
-        
+
         Rectangle rect2 = new Rectangle();
         rect2.setX(10);
         rect2.setY(10);
@@ -827,7 +827,7 @@ public class ParentTest {
         stage.show();
         ParentShim.getChildren(g).addAll(rect1,rect2);
         toolkit.fireTestPulse();
-        
+
         ParentShim.getChildren(g).remove(rect1);
 
         PickResultChooser res = new PickResultChooser();
