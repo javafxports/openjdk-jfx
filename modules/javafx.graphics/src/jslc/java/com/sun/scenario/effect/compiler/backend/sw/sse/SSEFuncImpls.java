@@ -37,7 +37,7 @@ import com.sun.scenario.effect.compiler.tree.Expr;
 import com.sun.scenario.effect.compiler.tree.VariableExpr;
 
 import static com.sun.scenario.effect.compiler.backend.sw.sse.SSEBackend.*;
-import static com.sun.scenario.effect.compiler.model.Type.*;
+import static com.sun.scenario.effect.compiler.model.Types.*;
 
 /**
  * Contains the C/SSE implementations for all core (built-in) functions.
@@ -156,28 +156,28 @@ class SSEFuncImpls {
                 String p = getPosName(params);
                 if (type == LSAMPLER) {
                     return
-                        "lsample(" + s + ", loc_tmp_x, loc_tmp_y,\n" +
-                        "        " + p + "w, " + p + "h, " + p + "scan,\n" +
-                        "        " + s + "_vals);\n";
+                            "lsample(" + s + ", loc_tmp_x, loc_tmp_y,\n" +
+                                    "        " + p + "w, " + p + "h, " + p + "scan,\n" +
+                                    "        " + s + "_vals);\n";
                 } else if (type == FSAMPLER) {
                     return
-                        "fsample(" + s + ", loc_tmp_x, loc_tmp_y,\n" +
-                        "        " + p + "w, " + p + "h, " + p + "scan,\n" +
-                        "        " + s + "_vals);\n";
+                            "fsample(" + s + ", loc_tmp_x, loc_tmp_y,\n" +
+                                    "        " + p + "w, " + p + "h, " + p + "scan,\n" +
+                                    "        " + s + "_vals);\n";
                 } else {
                     return
-                        "int " + s + "_tmp;\n" +
-                        "if (loc_tmp_x >= 0 && loc_tmp_y >= 0) {\n" +
-                        "    int iloc_tmp_x = (int)(loc_tmp_x*" + p + "w);\n" +
-                        "    int iloc_tmp_y = (int)(loc_tmp_y*" + p + "h);\n" +
-                        "    jboolean out =\n" +
-                        "        iloc_tmp_x >= " + p + "w ||\n" +
-                        "        iloc_tmp_y >= " + p + "h;\n" +
-                        "    " + s + "_tmp = out ? 0 :\n" +
-                        "        " + s + "[iloc_tmp_y*" + p + "scan + iloc_tmp_x];\n" +
-                        "} else {\n" +
-                        "    " + s + "_tmp = 0;\n" +
-                        "}\n";
+                            "int " + s + "_tmp;\n" +
+                                    "if (loc_tmp_x >= 0 && loc_tmp_y >= 0) {\n" +
+                                    "    int iloc_tmp_x = (int)(loc_tmp_x*" + p + "w);\n" +
+                                    "    int iloc_tmp_y = (int)(loc_tmp_y*" + p + "h);\n" +
+                                    "    jboolean out =\n" +
+                                    "        iloc_tmp_x >= " + p + "w ||\n" +
+                                    "        iloc_tmp_y >= " + p + "h;\n" +
+                                    "    " + s + "_tmp = out ? 0 :\n" +
+                                    "        " + s + "[iloc_tmp_y*" + p + "scan + iloc_tmp_x];\n" +
+                                    "} else {\n" +
+                                    "    " + s + "_tmp = 0;\n" +
+                                    "}\n";
                 }
             }
             public String toString(int i, List<Expr> params) {
@@ -186,16 +186,16 @@ class SSEFuncImpls {
                     return (i < 0 || i > 3) ? null : s + "_vals[" + i + "]";
                 } else {
                     switch (i) {
-                    case 0:
-                        return "(((" + s + "_tmp >> 16) & 0xff) / 255.f)";
-                    case 1:
-                        return "(((" + s + "_tmp >>  8) & 0xff) / 255.f)";
-                    case 2:
-                        return "(((" + s + "_tmp      ) & 0xff) / 255.f)";
-                    case 3:
-                        return "(((" + s + "_tmp >> 24) & 0xff) / 255.f)";
-                    default:
-                        return null;
+                        case 0:
+                            return "(((" + s + "_tmp >> 16) & 0xff) / 255.f)";
+                        case 1:
+                            return "(((" + s + "_tmp >>  8) & 0xff) / 255.f)";
+                        case 2:
+                            return "(((" + s + "_tmp      ) & 0xff) / 255.f)";
+                        case 3:
+                            return "(((" + s + "_tmp >> 24) & 0xff) / 255.f)";
+                        default:
+                            return null;
                     }
                 }
             }
@@ -216,11 +216,7 @@ class SSEFuncImpls {
      *   int intcast(float x)
      */
     private static void declareFunctionIntCast() {
-        FuncImpl fimpl = new FuncImpl() {
-            public String toString(int i, List<Expr> params) {
-                return "((int)x_tmp)";
-            }
-        };
+        FuncImpl fimpl = (i, params) -> "((int)x_tmp)";
         declareFunction(fimpl, "intcast", FLOAT);
     }
 
@@ -231,13 +227,11 @@ class SSEFuncImpls {
     private static void declareOverloadsSimple(String name, final String pattern) {
         for (Type type : new Type[] {FLOAT, FLOAT2, FLOAT3, FLOAT4}) {
             final boolean useSuffix = (type != FLOAT);
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = useSuffix ? getSuffix(i) : "";
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    return s;
-                }
+            FuncImpl fimpl = (i, params) -> {
+                String sfx = useSuffix ? getSuffix(i) : "";
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                return s;
             };
             declareFunction(fimpl, name, type);
         }
@@ -251,16 +245,34 @@ class SSEFuncImpls {
         for (Type type : new Type[] {FLOAT, FLOAT2, FLOAT3, FLOAT4}) {
             // declare (vectype,vectype) variants
             final boolean useSuffix = (type != FLOAT);
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = useSuffix ? getSuffix(i) : "";
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", sfx);
-                    return s;
-                }
+            FuncImpl fimpl = (i, params) -> {
+                String sfx = useSuffix ? getSuffix(i) : "";
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", sfx);
+                return s;
             };
             declareFunction(fimpl, name, type, type);
+        }
+    }
+
+    /**
+     * Used to declare simple three parameter functions of the following form:
+     *   <ftype> name(<ftype> x, <ftype> y, <ftype> z)
+     */
+    private static void declareOverloadsSimple3(String name, final String pattern) {
+        for (Type type : new Type[] {FLOAT, FLOAT2, FLOAT3, FLOAT4}) {
+            // declare (vectype,vectype,vectype) variants
+            final boolean useSuffix = (type != FLOAT);
+            FuncImpl fimpl = (i, params) -> {
+                String sfx = useSuffix ? getSuffix(i) : "";
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", sfx);
+                s = s.replace("$3", sfx);
+                return s;
+            };
+            declareFunction(fimpl, name, type, type, type);
         }
     }
 
@@ -278,7 +290,7 @@ class SSEFuncImpls {
                 preamble = "float denom = x_tmp;\n";
             } else {
                 String     s  =    "(x_tmp_x * x_tmp_x)";
-                           s += "+\n(x_tmp_y * x_tmp_y)";
+                s += "+\n(x_tmp_y * x_tmp_y)";
                 if (n > 2) s += "+\n(x_tmp_z * x_tmp_z)";
                 if (n > 3) s += "+\n(x_tmp_w * x_tmp_w)";
                 preamble = "float denom = sqrt(" + s + ");\n";
@@ -313,17 +325,13 @@ class SSEFuncImpls {
             if (n == 1) {
                 s = "(x_tmp * y_tmp)";
             } else {
-                           s  =    "(x_tmp_x * y_tmp_x)";
-                           s += "+\n(x_tmp_y * y_tmp_y)";
+                s  =    "(x_tmp_x * y_tmp_x)";
+                s += "+\n(x_tmp_y * y_tmp_y)";
                 if (n > 2) s += "+\n(x_tmp_z * y_tmp_z)";
                 if (n > 3) s += "+\n(x_tmp_w * y_tmp_w)";
             }
             final String str = s;
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    return str;
-                }
-            };
+            FuncImpl fimpl = (i, params) -> str;
             declareFunction(fimpl, name, type, type);
         }
     }
@@ -340,17 +348,13 @@ class SSEFuncImpls {
             if (n == 1) {
                 s = "(x_tmp - y_tmp) * (x_tmp - y_tmp)";
             } else {
-                           s  =    "((x_tmp_x - y_tmp_x) * (x_tmp_x - y_tmp_x))";
-                           s += "+\n((x_tmp_y - y_tmp_y) * (x_tmp_y - y_tmp_y))";
+                s  =    "((x_tmp_x - y_tmp_x) * (x_tmp_x - y_tmp_x))";
+                s += "+\n((x_tmp_y - y_tmp_y) * (x_tmp_y - y_tmp_y))";
                 if (n > 2) s += "+\n((x_tmp_z - y_tmp_z) * (x_tmp_z - y_tmp_z))";
                 if (n > 3) s += "+\n((x_tmp_w - y_tmp_w) * (x_tmp_w - y_tmp_w))";
             }
             final String str = "sqrt(" + s + ")";
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    return str;
-                }
-            };
+            FuncImpl fimpl = (i, params) -> str;
             declareFunction(fimpl, name, type, type);
         }
     }
@@ -367,14 +371,12 @@ class SSEFuncImpls {
         for (Type type : new Type[] {FLOAT, FLOAT2, FLOAT3, FLOAT4}) {
             // declare (vectype,vectype) variants
             final boolean useSuffix = (type != FLOAT);
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = useSuffix ? getSuffix(i) : "";
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", sfx);
-                    return s;
-                }
+            FuncImpl fimpl = (i, params) -> {
+                String sfx = useSuffix ? getSuffix(i) : "";
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", sfx);
+                return s;
             };
             declareFunction(fimpl, name, type, type);
 
@@ -383,14 +385,12 @@ class SSEFuncImpls {
             }
 
             // declare (vectype,float) variants
-            fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = getSuffix(i);
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", "");
-                    return s;
-                }
+            fimpl = (i, params) -> {
+                String sfx = getSuffix(i);
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", "");
+                return s;
             };
             declareFunction(fimpl, name, type, FLOAT);
         }
@@ -404,20 +404,18 @@ class SSEFuncImpls {
     private static void declareOverloadsClamp() {
         final String name = "clamp";
         final String pattern =
-            "(val_tmp$1 < min_tmp$2) ? min_tmp$2 : \n" +
-            "(val_tmp$1 > max_tmp$2) ? max_tmp$2 : val_tmp$1";
+                "(val_tmp$1 < min_tmp$2) ? min_tmp$2 : \n" +
+                        "(val_tmp$1 > max_tmp$2) ? max_tmp$2 : val_tmp$1";
 
         for (Type type : new Type[] {FLOAT, FLOAT2, FLOAT3, FLOAT4}) {
             // declare (vectype,vectype,vectype) variants
             final boolean useSuffix = (type != FLOAT);
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = useSuffix ? getSuffix(i) : "";
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", sfx);
-                    return s;
-                }
+            FuncImpl fimpl = (i, params) -> {
+                String sfx = useSuffix ? getSuffix(i) : "";
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", sfx);
+                return s;
             };
             declareFunction(fimpl, name, type, type, type);
 
@@ -426,14 +424,12 @@ class SSEFuncImpls {
             }
 
             // declare (vectype,float,float) variants
-            fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = getSuffix(i);
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", "");
-                    return s;
-                }
+            fimpl = (i, params) -> {
+                String sfx = getSuffix(i);
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", "");
+                return s;
             };
             declareFunction(fimpl, name, type, FLOAT, FLOAT);
         }
@@ -448,21 +444,19 @@ class SSEFuncImpls {
         final String name = "smoothstep";
         // TODO - the smoothstep function is defined to use Hermite interpolation
         final String pattern =
-            "(val_tmp$1 < min_tmp$2) ? 0.0f : \n" +
-            "(val_tmp$1 > max_tmp$2) ? 1.0f : \n" +
-            "(val_tmp$1 / (max_tmp$2 - min_tmp$2))";
+                "(val_tmp$1 < min_tmp$2) ? 0.0f : \n" +
+                        "(val_tmp$1 > max_tmp$2) ? 1.0f : \n" +
+                        "(val_tmp$1 / (max_tmp$2 - min_tmp$2))";
 
         for (Type type : new Type[] {FLOAT, FLOAT2, FLOAT3, FLOAT4}) {
             // declare (vectype,vectype,vectype) variants
             final boolean useSuffix = (type != FLOAT);
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = useSuffix ? getSuffix(i) : "";
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", sfx);
-                    return s;
-                }
+            FuncImpl fimpl = (i, params) -> {
+                String sfx = useSuffix ? getSuffix(i) : "";
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", sfx);
+                return s;
             };
             declareFunction(fimpl, name, type, type, type);
 
@@ -471,14 +465,12 @@ class SSEFuncImpls {
             }
 
             // declare (float,float,vectype) variants
-            fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = getSuffix(i);
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", "");
-                    return s;
-                }
+            fimpl = (i, params) -> {
+                String sfx = getSuffix(i);
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", "");
+                return s;
             };
             declareFunction(fimpl, name, FLOAT, FLOAT, type);
         }
@@ -492,19 +484,17 @@ class SSEFuncImpls {
     private static void declareOverloadsMix() {
         final String name = "mix";
         final String pattern =
-            "(x_tmp$1 * (1.0f - a_tmp$2) + y_tmp$1 * a_tmp$2)";
+                "(x_tmp$1 * (1.0f - a_tmp$2) + y_tmp$1 * a_tmp$2)";
 
         for (Type type : new Type[] {FLOAT, FLOAT2, FLOAT3, FLOAT4}) {
             // declare (vectype,vectype,vectype) variants
             final boolean useSuffix = (type != FLOAT);
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = useSuffix ? getSuffix(i) : "";
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", sfx);
-                    return s;
-                }
+            FuncImpl fimpl = (i, params) -> {
+                String sfx = useSuffix ? getSuffix(i) : "";
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", sfx);
+                return s;
             };
             declareFunction(fimpl, name, type, type, type);
 
@@ -513,14 +503,12 @@ class SSEFuncImpls {
             }
 
             // declare (vectype,vectype,float) variants
-            fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = getSuffix(i);
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", "");
-                    return s;
-                }
+            fimpl = (i, params) -> {
+                String sfx = getSuffix(i);
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", "");
+                return s;
             };
             declareFunction(fimpl, name, type, type, FLOAT);
         }

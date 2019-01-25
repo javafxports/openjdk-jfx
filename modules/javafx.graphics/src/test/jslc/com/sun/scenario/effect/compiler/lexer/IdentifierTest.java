@@ -26,7 +26,7 @@
 package com.sun.scenario.effect.compiler.lexer;
 
 import com.sun.scenario.effect.compiler.JSLLexer;
-import org.antlr.runtime.RecognitionException;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.Test;
 
 public class IdentifierTest extends LexerBase {
@@ -51,19 +51,14 @@ public class IdentifierTest extends LexerBase {
         assertRecognized("$aA___29");
     }
 
-    @Test(expected = RecognitionException.class)
+    @Test
     public void notAnId1() throws Exception {
-        assertRecognized("6foo");
+        assertNotRecognized("6foo", "6");
     }
 
-    @Test(expected = RecognitionException.class)
+    @Test(expected = ParseCancellationException.class)
     public void notAnId2() throws Exception {
-        assertRecognized("%###");
-    }
-
-    @Override
-    protected void fireLexerRule(JSLLexer lexer) throws Exception {
-        lexer.mIDENTIFIER();
+        assertRecognized("###");
     }
 
     @Override

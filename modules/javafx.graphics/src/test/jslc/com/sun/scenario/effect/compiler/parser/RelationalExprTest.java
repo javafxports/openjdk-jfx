@@ -27,9 +27,10 @@ package com.sun.scenario.effect.compiler.parser;
 
 import com.sun.scenario.effect.compiler.JSLParser;
 import com.sun.scenario.effect.compiler.model.BinaryOpType;
-import com.sun.scenario.effect.compiler.model.Type;
+import com.sun.scenario.effect.compiler.model.Types;
 import com.sun.scenario.effect.compiler.tree.BinaryExpr;
-import org.antlr.runtime.RecognitionException;
+import com.sun.scenario.effect.compiler.tree.JSLCVisitor;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -39,35 +40,36 @@ public class RelationalExprTest extends ParserBase {
     @Test
     public void oneLtEq() throws Exception {
         BinaryExpr tree = parseTreeFor("foo <= 3");
-        assertEquals(tree.getOp(), BinaryOpType.LTEQ);
+        assertEquals(BinaryOpType.LTEQ, tree.getOp());
     }
 
     @Test
     public void oneGtEq() throws Exception {
         BinaryExpr tree = parseTreeFor("foo >= 3");
-        assertEquals(tree.getOp(), BinaryOpType.GTEQ);
+        assertEquals(BinaryOpType.GTEQ, tree.getOp());
     }
 
     @Test
     public void oneLt() throws Exception {
         BinaryExpr tree = parseTreeFor("foo < 3");
-        assertEquals(tree.getOp(), BinaryOpType.LT);
+        assertEquals(BinaryOpType.LT, tree.getOp());
     }
 
     @Test
     public void oneGt() throws Exception {
         BinaryExpr tree = parseTreeFor("foo > 3");
-        assertEquals(tree.getOp(), BinaryOpType.GT);
+        assertEquals(BinaryOpType.GT, tree.getOp());
     }
 
-    @Test(expected = RecognitionException.class)
+    @Test(expected = ParseCancellationException.class)
     public void notARelationalExpression() throws Exception {
         parseTreeFor("foo @ 3");
     }
 
-    private BinaryExpr parseTreeFor(String text) throws RecognitionException {
+    private BinaryExpr parseTreeFor(String text) throws Exception {
         JSLParser parser = parserOver(text);
-        parser.getSymbolTable().declareVariable("foo", Type.INT, null);
-        return (BinaryExpr)parser.relational_expression();
+        JSLCVisitor visitor = new JSLCVisitor();
+        visitor.getSymbolTable().declareVariable("foo", Types.INT, null);
+        return (BinaryExpr) visitor.visit(parser.relational_expression());
     }
 }

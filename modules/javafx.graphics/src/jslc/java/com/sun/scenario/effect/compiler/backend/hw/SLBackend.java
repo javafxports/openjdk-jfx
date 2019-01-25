@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,45 +26,15 @@
 package com.sun.scenario.effect.compiler.backend.hw;
 
 import com.sun.scenario.effect.compiler.JSLParser;
-import com.sun.scenario.effect.compiler.model.BinaryOpType;
-import com.sun.scenario.effect.compiler.model.Function;
-import com.sun.scenario.effect.compiler.model.Param;
-import com.sun.scenario.effect.compiler.model.Precision;
-import com.sun.scenario.effect.compiler.model.Qualifier;
-import com.sun.scenario.effect.compiler.model.Type;
-import com.sun.scenario.effect.compiler.model.Variable;
-import com.sun.scenario.effect.compiler.tree.ArrayAccessExpr;
-import com.sun.scenario.effect.compiler.tree.BinaryExpr;
-import com.sun.scenario.effect.compiler.tree.BreakStmt;
-import com.sun.scenario.effect.compiler.tree.CallExpr;
-import com.sun.scenario.effect.compiler.tree.CompoundStmt;
-import com.sun.scenario.effect.compiler.tree.ContinueStmt;
-import com.sun.scenario.effect.compiler.tree.DeclStmt;
-import com.sun.scenario.effect.compiler.tree.DiscardStmt;
-import com.sun.scenario.effect.compiler.tree.DoWhileStmt;
-import com.sun.scenario.effect.compiler.tree.Expr;
-import com.sun.scenario.effect.compiler.tree.ExprStmt;
-import com.sun.scenario.effect.compiler.tree.FieldSelectExpr;
-import com.sun.scenario.effect.compiler.tree.ForStmt;
-import com.sun.scenario.effect.compiler.tree.FuncDef;
-import com.sun.scenario.effect.compiler.tree.LiteralExpr;
-import com.sun.scenario.effect.compiler.tree.ParenExpr;
-import com.sun.scenario.effect.compiler.tree.ProgramUnit;
-import com.sun.scenario.effect.compiler.tree.ReturnStmt;
-import com.sun.scenario.effect.compiler.tree.SelectStmt;
-import com.sun.scenario.effect.compiler.tree.Stmt;
-import com.sun.scenario.effect.compiler.tree.TreeScanner;
-import com.sun.scenario.effect.compiler.tree.UnaryExpr;
-import com.sun.scenario.effect.compiler.tree.VarDecl;
-import com.sun.scenario.effect.compiler.tree.VariableExpr;
-import com.sun.scenario.effect.compiler.tree.VectorCtorExpr;
-import com.sun.scenario.effect.compiler.tree.WhileStmt;
+import com.sun.scenario.effect.compiler.model.*;
+import com.sun.scenario.effect.compiler.tree.*;
 
 /**
  */
 public abstract class SLBackend extends TreeScanner {
 
     private JSLParser parser;
+    protected JSLCVisitor visitor;
     private StringBuilder sb = new StringBuilder();
     private Variable unrollVar = null;
     private int unrollIndex = -1;
@@ -72,9 +42,9 @@ public abstract class SLBackend extends TreeScanner {
     protected boolean isVertexColorReferenced;
     protected int maxTexCoordIndex = -1;
 
-    protected SLBackend(JSLParser parser, ProgramUnit program) {
+    protected SLBackend(JSLParser parser, JSLCVisitor visitor) {
         this.parser = parser;
-        scan(program);
+        this.visitor = visitor;
     }
 
     protected final void output(String s) {
@@ -227,7 +197,7 @@ public abstract class SLBackend extends TreeScanner {
                 if (left instanceof VariableExpr) {
                     VariableExpr vexpr = (VariableExpr)left;
                     Variable var = vexpr.getVariable();
-                    if (var.getType() != Type.INT) {
+                    if (var.getType() != Types.INT) {
                         throw new RuntimeException("Condition LHS must be integer variable in order to unroll 'for' loop (for now)");
                     }
                     unrollVar = var;

@@ -25,33 +25,20 @@
 
 package com.sun.scenario.effect.compiler.model;
 
+import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  */
-public enum Type {
-    VOID   (BaseType.VOID,  1),
-    FLOAT  (BaseType.FLOAT, 1),
-    FLOAT2 (BaseType.FLOAT, 2),
-    FLOAT3 (BaseType.FLOAT, 3),
-    FLOAT4 (BaseType.FLOAT, 4),
-    INT    (BaseType.INT,   1),
-    INT2   (BaseType.INT,   2),
-    INT3   (BaseType.INT,   3),
-    INT4   (BaseType.INT,   4),
-    BOOL   (BaseType.BOOL,  1),
-    BOOL2  (BaseType.BOOL,  2),
-    BOOL3  (BaseType.BOOL,  3),
-    BOOL4  (BaseType.BOOL,  4),
-    SAMPLER(BaseType.SAMPLER, 1),
-    LSAMPLER(BaseType.SAMPLER, 1),
-    FSAMPLER(BaseType.SAMPLER, 1);
-
+public class Type {
     private final BaseType baseType;
+    private final String name;
     private final int numFields;
 
-    private Type(BaseType baseType, int numFields) {
+    protected Type(BaseType baseType, String name, int numFields) {
         this.baseType = baseType;
+        this.name = name;
         this.numFields = numFields;
     }
 
@@ -67,16 +54,79 @@ public enum Type {
         return numFields > 1;
     }
 
+    public boolean isMatrix() {
+        return false;
+    }
+
+    public static List<Type> types() {
+        return List.of(Types.VOID, Types.FLOAT, Types.FLOAT2, Types.FLOAT3, Types.FLOAT4, Types.INT, Types.INT2,
+                Types.INT3, Types.INT4, Types.BOOL, Types.BOOL2, Types.BOOL3, Types.BOOL4, Types.SAMPLER,
+                Types.LSAMPLER, Types.FSAMPLER);
+    }
+
     /**
      * Returns a {@code Type} instance given a lowercase token string.
      * For example, given "float3", this method will return {@code Type.FLOAT3}.
      */
     public static Type fromToken(String s) {
-        return valueOf(s.toUpperCase(Locale.ENGLISH));
+        switch (s) {
+            case "void":
+                return Types.VOID;
+            case "float":
+                return Types.FLOAT;
+            case "float2":
+                return Types.FLOAT2;
+            case "float3":
+                return Types.FLOAT3;
+            case "float4":
+                return Types.FLOAT4;
+            case "int":
+                return Types.INT;
+            case "int2":
+                return Types.INT2;
+            case "int3":
+                return Types.INT3;
+            case "int4":
+                return Types.INT4;
+            case "bool":
+                return Types.BOOL;
+            case "bool2":
+                return Types.BOOL2;
+            case "bool3":
+                return Types.BOOL3;
+            case "bool4":
+                return Types.BOOL4;
+            case "sampler":
+                return Types.SAMPLER;
+            case "lsampler":
+                return Types.LSAMPLER;
+            case "fsampler":
+                return Types.FSAMPLER;
+            default:
+                throw new IllegalArgumentException("could not get type from token: " + s);
+        }
     }
 
     @Override
     public String toString() {
-        return name().toLowerCase(Locale.ENGLISH);
+        return name.toLowerCase(Locale.ENGLISH);
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (object == null || getClass() != object.getClass()) {
+            return false;
+        }
+
+        final Type other = (Type) object;
+
+        return baseType == other.baseType &&
+                name.equals(other.name) &&
+                numFields == other.numFields;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(baseType, name, numFields);
     }
 }

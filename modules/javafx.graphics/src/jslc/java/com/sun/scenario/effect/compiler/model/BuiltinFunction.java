@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.sun.scenario.effect.compiler.model;
 
-package com.sun.scenario.effect.compiler.tree;
+import java.util.List;
 
-import com.sun.scenario.effect.compiler.model.Variable;
+public class BuiltinFunction extends Function {
+    private final int minSupportedVersion;
 
-/**
- */
-public class VarDecl extends ExtDecl {
-
-    private final Variable var;
-    private final Expr init;
-
-    VarDecl(Variable var, Expr init) {
-        this.var = var;
-        this.init = init;
+    /**
+     * Maybe delete minSupportedVersionbecause I think no classes in the "model" package
+     * should be version aware - that should only be handled in the backend.
+     */
+    BuiltinFunction(String name, Type returnType, List<Param> params, int minSupportedVersion) {
+        super(name, returnType, params, false);
+        this.minSupportedVersion = minSupportedVersion;
     }
 
-    public Variable getVariable() {
-        return var;
-    }
-
-    public Expr getInit() {
-        return init;
-    }
-
-    public void accept(TreeVisitor tv) {
-        tv.visitVarDecl(this);
-    }
-
-    @Override
-    public String toString() {
-        return var.getName() + " = " + init.toString();
+    public int getMinSupportedVersion() {
+        return minSupportedVersion;
     }
 }

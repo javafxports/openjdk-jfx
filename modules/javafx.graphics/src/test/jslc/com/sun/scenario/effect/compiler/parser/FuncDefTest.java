@@ -23,36 +23,30 @@
  * questions.
  */
 
-package com.sun.scenario.effect.compiler.tree;
+package com.sun.scenario.effect.compiler.parser;
 
-import com.sun.scenario.effect.compiler.model.Variable;
+import com.sun.scenario.effect.compiler.JSLParser;
+import com.sun.scenario.effect.compiler.tree.FuncDef;
+import com.sun.scenario.effect.compiler.tree.JSLCVisitor;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
-/**
- */
-public class VarDecl extends ExtDecl {
+public class FuncDefTest extends ParserBase {
 
-    private final Variable var;
-    private final Expr init;
+    @Rule
+    public ExpectedException ex = ExpectedException.none();
 
-    VarDecl(Variable var, Expr init) {
-        this.var = var;
-        this.init = init;
+    @Test
+    public void testRedefineBuiltinFunc() throws Exception {
+        ex.expect(RuntimeException.class);
+        ex.expectMessage("Function 'fma' already declared");
+        parseTreeFor("float fma(float x, float y, float z) { return x; }");
     }
 
-    public Variable getVariable() {
-        return var;
-    }
-
-    public Expr getInit() {
-        return init;
-    }
-
-    public void accept(TreeVisitor tv) {
-        tv.visitVarDecl(this);
-    }
-
-    @Override
-    public String toString() {
-        return var.getName() + " = " + init.toString();
+    private FuncDef parseTreeFor(String text) throws Exception {
+        JSLParser parser = parserOver(text);
+        JSLCVisitor visitor = new JSLCVisitor();
+        return visitor.visitFunction_definition(parser.function_definition());
     }
 }

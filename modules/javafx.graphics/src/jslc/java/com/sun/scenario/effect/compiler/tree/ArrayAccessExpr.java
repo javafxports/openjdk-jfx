@@ -49,4 +49,9 @@ public class ArrayAccessExpr extends Expr {
     public void accept(TreeVisitor tv) {
         tv.visitArrayAccessExpr(this);
     }
+
+    @Override
+    public String toString() {
+        return expr + "[" + index + "]";
+    }
 }

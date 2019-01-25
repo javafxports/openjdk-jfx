@@ -42,4 +42,9 @@ public class ExprStmt extends Stmt {
     public void accept(TreeVisitor tv) {
         tv.visitExprStmt(this);
     }
+
+    @Override
+    public String toString() {
+        return expr + ";";
+    }
 }

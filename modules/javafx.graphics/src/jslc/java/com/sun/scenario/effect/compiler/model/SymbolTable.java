@@ -35,9 +35,9 @@ import java.util.Set;
  */
 public class SymbolTable {
 
-    private final Map<String, Variable> globalVariableMap = new HashMap<String, Variable>();
-    private final Map<String, Variable> localVariableMap = new HashMap<String, Variable>();
-    private final Set<Function> globalFunctionSet = new HashSet<Function>();
+    private final Map<String, Variable> globalVariableMap = new HashMap<>();
+    private final Map<String, Variable> localVariableMap = new HashMap<>();
+    private final Set<Function> globalFunctionSet = new HashSet<>();
     private int numSamplers;
     private int numParams;
     private boolean global = true;
@@ -110,10 +110,11 @@ public class SymbolTable {
     }
 
     public Function declareFunction(String name, Type returnType, List<Param> params) {
-        Function f = new Function(name, returnType, params);
-        if (isFunctionDeclared(f)) {
+        if (isFunctionDeclared(name, returnType, params)) {
             throw new RuntimeException("Function '" + name + "' already declared");
         }
+        Function f = new Function(name, returnType, params, true);
+
         if (name.equals("main") && (params == null || params.isEmpty())) {
             if (localVariableMap.isEmpty()) {
                 // core variables are implicitly declared for main() only
@@ -153,8 +154,8 @@ public class SymbolTable {
         return globalVariableMap;
     }
 
-    private boolean isFunctionDeclared(Function func) {
-       return globalFunctionSet.contains(func);
+    private boolean isFunctionDeclared(String name, Type returnType, List<Param> params) {
+        return globalFunctionSet.contains(new Function(name, returnType, params));
     }
 
     private void declareUserFunction(Function func) {

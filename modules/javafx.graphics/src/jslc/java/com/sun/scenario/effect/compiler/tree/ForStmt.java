@@ -37,8 +37,7 @@ public class ForStmt extends Stmt {
     private final int unrollCheck;
 
     ForStmt(Stmt init, Expr cond, Expr expr, Stmt stmt,
-            int unrollMax, int unrollCheck)
-    {
+            int unrollMax, int unrollCheck) {
         this.init = init;
         this.cond = cond;
         this.expr = expr;
@@ -73,5 +72,10 @@ public class ForStmt extends Stmt {
 
     public void accept(TreeVisitor tv) {
         tv.visitForStmt(this);
+    }
+
+    @Override
+    public String toString() {
+        return "for (" + init + "; " + cond + "; " + expr + ") {\n\t" + stmt + "\n}";
     }
 }

@@ -34,4 +34,9 @@ public class BreakStmt extends Stmt {
     public void accept(TreeVisitor tv) {
         tv.visitBreakStmt(this);
     }
+
+    @Override
+    public String toString() {
+        return "break;";
+    }
 }

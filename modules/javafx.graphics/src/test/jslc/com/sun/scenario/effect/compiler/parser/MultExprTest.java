@@ -28,7 +28,7 @@ package com.sun.scenario.effect.compiler.parser;
 import com.sun.scenario.effect.compiler.JSLParser;
 import com.sun.scenario.effect.compiler.model.BinaryOpType;
 import com.sun.scenario.effect.compiler.tree.BinaryExpr;
-import org.antlr.runtime.RecognitionException;
+import com.sun.scenario.effect.compiler.tree.JSLCVisitor;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
@@ -47,19 +47,19 @@ public class MultExprTest extends UnaryExprTest {
     @Test
     public void oneMultiplication() throws Exception {
         BinaryExpr tree = parseTreeFor(unary + " * " + unary);
-        assertEquals(tree.getOp(), BinaryOpType.MUL);
+        assertEquals(BinaryOpType.MUL, tree.getOp());
     }
 
     @Test
     public void oneDivision() throws Exception {
         BinaryExpr tree = parseTreeFor(unary + "   / " + unary);
-        assertEquals(tree.getOp(), BinaryOpType.DIV);
+        assertEquals(BinaryOpType.DIV, tree.getOp());
     }
 
     @Test
     public void expressionCombination() throws Exception {
         BinaryExpr tree = parseTreeFor(unary + " * " + unary + '/' + unary + '/' + unary + "   *" + unary);
-        assertEquals(tree.getOp(), BinaryOpType.MUL);
+        assertEquals(BinaryOpType.MUL, tree.getOp());
     }
 
     @Test(expected = ClassCastException.class)
@@ -67,9 +67,11 @@ public class MultExprTest extends UnaryExprTest {
         parseTreeFor("3 + 3");
     }
 
-    private BinaryExpr parseTreeFor(String text) throws RecognitionException {
+    private BinaryExpr parseTreeFor(String text) throws Exception {
         JSLParser parser = parserOver(text);
-        return (BinaryExpr)parser.multiplicative_expression();
+        JSLCVisitor visitor = new JSLCVisitor();
+        return (BinaryExpr) visitor.visit(parser.multiplicative_expression());
+        //return (BinaryExpr)parser.multiplicative_expression().expr;
     }
 
     protected String multiplicative() {

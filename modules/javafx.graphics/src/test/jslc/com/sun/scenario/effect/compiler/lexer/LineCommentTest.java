@@ -26,7 +26,6 @@
 package com.sun.scenario.effect.compiler.lexer;
 
 import com.sun.scenario.effect.compiler.JSLLexer;
-import org.antlr.runtime.RecognitionException;
 import org.junit.Test;
 
 public class LineCommentTest extends LexerBase {
@@ -36,14 +35,9 @@ public class LineCommentTest extends LexerBase {
         assertRecognized("// ignored\n");
     }
 
-    @Test(expected = RecognitionException.class)
+    @Test
     public void notAComment() throws Exception {
-        assertRecognized("ignored");
-    }
-
-    @Override
-    protected void fireLexerRule(JSLLexer lexer) throws Exception {
-        lexer.mLINE_COMMENT();
+        assertNotRecognized("ignored");
     }
 
     @Override

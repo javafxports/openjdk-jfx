@@ -44,4 +44,15 @@ public class DeclStmt extends Stmt {
     public void accept(TreeVisitor tv) {
         tv.visitDeclStmt(this);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder toStr = new StringBuilder();
+        for (VarDecl decl : decls) {
+            toStr.append(decl.getVariable().getType()).append(" ")
+                    .append(decl.getVariable().getName())
+                    .append(" = ").append(decl.getInit());
+        }
+        return toStr.toString();
+    }
 }

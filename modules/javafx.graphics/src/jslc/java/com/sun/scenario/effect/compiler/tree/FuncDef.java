@@ -26,6 +26,7 @@
 package com.sun.scenario.effect.compiler.tree;
 
 import com.sun.scenario.effect.compiler.model.Function;
+import com.sun.scenario.effect.compiler.model.Param;
 
 /**
  */
@@ -49,5 +50,18 @@ public class FuncDef extends ExtDecl {
 
     public void accept(TreeVisitor tv) {
         tv.visitFuncDef(this);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder toStr = new StringBuilder();
+        toStr.append(func.getReturnType()).append(" ").append(func.getName()).append("(");
+        if (!func.getParams().isEmpty()) {
+            for (Param param : func.getParams()) {
+                toStr.append(param.getType()).append(" ").append(param.getName());
+            }
+        }
+        toStr.append(") {\n\t").append(stmt).append("\n}");
+        return toStr.toString();
     }
 }

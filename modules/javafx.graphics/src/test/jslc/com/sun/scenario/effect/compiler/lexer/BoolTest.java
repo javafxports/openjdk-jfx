@@ -25,9 +25,9 @@
 
 package com.sun.scenario.effect.compiler.lexer;
 
-import com.sun.scenario.effect.compiler.JSLLexer;
-import org.antlr.runtime.RecognitionException;
 import org.junit.Test;
+
+import static com.sun.scenario.effect.compiler.JSLLexer.BOOLCONSTANT;
 
 public class BoolTest extends LexerBase {
 
@@ -41,18 +41,13 @@ public class BoolTest extends LexerBase {
         assertRecognized("false");
     }
 
-    @Test(expected = RecognitionException.class)
+    @Test
     public void notABool() throws Exception {
-        assertRecognized("629");
-    }
-
-    @Override
-    protected void fireLexerRule(JSLLexer lexer) throws Exception {
-        lexer.mBOOLCONSTANT();
+        assertNotRecognized("629");
     }
 
     @Override
     protected int expectedTokenType() {
-        return JSLLexer.BOOLCONSTANT;
+        return BOOLCONSTANT;
     }
 }

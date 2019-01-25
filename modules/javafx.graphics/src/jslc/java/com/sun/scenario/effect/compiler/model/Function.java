@@ -27,6 +27,7 @@ package com.sun.scenario.effect.compiler.model;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  */
@@ -36,7 +37,17 @@ public class Function {
     private final Type returnType;
     private final List<Param> params;
 
+    /**
+     * Whether or not this function was defined by the user's program (as opposed
+     * to an intrinsic, builtin function). Defaults to {@literal false}.
+     */
+    private final boolean userFunc;
+
     Function(String name, Type returnType, List<Param> params) {
+        this(name, returnType, params, false);
+    }
+
+    Function(String name, Type returnType, List<Param> params, boolean userFunc) {
         this.name = name;
         this.returnType = returnType;
         if (params != null) {
@@ -44,6 +55,7 @@ public class Function {
         } else {
             this.params = Collections.emptyList();
         }
+        this.userFunc = userFunc;
     }
 
     public String getName() {
@@ -58,6 +70,10 @@ public class Function {
         return params;
     }
 
+    public boolean isUserFunc() {
+        return userFunc;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == null) {
@@ -67,24 +83,21 @@ public class Function {
             return false;
         }
         final Function other = (Function) obj;
-        if (this.name != other.name && (this.name == null || !this.name.equals(other.name))) {
-            return false;
-        }
-        if (this.returnType != other.returnType) {
-            return false;
-        }
-        if (this.params != other.params && (this.params == null || !this.params.equals(other.params))) {
-            return false;
-        }
-        return true;
+        // Equality should not care whether or not this is a builtin or user function
+        // so that we can check if a function has been declared via:
+        // funcSet.contains(new Function(name, returnType, params))
+        return Objects.equals(name, other.name) &&
+                returnType == other.returnType &&
+                Objects.equals(params, other.params);
     }
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 71 * hash + (this.name != null ? this.name.hashCode() : 0);
-        hash = 71 * hash + (this.returnType != null ? this.returnType.hashCode() : 0);
-        hash = 71 * hash + (this.params != null ? this.params.hashCode() : 0);
-        return hash;
+        return Objects.hash(name, returnType, params);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Function [name = %s, returnType = %s, params = %s]", name, returnType, params);
     }
 }

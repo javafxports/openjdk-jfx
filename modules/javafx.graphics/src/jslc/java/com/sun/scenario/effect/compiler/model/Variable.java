@@ -26,6 +26,7 @@
 package com.sun.scenario.effect.compiler.model;
 
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  */
@@ -48,12 +49,8 @@ public class Variable {
     Variable(String name, Type type, Qualifier qual, Precision precision,
              int reg, int arraySize, Object constValue, boolean isParam)
     {
-        if (name == null) {
-            throw new IllegalArgumentException("Name must be non-null");
-        }
-        if (type == null) {
-            throw new IllegalArgumentException("Type must be non-null");
-        }
+        Objects.requireNonNull(name);
+        Objects.requireNonNull(type);
         this.name = name;
         this.type = type;
         this.qual = qual;
@@ -115,5 +112,12 @@ public class Variable {
 
     public boolean isReferenced() {
         return refCount > 0;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Variable [name = \"%s\", type = %s, qualifier = %s, precision = %s, reg = %d," +
+                "arraySize = %d, constValue = %s, isParam = %b]",
+                name, type, qual, precision, reg, arraySize, constValue, isParam);
     }
 }

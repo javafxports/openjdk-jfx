@@ -37,7 +37,7 @@ import com.sun.scenario.effect.compiler.tree.Expr;
 import com.sun.scenario.effect.compiler.tree.VariableExpr;
 
 import static com.sun.scenario.effect.compiler.backend.sw.me.MEBackend.*;
-import static com.sun.scenario.effect.compiler.model.Type.*;
+import static com.sun.scenario.effect.compiler.model.Types.*;
 
 /**
  * Contains the C/fixed-point implementations for all core (built-in) functions.
@@ -240,11 +240,7 @@ class MEFuncImpls {
      *   int intcast(float x)
      */
     private static void declareFunctionIntCast() {
-        FuncImpl fimpl = new FuncImpl() {
-            public String toString(int i, List<Expr> params) {
-                return "((int)x_tmp)";
-            }
-        };
+        FuncImpl fimpl = (i, params) -> "((int)x_tmp)";
         declareFunction(fimpl, "intcast", FLOAT);
     }
 
@@ -255,13 +251,11 @@ class MEFuncImpls {
     private static void declareOverloadsSimple(String name, final String pattern) {
         for (Type type : new Type[] {FLOAT, FLOAT2, FLOAT3, FLOAT4}) {
             final boolean useSuffix = (type != FLOAT);
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = useSuffix ? getSuffix(i) : "";
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    return s;
-                }
+            FuncImpl fimpl = (i, params) -> {
+                String sfx = useSuffix ? getSuffix(i) : "";
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                return s;
             };
             declareFunction(fimpl, name, type);
         }
@@ -275,14 +269,12 @@ class MEFuncImpls {
         for (Type type : new Type[] {FLOAT, FLOAT2, FLOAT3, FLOAT4}) {
             // declare (vectype,vectype) variants
             final boolean useSuffix = (type != FLOAT);
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = useSuffix ? getSuffix(i) : "";
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", sfx);
-                    return s;
-                }
+            FuncImpl fimpl = (i, params) -> {
+                String sfx = useSuffix ? getSuffix(i) : "";
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", sfx);
+                return s;
             };
             declareFunction(fimpl, name, type, type);
         }
@@ -343,11 +335,7 @@ class MEFuncImpls {
                 if (n > 3) s += "+\n(x_tmp_w * y_tmp_w)";
             }
             final String str = s;
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    return str;
-                }
-            };
+            FuncImpl fimpl = (i, params) -> str;
             declareFunction(fimpl, name, type, type);
         }
     }
@@ -370,11 +358,7 @@ class MEFuncImpls {
                 if (n > 3) s += "+\n((x_tmp_w - y_tmp_w) * (x_tmp_w - y_tmp_w))";
             }
             final String str = "sqrt(" + s + ")";
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    return str;
-                }
-            };
+            FuncImpl fimpl = (i, params) -> str;
             declareFunction(fimpl, name, type, type);
         }
     }
@@ -391,14 +375,12 @@ class MEFuncImpls {
         for (Type type : new Type[] {FLOAT, FLOAT2, FLOAT3, FLOAT4}) {
             // declare (vectype,vectype) variants
             final boolean useSuffix = (type != FLOAT);
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = useSuffix ? getSuffix(i) : "";
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", sfx);
-                    return s;
-                }
+            FuncImpl fimpl = (i, params) -> {
+                String sfx = useSuffix ? getSuffix(i) : "";
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", sfx);
+                return s;
             };
             declareFunction(fimpl, name, type, type);
 
@@ -407,14 +389,12 @@ class MEFuncImpls {
             }
 
             // declare (vectype,float) variants
-            fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = getSuffix(i);
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", "");
-                    return s;
-                }
+            fimpl = (i, params) -> {
+                String sfx = getSuffix(i);
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", "");
+                return s;
             };
             declareFunction(fimpl, name, type, FLOAT);
         }
@@ -434,14 +414,12 @@ class MEFuncImpls {
         for (Type type : new Type[] {FLOAT, FLOAT2, FLOAT3, FLOAT4}) {
             // declare (vectype,vectype,vectype) variants
             final boolean useSuffix = (type != FLOAT);
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = useSuffix ? getSuffix(i) : "";
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", sfx);
-                    return s;
-                }
+            FuncImpl fimpl = (i, params) -> {
+                String sfx = useSuffix ? getSuffix(i) : "";
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", sfx);
+                return s;
             };
             declareFunction(fimpl, name, type, type, type);
 
@@ -450,14 +428,12 @@ class MEFuncImpls {
             }
 
             // declare (vectype,float,float) variants
-            fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = getSuffix(i);
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", "");
-                    return s;
-                }
+            fimpl = (i, params) -> {
+                String sfx = getSuffix(i);
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", "");
+                return s;
             };
             declareFunction(fimpl, name, type, FLOAT, FLOAT);
         }
@@ -479,14 +455,12 @@ class MEFuncImpls {
         for (Type type : new Type[] {FLOAT, FLOAT2, FLOAT3, FLOAT4}) {
             // declare (vectype,vectype,vectype) variants
             final boolean useSuffix = (type != FLOAT);
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = useSuffix ? getSuffix(i) : "";
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", sfx);
-                    return s;
-                }
+            FuncImpl fimpl = (i, params) -> {
+                String sfx = useSuffix ? getSuffix(i) : "";
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", sfx);
+                return s;
             };
             declareFunction(fimpl, name, type, type, type);
 
@@ -495,14 +469,12 @@ class MEFuncImpls {
             }
 
             // declare (float,float,vectype) variants
-            fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = getSuffix(i);
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", "");
-                    return s;
-                }
+            fimpl = (i, params) -> {
+                String sfx = getSuffix(i);
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", "");
+                return s;
             };
             declareFunction(fimpl, name, FLOAT, FLOAT, type);
         }
@@ -521,14 +493,12 @@ class MEFuncImpls {
         for (Type type : new Type[] {FLOAT, FLOAT2, FLOAT3, FLOAT4}) {
             // declare (vectype,vectype,vectype) variants
             final boolean useSuffix = (type != FLOAT);
-            FuncImpl fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = useSuffix ? getSuffix(i) : "";
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", sfx);
-                    return s;
-                }
+            FuncImpl fimpl = (i, params) -> {
+                String sfx = useSuffix ? getSuffix(i) : "";
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", sfx);
+                return s;
             };
             declareFunction(fimpl, name, type, type, type);
 
@@ -537,14 +507,12 @@ class MEFuncImpls {
             }
 
             // declare (vectype,vectype,float) variants
-            fimpl = new FuncImpl() {
-                public String toString(int i, List<Expr> params) {
-                    String sfx = getSuffix(i);
-                    String s = pattern;
-                    s = s.replace("$1", sfx);
-                    s = s.replace("$2", "");
-                    return s;
-                }
+            fimpl = (i, params) -> {
+                String sfx = getSuffix(i);
+                String s = pattern;
+                s = s.replace("$1", sfx);
+                s = s.replace("$2", "");
+                return s;
             };
             declareFunction(fimpl, name, type, type, FLOAT);
         }

@@ -52,4 +52,18 @@ public class VectorCtorExpr extends Expr {
     public void accept(TreeVisitor tv) {
         tv.visitVectorCtorExpr(this);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder toStr = new StringBuilder();
+        toStr.append(type.toString()).append("(");
+        for (int i = 0; i < params.size(); i++) {
+            toStr.append(params.get(i));
+            if (i + 1 < params.size()) {
+                toStr.append(", ");
+            }
+        }
+        toStr.append(")");
+        return toStr.toString();
+    }
 }

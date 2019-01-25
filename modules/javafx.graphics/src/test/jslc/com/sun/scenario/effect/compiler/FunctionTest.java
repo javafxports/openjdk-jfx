@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,36 +23,37 @@
  * questions.
  */
 
-package com.sun.scenario.effect.compiler.tree;
+package com.sun.scenario.effect.compiler;
 
-import com.sun.scenario.effect.compiler.model.Variable;
+import java.io.File;
+import com.sun.scenario.effect.compiler.JSLC.JSLCInfo;
+import org.junit.Test;
 
 /**
  */
-public class VarDecl extends ExtDecl {
+public class FunctionTest {
 
-    private final Variable var;
-    private final Expr init;
-
-    VarDecl(Variable var, Expr init) {
-        this.var = var;
-        this.init = init;
+    public FunctionTest() {
     }
 
-    public Variable getVariable() {
-        return var;
+    static JSLC.ParserInfo compile(String s) throws Exception {
+        File tmpfile = File.createTempFile("foo", null);
+        File tmpdir = tmpfile.getParentFile();
+        JSLCInfo jslcinfo = new JSLCInfo();
+        jslcinfo.outDir = tmpdir.getAbsolutePath();
+        jslcinfo.shaderName = "Effect";
+        jslcinfo.peerName = "Foo";
+        jslcinfo.outTypes = JSLC.OUT_ALL;
+        return JSLC.compile(jslcinfo, s, Long.MAX_VALUE);
     }
 
-    public Expr getInit() {
-        return init;
-    }
-
-    public void accept(TreeVisitor tv) {
-        tv.visitVarDecl(this);
-    }
-
-    @Override
-    public String toString() {
-        return var.getName() + " = " + init.toString();
+    @Test
+    public void fma() throws Exception {
+        String s =
+                "float myFunc() {\n" +
+                        "   float funcres = distance(1.5, 3.0);\n" +
+                        "   return funcres;\n" +
+                        "}\n";
+        compile(s);
     }
 }

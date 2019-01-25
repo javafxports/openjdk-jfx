@@ -26,13 +26,9 @@
 package com.sun.scenario.effect.compiler.parser;
 
 import com.sun.scenario.effect.compiler.JSLParser;
-import com.sun.scenario.effect.compiler.model.Type;
-import com.sun.scenario.effect.compiler.tree.BinaryExpr;
-import com.sun.scenario.effect.compiler.tree.ExprStmt;
-import com.sun.scenario.effect.compiler.tree.LiteralExpr;
-import com.sun.scenario.effect.compiler.tree.SelectStmt;
-import com.sun.scenario.effect.compiler.tree.Stmt;
-import org.antlr.runtime.RecognitionException;
+import com.sun.scenario.effect.compiler.model.Types;
+import com.sun.scenario.effect.compiler.tree.*;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -59,14 +55,15 @@ public class SelectionStatementTest extends ParserBase {
         assertTrue(s.getElseStmt() instanceof ExprStmt);
     }
 
-    @Test(expected = RecognitionException.class)
+    @Test(expected = ParseCancellationException.class)
     public void notASelect() throws Exception {
         parseTreeFor("then (so) { bobs yer uncle }");
     }
 
-    private Stmt parseTreeFor(String text) throws RecognitionException {
+    private Stmt parseTreeFor(String text) throws Exception {
         JSLParser parser = parserOver(text);
-        parser.getSymbolTable().declareVariable("foo", Type.INT, null);
-        return parser.selection_statement();
+        JSLCVisitor visitor = new JSLCVisitor();
+        visitor.getSymbolTable().declareVariable("foo", Types.INT, null);
+        return visitor.visitSelection_statement(parser.selection_statement());
     }
 }

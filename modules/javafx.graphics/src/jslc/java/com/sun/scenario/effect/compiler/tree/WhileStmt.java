@@ -49,4 +49,9 @@ public class WhileStmt extends Stmt {
     public void accept(TreeVisitor tv) {
         tv.visitWhileStmt(this);
     }
+
+    @Override
+    public String toString() {
+        return "while(" + cond + ") {\n\t" + stmt + "\n}";
+    }
 }

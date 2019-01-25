@@ -43,4 +43,9 @@ public class ParenExpr extends Expr {
     public void accept(TreeVisitor tv) {
         tv.visitParenExpr(this);
     }
+
+    @Override
+    public String toString() {
+        return "(" + expr + ")";
+    }
 }

@@ -54,4 +54,14 @@ public class SelectStmt extends Stmt {
     public void accept(TreeVisitor tv) {
         tv.visitSelectStmt(this);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder toStr = new StringBuilder();
+        toStr.append("if (").append(ifExpr).append(") {\n\t").append(thenStmt).append("\n}");
+        if (elseStmt != null) {
+            toStr.append(" else {\n\t").append(elseStmt).append("\n}");
+        }
+        return toStr.toString();
+    }
 }

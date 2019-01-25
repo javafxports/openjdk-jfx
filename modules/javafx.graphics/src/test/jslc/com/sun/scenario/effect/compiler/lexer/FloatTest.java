@@ -26,7 +26,6 @@
 package com.sun.scenario.effect.compiler.lexer;
 
 import com.sun.scenario.effect.compiler.JSLLexer;
-import org.antlr.runtime.RecognitionException;
 import org.junit.Test;
 
 public class FloatTest extends LexerBase {
@@ -43,14 +42,9 @@ public class FloatTest extends LexerBase {
         assertRecognized(".1234567890");
     }
 
-    @Test(expected = RecognitionException.class)
+    @Test
     public void badDigits() throws Exception {
-        assertRecognized("0110");
-    }
-
-    @Override
-    protected void fireLexerRule(JSLLexer lexer) throws Exception {
-        lexer.mFLOATCONSTANT();
+        assertNotRecognized("0110", "0");
     }
 
     @Override

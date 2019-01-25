@@ -45,4 +45,9 @@ public class VariableExpr extends Expr {
     public void accept(TreeVisitor tv) {
         tv.visitVariableExpr(this);
     }
+
+    @Override
+    public String toString() {
+        return var.getName();
+    }
 }

@@ -34,4 +34,9 @@ public class ContinueStmt extends Stmt {
     public void accept(TreeVisitor tv) {
         tv.visitContinueStmt(this);
     }
+
+    @Override
+    public String toString() {
+        return "continue;";
+    }
 }

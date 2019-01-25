@@ -26,14 +26,9 @@
 package com.sun.scenario.effect.compiler.parser;
 
 import com.sun.scenario.effect.compiler.JSLParser;
-import com.sun.scenario.effect.compiler.model.Type;
-import com.sun.scenario.effect.compiler.tree.BinaryExpr;
-import com.sun.scenario.effect.compiler.tree.DoWhileStmt;
-import com.sun.scenario.effect.compiler.tree.ExprStmt;
-import com.sun.scenario.effect.compiler.tree.ForStmt;
-import com.sun.scenario.effect.compiler.tree.Stmt;
-import com.sun.scenario.effect.compiler.tree.WhileStmt;
-import org.antlr.runtime.RecognitionException;
+import com.sun.scenario.effect.compiler.model.Types;
+import com.sun.scenario.effect.compiler.tree.*;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -102,15 +97,16 @@ public class IterationStatementTest extends ParserBase {
         assertTrue(s.getStmt() instanceof ExprStmt);
     }
 
-    @Test(expected = RecognitionException.class)
+    @Test(expected = ParseCancellationException.class)
     public void notAnIterationStmt() throws Exception {
         parseTreeFor("return;");
     }
 
-    private Stmt parseTreeFor(String text) throws RecognitionException {
+    private Stmt parseTreeFor(String text) throws Exception {
         JSLParser parser = parserOver(text);
-        parser.getSymbolTable().declareVariable("i", Type.INT, null);
-        parser.getSymbolTable().declareVariable("j", Type.INT, null);
-        return parser.iteration_statement();
+        JSLCVisitor visitor = new JSLCVisitor();
+        visitor.getSymbolTable().declareVariable("i", Types.INT, null);
+        visitor.getSymbolTable().declareVariable("j", Types.INT, null);
+        return visitor.visitIteration_statement(parser.iteration_statement());
     }
 }

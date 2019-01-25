@@ -45,4 +45,9 @@ public class LiteralExpr extends Expr {
     public void accept(TreeVisitor tv) {
         tv.visitLiteralExpr(this);
     }
+
+    @Override
+    public String toString() {
+        return value.toString();
+    }
 }

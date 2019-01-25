@@ -34,7 +34,8 @@ public enum BaseType {
     FLOAT,
     INT,
     BOOL,
-    SAMPLER;
+    SAMPLER,
+    BUFFER;
 
     @Override
     public String toString() {

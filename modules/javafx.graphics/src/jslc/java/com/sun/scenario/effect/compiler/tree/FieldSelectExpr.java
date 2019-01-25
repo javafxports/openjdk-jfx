@@ -44,7 +44,7 @@ public class FieldSelectExpr extends Expr {
     private static Type getType(Type orig, String fields) {
         BaseType base = orig.getBaseType();
         int len = fields.length();
-        for (Type type : Type.values()) {
+        for (Type type : Type.types()) {
             if (type.getBaseType() == base && type.getNumFields() == len) {
                 return type;
             }
@@ -62,5 +62,10 @@ public class FieldSelectExpr extends Expr {
 
     public void accept(TreeVisitor tv) {
         tv.visitFieldSelectExpr(this);
+    }
+
+    @Override
+    public String toString() {
+        return expr + "." + fields;
     }
 }

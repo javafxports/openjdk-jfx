@@ -28,6 +28,7 @@ package com.sun.scenario.effect.compiler.tree;
 import com.sun.scenario.effect.compiler.model.BaseType;
 import com.sun.scenario.effect.compiler.model.BinaryOpType;
 import com.sun.scenario.effect.compiler.model.Type;
+import com.sun.scenario.effect.compiler.model.Types;
 
 /**
  */
@@ -46,7 +47,7 @@ public class BinaryExpr extends Expr {
     private static Type getType(BinaryOpType op, Expr left, Expr right) {
         if (op.isRelational()) {
             // TODO: what about bool vector ops?
-            return Type.BOOL;
+            return Types.BOOL;
         } else {
             Type ltype = left.getResultType();
             Type rtype = right.getResultType();
@@ -72,7 +73,7 @@ public class BinaryExpr extends Expr {
                 // allow for some basic operations involving float and int
                 // scalar values, where we assume the backend will
                 // automatically promote the result to floating point
-                return Type.FLOAT;
+                return Types.FLOAT;
             } else {
                 throw new RuntimeException("Expressions must have compatible result types" +
                                            " (lhs=" + ltype +
@@ -96,5 +97,10 @@ public class BinaryExpr extends Expr {
 
     public void accept(TreeVisitor tv) {
         tv.visitBinaryExpr(this);
+    }
+
+    @Override
+    public String toString() {
+        return getLeft() + " " + getOp().getSymbol() + " " + getRight() + ";";
     }
 }

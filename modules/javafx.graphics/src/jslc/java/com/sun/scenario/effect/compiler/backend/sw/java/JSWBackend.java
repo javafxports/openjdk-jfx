@@ -25,37 +25,38 @@
 
 package com.sun.scenario.effect.compiler.backend.sw.java;
 
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
 import com.sun.scenario.effect.compiler.JSLParser;
-import com.sun.scenario.effect.compiler.model.BaseType;
-import com.sun.scenario.effect.compiler.model.Qualifier;
-import com.sun.scenario.effect.compiler.model.Type;
-import com.sun.scenario.effect.compiler.model.Variable;
+import com.sun.scenario.effect.compiler.model.*;
 import com.sun.scenario.effect.compiler.tree.FuncDef;
+import com.sun.scenario.effect.compiler.tree.JSLCVisitor;
 import com.sun.scenario.effect.compiler.tree.ProgramUnit;
 import com.sun.scenario.effect.compiler.tree.TreeScanner;
-import org.antlr.stringtemplate.StringTemplate;
-import org.antlr.stringtemplate.StringTemplateGroup;
-import org.antlr.stringtemplate.language.DefaultTemplateLexer;
+import org.stringtemplate.v4.ST;
+import org.stringtemplate.v4.STGroup;
+import org.stringtemplate.v4.STGroupFile;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  */
 public class JSWBackend extends TreeScanner {
 
     private final JSLParser parser;
+    private final JSLCVisitor visitor;
     private final String body;
 
-    public JSWBackend(JSLParser parser, ProgramUnit program) {
+    public JSWBackend(JSLParser parser, JSLCVisitor visitor, ProgramUnit program) {
         // TODO: will be removed once we clean up static usage
         resetStatics();
-
         this.parser = parser;
+        this.visitor = visitor;
 
+        // FIXME: Do we need to make a JSWWVisitor and call it on the parser?
         JSWTreeScanner scanner = new JSWTreeScanner();
         scanner.scan(program);
         this.body = scanner.getResult();
@@ -66,7 +67,7 @@ public class JSWBackend extends TreeScanner {
                                    String genericsName,
                                    String interfaceName)
     {
-        Map<String, Variable> vars = parser.getSymbolTable().getGlobalVariables();
+        Map<String, Variable> vars = visitor.getSymbolTable().getGlobalVariables();
         StringBuilder genericsDecl = new StringBuilder();
         StringBuilder interfaceDecl = new StringBuilder();
         StringBuilder constants = new StringBuilder();
@@ -138,7 +139,7 @@ public class JSWBackend extends TreeScanner {
                 }
             } else if (v.getQualifier() == Qualifier.PARAM && bt == BaseType.SAMPLER) {
                 int i = v.getReg();
-                if (t == Type.FSAMPLER) {
+                if (t == Types.FSAMPLER) {
                     samplers.append("FloatMap src" + i + " = (FloatMap)getSamplerData(" + i + ");\n");
                     samplers.append("int src" + i + "x = 0;\n");
                     samplers.append("int src" + i + "y = 0;\n");
@@ -151,7 +152,7 @@ public class JSWBackend extends TreeScanner {
                     // TODO: for now, assume [0,0,1,1]
                     srcRects.append("float[] src" + i + "Rect = new float[] {0,0,1,1};\n");
                 } else {
-                    if (t == Type.LSAMPLER) {
+                    if (t == Types.LSAMPLER) {
                         samplers.append("HeapImage src" + i + " = (HeapImage)inputs[" + i + "].getUntransformedImage();\n");
                     } else {
                         samplers.append("HeapImage src" + i + " = (HeapImage)inputs[" + i + "].getTransformedImage(dstBounds);\n");
@@ -170,7 +171,7 @@ public class JSWBackend extends TreeScanner {
                     samplers.append("src" + i + "y, ");
                     samplers.append("src" + i + "w, ");
                     samplers.append("src" + i + "h);\n");
-                    if (t == Type.LSAMPLER) {
+                    if (t == Types.LSAMPLER) {
                         samplers.append("Rectangle src" + i + "InputBounds = inputs[" + i + "].getUntransformedBounds();\n");
                         samplers.append("BaseTransform src" + i + "Transform = inputs[" + i + "].getTransform();\n");
                     } else {
@@ -180,7 +181,7 @@ public class JSWBackend extends TreeScanner {
                     samplers.append("setInputBounds(" + i + ", src" + i + "InputBounds);\n");
                     samplers.append("setInputNativeBounds(" + i + ", src" + i + "Bounds);\n");
 
-                    if (t == Type.LSAMPLER) {
+                    if (t == Types.LSAMPLER) {
                         samplers.append("float " + v.getName() + "_vals[] = new float[4];\n");
                     }
 
@@ -219,27 +220,26 @@ public class JSWBackend extends TreeScanner {
             interfaceDecl.append("implements "+interfaceName);
         }
 
-        Reader template = new InputStreamReader(getClass().getResourceAsStream("JSWGlue.stg"));
-        StringTemplateGroup group = new StringTemplateGroup(template, DefaultTemplateLexer.class);
-        StringTemplate glue = group.getInstanceOf("glue");
-        glue.setAttribute("effectName", effectName);
-        glue.setAttribute("peerName", peerName);
-        glue.setAttribute("genericsDecl", genericsDecl.toString());
-        glue.setAttribute("interfaceDecl", interfaceDecl.toString());
-        glue.setAttribute("usercode", usercode.toString());
-        glue.setAttribute("samplers", samplers.toString());
-        glue.setAttribute("cleanup", cleanup.toString());
-        glue.setAttribute("srcRects", srcRects.toString());
-        glue.setAttribute("constants", constants.toString());
-        glue.setAttribute("posDecls", posDecls.toString());
-        glue.setAttribute("pixInitY", pixInitY.toString());
-        glue.setAttribute("pixInitX", pixInitX.toString());
-        glue.setAttribute("posIncrY", posIncrY.toString());
-        glue.setAttribute("posInitY", posInitY.toString());
-        glue.setAttribute("posIncrX", posIncrX.toString());
-        glue.setAttribute("posInitX", posInitX.toString());
-        glue.setAttribute("body", body);
-        return glue.toString();
+        STGroup group = new STGroupFile(getClass().getResource("JSWGlue.st"), UTF_8.displayName(), '$', '$');
+        ST glue = group.getInstanceOf("glue");
+        glue.add("effectName", effectName);
+        glue.add("peerName", peerName);
+        glue.add("genericsDecl", genericsDecl.toString());
+        glue.add("interfaceDecl", interfaceDecl.toString());
+        glue.add("usercode", usercode.toString());
+        glue.add("samplers", samplers.toString());
+        glue.add("cleanup", cleanup.toString());
+        glue.add("srcRects", srcRects.toString());
+        glue.add("constants", constants.toString());
+        glue.add("posDecls", posDecls.toString());
+        glue.add("pixInitY", pixInitY.toString());
+        glue.add("pixInitX", pixInitX.toString());
+        glue.add("posIncrY", posIncrY.toString());
+        glue.add("posInitY", posInitY.toString());
+        glue.add("posIncrX", posIncrX.toString());
+        glue.add("posInitX", posInitX.toString());
+        glue.add("body", body);
+        return glue.render();
     }
 
     // TODO: need better mechanism for querying fields

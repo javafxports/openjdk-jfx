@@ -44,4 +44,13 @@ public class CompoundStmt extends Stmt {
     public void accept(TreeVisitor tv) {
         tv.visitCompoundStmt(this);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder toStr = new StringBuilder();
+        for (Stmt stmt : stmts) {
+            toStr.append(stmt);
+        }
+        return toStr.toString();
+    }
 }

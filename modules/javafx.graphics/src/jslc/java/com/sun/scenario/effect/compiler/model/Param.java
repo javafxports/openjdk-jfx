@@ -25,6 +25,8 @@
 
 package com.sun.scenario.effect.compiler.model;
 
+import java.util.Objects;
+
 /**
  */
 public class Param {
@@ -60,14 +62,16 @@ public class Param {
             return false;
         }
         Param that = (Param)obj;
-        return this.name.equals(that.name) && this.type.equals(that.type);
+        return name.equals(that.name) && type.equals(that.type);
     }
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 31 * hash + name.hashCode();
-        hash = 31 * hash + type.hashCode();
-        return hash;
+        return Objects.hash(name, type);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Param [name = \"%s\", type = %s]", name, type);
     }
 }

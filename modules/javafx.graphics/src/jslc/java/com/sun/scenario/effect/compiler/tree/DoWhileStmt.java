@@ -48,4 +48,9 @@ public class DoWhileStmt extends Stmt {
     public void accept(TreeVisitor tv) {
         tv.visitDoWhileStmt(this);
     }
+
+    @Override
+    public String toString() {
+        return "do " + stmt + "{\n\twhile(" + expr + ")\n}";
+    }
 }

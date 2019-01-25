@@ -51,4 +51,9 @@ public class UnaryExpr extends Expr {
     public void accept(TreeVisitor tv) {
         tv.visitUnaryExpr(this);
     }
+
+    @Override
+    public String toString() {
+        return op.getSymbol() + expr;
+    }
 }

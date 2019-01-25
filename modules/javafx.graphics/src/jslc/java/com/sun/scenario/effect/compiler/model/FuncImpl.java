@@ -29,11 +29,14 @@ import java.util.List;
 import com.sun.scenario.effect.compiler.tree.Expr;
 
 /**
+ * A function which transforms a {@code String} containing a function implementation with
+ * template arguments (such as {@literal x_tmp$1}) to a {@code String} containing a function
+ * implementation with the given parameters.
  */
-public abstract class FuncImpl {
-    public String getPreamble(List<Expr> params) {
+public interface FuncImpl {
+    default String getPreamble(List<Expr> params) {
         return null;
     }
 
-    public abstract String toString(int i, List<Expr> params);
+    String toString(int i, List<Expr> params);
 }

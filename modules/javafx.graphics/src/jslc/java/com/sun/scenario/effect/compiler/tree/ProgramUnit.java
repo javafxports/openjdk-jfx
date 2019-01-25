@@ -44,4 +44,13 @@ public class ProgramUnit implements Tree {
     public void accept(TreeVisitor tv) {
         tv.visitProgramUnit(this);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder toStr = new StringBuilder();
+        for (ExtDecl decl : declList) {
+            toStr.append(decl).append("\n");
+        }
+        return toStr.toString();
+    }
 }
