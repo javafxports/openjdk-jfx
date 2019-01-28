@@ -56,7 +56,6 @@ public class JSWBackend extends TreeScanner {
         this.parser = parser;
         this.visitor = visitor;
 
-        // FIXME: Do we need to make a JSWWVisitor and call it on the parser?
         JSWTreeScanner scanner = new JSWTreeScanner();
         scanner.scan(program);
         this.body = scanner.getResult();
