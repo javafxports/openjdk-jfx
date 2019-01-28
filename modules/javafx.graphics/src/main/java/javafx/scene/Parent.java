@@ -194,7 +194,7 @@ public abstract class Parent extends Node {
         }
 
         if (isDirty(DirtyBits.PARENT_CHILDREN_VIEW_ORDER)) {
-            computeViewOrderChidrenAndUpdatePeer();
+            computeViewOrderChildrenAndUpdatePeer();
         }
 
         if (Utils.assertionEnabled()) validatePG();
@@ -265,7 +265,7 @@ public abstract class Parent extends Node {
         NodeHelper.markDirty(this, DirtyBits.PARENT_CHILDREN_VIEW_ORDER);
     }
 
-    private void computeViewOrderChidrenAndUpdatePeer() {
+    private void computeViewOrderChildrenAndUpdatePeer() {
         boolean viewOrderSet = false;
         for (Node child : children) {
             double vo = child.getViewOrder();
@@ -294,7 +294,7 @@ public abstract class Parent extends Node {
     private List<Node> getOrderedChildren() {
         if (isDirty(DirtyBits.PARENT_CHILDREN_VIEW_ORDER)) {
             //Fix for JDK-8205092
-            computeViewOrderChidrenAndUpdatePeer();
+            computeViewOrderChildrenAndUpdatePeer();
         }
         if (!viewOrderChildren.isEmpty()) {
             return viewOrderChildren;

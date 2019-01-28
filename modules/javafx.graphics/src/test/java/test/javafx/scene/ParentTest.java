@@ -744,7 +744,7 @@ public class ParentTest {
     }
 
     @Test
-    public void testPickingChildNode(){
+    public void testPickingChildNode() {
         Rectangle rect1 = new Rectangle();
         rect1.setX(10);
         rect1.setY(10);
@@ -762,7 +762,7 @@ public class ParentTest {
         Scene scene = new Scene(g);
         stage.setScene(scene);
         stage.show();
-        ParentShim.getChildren(g).addAll(rect1,rect2);
+        ParentShim.getChildren(g).addAll(rect1, rect2);
         toolkit.fireTestPulse();
 
         PickResultChooser res = new PickResultChooser();
@@ -774,7 +774,7 @@ public class ParentTest {
     }
 
     @Test
-    public void testPickingChildNodeWithViewOrderSet(){
+    public void testPickingChildNodeWithViewOrderSet() {
         Rectangle rect1 = new Rectangle();
         rect1.setX(10);
         rect1.setY(10);
@@ -793,7 +793,7 @@ public class ParentTest {
         Scene scene = new Scene(g);
         stage.setScene(scene);
         stage.show();
-        ParentShim.getChildren(g).addAll(rect1,rect2);
+        ParentShim.getChildren(g).addAll(rect1, rect2);
         toolkit.fireTestPulse();
 
         PickResultChooser res = new PickResultChooser();
@@ -805,7 +805,7 @@ public class ParentTest {
     }
 
     @Test
-    public void testPickingChildNodeWithDirtyViewOrder(){
+    public void testPickingChildNodeWithDirtyViewOrder() {
         //JDK-8205092
         Rectangle rect1 = new Rectangle();
         rect1.setX(10);
@@ -825,7 +825,7 @@ public class ParentTest {
         Scene scene = new Scene(g);
         stage.setScene(scene);
         stage.show();
-        ParentShim.getChildren(g).addAll(rect1,rect2);
+        ParentShim.getChildren(g).addAll(rect1, rect2);
         toolkit.fireTestPulse();
 
         ParentShim.getChildren(g).remove(rect1);
