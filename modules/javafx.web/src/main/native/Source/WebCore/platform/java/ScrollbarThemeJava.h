@@ -43,10 +43,9 @@ public:
     IntRect backButtonRect(Scrollbar&, ScrollbarPart, bool painting = false) override;
     IntRect forwardButtonRect(Scrollbar&, ScrollbarPart, bool painting = false) override;
     IntRect trackRect(Scrollbar&, bool painting = false) override;
-    bool usesOverlayScrollbars() const final { return m_usesOverlayScrollbars; }
-
-private:
-    bool m_usesOverlayScrollbars { true };
+    bool usesOverlayScrollbars() const final { return true; }
+    // When using overlay scrollbars, always invalidate the whole scrollbar when entering/leaving.
+    bool invalidateOnMouseEnterExit() override { return true; }
 };
 
 } // namespace WebCore

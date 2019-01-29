@@ -27,7 +27,9 @@
 
 #include "ComplexTextController.h"
 #include "FloatRect.h"
-
+#include "Font.h"
+#include "FontCascade.h"
+#include "TextRun.h"
 #include <wtf/java/JavaEnv.h>
 
 namespace WebCore {

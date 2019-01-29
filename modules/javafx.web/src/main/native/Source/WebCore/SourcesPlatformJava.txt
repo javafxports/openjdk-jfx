@@ -89,8 +89,9 @@ platform/graphics/java/RQRef.cpp
 platform/graphics/texmap/TextureMapperJava.cpp
 platform/graphics/texmap/BitmapTextureJava.cpp
 
-platform/ScrollAnimatorSmooth.cpp
+platform/ScrollAnimationKinetic.cpp
 platform/ScrollAnimationSmooth.cpp
+platform/java/ScrollAnimatorJava.cpp
 
 platform/text/LocaleNone.cpp
 platform/text/Hyphenation.cpp
