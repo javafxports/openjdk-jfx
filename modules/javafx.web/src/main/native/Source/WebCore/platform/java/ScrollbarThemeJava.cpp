@@ -132,24 +132,26 @@ IntRect getPartRect(Scrollbar& scrollbar, ScrollbarPart part) {
 
 bool ScrollbarThemeJava::paint(Scrollbar& scrollbar, GraphicsContext& gc, const IntRect& damageRect)
 {
-    if (gc.paintingDisabled())
+    // platformContext() returns 0 when printing
+    if (gc.paintingDisabled() || !gc.platformContext()) {
         return false;
-
-    if (!scrollbar.enabled())
-        return true;
-
-    double opacity = scrollbar.hoveredPart() == NoPart ? scrollbar.opacity() : 1;
-    if (!opacity)
-        return true;
-
-    IntRect rect = scrollbar.frameRect();
-    if (!rect.intersects(damageRect))
-        return true;
+    }
 
     JLObject jtheme = getJScrollBarTheme(scrollbar);
     if (!jtheme) {
         return false;
     }
+
+    double opacity = scrollbar.hoveredPart() == NoPart ? scrollbar.opacity() : 1;
+    if (!opacity) {
+        return true;
+    }
+
+    IntRect rect = scrollbar.frameRect();
+    if (!rect.intersects(damageRect)) {
+        return true;
+    }
+
     JNIEnv* env = WebCore_GetJavaEnv();
 
     static jmethodID mid = env->GetMethodID(
