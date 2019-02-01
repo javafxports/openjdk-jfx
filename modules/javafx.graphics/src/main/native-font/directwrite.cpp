@@ -845,6 +845,12 @@ jobject newD2D1_MATRIX_3X2_F(JNIEnv *env, D2D1_MATRIX_3X2_F *lpStruct)
 /*                                                                        */
 /**************************************************************************/
 
+JNIEXPORT void JNICALL OS_NATIVE(CoUninitialize)
+    (JNIEnv *env, jclass that)
+{
+    CoUninitialize();
+}
+
 JNIEXPORT jlong JNICALL OS_NATIVE(_1WICCreateImagingFactory)
     (JNIEnv *env, jclass that)
 {
@@ -867,8 +873,6 @@ JNIEXPORT jlong JNICALL OS_NATIVE(_1WICCreateImagingFactory)
             IID_PPV_ARGS(&result)
             );
 
-    /* Unload COM as no other COM objects will be create directly */
-    CoUninitialize();
     return SUCCEEDED(hr) ? (jlong)result : NULL;
 }
 

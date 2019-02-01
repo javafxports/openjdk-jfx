@@ -31,9 +31,11 @@ import com.sun.javafx.font.PrismFontFactory;
 import com.sun.prism.impl.PrismSettings;
 
 import java.lang.reflect.Method;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class GraphicsPipeline {
 
@@ -56,10 +58,26 @@ public abstract class GraphicsPipeline {
         SM3
     }
     private FontFactory fontFactory;
+    private final Set<Runnable> disposeHooks = new HashSet<Runnable>();
 
     public abstract boolean init();
     public void dispose() {
+        for (Runnable disposeHook : disposeHooks) {
+            disposeHook.run();
+        }
         installedPipeline = null;
+    }
+
+    /**
+     * Add a dispose hook to be called when the pipeline is disposed.
+     *
+     * @param runnable the {@link Runnable} to be called when the pipeline is disposed
+     */
+    public void addDisposeHook(Runnable runnable) {
+        if (runnable == null) {
+            return;
+        }
+        disposeHooks.add(runnable);
     }
 
     public abstract int getAdapterOrdinal(Screen screen);

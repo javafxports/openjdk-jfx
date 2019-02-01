@@ -175,6 +175,8 @@ class OS {
         return ptr != 0 ? new IWICImagingFactory(ptr) : null;
     }
 
+    static final native void CoUninitialize();
+
     private static final native long _NewJFXTextAnalysisSink(char[] text,
                                                              int start,
                                                              int length,
