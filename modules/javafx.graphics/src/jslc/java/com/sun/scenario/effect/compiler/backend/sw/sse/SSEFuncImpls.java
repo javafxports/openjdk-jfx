@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -157,27 +157,27 @@ class SSEFuncImpls {
                 if (type == LSAMPLER) {
                     return
                             "lsample(" + s + ", loc_tmp_x, loc_tmp_y,\n" +
-                                    "        " + p + "w, " + p + "h, " + p + "scan,\n" +
-                                    "        " + s + "_vals);\n";
+                            "        " + p + "w, " + p + "h, " + p + "scan,\n" +
+                            "        " + s + "_vals);\n";
                 } else if (type == FSAMPLER) {
                     return
                             "fsample(" + s + ", loc_tmp_x, loc_tmp_y,\n" +
-                                    "        " + p + "w, " + p + "h, " + p + "scan,\n" +
-                                    "        " + s + "_vals);\n";
+                            "        " + p + "w, " + p + "h, " + p + "scan,\n" +
+                            "        " + s + "_vals);\n";
                 } else {
                     return
                             "int " + s + "_tmp;\n" +
-                                    "if (loc_tmp_x >= 0 && loc_tmp_y >= 0) {\n" +
-                                    "    int iloc_tmp_x = (int)(loc_tmp_x*" + p + "w);\n" +
-                                    "    int iloc_tmp_y = (int)(loc_tmp_y*" + p + "h);\n" +
-                                    "    jboolean out =\n" +
-                                    "        iloc_tmp_x >= " + p + "w ||\n" +
-                                    "        iloc_tmp_y >= " + p + "h;\n" +
-                                    "    " + s + "_tmp = out ? 0 :\n" +
-                                    "        " + s + "[iloc_tmp_y*" + p + "scan + iloc_tmp_x];\n" +
-                                    "} else {\n" +
-                                    "    " + s + "_tmp = 0;\n" +
-                                    "}\n";
+                            "if (loc_tmp_x >= 0 && loc_tmp_y >= 0) {\n" +
+                            "    int iloc_tmp_x = (int)(loc_tmp_x*" + p + "w);\n" +
+                            "    int iloc_tmp_y = (int)(loc_tmp_y*" + p + "h);\n" +
+                            "    jboolean out =\n" +
+                            "        iloc_tmp_x >= " + p + "w ||\n" +
+                            "        iloc_tmp_y >= " + p + "h;\n" +
+                            "    " + s + "_tmp = out ? 0 :\n" +
+                            "        " + s + "[iloc_tmp_y*" + p + "scan + iloc_tmp_x];\n" +
+                            "} else {\n" +
+                            "    " + s + "_tmp = 0;\n" +
+                            "}\n";
                 }
             }
             public String toString(int i, List<Expr> params) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -219,7 +219,7 @@ public class JSWBackend extends TreeScanner {
             interfaceDecl.append("implements "+interfaceName);
         }
 
-        STGroup group = new STGroupFile(getClass().getResource("JSWGlue.st"), UTF_8.displayName(), '$', '$');
+        STGroup group = new STGroupFile(getClass().getResource("JSWGlue.stg"), UTF_8.displayName(), '$', '$');
         ST glue = group.getInstanceOf("glue");
         glue.add("effectName", effectName);
         glue.add("peerName", peerName);

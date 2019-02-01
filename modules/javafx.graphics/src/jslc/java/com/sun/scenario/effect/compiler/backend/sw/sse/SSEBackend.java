@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -319,7 +319,7 @@ public class SSEBackend extends TreeScanner {
             interfaceDecl.append("implements "+interfaceName);
         }
 
-        STGroup group = new STGroupFile(getClass().getResource("SSEJavaGlue.st"), UTF_8.displayName(), '$', '$');
+        STGroup group = new STGroupFile(getClass().getResource("SSEJavaGlue.stg"), UTF_8.displayName(), '$', '$');
         ST jglue = group.getInstanceOf("glue");
         jglue.add("effectName", effectName);
         jglue.add("peerName", peerName);
@@ -333,7 +333,7 @@ public class SSEBackend extends TreeScanner {
         jglue.add("params", jparams.toString());
         jglue.add("paramDecls", jparamDecls.toString());
 
-        group = new STGroupFile(getClass().getResource("SSENativeGlue.st"), UTF_8.displayName(), '$', '$');
+        group = new STGroupFile(getClass().getResource("SSENativeGlue.stg"), UTF_8.displayName(), '$', '$');
         ST cglue = group.getInstanceOf("glue");
         cglue.add("peerName", peerName);
         cglue.add("jniName", peerName.replace("_", "_1"));

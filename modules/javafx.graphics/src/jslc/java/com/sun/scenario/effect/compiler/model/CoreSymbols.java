@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -192,13 +192,6 @@ public class CoreSymbols {
         declareFunction(FLOAT2, name, FLOAT2, "x", FLOAT2, "y");
         declareFunction(FLOAT3, name, FLOAT3, "x", FLOAT3, "y");
         declareFunction(FLOAT4, name, FLOAT4, "x", FLOAT4, "y");
-    }
-
-    private static void declareOverloadsSimple3(String name) {
-        declareFunction(FLOAT,  name, FLOAT,  "x", FLOAT,  "y", FLOAT, "z");
-        declareFunction(FLOAT2, name, FLOAT2, "x", FLOAT2, "y", FLOAT2, "z");
-        declareFunction(FLOAT3, name, FLOAT3, "x", FLOAT3, "y", FLOAT3, "z");
-        declareFunction(FLOAT4, name, FLOAT4, "x", FLOAT4, "y", FLOAT4, "z");
     }
 
     private static void declareOverloadsMinMax(String name) {

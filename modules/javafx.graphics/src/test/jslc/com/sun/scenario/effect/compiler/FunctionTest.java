@@ -29,8 +29,6 @@ import java.io.File;
 import com.sun.scenario.effect.compiler.JSLC.JSLCInfo;
 import org.junit.Test;
 
-/**
- */
 public class FunctionTest {
 
     public FunctionTest() {
