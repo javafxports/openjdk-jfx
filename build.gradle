@@ -1918,9 +1918,7 @@ project(":graphics") {
     dependencies {
         stubCompile group: "junit", name: "junit", version: "4.8.2"
 
-        antlr group: "org.antlr", name: "antlr4", version: "4.7.2"
-        antlr group: "org.antlr", name: "antlr4-runtime", version: "4.7.2"
-        antlr group: "org.antlr", name: "ST4", version: "4.1"
+        antlr group: "org.antlr", name: "antlr4", version: "4.7.2", classifier: "complete"
     }
 
     project.ext.moduleSourcePath = defaultModuleSourcePath_GraphicsOne
@@ -2300,7 +2298,7 @@ project(":graphics") {
             libsDir.mkdirs();
 
             def allLibsPresent = true
-            def libNames = [ "antlr4-4.7.2.jar", "antlr4-runtime-4.7.2.jar", "ST4-4.1.jar" ]
+            def libNames = [ "antlr4-4.7.2-complete.jar" ]
             libNames.each { name ->
                 File f = new File(libsDir, name)
                 if (!f.exists()) allLibsPresent = false
@@ -2311,9 +2309,7 @@ project(":graphics") {
                 copy {
                     into libsDir
                     from f.getParentFile()
-                    include "**/antlr4-4.7.2.jar"
-                    include "**/antlr4-runtime-4.7.2.jar"
-                    include "**/ST4-41.jar"
+                    include "**/antlr4-4.7.2-complete.jar"
                     includeEmptyDirs = false
                 }
             }
