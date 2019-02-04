@@ -29,7 +29,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.sun.scenario.effect.compiler.JSLParser;
-import com.sun.scenario.effect.compiler.model.*;
+import com.sun.scenario.effect.compiler.model.BaseType;
+import com.sun.scenario.effect.compiler.model.Function;
+import com.sun.scenario.effect.compiler.model.Qualifier;
+import com.sun.scenario.effect.compiler.model.Type;
+import com.sun.scenario.effect.compiler.model.Types;
+import com.sun.scenario.effect.compiler.model.Variable;
 import com.sun.scenario.effect.compiler.tree.Expr;
 import com.sun.scenario.effect.compiler.tree.FuncDef;
 import com.sun.scenario.effect.compiler.tree.JSLCVisitor;

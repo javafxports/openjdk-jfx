@@ -26,8 +26,39 @@
 package com.sun.scenario.effect.compiler.backend.hw;
 
 import com.sun.scenario.effect.compiler.JSLParser;
-import com.sun.scenario.effect.compiler.model.*;
-import com.sun.scenario.effect.compiler.tree.*;
+import com.sun.scenario.effect.compiler.model.BinaryOpType;
+import com.sun.scenario.effect.compiler.model.Function;
+import com.sun.scenario.effect.compiler.model.Param;
+import com.sun.scenario.effect.compiler.model.Precision;
+import com.sun.scenario.effect.compiler.model.Qualifier;
+import com.sun.scenario.effect.compiler.model.Type;
+import com.sun.scenario.effect.compiler.model.Variable;
+import com.sun.scenario.effect.compiler.tree.ArrayAccessExpr;
+import com.sun.scenario.effect.compiler.tree.BinaryExpr;
+import com.sun.scenario.effect.compiler.tree.BreakStmt;
+import com.sun.scenario.effect.compiler.tree.CallExpr;
+import com.sun.scenario.effect.compiler.tree.CompoundStmt;
+import com.sun.scenario.effect.compiler.tree.ContinueStmt;
+import com.sun.scenario.effect.compiler.tree.DeclStmt;
+import com.sun.scenario.effect.compiler.tree.DiscardStmt;
+import com.sun.scenario.effect.compiler.tree.DoWhileStmt;
+import com.sun.scenario.effect.compiler.tree.Expr;
+import com.sun.scenario.effect.compiler.tree.ExprStmt;
+import com.sun.scenario.effect.compiler.tree.FieldSelectExpr;
+import com.sun.scenario.effect.compiler.tree.ForStmt;
+import com.sun.scenario.effect.compiler.tree.FuncDef;
+import com.sun.scenario.effect.compiler.tree.LiteralExpr;
+import com.sun.scenario.effect.compiler.tree.ParenExpr;
+import com.sun.scenario.effect.compiler.tree.ProgramUnit;
+import com.sun.scenario.effect.compiler.tree.ReturnStmt;
+import com.sun.scenario.effect.compiler.tree.SelectStmt;
+import com.sun.scenario.effect.compiler.tree.Stmt;
+import com.sun.scenario.effect.compiler.tree.TreeScanner;
+import com.sun.scenario.effect.compiler.tree.UnaryExpr;
+import com.sun.scenario.effect.compiler.tree.VarDecl;
+import com.sun.scenario.effect.compiler.tree.VariableExpr;
+import com.sun.scenario.effect.compiler.tree.VectorCtorExpr;
+import com.sun.scenario.effect.compiler.tree.WhileStmt;
 
 /**
  */

@@ -27,8 +27,15 @@ package com.sun.scenario.effect.compiler.backend.prism;
 
 import java.util.Map;
 import com.sun.scenario.effect.compiler.JSLParser;
-import com.sun.scenario.effect.compiler.model.*;
-import com.sun.scenario.effect.compiler.tree.*;
+import com.sun.scenario.effect.compiler.model.BaseType;
+import com.sun.scenario.effect.compiler.model.Qualifier;
+import com.sun.scenario.effect.compiler.model.Types;
+import com.sun.scenario.effect.compiler.model.Variable;
+import com.sun.scenario.effect.compiler.tree.GlueBlock;
+import com.sun.scenario.effect.compiler.tree.JSLCVisitor;
+import com.sun.scenario.effect.compiler.tree.ProgramUnit;
+import com.sun.scenario.effect.compiler.tree.TreeScanner;
+import com.sun.scenario.effect.compiler.tree.VariableExpr;
 import org.stringtemplate.v4.ST;
 import org.stringtemplate.v4.STGroup;
 import org.stringtemplate.v4.STGroupFile;
