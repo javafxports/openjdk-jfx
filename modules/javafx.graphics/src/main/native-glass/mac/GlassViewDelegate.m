@@ -455,6 +455,7 @@ static jint getSwipeDirFromEvent(NSEvent *theEvent)
     jdouble rotationY = 0.0;
     if (type == com_sun_glass_events_MouseEvent_WHEEL)
     {
+        // JDK-8183399, JDK-8218424
         if ([theEvent hasPreciseScrollingDeltas])
         {
             rotationX = (jdouble)[theEvent scrollingDeltaX] * 0.1;
