@@ -21,7 +21,9 @@ CFLAGS = -fPIC                   \
          -Wformat                \
          -Wextra                 \
          -Wformat-security       \
+         -fstack-protector       \
          -Werror=implicit-function-declaration \
+         -Werror=trampolines     \
          -msse2                  \
          -fbuiltin               \
          -DHAVE_STDINT_H         \
@@ -48,6 +50,7 @@ INCLUDES= -I../../../plugins                          \
 LDFLAGS = -L$(BUILD_DIR)    \
           -lgstreamer-lite  \
            $(PACKAGES_LIBS) \
+          -z relro          \
           -static-libgcc -static-libstdc++ -Wl,--gc-sections
 
 ifneq ($(strip $(LIBAV_DIR)),)

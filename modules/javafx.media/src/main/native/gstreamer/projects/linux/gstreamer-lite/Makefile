@@ -41,7 +41,9 @@ CFLAGS =-fPIC                   \
         -Wformat                \
         -Wextra                 \
         -Wformat-security       \
+        -fstack-protector       \
         -Werror=implicit-function-declaration \
+        -Werror=trampolines     \
         -D_GNU_SOURCE           \
         -DGST_REMOVE_DEPRECATED \
         -DGSTREAMER_LITE        \
@@ -75,6 +77,7 @@ PACKAGES_INCLUDES := $(shell pkg-config --cflags alsa glib-2.0)
 PACKAGES_LIBS := $(shell pkg-config --libs alsa glib-2.0 gobject-2.0 gmodule-2.0 gthread-2.0)
 
 LDFLAGS = -L$(BUILD_DIR) -lm $(PACKAGES_LIBS) \
+          -z relro \
           -static-libgcc -static-libstdc++ -Wl,--gc-sections
 
 ifeq ($(ARCH), x32)
@@ -124,7 +127,6 @@ gstreamer/gst/gst.c \
             gstreamer/gst/gstpluginfeature.c \
             gstreamer/gst/gstpluginloader.c \
             gstreamer/gst/gstpoll.c \
-            gstreamer/gst/gstpreset.c \
             gstreamer/gst/gstprotection.c \
             gstreamer/gst/gstquark.c \
             gstreamer/gst/gstquery.c \
@@ -197,8 +199,6 @@ gstreamer/gst/gst.c \
             gst-plugins-base/gst-libs/gst/fft/kiss_fftr_f32.c \
             gst-plugins-base/gst-libs/gst/pbutils/codec-utils.c \
             gst-plugins-base/gst-libs/gst/pbutils/descriptions.c \
-            gst-plugins-base/gst-libs/gst/pbutils/encoding-profile.c \
-            gst-plugins-base/gst-libs/gst/pbutils/encoding-target.c \
             gst-plugins-base/gst-libs/gst/pbutils/gstdiscoverer.c \
             gst-plugins-base/gst-libs/gst/pbutils/gstdiscoverer-types.c \
             gst-plugins-base/gst-libs/gst/pbutils/gstpluginsbaseversion.c \
