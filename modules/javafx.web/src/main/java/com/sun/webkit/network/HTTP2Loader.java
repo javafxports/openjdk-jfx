@@ -80,9 +80,7 @@ import static java.net.http.HttpClient.Redirect;
 import static java.net.http.HttpClient.Version;
 import static java.net.http.HttpResponse.BodyHandlers;
 import static java.net.http.HttpResponse.BodySubscribers;
-/**
- * A runnable that loads a resource specified by a URL.
- */
+
 final class HTTP2Loader extends URLLoaderBase {
 
     private static final PlatformLogger logger =
@@ -103,7 +101,7 @@ final class HTTP2Loader extends URLLoaderBase {
     // use one instance per WebPage instead of Singleton.
     private static HttpClient HTTP_CLIENT = HttpClient.newBuilder()
                    .version(Version.HTTP_2)  // this is the default
-                   // .followRedirects(Redirect.NORMAL)
+                   .followRedirects(Redirect.NEVER) // WebCore handles redirection
                    .connectTimeout(Duration.ofSeconds(30))
                    .build();
 
