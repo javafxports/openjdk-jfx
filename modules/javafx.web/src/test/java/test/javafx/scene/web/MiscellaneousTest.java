@@ -526,7 +526,6 @@ public class MiscellaneousTest extends TestBase {
     }
 
     @Test public void testWindows1251EncodingWithXML() {
-        final String xmlStr = "<?xml version='1.0' encoding='windows-1251'?><TEST id='test'/>";
         loadContent(
             "<script>\n" +
             "const text = '<?xml version=\"1.0\" encoding=\"windows-1251\"?><test/>';\n" +
