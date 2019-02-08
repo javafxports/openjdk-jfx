@@ -563,7 +563,6 @@ final class URLLoader extends URLLoaderBase implements Runnable {
             }
         } finally {
             if (byteBuffer != null) {
-                byteBuffer.clear();
                 allocator.release(byteBuffer);
             }
         }
@@ -739,7 +738,6 @@ final class URLLoader extends URLLoaderBase implements Runnable {
                         byteBuffer.position(),
                         byteBuffer.remaining());
             }
-            byteBuffer.clear();
             allocator.release(byteBuffer);
         });
     }

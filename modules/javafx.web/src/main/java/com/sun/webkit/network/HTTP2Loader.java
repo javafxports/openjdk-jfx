@@ -25,18 +25,13 @@
 
 package com.sun.webkit.network;
 
-import com.sun.javafx.logging.PlatformLogger;
 import com.sun.javafx.logging.PlatformLogger.Level;
+import com.sun.javafx.logging.PlatformLogger;
 import com.sun.webkit.Invoker;
-import com.sun.webkit.LoadListenerClient;
 import com.sun.webkit.WebPage;
-import static com.sun.webkit.network.URLs.newURL;
 import java.io.EOFException;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.annotation.Native;
 import java.net.ConnectException;
@@ -46,36 +41,31 @@ import java.net.MalformedURLException;
 import java.net.NoRouteToHostException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
-import java.security.AccessControlException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.InflaterInputStream;
-import javax.net.ssl.SSLHandshakeException;
-
-import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse.BodyHandler;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
+import java.security.AccessControlException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.time.Duration;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import javax.net.ssl.SSLHandshakeException;
+import static com.sun.webkit.network.URLs.newURL;
 import static java.net.http.HttpClient.Redirect;
 import static java.net.http.HttpClient.Version;
 import static java.net.http.HttpResponse.BodyHandlers;
@@ -85,7 +75,7 @@ final class HTTP2Loader extends URLLoaderBase {
 
     private static final PlatformLogger logger =
             PlatformLogger.getLogger(URLLoader.class.getName());
-    private static final int MAX_BUF_COUNT = 3;
+    private static final int MAX_BUF_COUNT = 1;
 
 
     private final WebPage webPage;
@@ -97,12 +87,14 @@ final class HTTP2Loader extends URLLoaderBase {
     private final long data;
     private volatile boolean canceled = false;
 
+    private final ByteBufferAllocator allocator;
+    private final CompletionStage<Void> response;
     // TODO: Check for security implications, otherwise
     // use one instance per WebPage instead of Singleton.
     private static HttpClient HTTP_CLIENT = HttpClient.newBuilder()
                    .version(Version.HTTP_2)  // this is the default
                    .followRedirects(Redirect.NEVER) // WebCore handles redirection
-                   .connectTimeout(Duration.ofSeconds(30))
+                   .connectTimeout(Duration.ofSeconds(30)) // FIXME: Add a property to control the timeout
                    .build();
 
     /**
@@ -172,19 +164,20 @@ final class HTTP2Loader extends URLLoaderBase {
         this.headers = headers;
         this.formDataElements = formDataElements;
         this.data = data;
+        this.allocator = byteBufferPool.newAllocator(MAX_BUF_COUNT);
 
         URI uri;
         try {
             uri = toURI();
         } catch(MalformedURLException e) {
+            this.response = null;
             didFail(e);
             return;
         }
 
         final String parsedHeaders[] = Arrays.stream(headers.split("\n"))
-                                // .filter(s -> !s.matches("(?i)^origin:.*|^referer:.*")) // Depends on JDK-8203850
-                                .flatMap(s -> { int i = s.indexOf(":"); return Stream.of(s.substring(0, i), s.substring(i + 2));})
-                                .toArray(String[]::new);
+                                             .flatMap(s -> Stream.of(s.split(":", 2))) // split from first occurance of :
+                                             .toArray(String[]::new);
         final var requestBuilder = HttpRequest.newBuilder()
                        .uri(uri)
                        .headers(parsedHeaders)
@@ -200,42 +193,46 @@ final class HTTP2Loader extends URLLoaderBase {
                 didReceiveResponse(rsp);
             }
             return BodySubscribers.fromSubscriber(new Flow.Subscriber<List<ByteBuffer>>() {
-                  private Flow.Subscription subscription;
-                  @Override
-                  public void onComplete() {
-                      didFinishLoading();
-                  }
+                private Flow.Subscription subscription;
+                @Override
+                public void onComplete() {
+                    didFinishLoading();
+                }
 
-                  @Override
-                  public void onError(Throwable th) {
-                      System.err.println("Errr:" + th);
-                  }
+                @Override
+                public void onError(Throwable th) {
+                    // nop
+                    // System.err.println("Errr:" + th);
+                }
 
-                  @Override
-                  public void onNext(final List<ByteBuffer> b) {
-                      didReceiveData(b);
-                      requestIfNotCancelled();
-                  }
+                @Override
+                public void onNext(final List<ByteBuffer> bytes) {
+                    didReceiveData(bytes);
+                    requestIfNotCancelled();
+                }
 
-                  @Override
-                  public void onSubscribe(Flow.Subscription subscription) {
-                      this.subscription = subscription;
-                      requestIfNotCancelled();
-                  }
+                @Override
+                public void onSubscribe(Flow.Subscription subscription) {
+                    this.subscription = subscription;
+                    requestIfNotCancelled();
+                }
 
-                  private void requestIfNotCancelled() {
-                      if (canceled) {
-                          subscription.cancel();
-                      } else {
-                          subscription.request(1);
-                      }
-                  }
-        });};
+                private void requestIfNotCancelled() {
+                    if (canceled) {
+                        subscription.cancel();
+                    } else {
+                        subscription.request(1);
+                    }
+                }
+            });
+        };
 
-        var res = HTTP_CLIENT.sendAsync(request, bodyHandler)
-                  .thenAccept(response -> { })
-                  .exceptionally(ex -> {
-                       System.err.println("@@@@ Exception:" + ex + ", cause0:" + ex.getCause() + ", cause1:" + ex.getCause().getCause() + ", url:" + url); return null; });
+        this.response = HTTP_CLIENT.sendAsync(request, bodyHandler)
+                                   .thenAccept(response -> { })
+                                   .exceptionally(ex -> {
+                                        System.err.println("@@@@ Exception:" + ex + ", cause0:" + ex.getCause() + ", url:" + url);
+                                        return null;
+                                   });
 
     }
 
@@ -250,12 +247,12 @@ final class HTTP2Loader extends URLLoaderBase {
         canceled = true;
     }
 
-    private void callBack(Runnable runnable) {
-        if (asynchronous) {
-            Invoker.getInvoker().invokeOnEventThread(runnable);
-        } else {
-            runnable.run();
-        }
+    private void callBackIfNotCancelled(final Runnable runnable) {
+        Invoker.getInvoker().invokeOnEventThread(() -> {
+            if (!canceled) {
+                runnable.run();
+            }
+        });
     }
 
     private URL asURL(final String uri) throws MalformedURLException {
@@ -303,58 +300,75 @@ final class HTTP2Loader extends URLLoaderBase {
     }
 
     private void willSendRequest(final HttpResponse.ResponseInfo rsp) {
-        callBack(() -> {
-            if (!canceled) {
-                twkWillSendRequest(
-                        rsp.statusCode(),
-                        getContentType(rsp),
-                        "",
-                        getContentLength(rsp),
-                        getHeadersAsString(rsp),
-                        this.url,
-                        data);
-            }
+        callBackIfNotCancelled(() -> {
+            twkWillSendRequest(
+                    rsp.statusCode(),
+                    getContentType(rsp),
+                    "",
+                    getContentLength(rsp),
+                    getHeadersAsString(rsp),
+                    this.url,
+                    data);
         });
     }
 
     private void didReceiveResponse(final HttpResponse.ResponseInfo rsp) {
-        callBack(() -> {
-            if (!canceled) {
-                twkDidReceiveResponse(
-                        rsp.statusCode(),
-                        getContentType(rsp),
-                        "",
-                        getContentLength(rsp),
-                        getHeadersAsString(rsp),
-                        this.url,
-                        data);
-            }
+        callBackIfNotCancelled(() -> {
+            twkDidReceiveResponse(
+                    rsp.statusCode(),
+                    getContentType(rsp),
+                    "",
+                    getContentLength(rsp),
+                    getHeadersAsString(rsp),
+                    this.url,
+                    data);
         });
     }
 
-    private void didReceiveData(final List<ByteBuffer> b) {
-        callBack(() -> {
-            b.stream()
-             .filter($ -> !canceled)
-             .map(bb -> ByteBuffer.allocateDirect(bb.capacity()).put(bb))
-             .forEach(bb -> twkDidReceiveData(bb.flip(), bb.position(), bb.remaining(), data));
+    private static void streamToDirectBuffer(final ByteBuffer bb, final ByteBuffer dbb, final Runnable r) {
+        assert dbb.isDirect();
+        if (dbb.capacity() == 0) {
+            return;
+        }
+        final int count = bb.limit() / dbb.capacity();
+        final int actualLimit = bb.limit();
+        // send multiples of dbb.capacity()
+        for (int i = 0; i < count; i++) {
+            bb.position(i * dbb.capacity())
+              .limit((i + 1) * dbb.capacity()).mark();
+            // copy to DirectByteBuffer
+            dbb.put(bb).flip();
+            r.run();
+        }
+        // send the remaining bits
+        if (count * dbb.capacity() < actualLimit) {
+            bb.position(count * dbb.capacity())
+              .limit(actualLimit).mark();
+            // copy to DirectByteBuffer
+            dbb.put(bb).flip();
+            r.run();
+        }
+    }
+
+    private void didReceiveData(final List<ByteBuffer> bytes) {
+        callBackIfNotCancelled(() -> {
+            bytes.stream()
+                .forEach(bb -> {
+                    try {
+                        final ByteBuffer dbb = allocator.allocate();
+                        streamToDirectBuffer(bb, dbb, () -> twkDidReceiveData(dbb, dbb.position(), dbb.remaining(), data));
+                        allocator.release(dbb);
+                    } catch(InterruptedException e) {}
+                });
         });
     }
 
     private void didFinishLoading() {
-        callBack(() -> {
-            if (!canceled) {
-                twkDidFinishLoading(data);
-            }
-        });
+        callBackIfNotCancelled(() -> twkDidFinishLoading(data));
     }
 
     private void didFail(final Throwable th) {
-        callBack(() -> {
-            if (!canceled) {
-                notifyDidFail(0, url, th.getMessage());
-            }
-        });
+        callBackIfNotCancelled(() -> notifyDidFail(0, url, th.getMessage()));
     }
 
     private void notifyDidFail(int errorCode, String url, String message) {
