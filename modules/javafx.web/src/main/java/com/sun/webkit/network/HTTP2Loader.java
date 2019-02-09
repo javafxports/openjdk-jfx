@@ -28,6 +28,7 @@ package com.sun.webkit.network;
 import com.sun.javafx.logging.PlatformLogger.Level;
 import com.sun.javafx.logging.PlatformLogger;
 import com.sun.webkit.Invoker;
+import com.sun.webkit.LoadListenerClient;
 import com.sun.webkit.WebPage;
 import java.io.EOFException;
 import java.io.FileNotFoundException;
@@ -48,6 +49,7 @@ import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.net.UnknownHostException;
 import java.net.http.HttpClient;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse.BodyHandler;
 import java.net.http.HttpResponse;
@@ -230,7 +232,7 @@ final class HTTP2Loader extends URLLoaderBase {
         this.response = HTTP_CLIENT.sendAsync(request, bodyHandler)
                                    .thenAccept(response -> { })
                                    .exceptionally(ex -> {
-                                        System.err.println("@@@@ Exception:" + ex + ", cause0:" + ex.getCause() + ", url:" + url);
+                                        didFail(ex.getCause());
                                         return null;
                                    });
 
@@ -368,7 +370,36 @@ final class HTTP2Loader extends URLLoaderBase {
     }
 
     private void didFail(final Throwable th) {
-        callBackIfNotCancelled(() -> notifyDidFail(0, url, th.getMessage()));
+        callBackIfNotCancelled(() ->  {
+            // FIXME: simply copied from URLLoade.java, it should be
+            // retwritten using if..else rather than throw.
+            int errorCode;
+            try {
+                throw th;
+            } catch (MalformedURLException ex) {
+                errorCode = LoadListenerClient.MALFORMED_URL;
+            } catch (AccessControlException ex) {
+                errorCode = LoadListenerClient.PERMISSION_DENIED;
+            } catch (UnknownHostException ex) {
+                errorCode = LoadListenerClient.UNKNOWN_HOST;
+            } catch (NoRouteToHostException ex) {
+                errorCode = LoadListenerClient.NO_ROUTE_TO_HOST;
+            } catch (ConnectException ex) {
+                errorCode = LoadListenerClient.CONNECTION_REFUSED;
+            } catch (SocketException ex) {
+                errorCode = LoadListenerClient.CONNECTION_RESET;
+            } catch (SSLHandshakeException ex) {
+                errorCode = LoadListenerClient.SSL_HANDSHAKE;
+            } catch (SocketTimeoutException | HttpConnectTimeoutException ex) {
+                errorCode = LoadListenerClient.CONNECTION_TIMED_OUT;
+            } catch (FileNotFoundException ex) {
+                errorCode = LoadListenerClient.FILE_NOT_FOUND;
+            } catch (Throwable ex) {
+                errorCode = LoadListenerClient.UNKNOWN_ERROR;
+            }
+            System.err.println("didFail => Exception:" + th + ", cause0:" + th.getCause() + ", errorCode:" + errorCode + ", url:" + url);
+            notifyDidFail(errorCode, url, th.getMessage());
+        });
     }
 
     private void notifyDidFail(int errorCode, String url, String message) {
