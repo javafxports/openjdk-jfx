@@ -49,7 +49,7 @@ import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.net.UnknownHostException;
 import java.net.http.HttpClient;
-import java.net.http.HttpConnectTimeoutException;
+import java.net.http.HttpTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse.BodyHandler;
 import java.net.http.HttpResponse;
@@ -111,7 +111,7 @@ final class HTTP2Loader extends URLLoaderBase {
               FormDataElement[] formDataElements,
               long data) {
         // FIXME: As of now only asynchronous requests are supported.
-        if (formDataElements == null && asynchronous && (url.startsWith("http://") || url.startsWith("https://"))) {
+        if (formDataElements == null && (url.startsWith("http://") || url.startsWith("https://"))) {
             return new HTTP2Loader(
                 webPage,
                 byteBufferPool,
@@ -229,13 +229,23 @@ final class HTTP2Loader extends URLLoaderBase {
             });
         };
 
-        this.response = HTTP_CLIENT.sendAsync(request, bodyHandler)
-                                   .thenAccept(response -> { })
-                                   .exceptionally(ex -> {
-                                        didFail(ex.getCause());
-                                        return null;
-                                   });
+        if (asynchronous) {
+            this.response = HTTP_CLIENT.sendAsync(request, bodyHandler)
+                                       .thenAccept(r -> {})
+                                       .exceptionally(ex -> {
+                                            didFail(ex.getCause());
+                                            return null;
+                                       });
 
+        } else {
+            try {
+                HTTP_CLIENT.send(request, bodyHandler);
+            } catch(Throwable th) {
+                didFail(th);
+            } finally {
+                this.response = null;
+            }
+        }
     }
 
     /**
@@ -249,12 +259,16 @@ final class HTTP2Loader extends URLLoaderBase {
         canceled = true;
     }
 
-    private void callBackIfNotCancelled(final Runnable runnable) {
-        Invoker.getInvoker().invokeOnEventThread(() -> {
-            if (!canceled) {
-                runnable.run();
-            }
-        });
+    private void callBackIfNotCancelled(final Runnable r) {
+        if (asynchronous) {
+            Invoker.getInvoker().invokeOnEventThread(() -> {
+                if (!canceled) {
+                    r.run();
+                }
+            });
+        } else {
+            r.run();
+        }
     }
 
     private URL asURL(final String uri) throws MalformedURLException {
@@ -390,14 +404,13 @@ final class HTTP2Loader extends URLLoaderBase {
                 errorCode = LoadListenerClient.CONNECTION_RESET;
             } catch (SSLHandshakeException ex) {
                 errorCode = LoadListenerClient.SSL_HANDSHAKE;
-            } catch (SocketTimeoutException | HttpConnectTimeoutException ex) {
+            } catch (SocketTimeoutException | HttpTimeoutException ex) {
                 errorCode = LoadListenerClient.CONNECTION_TIMED_OUT;
             } catch (FileNotFoundException ex) {
                 errorCode = LoadListenerClient.FILE_NOT_FOUND;
             } catch (Throwable ex) {
                 errorCode = LoadListenerClient.UNKNOWN_ERROR;
             }
-            System.err.println("didFail => Exception:" + th + ", cause0:" + th.getCause() + ", errorCode:" + errorCode + ", url:" + url);
             notifyDidFail(errorCode, url, th.getMessage());
         });
     }
