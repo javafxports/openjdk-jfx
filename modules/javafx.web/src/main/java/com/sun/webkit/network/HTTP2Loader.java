@@ -33,9 +33,12 @@ import com.sun.webkit.WebPage;
 import java.io.EOFException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.SequenceInputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.annotation.Native;
 import java.net.ConnectException;
+import java.net.CookieHandler;
 import java.net.HttpRetryException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
@@ -49,21 +52,25 @@ import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.net.UnknownHostException;
 import java.net.http.HttpClient;
-import java.net.http.HttpTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse.BodyHandler;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.ByteBuffer;
 import java.security.AccessControlException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Vector;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.net.ssl.SSLHandshakeException;
@@ -97,6 +104,7 @@ final class HTTP2Loader extends URLLoaderBase {
                    .version(Version.HTTP_2)  // this is the default
                    .followRedirects(Redirect.NEVER) // WebCore handles redirection
                    .connectTimeout(Duration.ofSeconds(30)) // FIXME: Add a property to control the timeout
+                   .cookieHandler(CookieHandler.getDefault())
                    .build();
 
     /**
@@ -110,8 +118,7 @@ final class HTTP2Loader extends URLLoaderBase {
               String headers,
               FormDataElement[] formDataElements,
               long data) {
-        // FIXME: As of now only asynchronous requests are supported.
-        if (formDataElements == null && (url.startsWith("http://") || url.startsWith("https://"))) {
+        if (url.startsWith("http://") || url.startsWith("https://")) {
             return new HTTP2Loader(
                 webPage,
                 byteBufferPool,
@@ -122,8 +129,6 @@ final class HTTP2Loader extends URLLoaderBase {
                 formDataElements,
                 data);
         }
-        System.err.println("Fallback to URLLoader:" + url);
-
         return null;
     }
 
@@ -148,6 +153,59 @@ final class HTTP2Loader extends URLLoaderBase {
             }
         }
         return uriObj;
+    }
+
+    private HttpRequest.BodyPublisher getFormDataPublisher() {
+        final var formDataElementsStream = new Vector<InputStream>();
+        final AtomicLong length = new AtomicLong();
+        for (final var formData : formDataElements) {
+            try {
+                formData.open();
+                length.addAndGet(formData.getSize());
+                formDataElementsStream.add(formData.getInputStream());
+            } catch(IOException ex) {
+                return null;
+            }
+        }
+
+        final var stream = new SequenceInputStream(formDataElementsStream.elements());
+        final var streamBodyPublisher = HttpRequest.BodyPublishers.ofInputStream(() -> stream);
+        final var formDataPublisher = new HttpRequest.BodyPublisher() {
+            @Override
+            public long contentLength() {
+                // streaming or fixed length
+                return length.longValue() <= Integer.MAX_VALUE ? length.longValue() : -1;
+            }
+
+            @Override
+            public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
+                // forwarding implementation to send didSendData notification
+                // to WebCore.
+                streamBodyPublisher.subscribe(new Flow.Subscriber<ByteBuffer>() {
+                    @Override
+                    public void onComplete() {
+                        subscriber.onComplete();
+                    }
+
+                    @Override
+                    public void onError(Throwable th) {
+                        subscriber.onError(th);
+                    }
+
+                    @Override
+                    public void onNext(ByteBuffer bytes) {
+                        subscriber.onNext(bytes);
+                        didSendData(bytes.limit(), length.longValue());
+                    }
+
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        subscriber.onSubscribe(subscription);
+                    }
+                });
+            }
+        };
+        return formDataPublisher;
     }
 
     private HTTP2Loader(WebPage webPage,
@@ -180,15 +238,13 @@ final class HTTP2Loader extends URLLoaderBase {
         final String parsedHeaders[] = Arrays.stream(headers.split("\n"))
                                              .flatMap(s -> Stream.of(s.split(":", 2))) // split from first occurance of :
                                              .toArray(String[]::new);
-        final var requestBuilder = HttpRequest.newBuilder()
-                       .uri(uri)
-                       .headers(parsedHeaders)
-                       .version(Version.HTTP_2);  // this is the default
 
-        // TODO: POST with formDataElements has to be handled
-        requestBuilder.method(method, HttpRequest.BodyPublishers.noBody());
-
-        final var request = requestBuilder.build();
+        final var request = HttpRequest.newBuilder()
+                               .uri(uri)
+                               .headers(parsedHeaders)
+                               .version(Version.HTTP_2)  // this is the default
+                               .method(method, formDataElements != null ? getFormDataPublisher() : HttpRequest.BodyPublishers.noBody())
+                               .build();
 
         final BodyHandler<Void> bodyHandler = rsp -> {
             if(!handleRedirectionIfNeeded(rsp)) {
@@ -428,5 +484,26 @@ final class HTTP2Loader extends URLLoaderBase {
                     data));
         }
         twkDidFail(errorCode, url, message, data);
+    }
+
+    private void didSendData(final long totalBytesSent,
+                             final long totalBytesToBeSent)
+    {
+        callBackIfNotCancelled(() -> notifyDidSendData(totalBytesSent, totalBytesToBeSent));
+    }
+
+    private void notifyDidSendData(long totalBytesSent,
+                                   long totalBytesToBeSent)
+    {
+        if (logger.isLoggable(Level.FINEST)) {
+            logger.finest(String.format(
+                    "totalBytesSent: [%d], "
+                    + "totalBytesToBeSent: [%d], "
+                    + "data: [0x%016X]",
+                    totalBytesSent,
+                    totalBytesToBeSent,
+                    data));
+        }
+        twkDidSendData(totalBytesSent, totalBytesToBeSent, data);
     }
 }
