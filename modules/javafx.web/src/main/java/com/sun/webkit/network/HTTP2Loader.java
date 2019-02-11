@@ -285,23 +285,26 @@ final class HTTP2Loader extends URLLoaderBase {
             });
         };
 
-        if (asynchronous) {
-            this.response = HTTP_CLIENT.sendAsync(request, bodyHandler)
-                                       .thenAccept(r -> {})
-                                       .exceptionally(ex -> {
-                                            didFail(ex.getCause());
-                                            return null;
-                                       });
+        // Run the HttpClient in the page's access control context
+        this.response = AccessController.doPrivileged((PrivilegedAction<CompletionStage<Void>>) () -> {
+            if (asynchronous) {
+                return HTTP_CLIENT.sendAsync(request, bodyHandler)
+                                           .thenAccept(r -> {})
+                                           .exceptionally(ex -> {
+                                                didFail(ex.getCause());
+                                                return null;
+                                           });
 
-        } else {
-            try {
-                HTTP_CLIENT.send(request, bodyHandler);
-            } catch(Throwable th) {
-                didFail(th);
-            } finally {
-                this.response = null;
+            } else {
+                try {
+                    HTTP_CLIENT.send(request, bodyHandler);
+                } catch(Throwable th) {
+                    didFail(th);
+                } finally {
+                    return null;
+                }
             }
-        }
+        }, webPage.getAccessControlContext());
     }
 
     /**
