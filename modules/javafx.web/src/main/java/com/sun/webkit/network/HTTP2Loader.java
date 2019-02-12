@@ -84,8 +84,6 @@ final class HTTP2Loader extends URLLoaderBase {
 
     private static final PlatformLogger logger =
             PlatformLogger.getLogger(URLLoader.class.getName());
-    private static final int MAX_BUF_COUNT = 1;
-
 
     private final WebPage webPage;
     private final boolean asynchronous;
@@ -96,16 +94,26 @@ final class HTTP2Loader extends URLLoaderBase {
     private final long data;
     private volatile boolean canceled = false;
 
-    private final ByteBufferAllocator allocator;
     private final CompletionStage<Void> response;
     // TODO: Check for security implications, otherwise
     // use one instance per WebPage instead of Singleton.
-    private static HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+    private final static HttpClient HTTP_CLIENT = HttpClient.newBuilder()
                    .version(Version.HTTP_2)  // this is the default
                    .followRedirects(Redirect.NEVER) // WebCore handles redirection
                    .connectTimeout(Duration.ofSeconds(30)) // FIXME: Add a property to control the timeout
                    .cookieHandler(CookieHandler.getDefault())
                    .build();
+
+    // Singleton instance of direct ByteBuffer to transfer downloaded bytes from
+    // Java to native
+    private static final int DEFAULT_BUFSIZE = 40 * 1024;
+    private final static ByteBuffer BUFFER;
+    static {
+       int bufSize  = AccessController.doPrivileged(
+                        (PrivilegedAction<Integer>) () ->
+                            Integer.valueOf(System.getProperty("jdk.httpclient.bufsize", Integer.toString(DEFAULT_BUFSIZE))));
+       BUFFER = ByteBuffer.allocateDirect(bufSize);
+    }
 
     /**
      * Creates a new {@code HTTP2Loader}.
@@ -252,7 +260,6 @@ final class HTTP2Loader extends URLLoaderBase {
         this.headers = headers;
         this.formDataElements = formDataElements;
         this.data = data;
-        this.allocator = byteBufferPool.newAllocator(MAX_BUF_COUNT);
 
         URI uri;
         try {
@@ -426,42 +433,36 @@ final class HTTP2Loader extends URLLoaderBase {
         });
     }
 
-    private static void streamToDirectBuffer(final ByteBuffer bb, final ByteBuffer dbb, final Runnable r) {
-        assert dbb.isDirect();
-        if (dbb.capacity() == 0) {
-            return;
+    private ByteBuffer copyToDirectBuffer(final ByteBuffer bb) {
+        ByteBuffer dbb = BUFFER;
+        // Though the chance of reaching here is rare, handle the
+        // case by allocating a tmp direct buffer.
+        if (bb.limit() > dbb.capacity()) {
+            dbb = ByteBuffer.allocateDirect(bb.limit());
         }
-        final int count = bb.limit() / dbb.capacity();
-        final int actualLimit = bb.limit();
-        // send multiples of dbb.capacity()
-        for (int i = 0; i < count; i++) {
-            bb.position(i * dbb.capacity())
-              .limit((i + 1) * dbb.capacity()).mark();
-            // copy to DirectByteBuffer
-            dbb.put(bb).flip();
-            r.run();
-        }
-        // send the remaining bits
-        if (count * dbb.capacity() < actualLimit) {
-            bb.position(count * dbb.capacity())
-              .limit(actualLimit).mark();
-            // copy to DirectByteBuffer
-            dbb.put(bb).flip();
-            r.run();
-        }
+        return dbb.clear().put(bb).flip();
     }
 
     private void didReceiveData(final List<ByteBuffer> bytes) {
-        callBackIfNotCancelled(() -> {
-            bytes.stream()
-                .forEach(bb -> {
-                    try {
-                        final ByteBuffer dbb = allocator.allocate();
-                        streamToDirectBuffer(bb, dbb, () -> twkDidReceiveData(dbb, dbb.position(), dbb.remaining(), data));
-                        allocator.release(dbb);
-                    } catch(InterruptedException e) {}
-                });
-        });
+        callBackIfNotCancelled(() -> bytes.stream()
+                                          .map(this::copyToDirectBuffer)
+                                          .forEach(this::notifyDidReceiveData)
+        );
+    }
+
+    private void notifyDidReceiveData(ByteBuffer byteBuffer) {
+        if (logger.isLoggable(Level.FINEST)) {
+            logger.finest(String.format(
+                    "byteBuffer: [%s], "
+                    + "position: [%s], "
+                    + "remaining: [%s], "
+                    + "data: [0x%016X]",
+                    byteBuffer,
+                    byteBuffer.position(),
+                    byteBuffer.remaining(),
+                    data));
+        }
+        twkDidReceiveData(byteBuffer, byteBuffer.position(), byteBuffer.remaining(), data);
     }
 
     private void didFinishLoading() {
