@@ -132,6 +132,29 @@ final class HTTP2Loader extends URLLoaderBase {
         return null;
     }
 
+    // following 2 methods can be generalized and keep a common
+    // implementation with URLLoader.java
+    private String[] getCustomHeaders() {
+        final var loc = Locale.getDefault();
+        String lang = "";
+        if (!loc.equals(Locale.US) && !loc.equals(Locale.ENGLISH)) {
+            lang = loc.getCountry().isEmpty() ?
+                loc.getLanguage() + ",":
+                loc.getLanguage() + "-" + loc.getCountry() + ",";
+        }
+
+        return new String[] { "Accept-Language", lang.toLowerCase() + "en-us;q=0.8,en;q=0.7",
+                              // "Accept-Encoding", "gzip", // not yet supported
+                              "Accept-Charset", "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+        };
+    }
+
+    private String[] getRequestHeaders() {
+        return Arrays.stream(headers.split("\n"))
+                     .flatMap(s -> Stream.of(s.split(":", 2))) // split from first occurance of :
+                     .toArray(String[]::new);
+    }
+
     private URI toURI() throws MalformedURLException {
         URI uriObj;
         try {
@@ -156,6 +179,10 @@ final class HTTP2Loader extends URLLoaderBase {
     }
 
     private HttpRequest.BodyPublisher getFormDataPublisher() {
+        if (this.formDataElements == null) {
+            return HttpRequest.BodyPublishers.noBody();
+        }
+
         final var formDataElementsStream = new Vector<InputStream>();
         final AtomicLong length = new AtomicLong();
         for (final var formData : formDataElements) {
@@ -170,6 +197,9 @@ final class HTTP2Loader extends URLLoaderBase {
 
         final var stream = new SequenceInputStream(formDataElementsStream.elements());
         final var streamBodyPublisher = HttpRequest.BodyPublishers.ofInputStream(() -> stream);
+        // Forwarding implementation to send didSendData notification
+        // to WebCore. Otherwise `formDataPublisher = streamBodyPublisher`
+        // can do the job.
         final var formDataPublisher = new HttpRequest.BodyPublisher() {
             @Override
             public long contentLength() {
@@ -179,8 +209,6 @@ final class HTTP2Loader extends URLLoaderBase {
 
             @Override
             public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
-                // forwarding implementation to send didSendData notification
-                // to WebCore.
                 streamBodyPublisher.subscribe(new Flow.Subscriber<ByteBuffer>() {
                     @Override
                     public void onComplete() {
@@ -235,15 +263,13 @@ final class HTTP2Loader extends URLLoaderBase {
             return;
         }
 
-        final String parsedHeaders[] = Arrays.stream(headers.split("\n"))
-                                             .flatMap(s -> Stream.of(s.split(":", 2))) // split from first occurance of :
-                                             .toArray(String[]::new);
 
         final var request = HttpRequest.newBuilder()
                                .uri(uri)
-                               .headers(parsedHeaders)
+                               .headers(getRequestHeaders()) // headers from WebCore
+                               .headers(getCustomHeaders()) // headers set by us
                                .version(Version.HTTP_2)  // this is the default
-                               .method(method, formDataElements != null ? getFormDataPublisher() : HttpRequest.BodyPublishers.noBody())
+                               .method(method, getFormDataPublisher())
                                .build();
 
         final BodyHandler<Void> bodyHandler = rsp -> {
