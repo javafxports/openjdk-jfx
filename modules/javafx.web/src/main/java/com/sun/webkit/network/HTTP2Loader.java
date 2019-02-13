@@ -67,7 +67,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Vector;
-import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
@@ -94,7 +94,7 @@ final class HTTP2Loader extends URLLoaderBase {
     private final long data;
     private volatile boolean canceled = false;
 
-    private final CompletionStage<Void> response;
+    private final CompletableFuture<Void> response;
     // TODO: Check for security implications, otherwise
     // use one instance per WebPage instead of Singleton.
     private final static HttpClient HTTP_CLIENT = HttpClient.newBuilder()
@@ -319,25 +319,20 @@ final class HTTP2Loader extends URLLoaderBase {
         };
 
         // Run the HttpClient in the page's access control context
-        this.response = AccessController.doPrivileged((PrivilegedAction<CompletionStage<Void>>) () -> {
-            if (asynchronous) {
-                return HTTP_CLIENT.sendAsync(request, bodyHandler)
-                                           .thenAccept(r -> {})
-                                           .exceptionally(ex -> {
-                                                didFail(ex.getCause());
-                                                return null;
-                                           });
+        this.response = AccessController.doPrivileged((PrivilegedAction<CompletableFuture<Void>>) () -> {
+            return HTTP_CLIENT.sendAsync(request, bodyHandler)
+                                       .thenAccept(r -> {})
+                                       .exceptionally(ex -> {
+                                            didFail(ex.getCause());
+                                            return null;
+                                       });
 
-            } else {
-                try {
-                    HTTP_CLIENT.send(request, bodyHandler);
-                } catch(Throwable th) {
-                    didFail(th);
-                } finally {
-                    return null;
-                }
-            }
         }, webPage.getAccessControlContext());
+
+        // Wait for the result
+        if (!asynchronous) {
+            this.response.join();
+        }
     }
 
     /**
@@ -361,16 +356,6 @@ final class HTTP2Loader extends URLLoaderBase {
         } else {
             r.run();
         }
-    }
-
-    private URL asURL(final String uri) throws MalformedURLException {
-        URL newUrl;
-        try {
-            newUrl = newURL(uri);
-        } catch (MalformedURLException mue) {
-            newUrl = newURL(new URL(this.url), uri);
-        }
-        return newUrl;
     }
 
     private boolean handleRedirectionIfNeeded(final HttpResponse.ResponseInfo rsp) {
