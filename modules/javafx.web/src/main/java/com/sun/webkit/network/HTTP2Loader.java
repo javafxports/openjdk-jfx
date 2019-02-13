@@ -321,12 +321,8 @@ final class HTTP2Loader extends URLLoaderBase {
         // Run the HttpClient in the page's access control context
         this.response = AccessController.doPrivileged((PrivilegedAction<CompletableFuture<Void>>) () -> {
             return HTTP_CLIENT.sendAsync(request, bodyHandler)
-                                       .thenAccept(r -> {})
-                                       .exceptionally(ex -> {
-                                            didFail(ex.getCause());
-                                            return null;
-                                       });
-
+                              .thenAccept($ -> {})
+                              .exceptionally(ex -> didFail(ex.getCause()));
         }, webPage.getAccessControlContext());
 
         // Wait for the result
@@ -454,7 +450,7 @@ final class HTTP2Loader extends URLLoaderBase {
         callBackIfNotCancelled(() -> twkDidFinishLoading(data));
     }
 
-    private void didFail(final Throwable th) {
+    private Void didFail(final Throwable th) {
         callBackIfNotCancelled(() ->  {
             // FIXME: simply copied from URLLoade.java, it should be
             // retwritten using if..else rather than throw.
@@ -484,6 +480,7 @@ final class HTTP2Loader extends URLLoaderBase {
             }
             notifyDidFail(errorCode, url, th.getMessage());
         });
+        return null;
     }
 
     private void notifyDidFail(int errorCode, String url, String message) {
