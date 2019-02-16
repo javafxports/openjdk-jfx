@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,6 +54,7 @@ import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse.BodyHandler;
+import java.net.http.HttpResponse.BodySubscriber;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.nio.ByteBuffer;
@@ -68,11 +69,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Vector;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.InflaterInputStream;
 import javax.net.ssl.SSLHandshakeException;
 import static com.sun.webkit.network.URLs.newURL;
 import static java.net.http.HttpClient.Redirect;
@@ -152,7 +157,7 @@ final class HTTP2Loader extends URLLoaderBase {
         }
 
         return new String[] { "Accept-Language", lang.toLowerCase() + "en-us;q=0.8,en;q=0.7",
-                              // "Accept-Encoding", "gzip", // not yet supported
+                              "Accept-Encoding", "gzip, inflate",
                               "Accept-Charset", "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
         };
     }
@@ -244,6 +249,107 @@ final class HTTP2Loader extends URLLoaderBase {
         return formDataPublisher;
     }
 
+    // InputStream based subscriber is used to handle gzip|inflate encoded body. Since InputStream based subscriber is costly interms
+    // of memory usage and thread usage, use only when response content-encoding is set to gzip|inflate.
+    // There will be 2 threads involved while reading data from InputStream provided by BodySubscriber.
+    //      1. The main worker which downloads HTTP data and writes to stream
+    //      2. Other worker which reads data from the InputStream(getBody.thenAcceptAsync)
+    // For the better efficiency, we should consider using java.util.zip.Inflater directly
+    // to deal with gzip and inflate encoded data.
+    private InputStream createZIPStream(final String type, InputStream in) throws IOException {
+        if ("gzip".equalsIgnoreCase(type))
+            return new GZIPInputStream(in);
+        else if ("deflate".equalsIgnoreCase(type))
+            return new InflaterInputStream(in);
+        return in;
+    }
+
+    private BodySubscriber<Void> createZIPEncodedBodySubscriber(final String contentEncoding) {
+        // Discard body if content type is unknown
+        if (!("gzip".equalsIgnoreCase(contentEncoding)
+                    || "inflate".equalsIgnoreCase(contentEncoding))) {
+            logger.severe(String.format("Unknown encoding type '%s' found, discarding", contentEncoding));
+            return BodySubscribers.discarding();
+        }
+
+        final BodySubscriber<InputStream> streamSubscriber = BodySubscribers.ofInputStream();
+        final CompletionStage<Void> streamCompletion = streamSubscriber.getBody().thenAcceptAsync(is -> {
+            try (
+                // stream and zip stream should be closed
+                final InputStream stream = is;
+                final InputStream in = createZIPStream(contentEncoding, stream);
+            ) {
+                while (!canceled) {
+                    // same as URLLoader.java
+                    final byte[] buf = new byte[8 * 1024];
+                    final int read = in.read(buf);
+                    if (read < 0) {
+                        didFinishLoading();
+                        break;
+                    }
+                    didReceiveData(buf, read);
+                }
+            } catch (IOException ex) {
+                didFail(ex);
+            }
+        });
+
+        return BodySubscribers.fromSubscriber(streamSubscriber, upstreamBodySubscriber -> {
+            // If request is sync, then Wait for the InputStream reader to complete,
+            // it executes in a separate worker.
+            if (!asynchronous) {
+                upstreamBodySubscriber.getBody().thenAccept($ -> streamCompletion.toCompletableFuture().join());
+            }
+            return null;
+        });
+    }
+
+    // Normal plain body handler, simple, easy to use and pass data to downstream.
+    private BodySubscriber<Void> createNormalBodySubscriber() {
+        final BodySubscriber<Void> normalBodySubscriber = BodySubscribers.fromSubscriber(new Flow.Subscriber<List<ByteBuffer>>() {
+            private Flow.Subscription subscription;
+            private final AtomicBoolean subscribed = new AtomicBoolean();
+
+            @Override
+            public void onComplete() {
+                didFinishLoading();
+            }
+
+            @Override
+            public void onError(Throwable th) {}
+
+            @Override
+            public void onNext(final List<ByteBuffer> bytes) {
+                didReceiveData(bytes);
+                requestIfNotCancelled();
+            }
+
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                if (!subscribed.compareAndSet(false, true)) {
+                    subscription.cancel();
+                } else {
+                    this.subscription = subscription;
+                    requestIfNotCancelled();
+                }
+            }
+
+            private void requestIfNotCancelled() {
+                if (canceled) {
+                    subscription.cancel();
+                } else {
+                    subscription.request(1);
+                }
+            }
+        });
+        return normalBodySubscriber;
+    }
+
+    private BodySubscriber<Void> getBodySubscriber(final String contentEncoding) {
+        return contentEncoding.isEmpty() ?
+                  createNormalBodySubscriber() : createZIPEncodedBodySubscriber(contentEncoding);
+    }
+
     private HTTP2Loader(WebPage webPage,
               ByteBufferPool byteBufferPool,
               boolean asynchronous,
@@ -270,7 +376,6 @@ final class HTTP2Loader extends URLLoaderBase {
             return;
         }
 
-
         final var request = HttpRequest.newBuilder()
                                .uri(uri)
                                .headers(getRequestHeaders()) // headers from WebCore
@@ -283,39 +388,7 @@ final class HTTP2Loader extends URLLoaderBase {
             if(!handleRedirectionIfNeeded(rsp)) {
                 didReceiveResponse(rsp);
             }
-            return BodySubscribers.fromSubscriber(new Flow.Subscriber<List<ByteBuffer>>() {
-                private Flow.Subscription subscription;
-                @Override
-                public void onComplete() {
-                    didFinishLoading();
-                }
-
-                @Override
-                public void onError(Throwable th) {
-                    // nop
-                    // System.err.println("Errr:" + th);
-                }
-
-                @Override
-                public void onNext(final List<ByteBuffer> bytes) {
-                    didReceiveData(bytes);
-                    requestIfNotCancelled();
-                }
-
-                @Override
-                public void onSubscribe(Flow.Subscription subscription) {
-                    this.subscription = subscription;
-                    requestIfNotCancelled();
-                }
-
-                private void requestIfNotCancelled() {
-                    if (canceled) {
-                        subscription.cancel();
-                    } else {
-                        subscription.request(1);
-                    }
-                }
-            });
+            return getBodySubscriber(getContentEncoding(rsp));
         };
 
         // Run the HttpClient in the page's access control context
@@ -350,7 +423,9 @@ final class HTTP2Loader extends URLLoaderBase {
                 }
             });
         } else {
-            r.run();
+            if (!canceled) {
+                r.run();
+            }
         }
     }
 
@@ -377,6 +452,10 @@ final class HTTP2Loader extends URLLoaderBase {
 
     private static String getContentType(final HttpResponse.ResponseInfo rsp) {
         return rsp.headers().firstValue("content-type").orElse("application/octet-stream");
+    }
+
+    private static String getContentEncoding(final HttpResponse.ResponseInfo rsp) {
+        return rsp.headers().firstValue("content-encoding").orElse("");
     }
 
     private static String getHeadersAsString(final HttpResponse.ResponseInfo rsp) {
@@ -414,14 +493,25 @@ final class HTTP2Loader extends URLLoaderBase {
         });
     }
 
-    private ByteBuffer copyToDirectBuffer(final ByteBuffer bb) {
+    private ByteBuffer getDirectBuffer(int size) {
         ByteBuffer dbb = BUFFER;
         // Though the chance of reaching here is rare, handle the
         // case by allocating a tmp direct buffer.
-        if (bb.limit() > dbb.capacity()) {
-            dbb = ByteBuffer.allocateDirect(bb.limit());
+        if (size > dbb.capacity()) {
+            dbb = ByteBuffer.allocateDirect(size);
         }
-        return dbb.clear().put(bb).flip();
+        return dbb.clear();
+    }
+
+    private ByteBuffer copyToDirectBuffer(final ByteBuffer bb) {
+        return getDirectBuffer(bb.limit()).put(bb).flip();
+    }
+
+    // another variant to use from createZIPEncodedBodySubscriber
+    private void didReceiveData(final byte[] bytes, int size) {
+        callBackIfNotCancelled(() -> {
+            notifyDidReceiveData(getDirectBuffer(size).put(bytes, 0, size).flip());
+        });
     }
 
     private void didReceiveData(final List<ByteBuffer> bytes) {
