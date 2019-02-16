@@ -416,17 +416,11 @@ final class HTTP2Loader extends URLLoaderBase {
     }
 
     private void callBackIfNotCancelled(final Runnable r) {
-        if (asynchronous) {
-            Invoker.getInvoker().invokeOnEventThread(() -> {
-                if (!canceled) {
-                    r.run();
-                }
-            });
-        } else {
+        Invoker.getInvoker().invokeOnEventThread(() -> {
             if (!canceled) {
                 r.run();
             }
-        }
+        });
     }
 
     private boolean handleRedirectionIfNeeded(final HttpResponse.ResponseInfo rsp) {
@@ -522,6 +516,7 @@ final class HTTP2Loader extends URLLoaderBase {
     }
 
     private void notifyDidReceiveData(ByteBuffer byteBuffer) {
+        Invoker.getInvoker().checkEventThread();
         if (logger.isLoggable(Level.FINEST)) {
             logger.finest(String.format(
                     "byteBuffer: [%s], "
@@ -537,8 +532,17 @@ final class HTTP2Loader extends URLLoaderBase {
     }
 
     private void didFinishLoading() {
-        callBackIfNotCancelled(() -> twkDidFinishLoading(data));
+        callBackIfNotCancelled(this::notifyDidFinishLoading);
     }
+
+    private void notifyDidFinishLoading() {
+        Invoker.getInvoker().checkEventThread();
+        if (logger.isLoggable(Level.FINEST)) {
+            logger.finest(String.format("data: [0x%016X]", data));
+        }
+        twkDidFinishLoading(data);
+    }
+
 
     private Void didFail(final Throwable th) {
         callBackIfNotCancelled(() ->  {
@@ -574,6 +578,7 @@ final class HTTP2Loader extends URLLoaderBase {
     }
 
     private void notifyDidFail(int errorCode, String url, String message) {
+        Invoker.getInvoker().checkEventThread();
         if (logger.isLoggable(Level.FINEST)) {
             logger.finest(String.format(
                     "errorCode: [%d], "
@@ -597,6 +602,7 @@ final class HTTP2Loader extends URLLoaderBase {
     private void notifyDidSendData(long totalBytesSent,
                                    long totalBytesToBeSent)
     {
+        Invoker.getInvoker().checkEventThread();
         if (logger.isLoggable(Level.FINEST)) {
             logger.finest(String.format(
                     "totalBytesSent: [%d], "
