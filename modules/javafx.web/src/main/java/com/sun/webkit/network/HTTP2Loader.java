@@ -27,6 +27,7 @@ package com.sun.webkit.network;
 
 import com.sun.javafx.logging.PlatformLogger.Level;
 import com.sun.javafx.logging.PlatformLogger;
+import com.sun.javafx.tk.Toolkit;
 import com.sun.webkit.Invoker;
 import com.sun.webkit.LoadListenerClient;
 import com.sun.webkit.WebPage;
@@ -398,9 +399,17 @@ final class HTTP2Loader extends URLLoaderBase {
                               .exceptionally(ex -> didFail(ex.getCause()));
         }, webPage.getAccessControlContext());
 
-        // Wait for the result
         if (!asynchronous) {
-            this.response.join();
+            // Wait for the response using nested event loop. Once the response
+            // arrives, nested event loop will be terminated.
+            final Object key = new Object();
+            this.response.thenAccept($ ->
+                Invoker.getInvoker().invokeOnEventThread(() ->
+                    Toolkit.getToolkit().exitNestedEventLoop(key, null)));
+            Toolkit.getToolkit().enterNestedEventLoop(key);
+            // No need to join, nested event loop takes care of
+            // blocking the caller until response arrives.
+            // this.response.join();
         }
     }
 
