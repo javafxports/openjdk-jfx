@@ -400,16 +400,7 @@ final class HTTP2Loader extends URLLoaderBase {
         }, webPage.getAccessControlContext());
 
         if (!asynchronous) {
-            // Wait for the response using nested event loop. Once the response
-            // arrives, nested event loop will be terminated.
-            final Object key = new Object();
-            this.response.thenAccept($ ->
-                Invoker.getInvoker().invokeOnEventThread(() ->
-                    Toolkit.getToolkit().exitNestedEventLoop(key, null)));
-            Toolkit.getToolkit().enterNestedEventLoop(key);
-            // No need to join, nested event loop takes care of
-            // blocking the caller until response arrives.
-            // this.response.join();
+            waitForRequestToComplete();
         }
     }
 
@@ -430,6 +421,21 @@ final class HTTP2Loader extends URLLoaderBase {
                 r.run();
             }
         });
+    }
+
+    private void waitForRequestToComplete() {
+        // Wait for the response using nested event loop. Once the response
+        // arrives, nested event loop will be terminated.
+        final Object key = new Object();
+        this.response.handle((r, th) -> {
+            Invoker.getInvoker().invokeOnEventThread(() ->
+                Toolkit.getToolkit().exitNestedEventLoop(key, null));
+            return null;
+        });
+        Toolkit.getToolkit().enterNestedEventLoop(key);
+        // No need to join, nested event loop takes care of
+        // blocking the caller until response arrives.
+        // this.response.join();
     }
 
     private boolean handleRedirectionIfNeeded(final HttpResponse.ResponseInfo rsp) {
