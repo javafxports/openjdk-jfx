@@ -101,8 +101,7 @@ final class HTTP2Loader extends URLLoaderBase {
     private volatile boolean canceled = false;
 
     private final CompletableFuture<Void> response;
-    // TODO: Check for security implications, otherwise
-    // use one instance per WebPage instead of Singleton.
+    // Use singleton instance of HttpClient to get the maximum benefits
     private final static HttpClient HTTP_CLIENT = HttpClient.newBuilder()
                    .version(Version.HTTP_2)  // this is the default
                    .followRedirects(Redirect.NEVER) // WebCore handles redirection
@@ -274,9 +273,9 @@ final class HTTP2Loader extends URLLoaderBase {
         }
 
         final BodySubscriber<InputStream> streamSubscriber = BodySubscribers.ofInputStream();
-        final CompletionStage<Void> streamCompletion = streamSubscriber.getBody().thenAcceptAsync(is -> {
+        final CompletionStage<Void> unzipTask = streamSubscriber.getBody().thenAcceptAsync(is -> {
             try (
-                // stream and zip stream should be closed
+                // To AutoClose the InputStreams
                 final InputStream stream = is;
                 final InputStream in = createZIPStream(contentEncoding, stream);
             ) {
@@ -294,15 +293,32 @@ final class HTTP2Loader extends URLLoaderBase {
                 didFail(ex);
             }
         });
+        return new BodySubscriber<Void>() {
+                @Override
+                public void onComplete() {
+                    streamSubscriber.onComplete();
+                }
 
-        return BodySubscribers.fromSubscriber(streamSubscriber, upstreamBodySubscriber -> {
-            // If request is sync, then Wait for the InputStream reader to complete,
-            // it executes in a separate worker.
-            if (!asynchronous) {
-                upstreamBodySubscriber.getBody().thenAccept($ -> streamCompletion.toCompletableFuture().join());
-            }
-            return null;
-        });
+                @Override
+                public void onError(Throwable th) {
+                    streamSubscriber.onError(th);
+                }
+
+                @Override
+                public void onNext(List<ByteBuffer> bytes) {
+                    streamSubscriber.onNext(bytes);
+                }
+
+                @Override
+                public void onSubscribe(Flow.Subscription subscription) {
+                    streamSubscriber.onSubscribe(subscription);
+                }
+
+                @Override
+                public CompletionStage<Void> getBody() {
+                    return streamSubscriber.getBody().thenCombine(unzipTask, (t, u) -> null);
+                }
+        };
     }
 
     // Normal plain body handler, simple, easy to use and pass data to downstream.
