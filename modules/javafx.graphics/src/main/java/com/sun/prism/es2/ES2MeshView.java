@@ -102,12 +102,20 @@ class ES2MeshView extends BaseMeshView {
 
     @Override
     public void setPointLight(int index, float x, float y, float z, float r, float g, float b, float w) {
-        // NOTE: We only support up to 3 point lights at the present
-        if (index >= 0 && index <= 2) {
-            lights[index] = new ES2Light(x, y, z, r, g, b, w);
-            context.setPointLight(nativeHandle, index, x, y, z, r, g, b, w);
-        }
+        setPointLight(index, x, y, z, r, g, b, w, 1, 1, 1, 1);
     }
+	
+	/*
+	 * FalcoTheBold - transferred expressions from the old operator to the new overloaded operator
+	 */
+    @Override
+	public void setPointLight(int index, float x, float y, float z, float r, float g, float b, float w, float range, float constantAttenuation, float linearAttenuation, float quadraticAttenuation){
+		// NOTE: We only support up to 3 point lights at the present
+        if (index >= 0 && index <= 2) {
+            lights[index] = new ES2Light(x, y, z, r, g, b, w, range, constantAttenuation, linearAttenuation, quadraticAttenuation);
+            context.setPointLight(nativeHandle, index, x, y, z, r, g, b, w, range, constantAttenuation, linearAttenuation, quadraticAttenuation);
+        }
+	}
 
     ES2Light[] getPointLights() {
         return lights;

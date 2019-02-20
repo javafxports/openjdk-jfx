@@ -106,6 +106,7 @@ public abstract class NGShape3D extends NGNode {
         }
 
         // Setup lights
+        //Modified: FalcoTheBold - retrieving attenuation values and add them to the point-light
         int pointLightIdx = 0;
         if (g.getLights() == null || g.getLights()[0] == null) {
             // If no lights are in scene apply default light. Default light
@@ -116,7 +117,8 @@ public abstract class NGShape3D extends NGNode {
                                    (float)cameraPos.x,
                                    (float)cameraPos.y,
                                    (float)cameraPos.z,
-                                   1.0f, 1.0f, 1.0f, 1.0f);
+                                   1.0f, 1.0f, 1.0f, 1.0f,
+                                    1.0f,1.0f,1.0f,1.0f);
         } else {
             float ambientRed = 0.0f;
             float ambientBlue = 0.0f;
@@ -131,6 +133,7 @@ public abstract class NGShape3D extends NGNode {
                     float rL = lightBase.getColor().getRed();
                     float gL = lightBase.getColor().getGreen();
                     float bL = lightBase.getColor().getBlue();
+					
                     /* TODO: 3D
                      * There is a limit on the number of lights that can affect
                      * a 3D shape. (Currently we simply select the first 3)
@@ -155,7 +158,7 @@ public abstract class NGShape3D extends NGNode {
                                     (float)lightWT.getMxt(),
                                     (float)lightWT.getMyt(),
                                     (float)lightWT.getMzt(),
-                                    rL, gL, bL, 1.0f);
+                                    rL, gL, bL, 1.0f, lightBase.getRange(), lightBase.getConstantAttenuation(), lightBase.getLinearAttenuation(), lightBase.getQuadraticAttenuation());
                         }
                     } else if (lightBase instanceof NGAmbientLight) {
                         // Accumulate ambient lights
@@ -173,7 +176,7 @@ public abstract class NGShape3D extends NGNode {
         // TODO: 3D Required for D3D implementation of lights, which is limited to 3
         while (pointLightIdx < 3) {
                 // Reset any previously set lights
-                meshView.setPointLight(pointLightIdx++, 0, 0, 0, 0, 0, 0, 0);
+                meshView.setPointLight(pointLightIdx++, 0, 0, 0, 0, 0, 0, 0, 1.0f, 1.0f, 1.0f, 1.0f);
         }
 
         meshView.render(g);

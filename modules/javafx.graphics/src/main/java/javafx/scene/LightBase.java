@@ -41,6 +41,7 @@ import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -98,11 +99,33 @@ public abstract class LightBase extends Node {
     }
 
     private Affine3D localToSceneTx = new Affine3D();
-
+	
     {
         // To initialize the class helper at the begining each constructor of this class
         LightBaseHelper.initHelper(this);
     }
+	
+	//FalcoTheBold
+	private final DoubleProperty range = new SimpleDoubleProperty(1f);
+	private final DoubleProperty constantAttentuation = new SimpleDoubleProperty(1f);
+	private final DoubleProperty linearAttentuation = new SimpleDoubleProperty(1f);
+	private final DoubleProperty quadraticAttentuation = new SimpleDoubleProperty(1f);
+
+	public final DoubleProperty rangeProperty(){
+		return range;
+	}
+	
+	public final DoubleProperty constantAttentuationProperty(){
+		return constantAttentuation;
+	}
+	
+	public final DoubleProperty linearAttentuationProperty(){
+		return linearAttentuation;
+	}
+	
+	public final DoubleProperty quadraticAttentuationProperty(){
+		return quadraticAttentuation;
+	}
 
     /**
      * Creates a new instance of {@code LightBase} class with a default Color.WHITE light source.
@@ -284,6 +307,7 @@ public abstract class LightBase extends Node {
      */
     private void doUpdatePeer() {
         NGLightBase peer = getPeer();
+        peer.setAttenuations(constantAttentuation.floatValue(), linearAttentuation.floatValue(), quadraticAttentuation.floatValue());
         if (isDirty(DirtyBits.NODE_LIGHT)) {
             peer.setColor((getColor() == null) ?
                     Toolkit.getPaintAccessor().getPlatformPaint(Color.WHITE)

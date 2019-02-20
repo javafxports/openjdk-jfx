@@ -2084,6 +2084,9 @@ JNIEXPORT void JNICALL Java_com_sun_prism_es2_GLContext_nSetMap
 }
 
 /*
+ * FalcoTheBold: modified MeshViewInfo to hold datas of the attenuation values
+ */
+/*
  * Class:     com_sun_prism_es2_GLContext
  * Method:    nCreateES2MeshView
  * Signature: (JJ)J
@@ -2122,6 +2125,10 @@ JNIEXPORT jlong JNICALL Java_com_sun_prism_es2_GLContext_nCreateES2MeshView
     meshViewInfo->pointLightPosition[1] = 0;
     meshViewInfo->pointLightPosition[2] = 0;
     meshViewInfo->pointLightWeight = 0;
+	meshViewInfo->pointLightRange = 1;
+    meshViewInfo->pointLightAttenuation[0] = 1;
+    meshViewInfo->pointLightAttenuation[1] = 1;
+    meshViewInfo->pointLightAttenuation[2] = 1;
 
     return ptr_to_jlong(meshViewInfo);
 }
@@ -2259,13 +2266,16 @@ JNIEXPORT void JNICALL Java_com_sun_prism_es2_GLContext_nSetAmbientLight
 }
 
 /*
+ * FalcoTheBold: modified native operator to add attenuation coefficients
+ */ 
+/*
  * Class:     com_sun_prism_es2_GLContext
  * Method:    nSetPointLight
  * Signature: (JJIFFFFFFF)V
  */
 JNIEXPORT void JNICALL Java_com_sun_prism_es2_GLContext_nSetPointLight
   (JNIEnv *env, jclass class, jlong nativeCtxInfo, jlong nativeMeshViewInfo,
-        jint index, jfloat x, jfloat y, jfloat z, jfloat r, jfloat g, jfloat b, jfloat w)
+        jint index, jfloat x, jfloat y, jfloat z, jfloat r, jfloat g, jfloat b, jfloat w, jfloat range, jfloat ca, ifloat la, jfloat qa)
 {
     ContextInfo *ctxInfo = (ContextInfo *) jlong_to_ptr(nativeCtxInfo);
     MeshViewInfo *meshViewInfo = (MeshViewInfo *) jlong_to_ptr(nativeMeshViewInfo);
@@ -2281,6 +2291,10 @@ JNIEXPORT void JNICALL Java_com_sun_prism_es2_GLContext_nSetPointLight
     meshViewInfo->pointLightColor[1] = g;
     meshViewInfo->pointLightColor[2] = b;
     meshViewInfo->pointLightWeight = w;
+	meshViewInfo->pointLightRange = range;
+	meshViewInfo->pointLightAttenuation[0] = ca;
+	meshViewInfo->pointLightAttenuation[1] = la;
+	meshViewInfo->pointLightAttenuation[2] = qa;
 }
 
 /*

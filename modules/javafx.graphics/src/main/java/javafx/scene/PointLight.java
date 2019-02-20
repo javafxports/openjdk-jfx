@@ -40,6 +40,7 @@ import javafx.scene.paint.Color;
  * @since JavaFX 8.0
  */
 public class PointLight extends LightBase {
+	
     static {
         PointLightHelper.setPointLightAccessor(new PointLightHelper.PointLightAccessor() {
             @Override
