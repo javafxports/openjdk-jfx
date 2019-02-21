@@ -55,6 +55,7 @@ vec4 apply_selfIllum();
 struct Light {
     vec4 pos;
     vec3 color;
+	vec4 atten;
 };
 
 uniform vec3 ambientColor;
@@ -62,6 +63,8 @@ uniform Light lights[3];
 
 varying vec3 eyePos;
 varying vec4 lightTangentSpacePositions[3];
+//FalcoTheBold - made worldPos public attribute
+//varying vec4 worldPos;
 
 void main()
 {
@@ -78,20 +81,36 @@ void main()
     vec3 refl = reflect(normalize(eyePos), n);
     vec4 specular = apply_specular();
     float power = specular.a;
+	
+	//FalcoTheBold
+	float att;
+	float dist;
 
     vec3 l = normalize(lightTangentSpacePositions[0].xyz);
     d = clamp(dot(n,l), 0.0, 1.0)*(lights[0].color).rgb;
     s = pow(clamp(dot(-refl, l), 0.0, 1.0), power) * lights[0].color.rgb;
 
+	//FalcoTheBold - added attenuation for light nr.1
+	dist = (lights[0].pos.xyz - gl_Position) / lights[0].atten.range;
+	att = 1.0 / (lights[0].atten.ca + lights[0].atten.la * dist + lights[0].atten.qa * (dist * dist)));
+	
     l = normalize(lightTangentSpacePositions[1].xyz);
     d += clamp(dot(n,l), 0.0, 1.0)*(lights[1].color).rgb;
     s += pow(clamp(dot(-refl, l), 0.0, 1.0), power) * lights[1].color.rgb;
 
+	//FalcoTheBold - added attenuation for light nr.2
+	dist = (lights[1].pos.xyz - gl_Position) / lights[1].atten.range;
+	att += 1.0 / (lights[1].atten.ca + lights[1].atten.la * dist + lights[1].atten.qa * (dist * dist)));
+	
     l = normalize(lightTangentSpacePositions[2].xyz);
     d += clamp(dot(n,l), 0.0, 1.0)*(lights[2].color).rgb;
     s += pow(clamp(dot(-refl, l), 0.0, 1.0), power) * lights[2].color.rgb;
 
-    vec3 rez = (ambientColor+d) * diffuse.xyz + s*specular.rgb;
+	//FalcoTheBold - added attenuation for light nr.3
+	dist = (lights[2].pos.xyz - gl_Position) / lights[2].atten.range;
+	att += 1.0 / (lights[2].atten.ca + lights[2].atten.la * dist + lights[2].atten.qa * (dist * dist)));
+	
+    vec3 rez = (ambientColor+d) * (att * (diffuse.xyz + s*specular.rgb));
     rez += apply_selfIllum().xyz;
 
     gl_FragColor = vec4(clamp(rez, 0.0, 1.0) , diffuse.a);

@@ -2127,8 +2127,8 @@ JNIEXPORT jlong JNICALL Java_com_sun_prism_es2_GLContext_nCreateES2MeshView
     meshViewInfo->pointLightWeight = 0;
 	meshViewInfo->pointLightRange = 1;
     meshViewInfo->pointLightAttenuation[0] = 1;
-    meshViewInfo->pointLightAttenuation[1] = 1;
-    meshViewInfo->pointLightAttenuation[2] = 1;
+    meshViewInfo->pointLightAttenuation[1] = 0;
+    meshViewInfo->pointLightAttenuation[2] = 0;
 
     return ptr_to_jlong(meshViewInfo);
 }

@@ -118,7 +118,7 @@ public abstract class NGShape3D extends NGNode {
                                    (float)cameraPos.y,
                                    (float)cameraPos.z,
                                    1.0f, 1.0f, 1.0f, 1.0f,
-                                    1.0f,1.0f,1.0f,1.0f);
+                                    1.0f,1.0f,0.0f,0.0f);
         } else {
             float ambientRed = 0.0f;
             float ambientBlue = 0.0f;
@@ -176,7 +176,7 @@ public abstract class NGShape3D extends NGNode {
         // TODO: 3D Required for D3D implementation of lights, which is limited to 3
         while (pointLightIdx < 3) {
                 // Reset any previously set lights
-                meshView.setPointLight(pointLightIdx++, 0, 0, 0, 0, 0, 0, 0, 1.0f, 1.0f, 1.0f, 1.0f);
+                meshView.setPointLight(pointLightIdx++, 0, 0, 0, 0, 0, 0, 0, 1.0f, 1.0f, 0.0f, 0.0f);
         }
 
         meshView.render(g);

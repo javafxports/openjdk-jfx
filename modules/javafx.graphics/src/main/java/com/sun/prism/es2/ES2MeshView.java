@@ -102,7 +102,7 @@ class ES2MeshView extends BaseMeshView {
 
     @Override
     public void setPointLight(int index, float x, float y, float z, float r, float g, float b, float w) {
-        setPointLight(index, x, y, z, r, g, b, w, 1, 1, 1, 1);
+        setPointLight(index, x, y, z, r, g, b, w, 1.0f, 1.0f, 0.0f, 0.0f);
     }
 	
 	/*

@@ -55,6 +55,7 @@ vec4 apply_selfIllum();
 struct Light {
     vec4 pos;
     vec3 color;
+	vec4 atten;
 };
 
 uniform vec3 ambientColor;
@@ -62,6 +63,8 @@ uniform Light lights[3];
 
 varying vec3 eyePos;
 varying vec4 lightTangentSpacePositions[3];
+//FalcoTheBold - made worldPos public attribute
+//varying vec4 worldPos;
 
 void main()
 {
@@ -82,9 +85,12 @@ void main()
     vec3 l = normalize(lightTangentSpacePositions[0].xyz);
     d = clamp(dot(n,l), 0.0, 1.0)*(lights[0].color).rgb;
     s = pow(clamp(dot(-refl, l), 0.0, 1.0), power)*lights[0].color.rgb;
-	float att = 1.0 / (1.0 + a*dist + b*dist*dist));
+	
+	//FalcoTheBold - added attenuation calculation for a single light
+	float dist = (lights[0].pos.xyz - gl_Position) / lights[0].atten.range;
+	float att = 1.0 / (lights[0].atten.ca + lights[0].atten.la * dist + lights[0].atten.qa * (dist * dist)));
 
-    vec3 rez = (ambientColor+d) * diffuse.xyz + s*specular.rgb;
+    vec3 rez = (ambientColor+d) * (att * (diffuse.xyz + s*specular.rgb));
     rez += apply_selfIllum().xyz;
 
     gl_FragColor = vec4(clamp(rez, 0.0, 1.0) , diffuse.a);

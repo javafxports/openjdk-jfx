@@ -106,10 +106,10 @@ public abstract class LightBase extends Node {
     }
 	
 	//FalcoTheBold
-	private final DoubleProperty range = new SimpleDoubleProperty(1f);
-	private final DoubleProperty constantAttentuation = new SimpleDoubleProperty(1f);
-	private final DoubleProperty linearAttentuation = new SimpleDoubleProperty(1f);
-	private final DoubleProperty quadraticAttentuation = new SimpleDoubleProperty(1f);
+	private final DoubleProperty range = new SimpleDoubleProperty(1.0f);
+	private final DoubleProperty constantAttentuation = new SimpleDoubleProperty(1.0f);
+	private final DoubleProperty linearAttentuation = new SimpleDoubleProperty(0.0f);
+	private final DoubleProperty quadraticAttentuation = new SimpleDoubleProperty(0.0f);
 
 	public final DoubleProperty rangeProperty(){
 		return range;
@@ -307,7 +307,6 @@ public abstract class LightBase extends Node {
      */
     private void doUpdatePeer() {
         NGLightBase peer = getPeer();
-		peer.setRange(range.floatValue());
         peer.setAttenuations(constantAttentuation.floatValue(), linearAttentuation.floatValue(), quadraticAttentuation.floatValue());
         if (isDirty(DirtyBits.NODE_LIGHT)) {
             peer.setColor((getColor() == null) ?
