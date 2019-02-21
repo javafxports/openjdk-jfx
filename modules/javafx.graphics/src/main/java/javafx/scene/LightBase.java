@@ -307,6 +307,7 @@ public abstract class LightBase extends Node {
      */
     private void doUpdatePeer() {
         NGLightBase peer = getPeer();
+		peer.setRange(range.floatValue());
         peer.setAttenuations(constantAttentuation.floatValue(), linearAttentuation.floatValue(), quadraticAttentuation.floatValue());
         if (isDirty(DirtyBits.NODE_LIGHT)) {
             peer.setColor((getColor() == null) ?

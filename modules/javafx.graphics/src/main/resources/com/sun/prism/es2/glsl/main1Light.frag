@@ -82,6 +82,7 @@ void main()
     vec3 l = normalize(lightTangentSpacePositions[0].xyz);
     d = clamp(dot(n,l), 0.0, 1.0)*(lights[0].color).rgb;
     s = pow(clamp(dot(-refl, l), 0.0, 1.0), power)*lights[0].color.rgb;
+	float att = 1.0 / (1.0 + a*dist + b*dist*dist));
 
     vec3 rez = (ambientColor+d) * diffuse.xyz + s*specular.rgb;
     rez += apply_selfIllum().xyz;

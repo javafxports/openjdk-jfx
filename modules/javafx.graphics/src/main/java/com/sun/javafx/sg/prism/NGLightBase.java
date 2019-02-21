@@ -136,14 +136,18 @@ public class NGLightBase extends NGNode {
         return false;
     }
 
+	public void setRange(float range){
+		this.range = range;
+	}
+	
+    public float getRange() {
+        return range;
+    }
+
     public void setAttenuations(float ca, float la, float qa){
         constantAttenuation = ca;
         linearAttenuation = la;
         quadraticAttenuation = qa;
-    }
-
-    public float getRange() {
-        return range;
     }
 
     public float getConstantAttenuation() {
