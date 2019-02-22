@@ -122,6 +122,9 @@ public class DWFactory extends PrismFontFactory {
         /* Using single threaded WIC Factory as it should only be used by the rendering thread */
         if (WIC_FACTORY == null) {
             WIC_FACTORY = OS.WICCreateImagingFactory();
+            if (WIC_FACTORY == null) {
+                return null;
+            }
             GraphicsPipeline.getPipeline().addDisposeHook(() -> {
                 checkThread();
                 WIC_FACTORY.Release();
