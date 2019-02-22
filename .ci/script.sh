@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
-set -uo pipefail
+set -o pipefail
 
 echo "which java: $(which java)"
 ulimit -c unlimited -S
 
 echo "==============================="
-if [ -n "$ANT_HOME" ]; then
-    echo "ANT_HOME=$ANT_HOME"
-fi
+echo "ANT_HOME=$ANT_HOME"
 echo "which ant"
 which ant
 echo "ant -version"
