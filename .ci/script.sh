@@ -4,7 +4,15 @@ set -uo pipefail
 echo "which java: $(which java)"
 ulimit -c unlimited -S
 
-sh ./gradlew all test -PCONF=DebugNative -x :web:test --no-daemon --stacktrace --info
+echo "==============================="
+echo "ANT_HOME=$ANT_HOME"
+echo "which ant"
+which ant
+echo "ant -version"
+ant -version
+echo "==============================="
+
+sh ./gradlew tasks
 
 # Print core dumps when JVM crashes.
 RESULT=$?

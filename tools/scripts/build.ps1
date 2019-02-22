@@ -58,8 +58,17 @@ $env:WINDOWS_CRT_VER = $files[0].Name.replace("Microsoft.VC","").replace(".CRT",
 $env:VS150COMNTOOLS = $env:VCINSTALLDIR
 $env:VSVARS32FILE = "$env:VCINSTALLDIR\vcvars32.bat"
 refreshenv
+
+echo "==============================="
+echo "ANT_HOME=$ANT_HOME"
+echo "which ant"
+which ant
+echo "ant -version"
+ant -version
+echo "==============================="
+
 if ($env:APPVEYOR -eq "true") {
-  .\gradlew all test -PCOMPILE_WEBKIT=false -PCONF=DebugNative --stacktrace -x :web:test --info --no-daemon
+  .\gradlew --no-daemon tasks
   if ($lastexitcode -ne 0) {
     exit $lastexitcode
   }
