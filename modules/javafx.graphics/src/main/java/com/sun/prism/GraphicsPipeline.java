@@ -31,6 +31,7 @@ import com.sun.javafx.font.PrismFontFactory;
 import com.sun.prism.impl.PrismSettings;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -62,9 +63,7 @@ public abstract class GraphicsPipeline {
 
     public abstract boolean init();
     public void dispose() {
-        for (Runnable disposeHook : disposeHooks) {
-            disposeHook.run();
-        }
+        notifyDisposeHooks();
         installedPipeline = null;
     }
 
@@ -77,7 +76,21 @@ public abstract class GraphicsPipeline {
         if (runnable == null) {
             return;
         }
-        disposeHooks.add(runnable);
+        synchronized (disposeHooks) {
+            disposeHooks.add(runnable);
+        }
+    }
+
+    private void notifyDisposeHooks() {
+        List<Runnable> hooks;
+        synchronized (disposeHooks) {
+            hooks = new ArrayList<Runnable>(disposeHooks);
+            disposeHooks.clear();
+        }
+
+        for (Runnable hook : hooks) {
+            hook.run();
+        }
     }
 
     public abstract int getAdapterOrdinal(Screen screen);
