@@ -28,8 +28,7 @@ package com.sun.javafx.font.directwrite;
 import com.sun.javafx.font.PrismFontFactory;
 import com.sun.javafx.font.PrismFontFile;
 import com.sun.javafx.text.GlyphLayout;
-
-import java.lang.reflect.Method;
+import com.sun.prism.GraphicsPipeline;
 
 public class DWFactory extends PrismFontFactory {
 
@@ -118,23 +117,12 @@ public class DWFactory extends PrismFontFactory {
         }
     }
 
-    private static void addGraphicsPipelineDisposeHook(Runnable runnable) {
-        try {
-            Class plc = Class.forName("com.sun.prism.GraphicsPipeline");
-            Method gpm = plc.getMethod("getPipeline", (Class[])null);
-            Object plo = gpm.invoke(null);
-            Method adhm = plc.getMethod("addDisposeHook", Runnable.class);
-            adhm.invoke(plo, runnable);
-        } catch (Exception e) {
-        }
-    }
-
     static synchronized IWICImagingFactory getWICFactory() {
         checkThread();
         /* Using single threaded WIC Factory as it should only be used by the rendering thread */
         if (WIC_FACTORY == null) {
             WIC_FACTORY = OS.WICCreateImagingFactory();
-            addGraphicsPipelineDisposeHook(() -> {
+            GraphicsPipeline.getPipeline().addDisposeHook(() -> {
                 checkThread();
                 WIC_FACTORY.Release();
                 /* Uninitialize COM as it was initialized by WICCreateImagingFactory() */
