@@ -42,6 +42,10 @@ class OS {
     static final int S_OK = 0x0;
     static final int E_NOT_SUFFICIENT_BUFFER = 0x8007007A;
 
+    /* COM init constants */
+    static final int COINIT_APARTMENTTHREADED = 0x2;
+    static final int COINIT_DISABLE_OLE1DDE = 0x4;
+
     /* Direct2D constants */
     static final int D2D1_FACTORY_TYPE_SINGLE_THREADED = 0;
     static final int D2D1_RENDER_TARGET_TYPE_DEFAULT    = 0;
@@ -175,6 +179,7 @@ class OS {
         return ptr != 0 ? new IWICImagingFactory(ptr) : null;
     }
 
+    static final native boolean CoInitializeEx(int dwCoInit);
     static final native void CoUninitialize();
 
     private static final native long _NewJFXTextAnalysisSink(char[] text,
