@@ -29,6 +29,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Set;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,13 +38,18 @@ import org.junit.runners.Parameterized.Parameters;
 import org.junit.runners.Parameterized;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assume.assumeTrue;
 
 @RunWith(Parameterized.class)
 public final class SubresourceIntegrityTest extends TestBase {
 
     // To arguments from junit data provider.
     private final String hashValue;
+    private final String algorithm;
     private File htmlFile;
+    // Only sha256, sha384, sha512 are supported
+    // Ref. https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity#Using_Subresource_Integrity
+    private static Set<String> ALLOWED_HASH_ALGOS = Set.of("sha256", "sha384", "sha512");
 
     // TODO: junit 4.11 provides an option to label arguments.
     @Parameters
@@ -59,15 +65,22 @@ public final class SubresourceIntegrityTest extends TestBase {
             {"sha384-+GrI+cacF05VlQitRghQhs1by9CSIyc8XgZTbymUg2oA0EYdLiPMtilnFP3LDbkY"},
             // shasum -b -a 512 subresource-integrity-test.js | awk '{ print $1 }' | xxd -r -p | base64
             {"sha512-V8m3j61x5soaVcO83NuHavY7Yn4MQYoUgrqJe38f6QYG9QzzgWbVDB1SrZsZ2CVR1IsOnV2MLhnDaZhWOwHDsw=="},
+            // SubresourceIntegrity is not tested for sha1 and sha224
+            {"sha1-0000000000000000000000000000"},
+            {"sha224-0000000000000000000000000000000000000000"},
         });
+    }
+
+    private static boolean allowed(final String algorithm) {
+        return ALLOWED_HASH_ALGOS.contains(algorithm);
     }
 
     public SubresourceIntegrityTest(final String hashValue) {
         this.hashValue = hashValue;
+        this.algorithm = hashValue.substring(0, hashValue.indexOf('-'));
     }
 
-    @Before
-    public void setup() throws Exception {
+    public void setup(final String hashValue) throws Exception {
         // loadContent won't work with CORS, use file:// for main resource.
         htmlFile = new File("subresource-integrity-test.html");
         final FileOutputStream out = new FileOutputStream(htmlFile);
@@ -82,16 +95,30 @@ public final class SubresourceIntegrityTest extends TestBase {
     }
 
     @Test
-    public void testUsingScriptTag() {
+    public void testScriptTagWithCorrectHashValue() throws Exception {
+        setup(hashValue);
         load(htmlFile);
         final String bodyText = (String) executeScript("document.body.innerText");
-        assertNotNull("document.body.innerText must be non null", bodyText);
-        assertEquals("hello text must be added to body if script loaded successfully", "hello", bodyText);
+        assertNotNull("document.body.innerText must be non null for " + algorithm, bodyText);
+        assertEquals("hello text must be added to body if script loaded successfully for " + algorithm, "hello", bodyText);
+    }
+
+    @Test
+    public void testScriptTagWithIncorrectHashValue() throws Exception {
+        // SubresourceIntegrity is not tested for sha1 and sha224.
+        assumeTrue(allowed(algorithm));
+        // corrupt the hash value to check the negative case
+        char c = hashValue.charAt(20);
+        setup(hashValue.replace(c, (char) (c + 1)));
+        load(htmlFile);
+        final String bodyText = (String) executeScript("document.body.innerText");
+        assertNotNull("document.body.innerText must be non null for" + algorithm, bodyText);
+        assertEquals("body text should be empty for " + algorithm, "", bodyText);
     }
 
     @After
     public void tearDown() {
-        if (!htmlFile.delete()) {
+        if (htmlFile != null && !htmlFile.delete()) {
             htmlFile.deleteOnExit();
         }
     }
