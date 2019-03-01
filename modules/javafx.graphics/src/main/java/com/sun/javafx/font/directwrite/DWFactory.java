@@ -122,7 +122,7 @@ public class DWFactory extends PrismFontFactory {
         /* Using single threaded WIC Factory as it should only be used by the rendering thread */
         if (WIC_FACTORY == null) {
             /* Initialize COM in order to create a WICImagingFactory.
-             * It runs on the prism thread and expects no other codes in this thread
+             * It runs on the prism thread and expects no other code in this thread
              * to interface with COM. */
             if (!OS.CoInitializeEx(OS.COINIT_APARTMENTTHREADED | OS.COINIT_DISABLE_OLE1DDE)) {
                 return null;
