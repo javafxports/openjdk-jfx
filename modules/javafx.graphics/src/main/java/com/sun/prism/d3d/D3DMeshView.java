@@ -45,7 +45,7 @@ class D3DMeshView extends BaseMeshView {
     private D3DPhongMaterial material;
 
     private D3DMeshView(D3DContext context, long nativeHandle, D3DMesh mesh,
-            Disposer.Record disposerRecord) {
+                        Disposer.Record disposerRecord) {
         super(disposerRecord);
         this.context = context;
         this.mesh = mesh;
@@ -81,12 +81,7 @@ class D3DMeshView extends BaseMeshView {
     }
 
     @Override
-    public void setPointLight(int index, float x, float y, float z, float r, float g, float b, float w) {
-        setPointLight(index, x, y, z, r, g, b, w, 1.0f, 1.0f, 0.0f, 0.0f);
-    }
-
-    @java.lang.Override
-    public void setPointLight(int index, float x, float y, float z, float r, float g, float b, float w, float range, float constantAttenuation, float linearAttenuation, float quadraticAttenuation) {
+    public void setPointLight(int index, float x, float y, float z, float r, float g, float b, float w, float c, float lc, float qc, float range) {
         // NOTE: We only support up to 3 point lights at the present
         if (index >= 0 && index <= 2) {
             context.setPointLight(nativeHandle, index, x, y, z, r, g, b, w);
@@ -133,4 +128,5 @@ class D3DMeshView extends BaseMeshView {
             }
         }
     }
+
 }

@@ -73,8 +73,8 @@ import com.sun.javafx.logging.PlatformLogger;
  */
 public abstract class LightBase extends Node {
     static {
-         // This is used by classes in different packages to get access to
-         // private and package private methods.
+        // This is used by classes in different packages to get access to
+        // private and package private methods.
         LightBaseHelper.setLightBaseAccessor(new LightBaseHelper.LightBaseAccessor() {
             @Override
             public void doMarkDirty(Node node, DirtyBits dirtyBit) {
@@ -88,7 +88,7 @@ public abstract class LightBase extends Node {
 
             @Override
             public BaseBounds doComputeGeomBounds(Node node,
-                    BaseBounds bounds, BaseTransform tx) {
+                                                  BaseBounds bounds, BaseTransform tx) {
                 return ((LightBase) node).doComputeGeomBounds(bounds, tx);
             }
 
@@ -100,33 +100,11 @@ public abstract class LightBase extends Node {
     }
 
     private Affine3D localToSceneTx = new Affine3D();
-	
+
     {
         // To initialize the class helper at the begining each constructor of this class
         LightBaseHelper.initHelper(this);
     }
-	
-	//FalcoTheBold
-	private final DoubleProperty range = new SimpleDoubleProperty(1.0f);
-	private final DoubleProperty constantAttentuation = new SimpleDoubleProperty(1.0f);
-	private final DoubleProperty linearAttentuation = new SimpleDoubleProperty(0.0f);
-	private final DoubleProperty quadraticAttentuation = new SimpleDoubleProperty(0.0f);
-
-	public final DoubleProperty rangeProperty(){
-		return range;
-	}
-	
-	public final DoubleProperty constantAttentuationProperty(){
-		return constantAttentuation;
-	}
-	
-	public final DoubleProperty linearAttentuationProperty(){
-		return linearAttentuation;
-	}
-	
-	public final DoubleProperty quadraticAttentuationProperty(){
-		return quadraticAttentuation;
-	}
 
     /**
      * Creates a new instance of {@code LightBase} class with a default Color.WHITE light source.
@@ -144,7 +122,7 @@ public abstract class LightBase extends Node {
         if (!Platform.isSupported(ConditionalFeature.SCENE3D)) {
             String logname = LightBase.class.getName();
             PlatformLogger.getLogger(logname).warning("System can't support "
-                                                      + "ConditionalFeature.SCENE3D");
+                    + "ConditionalFeature.SCENE3D");
         }
 
         setColor(color);
@@ -262,6 +240,20 @@ public abstract class LightBase extends Node {
         }
     }
 
+    /**
+     * For use by implementing subclasses. Treat as protected.
+     *
+     * Creates and returns a SimpleDoubleProperty with an invalidation scheme.
+     */
+    DoubleProperty getLightDoubleProperty(String name, double initialValue) {
+        return new SimpleDoubleProperty(this, name, initialValue) {
+            @Override
+            protected void invalidated() {
+                NodeHelper.markDirty(LightBase.this, DirtyBits.NODE_LIGHT);
+            }
+        };
+    }
+
     private void markOwnerDirty() {
         // if the light is part of the scene/subScene, we will need to notify
         // the owner to mark the entire scene/subScene dirty.
@@ -308,7 +300,6 @@ public abstract class LightBase extends Node {
      */
     private void doUpdatePeer() {
         NGLightBase peer = getPeer();
-        peer.setAttenuations(constantAttentuation.floatValue(), linearAttentuation.floatValue(), quadraticAttentuation.floatValue());
         if (isDirty(DirtyBits.NODE_LIGHT)) {
             peer.setColor((getColor() == null) ?
                     Toolkit.getPaintAccessor().getPlatformPaint(Color.WHITE)
@@ -356,5 +347,4 @@ public abstract class LightBase extends Node {
         // TODO: 3D - Check is this the right default
         return false;
     }
-
 }

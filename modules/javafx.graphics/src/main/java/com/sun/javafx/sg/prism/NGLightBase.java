@@ -39,12 +39,6 @@ public class NGLightBase extends NGNode {
     private Color color = Color.WHITE;
     private boolean lightOn = true;
     private Affine3D worldTransform;
-	
-	/*
-	 * FalcoTheBold: additional member variables for attenuations + range
-	 */
-	private float range;
-	private float constantAttenuation, linearAttenuation, quadraticAttenuation;
 
     protected NGLightBase() {
     }
@@ -134,32 +128,6 @@ public class NGLightBase extends NGNode {
             }
         }
         return false;
-    }
-
-	public void setRange(float range){
-		this.range = range;
-	}
-	
-    public float getRange() {
-        return range;
-    }
-
-    public void setAttenuations(float ca, float la, float qa){
-        constantAttenuation = ca;
-        linearAttenuation = la;
-        quadraticAttenuation = qa;
-    }
-
-    public float getConstantAttenuation() {
-        return constantAttenuation;
-    }
-
-    public float getLinearAttenuation() {
-        return linearAttenuation;
-    }
-
-    public float getQuadraticAttenuation() {
-        return quadraticAttenuation;
     }
 
     @Override

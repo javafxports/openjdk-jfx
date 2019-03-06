@@ -56,6 +56,12 @@ public class PointLightHelper extends LightBaseHelper {
         return pointLightAccessor.doCreatePeer(node);
     }
 
+    @Override
+    protected void updatePeerImpl(Node node) {
+        super.updatePeerImpl(node);
+        pointLightAccessor.doUpdatePeer(node);
+    }
+
     public static void setPointLightAccessor(final PointLightAccessor newAccessor) {
         if (pointLightAccessor != null) {
             throw new IllegalStateException();
@@ -66,6 +72,7 @@ public class PointLightHelper extends LightBaseHelper {
 
     public interface PointLightAccessor {
         NGNode doCreatePeer(Node node);
+        void doUpdatePeer(Node node);
     }
 
 }

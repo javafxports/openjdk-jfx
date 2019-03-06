@@ -47,17 +47,8 @@ public interface MeshView {
     public void setAmbientLight(float r, float g, float b);
 
     public void setPointLight(int index,
-            float x, float y, float z,
-            float r, float g, float b, float w);
-			
-	/*
-	 * FalcoTheBold:
-	 * Added overloaded operation that takes the range and the attenuation coefficients
-	 */
-	 public void setPointLight(int index,
-			 float x, float y, float z,
-			 float r, float g, float b, float w,
-			 float range, float constantAttenuation, float linearAttenuation, float quadraticAttenuation);
-
+                              float x, float y, float z,
+                              float r, float g, float b, float w,
+                              float c, float cl, float cq, float range);
     public void render(Graphics g);
 }

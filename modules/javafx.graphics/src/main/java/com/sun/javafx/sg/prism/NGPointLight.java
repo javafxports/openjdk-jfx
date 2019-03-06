@@ -30,6 +30,74 @@ package com.sun.javafx.sg.prism;
  */
 public class NGPointLight extends NGLightBase {
 
+    private static final double DEFAULT_C = 1;
+    private static final double DEFAULT_LC = 0;
+    private static final double DEFAULT_QC = 0;
+    private static final double DEFAULT_RANGE = Double.POSITIVE_INFINITY;
+
+    public static double getDefaultC() {
+        return DEFAULT_C;
+    }
+
+    public static double getDefaultLc() {
+        return DEFAULT_LC;
+    }
+
+    public static double getDefaultQc() {
+        return DEFAULT_QC;
+    }
+
+    public static double getDefaultRange() {
+        return DEFAULT_RANGE;
+    }
+
+    private double c = DEFAULT_C;
+
+    public double getC() {
+        return c;
+    }
+
+    public void setC(double c) {
+        this.c = c;
+        visualsChanged();
+    }
+
+
+    private double lc = DEFAULT_LC;
+
+    public double getLc() {
+        return lc;
+    }
+
+    public void setLc(double lc) {
+        this.lc = lc;
+        visualsChanged();
+    }
+
+
+    private double qc = DEFAULT_QC;
+
+    public double getQc() {
+        return qc;
+    }
+
+    public void setQc(double qc) {
+        this.qc = qc;
+        visualsChanged();
+    }
+
+
+    private double range = DEFAULT_RANGE;
+
+    public double getRange() {
+        return range;
+    }
+
+    public void setRange(double range) {
+        this.range = range < 0 ? 0 : range;
+        visualsChanged();
+    }
+
     public NGPointLight() {
     }
 
