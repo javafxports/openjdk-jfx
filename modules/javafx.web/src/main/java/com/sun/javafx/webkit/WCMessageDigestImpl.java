@@ -31,7 +31,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 public class WCMessageDigestImpl extends WCMessageDigest {
-    final private MessageDigest digest;
+    private final MessageDigest digest;
 
     public WCMessageDigestImpl(String algorithm) throws NoSuchAlgorithmException {
         digest = MessageDigest.getInstance(algorithm);
