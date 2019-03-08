@@ -1847,7 +1847,7 @@ project(":base") {
 
     sourceSets {
         main
-        shims{
+        shims {
             java {
                 compileClasspath += sourceSets.main.output
                 runtimeClasspath += sourceSets.main.output
@@ -1921,7 +1921,7 @@ project(":graphics") {
     sourceSets {
         jslc   // JSLC gramar subset
         main
-        shims{
+        shims {
             java {
                 compileClasspath += sourceSets.main.output
                 runtimeClasspath += sourceSets.main.output
@@ -2350,7 +2350,7 @@ project(":controls") {
 
     sourceSets {
         main
-        shims{
+        shims {
             java {
                 compileClasspath += sourceSets.main.output
                 runtimeClasspath += sourceSets.main.output
@@ -2430,7 +2430,7 @@ project(":swing") {
         main
         //shims // no test shims needed
         test
-        }
+    }
             
     project.ext.moduleSourcePath = defaultModuleSourcePath
     project.ext.moduleSourcePathShim = defaultModuleSourcePathShim
@@ -2517,7 +2517,7 @@ project(":fxml") {
 
     sourceSets {
         main
-        shims{
+        shims {
             java {
                 compileClasspath += sourceSets.main.output
                 runtimeClasspath += sourceSets.main.output
@@ -3159,7 +3159,7 @@ project(":web") {
 
     sourceSets {
         main
-        shims{
+        shims {
             java {
                 compileClasspath += sourceSets.main.output
                 runtimeClasspath += sourceSets.main.output
