@@ -854,7 +854,7 @@ JNIEXPORT jboolean JNICALL OS_NATIVE(CoInitializeEx)
      * This should never happen. */
     if (hr == RPC_E_CHANGED_MODE) return JNI_FALSE;
 
-    return SUCCEEDED(hr) ? JNI_TRUE : JNI_FALSE;
+    return JNI_TRUE;
 }
 
 JNIEXPORT void JNICALL OS_NATIVE(CoUninitialize)
