@@ -63,9 +63,18 @@ void phong(
     in out float3 d, in out float3 s, int _s, int _e)
 {
     float3 refl = reflect(e, n);
-    for (int i=_s; i<_e; i++) {
-        float3 l = normalize(L[i].xyz);
-        d += saturate(dot(n,l))*gLightColor[i].xyz;
-        s += pow(saturate(dot(-refl, l)), power)*gLightColor[i].xyz;
+    for (int i = _s; i < _e; i++) {
+        float range = gLightAttenuation[i].w;
+        float dist = length(L[i].xyz);
+        if (dist <= range) {
+            float ca = gLightAttenuation[i].x;
+            float la = gLightAttenuation[i].y;
+            float qa = gLightAttenuation[i].z;
+            float attn = 1.0 / (ca + la * dist + qa * dist * dist);
+
+            float3 l = normalize(L[i].xyz);
+            d += saturate(dot(n, l)) * gLightColor[i].xyz * attn;
+            s += pow(saturate(dot(-refl, l)), power) * gLightColor[i].xyz * attn;
+        }
     }
 }

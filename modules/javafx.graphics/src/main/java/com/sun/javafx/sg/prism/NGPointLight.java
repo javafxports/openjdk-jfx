@@ -26,79 +26,85 @@
 package com.sun.javafx.sg.prism;
 
 /**
- * TODO: 3D - Need documentation
+ * The peer of the {@code PointLight} class. Holds the default values of {@code PointLight}'s
+ * properties and updates the visuals via {@link NGNode#visualsChanged} when one of the current
+ * values changes. The peer receives its changes by {@code PointLight.doUpdatePeer} calls.
  */
 public class NGPointLight extends NGLightBase {
 
-    private static final double DEFAULT_C = 1;
-    private static final double DEFAULT_LC = 0;
-    private static final double DEFAULT_QC = 0;
-    private static final double DEFAULT_RANGE = Double.POSITIVE_INFINITY;
-
-    public static double getDefaultC() {
-        return DEFAULT_C;
-    }
-
-    public static double getDefaultLc() {
-        return DEFAULT_LC;
-    }
-
-    public static double getDefaultQc() {
-        return DEFAULT_QC;
-    }
-
-    public static double getDefaultRange() {
-        return DEFAULT_RANGE;
-    }
-
-    private double c = DEFAULT_C;
-
-    public double getC() {
-        return c;
-    }
-
-    public void setC(double c) {
-        this.c = c;
-        visualsChanged();
-    }
-
-
-    private double lc = DEFAULT_LC;
-
-    public double getLc() {
-        return lc;
-    }
-
-    public void setLc(double lc) {
-        this.lc = lc;
-        visualsChanged();
-    }
-
-
-    private double qc = DEFAULT_QC;
-
-    public double getQc() {
-        return qc;
-    }
-
-    public void setQc(double qc) {
-        this.qc = qc;
-        visualsChanged();
-    }
-
-
-    private double range = DEFAULT_RANGE;
-
-    public double getRange() {
-        return range;
-    }
-
-    public void setRange(double range) {
-        this.range = range < 0 ? 0 : range;
-        visualsChanged();
-    }
+    /** Constant attenuation factor default value */
+    private static final double DEFAULT_CA = 1;
+    /** Linear attenuation factor default value */
+    private static final double DEFAULT_LA = 0;
+    /** Quadratic attenuation factor default value */
+    private static final double DEFAULT_QA = 0;
+    /** Max range default value */
+    private static final double DEFAULT_MAX_RANGE = Double.POSITIVE_INFINITY;
 
     public NGPointLight() {
     }
 
+    public static double getDefaultCa() {
+        return DEFAULT_CA;
+    }
+
+    public static double getDefaultLa() {
+        return DEFAULT_LA;
+    }
+
+    public static double getDefaultQa() {
+        return DEFAULT_QA;
+    }
+
+    public static double getDefaultMaxRange() {
+        return DEFAULT_MAX_RANGE;
+    }
+
+
+    private double ca = DEFAULT_CA;
+
+    public double getCa() {
+        return ca;
+    }
+
+    public void setCa(double ca) {
+        this.ca = ca;
+        visualsChanged();
+    }
+
+
+    private double la = DEFAULT_LA;
+
+    public double getLa() {
+        return la;
+    }
+
+    public void setLa(double la) {
+        this.la = la;
+        visualsChanged();
+    }
+
+
+    private double qa = DEFAULT_QA;
+
+    public double getQa() {
+        return qa;
+    }
+
+    public void setQa(double qa) {
+        this.qa = qa;
+        visualsChanged();
+    }
+
+
+    private double maxRange = DEFAULT_MAX_RANGE;
+
+    public double getMaxRange() {
+        return maxRange;
+    }
+
+    public void setMaxRange(double maxRange) {
+        this.maxRange = maxRange < 0 ? 0 : maxRange;
+        visualsChanged();
+    }
 }

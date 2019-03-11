@@ -23,38 +23,88 @@
  * questions.
  */
 
-#ifndef D3DPHONGMATERIAL_H
-#define D3DPHONGMATERIAL_H
+#ifndef D3DPHONGSHADER_H
+#define D3DPHONGSHADER_H
 
-#include "D3DContext.h"
+// VSR implies Vertex Shader Registers
+#define VSR_VIEWPROJMATRIX  0  // 4 total
+#define VSR_CAMERAPOS 4        // 1 total
+// lighting
+// 5 lights (3 in use, 2 reserved)
+// with 2 registers = 10 registers
+#define VSR_LIGHTS 10
+// 8 ambient points + 2 coords : 10 registers
+#define VSR_AMBIENTCOLOR 20
+// world
+#define VSR_WORLDMATRIX 30
 
-// See MaterialPhong.h, MaterialPhongShaders.h
+// PSR implies Pixel Shader Registers
+// we have 224 float constants for ps 3.0
+#define PSR_DIFFUSECOLOR 0
+#define PSR_SPECULARCOLOR 1
+#define PSR_LIGHTCOLOR 4        // 3 lights + 2 reserve
+#define PSR_LIGHT_ATTENUATION 9 // 3 lights + 2 reserve
 
-#define DIFFUSE 0
-#define SPECULAR 1
-#define BUMP 2
-#define SELFILLUMINATION 3
+// SR implies Sampler Registers
+#define SR_DIFFUSEMAP 0
+#define SR_SPECULARMAP 1
+#define SR_BUMPHEIGHTMAP 2
+#define SR_SELFILLUMMAP 3
 
-class D3DPhongMaterial {
-public:
-    D3DPhongMaterial(D3DContext *pCtx);
-    virtual ~D3DPhongMaterial();
-    void setDiffuseColor(float r, float g, float b, float a);
-    float *getDiffuseColor();
-    void setSpecularColor(bool set, float r, float g, float b, float a);
-    float *getSpecularColor();
-    void setMap(int mapID, IDirect3DBaseTexture9 *texMap);
-    bool isBumpMap();
-    bool isSpecularMap();
-    bool isSpecularColor();
-    bool isSelfIllumMap();
-    IDirect3DBaseTexture9 * getMap(int type);
-
-private:
-    D3DContext *context;
-    float diffuseColor[4], specularColor[4];
-    IDirect3DBaseTexture9 *map[4];
-    bool specularColorSet;
+enum SpecType {
+    SpecNone,
+    SpecTexture, // map only w/o alpha
+    SpecColor,   // color w/o map
+    SpecMix,     // map & color
+    SpecTotal
 };
 
-#endif  /* D3DPHONGMATERIAL_H */
+enum BumpType {
+    BumpNone,
+    BumpSpecified,
+    BumpTotal
+};
+
+typedef const DWORD * ShaderFunction;
+ShaderFunction vsMtl1_Obj();
+ShaderFunction psMtl1(), psMtl1_i(),
+psMtl1_s1n(), psMtl1_s2n(), psMtl1_s3n(),
+psMtl1_s1t(), psMtl1_s2t(), psMtl1_s3t(),
+psMtl1_s1c(), psMtl1_s2c(), psMtl1_s3c(),
+psMtl1_s1m(), psMtl1_s2m(), psMtl1_s3m(),
+
+psMtl1_b1n(), psMtl1_b2n(), psMtl1_b3n(),
+psMtl1_b1t(), psMtl1_b2t(), psMtl1_b3t(),
+psMtl1_b1c(), psMtl1_b2c(), psMtl1_b3c(),
+psMtl1_b1m(), psMtl1_b2m(), psMtl1_b3m(),
+
+psMtl1_s1ni(), psMtl1_s2ni(), psMtl1_s3ni(),
+psMtl1_s1ti(), psMtl1_s2ti(), psMtl1_s3ti(),
+psMtl1_s1ci(), psMtl1_s2ci(), psMtl1_s3ci(),
+psMtl1_s1mi(), psMtl1_s2mi(), psMtl1_s3mi(),
+
+psMtl1_b1ni(), psMtl1_b2ni(), psMtl1_b3ni(),
+psMtl1_b1ti(), psMtl1_b2ti(), psMtl1_b3ti(),
+psMtl1_b1ci(), psMtl1_b2ci(), psMtl1_b3ci(),
+psMtl1_b1mi(), psMtl1_b2mi(), psMtl1_b3mi();
+
+class D3DPhongShader {
+public:
+    D3DPhongShader(IDirect3DDevice9 *dev);
+    virtual ~D3DPhongShader();
+    IDirect3DVertexShader9 *getVertexShader();
+    int getBumpMode(bool isBumpMap);
+    int getSpecularMode(bool isSpecularMap, bool isSpecularColor);
+    HRESULT setPixelShader(int numLights, int specularMode, int bumpMode, int selfIllumMode);
+
+static const int SelfIlllumTotal = 2;
+static const int maxLights = 3;
+
+private:
+    IDirect3DDevice9 *device;
+    IDirect3DVertexShader9 *vertexShader;
+    IDirect3DPixelShader9 *pixelShader0, *pixelShader0_si;
+    IDirect3DPixelShader9 *pixelShaders[SelfIlllumTotal][BumpTotal][SpecTotal][maxLights];
+};
+
+#endif  /* D3DPHONGSHADER_H */
