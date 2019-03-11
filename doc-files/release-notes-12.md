@@ -14,7 +14,7 @@ Issue key|Summary|Subcomponent
 [JDK-8212102](https://bugs.openjdk.java.net/browse/JDK-8212102)|[TextField] IOOBE on paste/replace text with control characters|controls
 [JDK-8217270](https://bugs.openjdk.java.net/browse/JDK-8217270)|Broken link to cssref.html in javafx.controls package docs|controls
 [JDK-8167068](https://bugs.openjdk.java.net/browse/JDK-8167068)|GLS language errors|graphics
-[JDK-8188810](https://bugs.openjdk.java.net/browse/JDK-8188810)||Fonts are blurry on Ubuntu 16.04 and Debian 9|graphics
+[JDK-8188810](https://bugs.openjdk.java.net/browse/JDK-8188810)|Fonts are blurry on Ubuntu 16.04 and Debian 9|graphics
 [JDK-8203884](https://bugs.openjdk.java.net/browse/JDK-8203884)|Update libjpeg to version 9c|graphics
 [JDK-8207839](https://bugs.openjdk.java.net/browse/JDK-8207839)|[win] Negative glyph_id causes ArrayIndexOutOfBoundsException|graphics
 [JDK-8209764](https://bugs.openjdk.java.net/browse/JDK-8209764)|JavaFX/Monocle - Partial Screen Capture Broken|graphics
@@ -62,9 +62,7 @@ Issue key|Summary|Subcomponent
 [JDK-8204060](https://bugs.openjdk.java.net/browse/JDK-8204060)|[Canvas] Add API in GraphicsContext to control image smoothing|graphics
 [JDK-8214069](https://bugs.openjdk.java.net/browse/JDK-8214069)|Use xdg-open to get default web browser on Linux systems|graphics
 [JDK-8088418](https://bugs.openjdk.java.net/browse/JDK-8088418)|Reintroduce JFR Pulse Logger|other
-[JDK-8203379](https://bugs.openjdk.java.net/browse/JDK-8203379)|Remove javapackager sources from OpenJFX repo|other
 [JDK-8090930](https://bugs.openjdk.java.net/browse/JDK-8090930)|Support mouse forward/back buttons|scenegraph
 [JDK-8211249](https://bugs.openjdk.java.net/browse/JDK-8211249)|Refactor javafx.swing implementation to get rid of unneeded abstraction layer|swing
-[JDK-8198961](https://bugs.openjdk.java.net/browse/JDK-8198961)|Remove old version of SceneBuilder from OpenJFX|tools-scenebuilder
 [JDK-8148129](https://bugs.openjdk.java.net/browse/JDK-8148129)|Implement Accelerated composition for WebView|web
 [JDK-8207772](https://bugs.openjdk.java.net/browse/JDK-8207772)|File API and FileReader should be supported in WebView|web
