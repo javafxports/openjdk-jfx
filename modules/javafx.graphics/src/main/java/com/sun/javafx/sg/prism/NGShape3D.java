@@ -117,10 +117,10 @@ public abstract class NGShape3D extends NGNode {
                     (float)cameraPos.y,
                     (float)cameraPos.z,
                     1.0f, 1.0f, 1.0f, 1.0f,
-                    (float) NGPointLight.getDefaultCa(),
-                    (float) NGPointLight.getDefaultLa(),
-                    (float) NGPointLight.getDefaultQa(),
-                    (float) NGPointLight.getDefaultMaxRange());
+                    (float) NGPointLight.getDefaultC(),
+                    (float) NGPointLight.getDefaultLc(),
+                    (float) NGPointLight.getDefaultQc(),
+                    (float) NGPointLight.getDefaultRange());
         } else {
             float ambientRed = 0.0f;
             float ambientBlue = 0.0f;
@@ -160,10 +160,10 @@ public abstract class NGShape3D extends NGNode {
                                     (float)lightWT.getMyt(),
                                     (float)lightWT.getMzt(),
                                     rL, gL, bL, 1.0f,
-                                    (float) light.getCa(),
-                                    (float) light.getLa(),
-                                    (float) light.getQa(),
-                                    (float) light.getMaxRange());
+                                    (float) light.getC(),
+                                    (float) light.getLc(),
+                                    (float) light.getQc(),
+                                    (float) light.getRange());
                         }
                     } else if (lightBase instanceof NGAmbientLight) {
                         // Accumulate ambient lights
@@ -183,8 +183,8 @@ public abstract class NGShape3D extends NGNode {
             // Reset any previously set lights
             meshView.setPointLight(pointLightIdx++,
                     0, 0, 0, // x y z
-                    0, 0, 0, 0, // r g b w
-                    1, 0, 0, 0); // ca la qa maxRange
+                    0, 0, 0, 0, // r g b
+                    1, 0, 0, 0); // c lc qc range
         }
 
         meshView.render(g);

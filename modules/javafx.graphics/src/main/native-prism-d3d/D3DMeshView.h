@@ -40,8 +40,7 @@ public:
     void setWireframe(bool wf);
     void setAmbientLight(float r, float g, float b);
     void setPointLight(int index, float x, float y, float z,
-        float r, float g, float b, float w,
-        float ca, float la, float qa, float range);
+    float r, float g, float b, float w);
     void computeNumLights();
     void render();
 
@@ -51,10 +50,11 @@ private:
     D3DPhongMaterial *material;
     D3DLight lights[3];
     float ambientLightColor[3];
-    int numLights;
+    int  numLights;
     bool lightsDirty;
     int cullMode;
     bool wireframe;
 };
 
 #endif  /* D3DMESHVIEW_H */
+

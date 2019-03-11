@@ -233,10 +233,10 @@ class D3DContext extends BaseShaderContext {
 
         // Set projection view matrix
         res = nSetProjViewMatrix(pContext, depthTest,
-                projViewTx.get(0),  projViewTx.get(1),  projViewTx.get(2),  projViewTx.get(3),
-                projViewTx.get(4),  projViewTx.get(5),  projViewTx.get(6),  projViewTx.get(7),
-                projViewTx.get(8),  projViewTx.get(9),  projViewTx.get(10), projViewTx.get(11),
-                projViewTx.get(12), projViewTx.get(13), projViewTx.get(14), projViewTx.get(15));
+            projViewTx.get(0),  projViewTx.get(1),  projViewTx.get(2),  projViewTx.get(3),
+            projViewTx.get(4),  projViewTx.get(5),  projViewTx.get(6),  projViewTx.get(7),
+            projViewTx.get(8),  projViewTx.get(9),  projViewTx.get(10), projViewTx.get(11),
+            projViewTx.get(12), projViewTx.get(13), projViewTx.get(14), projViewTx.get(15));
         validate(res);
 
         cameraPos = camera.getPositionInWorld(cameraPos);
@@ -293,17 +293,17 @@ class D3DContext extends BaseShaderContext {
             res = nResetTransform(pContext);
         } else if (perspectiveTransform.isIdentity()) {
             res = nSetTransform(pContext,
-                    xform.getMxx(), xform.getMxy(), xform.getMxz(), xform.getMxt(),
-                    xform.getMyx(), xform.getMyy(), xform.getMyz(), xform.getMyt(),
-                    xform.getMzx(), xform.getMzy(), xform.getMzz(), xform.getMzt(),
-                    0.0, 0.0, 0.0, 1.0);
+                xform.getMxx(), xform.getMxy(), xform.getMxz(), xform.getMxt(),
+                xform.getMyx(), xform.getMyy(), xform.getMyz(), xform.getMyt(),
+                xform.getMzx(), xform.getMzy(), xform.getMzz(), xform.getMzt(),
+                0.0, 0.0, 0.0, 1.0);
         } else {
             scratchTx.setIdentity().mul(xform).mul(perspectiveTransform);
             res = nSetTransform(pContext,
-                    scratchTx.get(0), scratchTx.get(1), scratchTx.get(2), scratchTx.get(3),
-                    scratchTx.get(4), scratchTx.get(5), scratchTx.get(6), scratchTx.get(7),
-                    scratchTx.get(8), scratchTx.get(9), scratchTx.get(10), scratchTx.get(11),
-                    scratchTx.get(12), scratchTx.get(13), scratchTx.get(14), scratchTx.get(15));
+                scratchTx.get(0), scratchTx.get(1), scratchTx.get(2), scratchTx.get(3),
+                scratchTx.get(4), scratchTx.get(5), scratchTx.get(6), scratchTx.get(7),
+                scratchTx.get(8), scratchTx.get(9), scratchTx.get(10), scratchTx.get(11),
+                scratchTx.get(12), scratchTx.get(13), scratchTx.get(14), scratchTx.get(15));
         }
         validate(res);
     }
@@ -374,28 +374,28 @@ class D3DContext extends BaseShaderContext {
      */
     private static native int nSetRenderTarget(long pContext, long pDest, boolean depthBuffer, boolean msaa);
     private static native int nSetTexture(long pContext, long pTex, int texUnit,
-                                          boolean linear, int wrapMode);
+        boolean linear, int wrapMode);
     private static native int nResetTransform(long pContext);
     private static native int nSetTransform(long pContext,
-                                            double m00, double m01, double m02, double m03,
-                                            double m10, double m11, double m12, double m13,
-                                            double m20, double m21, double m22, double m23,
-                                            double m30, double m31, double m32, double m33);
+        double m00, double m01, double m02, double m03,
+        double m10, double m11, double m12, double m13,
+        double m20, double m21, double m22, double m23,
+        double m30, double m31, double m32, double m33);
     private static native void nSetWorldTransformToIdentity(long pContext);
     private static native void nSetWorldTransform(long pContext,
-                                                  double m00, double m01, double m02, double m03,
-                                                  double m10, double m11, double m12, double m13,
-                                                  double m20, double m21, double m22, double m23,
-                                                  double m30, double m31, double m32, double m33);
+            double m00, double m01, double m02, double m03,
+            double m10, double m11, double m12, double m13,
+            double m20, double m21, double m22, double m23,
+            double m30, double m31, double m32, double m33);
     private static native int nSetCameraPosition(long pContext, double x, double y, double z);
     private static native int nSetProjViewMatrix(long pContext, boolean isOrtho,
-                                                 double m00, double m01, double m02, double m03,
-                                                 double m10, double m11, double m12, double m13,
-                                                 double m20, double m21, double m22, double m23,
-                                                 double m30, double m31, double m32, double m33);
+        double m00, double m01, double m02, double m03,
+        double m10, double m11, double m12, double m13,
+        double m20, double m21, double m22, double m23,
+        double m30, double m31, double m32, double m33);
     private static native int nResetClipRect(long pContext);
     private static native int nSetClipRect(long pContext,
-                                           int x1, int y1, int x2, int y2);
+        int x1, int y1, int x2, int y2);
     private static native int nSetBlendEnabled(long pContext, int mode);
     private static native int nSetDeviceParametersFor2D(long pContext);
     private static native int nSetDeviceParametersFor3D(long pContext);
@@ -403,33 +403,32 @@ class D3DContext extends BaseShaderContext {
     private static native long nCreateD3DMesh(long pContext);
     private static native void nReleaseD3DMesh(long pContext, long nativeHandle);
     private static native boolean nBuildNativeGeometryShort(long pContext, long nativeHandle,
-                                                            float[] vertexBuffer, int vertexBufferLength, short[] indexBuffer, int indexBufferLength);
+            float[] vertexBuffer, int vertexBufferLength, short[] indexBuffer, int indexBufferLength);
     private static native boolean nBuildNativeGeometryInt(long pContext, long nativeHandle,
-                                                          float[] vertexBuffer, int vertexBufferLength, int[] indexBuffer, int indexBufferLength);
+            float[] vertexBuffer, int vertexBufferLength, int[] indexBuffer, int indexBufferLength);
     private static native long nCreateD3DPhongMaterial(long pContext);
     private static native void nReleaseD3DPhongMaterial(long pContext, long nativeHandle);
     private static native void nSetDiffuseColor(long pContext, long nativePhongMaterial,
-                                                float r, float g, float b, float a);
+            float r, float g, float b, float a);
     private static native void nSetSpecularColor(long pContext, long nativePhongMaterial,
-                                                 boolean set, float r, float g, float b, float a);
+            boolean set, float r, float g, float b, float a);
     private static native void nSetMap(long pContext, long nativePhongMaterial,
-                                       int mapType, long texID);
+            int mapType, long texID);
     private static native long nCreateD3DMeshView(long pContext, long nativeMesh);
     private static native void nReleaseD3DMeshView(long pContext, long nativeHandle);
     private static native void nSetCullingMode(long pContext, long nativeMeshView,
-                                               int cullingMode);
+            int cullingMode);
     private static native void nSetMaterial(long pContext, long nativeMeshView,
-                                            long nativePhongMaterialInfo);
+            long nativePhongMaterialInfo);
     private static native void nSetWireframe(long pContext, long nativeMeshView,
-                                             boolean wireframe);
+            boolean wireframe);
     private static native void nSetAmbientLight(long pContext, long nativeMeshView,
-                                                float r, float g, float b);
+            float r, float g, float b);
     private static native void nSetPointLight(long pContext, long nativeMeshView,
-                                              int index, float x, float y, float z, float r, float g, float b, float w,
-                                              float ca, float la, float qa, float maxRange);
+            int index, float x, float y, float z, float r, float g, float b, float w);
     private static native void nRenderMeshView(long pContext, long nativeMeshView);
     private static native int nDrawIndexedQuads(long pContext,
-                                                float coords[], byte colors[], int numVertices);
+            float coords[], byte colors[], int numVertices);
 
 
     /*
@@ -437,11 +436,11 @@ class D3DContext extends BaseShaderContext {
      * @param nDstRTT can be NULL if a valide render target is set
      */
     private static native void nBlit(long pContext, long nSrcRTT, long nDstRTT,
-                                     int srcX0, int srcY0, int srcX1, int srcY1,
-                                     int dstX0, int dstY0, int dstX1, int dstY1);
+            int srcX0, int srcY0, int srcX1, int srcY1,
+            int dstX0, int dstY0, int dstX1, int dstY1);
 
     private static native boolean nGetFrameStats(long pContext,
-                                                 D3DFrameStats returnValue, boolean bReset);
+            D3DFrameStats returnValue, boolean bReset);
 
     private static native boolean nIsRTTVolatile(long contextHandle);
 
@@ -484,13 +483,13 @@ class D3DContext extends BaseShaderContext {
     }
 
     boolean buildNativeGeometry(long nativeHandle, float[] vertexBuffer, int vertexBufferLength,
-                                short[] indexBuffer, int indexBufferLength) {
+            short[] indexBuffer, int indexBufferLength) {
         return nBuildNativeGeometryShort(pContext, nativeHandle, vertexBuffer,
                 vertexBufferLength, indexBuffer, indexBufferLength);
     }
 
     boolean buildNativeGeometry(long nativeHandle, float[] vertexBuffer, int vertexBufferLength,
-                                int[] indexBuffer, int indexBufferLength) {
+            int[] indexBuffer, int indexBufferLength) {
         return nBuildNativeGeometryInt(pContext, nativeHandle, vertexBuffer,
                 vertexBufferLength, indexBuffer, indexBufferLength);
     }
@@ -544,16 +543,15 @@ class D3DContext extends BaseShaderContext {
     }
 
     void setWireframe(long nativeMeshView, boolean wireframe) {
-        nSetWireframe(pContext, nativeMeshView, wireframe);
+         nSetWireframe(pContext, nativeMeshView, wireframe);
     }
 
     void setAmbientLight(long nativeMeshView, float r, float g, float b) {
         nSetAmbientLight(pContext, nativeMeshView, r, g, b);
     }
 
-    void setPointLight(long nativeMeshView, int index, float x, float y, float z,
-                       float r, float g, float b, float w, float ca, float la, float qa,  float maxRange) {
-        nSetPointLight(pContext, nativeMeshView, index, x, y, z, r, g, b, w, ca, la, qa, maxRange);
+    void setPointLight(long nativeMeshView, int index, float x, float y, float z, float r, float g, float b, float w) {
+        nSetPointLight(pContext, nativeMeshView, index, x, y, z, r, g, b, w);
     }
 
     @Override
@@ -605,7 +603,7 @@ class D3DContext extends BaseShaderContext {
         long dstNativeHandle = dstRTT == null ? 0L : ((D3DTexture)dstRTT).getNativeSourceHandle();
         long srcNativeHandle = ((D3DTexture)srcRTT).getNativeSourceHandle();
         nBlit(pContext, srcNativeHandle, dstNativeHandle,
-                srcX0, srcY0, srcX1, srcY1,
-                dstX0, dstY0, dstX1, dstY1);
+                          srcX0, srcY0, srcX1, srcY1,
+                          dstX0, dstY0, dstX1, dstY1);
     }
 }

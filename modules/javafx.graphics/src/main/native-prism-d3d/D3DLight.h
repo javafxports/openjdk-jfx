@@ -36,16 +36,13 @@ public:
     virtual ~D3DLight();
     void setColor(float r, float g, float b);
     void setPosition(float x, float y, float z);
-//  void setRange(float r);
     float position[4]; // Only need x, y, z. The last float is needed for padding when upload to shader.
     float color[3];
     float w;
-    float attenuation[4]; // ca, la, qa, range
 
 private:
 
 };
 
 #endif  /* D3DLIGHT_H */
-
 
