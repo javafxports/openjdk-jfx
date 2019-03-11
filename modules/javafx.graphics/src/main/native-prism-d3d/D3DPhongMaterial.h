@@ -23,93 +23,38 @@
  * questions.
  */
 
-#include <iostream>
-#include "D3DPhongMaterial.h"
+#ifndef D3DPHONGMATERIAL_H
+#define D3DPHONGMATERIAL_H
 
-using std::cout;
-using std::cerr;
-using std::endl;
+#include "D3DContext.h"
 
-// Destructor definition
-D3DPhongMaterial::~D3DPhongMaterial() {
-    context = NULL;
-    // The freeing of texture native resources is handled by its Java layer.
-    map[DIFFUSE] = NULL;
-    map[SPECULAR] = NULL;
-    map[BUMP] = NULL;
-    map[SELFILLUMINATION] = NULL;
-}
+// See MaterialPhong.h, MaterialPhongShaders.h
 
-D3DPhongMaterial::D3DPhongMaterial(D3DContext *ctx) {
-    context = ctx;
-    diffuseColor[0] = 0;
-    diffuseColor[1] = 0;
-    diffuseColor[2] = 0;
-    diffuseColor[3] = 0;
-    specularColorSet = false;
-    specularColor[0] = 1;
-    specularColor[1] = 1;
-    specularColor[2] = 1;
-    specularColor[3] = 32;
-    map[DIFFUSE] = NULL;
-    map[SPECULAR] = NULL;
-    map[BUMP] = NULL;
-    map[SELFILLUMINATION] = NULL;
-}
+#define DIFFUSE 0
+#define SPECULAR 1
+#define BUMP 2
+#define SELFILLUMINATION 3
 
-void D3DPhongMaterial::setDiffuseColor(float r, float g, float b, float a) {
-    diffuseColor[0] = r;
-    diffuseColor[1] = g;
-    diffuseColor[2] = b;
-    diffuseColor[3] = a;
-}
+class D3DPhongMaterial {
+public:
+    D3DPhongMaterial(D3DContext *pCtx);
+    virtual ~D3DPhongMaterial();
+    void setDiffuseColor(float r, float g, float b, float a);
+    float *getDiffuseColor();
+    void setSpecularColor(bool set, float r, float g, float b, float a);
+    float *getSpecularColor();
+    void setMap(int mapID, IDirect3DBaseTexture9 *texMap);
+    bool isBumpMap();
+    bool isSpecularMap();
+    bool isSpecularColor();
+    bool isSelfIllumMap();
+    IDirect3DBaseTexture9 * getMap(int type);
 
-float * D3DPhongMaterial::getDiffuseColor() {
-    return diffuseColor;
-}
+private:
+    D3DContext *context;
+    float diffuseColor[4], specularColor[4];
+    IDirect3DBaseTexture9 *map[4];
+    bool specularColorSet;
+};
 
-void D3DPhongMaterial::setSpecularColor(bool set, float r, float g, float b, float a) {
-    specularColorSet = set;
-    specularColor[0] = r;
-    specularColor[1] = g;
-    specularColor[2] = b;
-    specularColor[3] = a;
-}
-
-float * D3DPhongMaterial::getSpecularColor() {
-    return specularColor;
-}
-
-bool D3DPhongMaterial::isBumpMap() {
-    return map[BUMP] ? true : false;
-}
-
-bool D3DPhongMaterial::isSpecularMap() {
-    return map[SPECULAR] ? true : false;
-}
-
-bool D3DPhongMaterial::isSelfIllumMap() {
-    return map[SELFILLUMINATION] ? true : false;
-}
-
-bool D3DPhongMaterial::isSpecularColor() {
-    return specularColorSet;
-}
-
-IDirect3DBaseTexture9 * D3DPhongMaterial::getMap(int type) {
-    // Within the range of DIFFUSE, SPECULAR, BUMP, SELFILLUMINATION
-    if (type >= 0 && type <= 3) {
-        return map[type];
-    }
-    cerr << "D3DPhongMaterial::getMap -- type is out of range - type = " << type << endl;
-    return NULL;
-}
-
-void D3DPhongMaterial::setMap(int mapID, IDirect3DBaseTexture9 *texMap) {
-    // Within the range of DIFFUSE, SPECULAR, BUMP, SELFILLUMINATION
-    if (mapID >= 0 && mapID <= 3) {
-        map[mapID] = texMap;
-    } else {
-        cerr << "D3DPhongMaterial::getMap -- mapID is out of range - mapID = " << mapID << endl;
-    }
-}
+#endif  /* D3DPHONGMATERIAL_H */
