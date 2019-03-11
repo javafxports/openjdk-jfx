@@ -65,7 +65,7 @@ enum BumpType {
     BumpTotal
 };
 
-typedef const DWORD * ShaderFunction;
+typedef const DWORD *ShaderFunction;
 ShaderFunction vsMtl1_Obj();
 ShaderFunction psMtl1(), psMtl1_i(),
 psMtl1_s1n(), psMtl1_s2n(), psMtl1_s3n(),
