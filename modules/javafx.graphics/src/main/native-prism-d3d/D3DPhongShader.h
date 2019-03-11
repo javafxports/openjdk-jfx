@@ -39,10 +39,11 @@
 #define VSR_WORLDMATRIX 30
 
 // PSR implies Pixel Shader Registers
-// we have 32 constants for ps 2.0
+// we have 224 float constants for ps 3.0
 #define PSR_DIFFUSECOLOR 0
 #define PSR_SPECULARCOLOR 1
-#define PSR_LIGHTCOLOR 4
+#define PSR_LIGHTCOLOR 4        // 3 lights + 2 reserve
+#define PSR_LIGHT_ATTENUATION 9 // 3 lights + 2 reserve
 
 // SR implies Sampler Registers
 #define SR_DIFFUSEMAP 0
@@ -107,4 +108,3 @@ private:
 };
 
 #endif  /* D3DPHONGSHADER_H */
-

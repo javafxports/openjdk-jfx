@@ -23,88 +23,93 @@
  * questions.
  */
 
-#ifndef D3DPHONGSHADER_H
-#define D3DPHONGSHADER_H
+#include <iostream>
+#include "D3DPhongMaterial.h"
 
-// VSR implies Vertex Shader Registers
-#define VSR_VIEWPROJMATRIX  0  // 4 total
-#define VSR_CAMERAPOS 4        // 1 total
-// lighting
-// 5 lights (3 in use, 2 reserved)
-// with 2 registers = 10 registers
-#define VSR_LIGHTS 10
-// 8 ambient points + 2 coords : 10 registers
-#define VSR_AMBIENTCOLOR 20
-// world
-#define VSR_WORLDMATRIX 30
+using std::cout;
+using std::cerr;
+using std::endl;
 
-// PSR implies Pixel Shader Registers
-// we have 224 float constants for ps 3.0
-#define PSR_DIFFUSECOLOR 0
-#define PSR_SPECULARCOLOR 1
-#define PSR_LIGHTCOLOR 4        // 3 lights + 2 reserve
-#define PSR_LIGHT_ATTENUATION 9 // 3 lights + 2 reserve
+// Destructor definition
+D3DPhongMaterial::~D3DPhongMaterial() {
+    context = NULL;
+    // The freeing of texture native resources is handled by its Java layer.
+    map[DIFFUSE] = NULL;
+    map[SPECULAR] = NULL;
+    map[BUMP] = NULL;
+    map[SELFILLUMINATION] = NULL;
+}
 
-// SR implies Sampler Registers
-#define SR_DIFFUSEMAP 0
-#define SR_SPECULARMAP 1
-#define SR_BUMPHEIGHTMAP 2
-#define SR_SELFILLUMMAP 3
+D3DPhongMaterial::D3DPhongMaterial(D3DContext *ctx) {
+    context = ctx;
+    diffuseColor[0] = 0;
+    diffuseColor[1] = 0;
+    diffuseColor[2] = 0;
+    diffuseColor[3] = 0;
+    specularColorSet = false;
+    specularColor[0] = 1;
+    specularColor[1] = 1;
+    specularColor[2] = 1;
+    specularColor[3] = 32;
+    map[DIFFUSE] = NULL;
+    map[SPECULAR] = NULL;
+    map[BUMP] = NULL;
+    map[SELFILLUMINATION] = NULL;
+}
 
-enum SpecType {
-    SpecNone,
-    SpecTexture, // map only w/o alpha
-    SpecColor,   // color w/o map
-    SpecMix,     // map & color
-    SpecTotal
-};
+void D3DPhongMaterial::setDiffuseColor(float r, float g, float b, float a) {
+    diffuseColor[0] = r;
+    diffuseColor[1] = g;
+    diffuseColor[2] = b;
+    diffuseColor[3] = a;
+}
 
-enum BumpType {
-    BumpNone,
-    BumpSpecified,
-    BumpTotal
-};
+float * D3DPhongMaterial::getDiffuseColor() {
+    return diffuseColor;
+}
 
-typedef const DWORD *ShaderFunction;
-ShaderFunction vsMtl1_Obj();
-ShaderFunction psMtl1(), psMtl1_i(),
-psMtl1_s1n(), psMtl1_s2n(), psMtl1_s3n(),
-psMtl1_s1t(), psMtl1_s2t(), psMtl1_s3t(),
-psMtl1_s1c(), psMtl1_s2c(), psMtl1_s3c(),
-psMtl1_s1m(), psMtl1_s2m(), psMtl1_s3m(),
+void D3DPhongMaterial::setSpecularColor(bool set, float r, float g, float b, float a) {
+    specularColorSet = set;
+    specularColor[0] = r;
+    specularColor[1] = g;
+    specularColor[2] = b;
+    specularColor[3] = a;
+}
 
-psMtl1_b1n(), psMtl1_b2n(), psMtl1_b3n(),
-psMtl1_b1t(), psMtl1_b2t(), psMtl1_b3t(),
-psMtl1_b1c(), psMtl1_b2c(), psMtl1_b3c(),
-psMtl1_b1m(), psMtl1_b2m(), psMtl1_b3m(),
+float * D3DPhongMaterial::getSpecularColor() {
+    return specularColor;
+}
 
-psMtl1_s1ni(), psMtl1_s2ni(), psMtl1_s3ni(),
-psMtl1_s1ti(), psMtl1_s2ti(), psMtl1_s3ti(),
-psMtl1_s1ci(), psMtl1_s2ci(), psMtl1_s3ci(),
-psMtl1_s1mi(), psMtl1_s2mi(), psMtl1_s3mi(),
+bool D3DPhongMaterial::isBumpMap() {
+    return map[BUMP] ? true : false;
+}
 
-psMtl1_b1ni(), psMtl1_b2ni(), psMtl1_b3ni(),
-psMtl1_b1ti(), psMtl1_b2ti(), psMtl1_b3ti(),
-psMtl1_b1ci(), psMtl1_b2ci(), psMtl1_b3ci(),
-psMtl1_b1mi(), psMtl1_b2mi(), psMtl1_b3mi();
+bool D3DPhongMaterial::isSpecularMap() {
+    return map[SPECULAR] ? true : false;
+}
 
-class D3DPhongShader {
-public:
-    D3DPhongShader(IDirect3DDevice9 *dev);
-    virtual ~D3DPhongShader();
-    IDirect3DVertexShader9 *getVertexShader();
-    int getBumpMode(bool isBumpMap);
-    int getSpecularMode(bool isSpecularMap, bool isSpecularColor);
-    HRESULT setPixelShader(int numLights, int specularMode, int bumpMode, int selfIllumMode);
+bool D3DPhongMaterial::isSelfIllumMap() {
+    return map[SELFILLUMINATION] ? true : false;
+}
 
-static const int SelfIlllumTotal = 2;
-static const int maxLights = 3;
+bool D3DPhongMaterial::isSpecularColor() {
+    return specularColorSet;
+}
 
-private:
-    IDirect3DDevice9 *device;
-    IDirect3DVertexShader9 *vertexShader;
-    IDirect3DPixelShader9 *pixelShader0, *pixelShader0_si;
-    IDirect3DPixelShader9 *pixelShaders[SelfIlllumTotal][BumpTotal][SpecTotal][maxLights];
-};
+IDirect3DBaseTexture9 * D3DPhongMaterial::getMap(int type) {
+    // Within the range of DIFFUSE, SPECULAR, BUMP, SELFILLUMINATION
+    if (type >= 0 && type <= 3) {
+        return map[type];
+    }
+    cerr << "D3DPhongMaterial::getMap -- type is out of range - type = " << type << endl;
+    return NULL;
+}
 
-#endif  /* D3DPHONGSHADER_H */
+void D3DPhongMaterial::setMap(int mapID, IDirect3DBaseTexture9 *texMap) {
+    // Within the range of DIFFUSE, SPECULAR, BUMP, SELFILLUMINATION
+    if (mapID >= 0 && mapID <= 3) {
+        map[mapID] = texMap;
+    } else {
+        cerr << "D3DPhongMaterial::getMap -- mapID is out of range - mapID = " << mapID << endl;
+    }
+}
