@@ -347,4 +347,5 @@ public abstract class LightBase extends Node {
         // TODO: 3D - Check is this the right default
         return false;
     }
+
 }
