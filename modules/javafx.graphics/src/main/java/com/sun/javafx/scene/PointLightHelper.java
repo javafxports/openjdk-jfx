@@ -76,4 +76,3 @@ public class PointLightHelper extends LightBaseHelper {
     }
 
 }
-
