@@ -25,6 +25,8 @@
 package com.sun.glass.ui.monocle;
 
 import com.sun.glass.utils.NativeLibLoader;
+import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 import java.security.Permission;
 import java.text.MessageFormat;
 
@@ -269,50 +271,50 @@ class EPDSystem {
     /**
      * The IOCTL request code to define a mapping for common waveform modes.
      */
-    int MXCFB_SET_WAVEFORM_MODES;
+    final int MXCFB_SET_WAVEFORM_MODES;
 
     /**
      * The IOCTL request code to set the temperature used by the EPDC driver in
      * subsequent panel updates.
      */
-    int MXCFB_SET_TEMPERATURE;
+    final int MXCFB_SET_TEMPERATURE;
 
     /**
      * The IOCTL request code to select between automatic and region update
      * mode.
      */
-    int MXCFB_SET_AUTO_UPDATE_MODE;
+    final int MXCFB_SET_AUTO_UPDATE_MODE;
 
     /**
      * The IOCTL request code to update a region of the frame buffer to the
      * display.
      */
-    int MXCFB_SEND_UPDATE;
+    final int MXCFB_SEND_UPDATE;
 
     /**
      * The IOCTL request code to block and wait for a previous update to
      * complete.
      */
-    int MXCFB_WAIT_FOR_UPDATE_COMPLETE;
+    final int MXCFB_WAIT_FOR_UPDATE_COMPLETE;
 
     /**
      * The IOCTL request code to set the delay between the completion of all
      * updates in the driver and when the driver should power down the EPDC and
      * display power supplies.
      */
-    int MXCFB_SET_PWRDOWN_DELAY;
+    final int MXCFB_SET_PWRDOWN_DELAY;
 
     /**
      * The IOCTL request code to get the current power-down delay value from the
      * driver.
      */
-    int MXCFB_GET_PWRDOWN_DELAY;
+    final int MXCFB_GET_PWRDOWN_DELAY;
 
     /**
      * The IOCTL request code to select a scheme for the flow of updates within
      * the driver.
      */
-    int MXCFB_SET_UPDATE_SCHEME;
+    final int MXCFB_SET_UPDATE_SCHEME;
 
     private final LinuxSystem system;
 
@@ -321,6 +323,15 @@ class EPDSystem {
      */
     private EPDSystem() {
         system = LinuxSystem.getLinuxSystem();
+
+        MXCFB_SET_WAVEFORM_MODES = system.IOW('F', 0x2B, MxcfbWaveformModes.BYTES);
+        MXCFB_SET_TEMPERATURE = system.IOW('F', 0x2C, Integer.BYTES);
+        MXCFB_SET_AUTO_UPDATE_MODE = system.IOW('F', 0x2D, Integer.BYTES);
+        MXCFB_SEND_UPDATE = system.IOW('F', 0x2E, MxcfbUpdateData.BYTES);
+        MXCFB_WAIT_FOR_UPDATE_COMPLETE = system.IOW('F', 0x2F, Integer.BYTES);
+        MXCFB_SET_PWRDOWN_DELAY = system.IOW('F', 0x30, Integer.BYTES);
+        MXCFB_GET_PWRDOWN_DELAY = system.IOR('F', 0x31, IntStructure.BYTES);
+        MXCFB_SET_UPDATE_SCHEME = system.IOW('F', 0x32, Integer.BYTES);
     }
 
     /**
@@ -331,22 +342,6 @@ class EPDSystem {
      */
     void loadLibrary() {
         NativeLibLoader.loadLibrary("glass_monocle_epd");
-
-        /*
-         * Creating IOCTL request codes requires the native "sizeof" function.
-         */
-        var modes = new MxcfbWaveformModes();
-        var update = new MxcfbUpdateData();
-        var integer = new IntStructure();
-
-        MXCFB_SET_WAVEFORM_MODES = system.IOW('F', 0x2B, modes.sizeof());
-        MXCFB_SET_TEMPERATURE = system.IOW('F', 0x2C, Integer.BYTES);
-        MXCFB_SET_AUTO_UPDATE_MODE = system.IOW('F', 0x2D, Integer.BYTES);
-        MXCFB_SEND_UPDATE = system.IOW('F', 0x2E, update.sizeof());
-        MXCFB_WAIT_FOR_UPDATE_COMPLETE = system.IOW('F', 0x2F, Integer.BYTES);
-        MXCFB_SET_PWRDOWN_DELAY = system.IOW('F', 0x30, Integer.BYTES);
-        MXCFB_GET_PWRDOWN_DELAY = system.IOR('F', 0x31, integer.sizeof());
-        MXCFB_SET_UPDATE_SCHEME = system.IOW('F', 0x32, Integer.BYTES);
     }
 
     /**
@@ -367,16 +362,30 @@ class EPDSystem {
      */
     static class IntStructure extends C.Structure {
 
+        private static final int VALUE = 0;
+
+        private static final int NUM_INTS = 1;
+        private static final int BYTES = NUM_INTS * Integer.BYTES;
+
+        private final IntBuffer data;
+
         IntStructure() {
-            checkPermissions();
+            b.order(ByteOrder.nativeOrder());
+            data = b.asIntBuffer();
         }
 
         @Override
-        native int sizeof();
+        int sizeof() {
+            return BYTES;
+        }
 
-        native int getInteger(long p);
+        int getInteger(long p) {
+            return data.get(VALUE);
+        }
 
-        native void setInteger(long p, int value);
+        void setInteger(long p, int value) {
+            data.put(VALUE, value);
+        }
     }
 
     /**
@@ -385,28 +394,68 @@ class EPDSystem {
      */
     static class MxcfbWaveformModes extends C.Structure {
 
+        private static final int MODE_INIT = 0;
+        private static final int MODE_DU = 1;
+        private static final int MODE_GC4 = 2;
+        private static final int MODE_GC8 = 3;
+        private static final int MODE_GC16 = 4;
+        private static final int MODE_GC32 = 5;
+
+        private static final int NUM_INTS = 6;
+        private static final int BYTES = NUM_INTS * Integer.BYTES;
+
+        private final IntBuffer data;
+
         MxcfbWaveformModes() {
-            checkPermissions();
+            b.order(ByteOrder.nativeOrder());
+            data = b.asIntBuffer();
         }
 
         @Override
-        native int sizeof();
+        int sizeof() {
+            return BYTES;
+        }
 
-        native int getModeInit(long p);
+        int getModeInit(long p) {
+            return data.get(MODE_INIT);
+        }
 
-        native int getModeDu(long p);
+        int getModeDu(long p) {
+            return data.get(MODE_DU);
+        }
 
-        native int getModeGc4(long p);
+        int getModeGc4(long p) {
+            return data.get(MODE_GC4);
+        }
 
-        native int getModeGc8(long p);
+        int getModeGc8(long p) {
+            return data.get(MODE_GC8);
+        }
 
-        native int getModeGc16(long p);
+        int getModeGc16(long p) {
+            return data.get(MODE_GC16);
+        }
 
-        native int getModeGc32(long p);
+        int getModeGc32(long p) {
+            return data.get(MODE_GC32);
+        }
 
-        native void setModes(long p, int init, int du, int gc4, int gc8, int gc16, int gc32);
+        void setModes(long p, int init, int du, int gc4, int gc8, int gc16, int gc32) {
+            data.put(MODE_INIT, init);
+            data.put(MODE_DU, du);
+            data.put(MODE_GC4, gc4);
+            data.put(MODE_GC8, gc8);
+            data.put(MODE_GC16, gc16);
+            data.put(MODE_GC32, gc32);
+        }
 
-        native void print(long p);
+        @Override
+        public String toString() {
+            return MessageFormat.format(
+                    "{0}[mode_init={1} mode_du={2} mode_gc4={3} mode_gc8={4} mode_gc16={5} mode_gc32={6}]",
+                    getClass().getName(), getModeInit(p), getModeDu(p), getModeGc4(p),
+                    getModeGc8(p), getModeGc16(p), getModeGc32(p));
+        }
     }
 
     /**
@@ -415,63 +464,177 @@ class EPDSystem {
      */
     static class MxcfbUpdateData extends C.Structure {
 
+        private static final int UPDATE_REGION_TOP = 0;
+        private static final int UPDATE_REGION_LEFT = 1;
+        private static final int UPDATE_REGION_WIDTH = 2;
+        private static final int UPDATE_REGION_HEIGHT = 3;
+
+        private static final int WAVEFORM_MODE = 4;
+        private static final int UPDATE_MODE = 5;
+        private static final int UPDATE_MARKER = 6;
+        private static final int TEMP = 7;
+        private static final int FLAGS = 8;
+
+        private static final int ALT_BUFFER_DATA_VIRT_ADDR = 9;
+        private static final int ALT_BUFFER_DATA_PHYS_ADDR = 10;
+        private static final int ALT_BUFFER_DATA_WIDTH = 11;
+        private static final int ALT_BUFFER_DATA_HEIGHT = 12;
+
+        private static final int ALT_BUFFER_DATA_ALT_UPDATE_REGION_TOP = 13;
+        private static final int ALT_BUFFER_DATA_ALT_UPDATE_REGION_LEFT = 14;
+        private static final int ALT_BUFFER_DATA_ALT_UPDATE_REGION_WIDTH = 15;
+        private static final int ALT_BUFFER_DATA_ALT_UPDATE_REGION_HEIGHT = 16;
+
+        private static final int NUM_INTS = 17;
+        private static final int BYTES = NUM_INTS * Integer.BYTES;
+
+        private final IntBuffer data;
+
         MxcfbUpdateData() {
-            checkPermissions();
+            b.order(ByteOrder.nativeOrder());
+            data = b.asIntBuffer();
         }
 
         @Override
-        native int sizeof();
+        int sizeof() {
+            return BYTES;
+        }
 
-        native int getUpdateRegionTop(long p);
+        int getUpdateRegionTop(long p) {
+            return data.get(UPDATE_REGION_TOP);
+        }
 
-        native int getUpdateRegionLeft(long p);
+        int getUpdateRegionLeft(long p) {
+            return data.get(UPDATE_REGION_LEFT);
+        }
 
-        native int getUpdateRegionWidth(long p);
+        int getUpdateRegionWidth(long p) {
+            return data.get(UPDATE_REGION_WIDTH);
+        }
 
-        native int getUpdateRegionHeight(long p);
+        int getUpdateRegionHeight(long p) {
+            return data.get(UPDATE_REGION_HEIGHT);
+        }
 
-        native int getWaveformMode(long p);
+        int getWaveformMode(long p) {
+            return data.get(WAVEFORM_MODE);
+        }
 
-        native int getUpdateMode(long p);
+        int getUpdateMode(long p) {
+            return data.get(UPDATE_MODE);
+        }
 
-        native int getUpdateMarker(long p);
+        int getUpdateMarker(long p) {
+            return data.get(UPDATE_MARKER);
+        }
 
-        native int getTemp(long p);
+        int getTemp(long p) {
+            return data.get(TEMP);
+        }
 
-        native int getFlags(long p);
+        int getFlags(long p) {
+            return data.get(FLAGS);
+        }
 
-        native long getAltBufferDataVirtAddr(long p);
+        long getAltBufferDataVirtAddr(long p) {
+            return data.get(ALT_BUFFER_DATA_VIRT_ADDR);
+        }
 
-        native long getAltBufferDataPhysAddr(long p);
+        long getAltBufferDataPhysAddr(long p) {
+            return data.get(ALT_BUFFER_DATA_PHYS_ADDR);
+        }
 
-        native int getAltBufferDataWidth(long p);
+        int getAltBufferDataWidth(long p) {
+            return data.get(ALT_BUFFER_DATA_WIDTH);
+        }
 
-        native int getAltBufferDataHeight(long p);
+        int getAltBufferDataHeight(long p) {
+            return data.get(ALT_BUFFER_DATA_HEIGHT);
+        }
 
-        native int getAltBufferDataUpdateRegionTop(long p);
+        int getAltBufferDataAltUpdateRegionTop(long p) {
+            return data.get(ALT_BUFFER_DATA_ALT_UPDATE_REGION_TOP);
+        }
 
-        native int getAltBufferDataUpdateRegionLeft(long p);
+        int getAltBufferDataAltUpdateRegionLeft(long p) {
+            return data.get(ALT_BUFFER_DATA_ALT_UPDATE_REGION_LEFT);
+        }
 
-        native int getAltBufferDataUpdateRegionWidth(long p);
+        int getAltBufferDataAltUpdateRegionWidth(long p) {
+            return data.get(ALT_BUFFER_DATA_ALT_UPDATE_REGION_WIDTH);
+        }
 
-        native int getAltBufferDataUpdateRegionHeight(long p);
+        int getAltBufferDataAltUpdateRegionHeight(long p) {
+            return data.get(ALT_BUFFER_DATA_ALT_UPDATE_REGION_HEIGHT);
+        }
 
-        native void setUpdateRegion(long p, int top, int left, int width, int height);
+        void setUpdateRegion(long p, int top, int left, int width, int height) {
+            data.put(UPDATE_REGION_TOP, top);
+            data.put(UPDATE_REGION_LEFT, left);
+            data.put(UPDATE_REGION_WIDTH, width);
+            data.put(UPDATE_REGION_HEIGHT, height);
+        }
 
-        native void setWaveformMode(long p, int mode);
+        void setWaveformMode(long p, int mode) {
+            data.put(WAVEFORM_MODE, mode);
+        }
 
-        native void setUpdateMode(long p, int mode);
+        void setUpdateMode(long p, int mode) {
+            data.put(UPDATE_MODE, mode);
+        }
 
-        native void setUpdateMarker(long p, int marker);
+        void setUpdateMarker(long p, int marker) {
+            data.put(UPDATE_MARKER, marker);
+        }
 
-        native void setTemp(long p, int temp);
+        void setTemp(long p, int temp) {
+            data.put(TEMP, temp);
+        }
 
-        native void setFlags(long p, int flags);
+        void setFlags(long p, int flags) {
+            data.put(FLAGS, flags);
+        }
 
-        native void setAltBufferData(long p, long virtAddr, long physAddr, int width, int height,
-                int updateRegionTop, int updateRegionLeft, int updateRegionWidth, int updateRegionHeight);
+        void setAltBufferData(long p, long virtAddr, long physAddr, int width, int height,
+                int altUpdateRegionTop, int altUpdateRegionLeft, int altUpdateRegionWidth, int altUpdateRegionHeight) {
+            data.put(ALT_BUFFER_DATA_VIRT_ADDR, (int) virtAddr);
+            data.put(ALT_BUFFER_DATA_PHYS_ADDR, (int) physAddr);
+            data.put(ALT_BUFFER_DATA_WIDTH, width);
+            data.put(ALT_BUFFER_DATA_HEIGHT, height);
+            data.put(ALT_BUFFER_DATA_ALT_UPDATE_REGION_TOP, altUpdateRegionTop);
+            data.put(ALT_BUFFER_DATA_ALT_UPDATE_REGION_LEFT, altUpdateRegionLeft);
+            data.put(ALT_BUFFER_DATA_ALT_UPDATE_REGION_WIDTH, altUpdateRegionWidth);
+            data.put(ALT_BUFFER_DATA_ALT_UPDATE_REGION_HEIGHT, altUpdateRegionHeight);
+        }
 
-        native void print(long p);
+        @Override
+        public String toString() {
+            return MessageFormat.format(
+                    "{0}[update_region.top={1} update_region.left={2} update_region.width={3} update_region.height={4}"
+                    + " waveform_mode={5} update_mode={6} update_marker={7} temp={8} flags=0x{9}"
+                    + " alt_buffer_data.virt_addr=0x{10} alt_buffer_data.phys_addr=0x{11}"
+                    + " alt_buffer_data.width={12} alt_buffer_data.height={13}"
+                    + " alt_buffer_data.alt_update_region.top={14} alt_buffer_data.alt_update_region.left={15}"
+                    + " alt_buffer_data.alt_update_region.width={16} alt_buffer_data.alt_update_region.height={17}]",
+                    getClass().getName(),
+                    Integer.toUnsignedLong(getUpdateRegionTop(p)),
+                    Integer.toUnsignedLong(getUpdateRegionLeft(p)),
+                    Integer.toUnsignedLong(getUpdateRegionWidth(p)),
+                    Integer.toUnsignedLong(getUpdateRegionHeight(p)),
+                    Integer.toUnsignedLong(getWaveformMode(p)),
+                    Integer.toUnsignedLong(getUpdateMode(p)),
+                    Integer.toUnsignedLong(getUpdateMarker(p)),
+                    getTemp(p),
+                    Integer.toHexString(getFlags(p)),
+                    Long.toHexString(getAltBufferDataVirtAddr(p)),
+                    Long.toHexString(getAltBufferDataPhysAddr(p)),
+                    Integer.toUnsignedLong(getAltBufferDataWidth(p)),
+                    Integer.toUnsignedLong(getAltBufferDataHeight(p)),
+                    Integer.toUnsignedLong(getAltBufferDataAltUpdateRegionTop(p)),
+                    Integer.toUnsignedLong(getAltBufferDataAltUpdateRegionLeft(p)),
+                    Integer.toUnsignedLong(getAltBufferDataAltUpdateRegionWidth(p)),
+                    Integer.toUnsignedLong(getAltBufferDataAltUpdateRegionHeight(p)));
+        }
     }
 
     /**
