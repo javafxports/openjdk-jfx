@@ -2083,6 +2083,7 @@ JNIEXPORT void JNICALL Java_com_sun_prism_es2_GLContext_nSetMap
     pmInfo->maps[mapType] = texID;
 }
 
+/*
  * Class:     com_sun_prism_es2_GLContext
  * Method:    nCreateES2MeshView
  * Signature: (JJ)J
