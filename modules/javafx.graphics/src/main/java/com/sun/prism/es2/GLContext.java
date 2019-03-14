@@ -251,9 +251,6 @@ abstract class GLContext {
             boolean wireframe);
     private static native void nSetAmbientLight(long nativeCtxInfo, long nativeMeshViewInfo,
             float r, float g, float b);
-	/*
-	 * FalcoTheBold: - added additional parameters for the attenuation coefficients
-	 */ 
     private static native void nSetPointLight(long nativeCtxInfo, long nativeMeshViewInfo,
             int index, float x, float y, float z, float r, float g, float b, float w, float ra, float ca, float la, float qa);
     private static native void nRenderMeshView(long nativeCtxInfo, long nativeMeshViewInfo);
@@ -811,9 +808,6 @@ abstract class GLContext {
         nSetAmbientLight(nativeCtxInfo, nativeMeshViewInfo, r, g, b);
     }
 
-	/*
-	 * FalcoTheBold: - added parameters for the attenuation coefficients
-	 */ 
     void setPointLight(long nativeMeshViewInfo, int index, float x, float y, float z, float r, float g, float b, float w, float ra, float ca, float la, float qa) {
         nSetPointLight(nativeCtxInfo, nativeMeshViewInfo, index, x, y, z, r, g, b, w, ra, ca, la, qa);
     }

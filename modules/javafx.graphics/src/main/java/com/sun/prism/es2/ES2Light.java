@@ -32,14 +32,14 @@ class ES2Light {
 
     float x, y, z = 0;
     float r, g, b, w = 1;
-	float range, ca = 1.0f;
-	float la, qa = 0.0f;
+    float range, ca = 1.0f;
+    float la, qa = 0.0f;
 
     ES2Light(float ix, float iy, float iz, float ir, float ig, float ib, float iw) {
-		this(ix, iy, iz, ir, ig, ib, iw, 1.0f, 1.0f, 0.0f, 0.0f);
+        this(ix, iy, iz, ir, ig, ib, iw, 1.0f, 1.0f, 0.0f, 0.0f);
     }
-	
-	ES2Light(float ix, float iy, float iz, float ir, float ig, float ib, float iw, float irange, float ica, float ila, float iqa) {
+
+    ES2Light(float ix, float iy, float iz, float ir, float ig, float ib, float iw, float irange, float ica, float ila, float iqa) {
         x = ix;
         y = iy;
         z = iz;
@@ -47,9 +47,9 @@ class ES2Light {
         g = ig;
         b = ib;
         w = iw;
-		range = irange;
-		ca = ica;
-		la = ila;
-		qa = iqa;
+        range = irange;
+        ca = ica;
+        la = ila;
+        qa = iqa;
     }
 }

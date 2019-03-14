@@ -99,10 +99,7 @@ class ES2MeshView extends BaseMeshView {
     float getAmbientLightBlue() {
         return ambientLightBlue;
     }
-	
-	/*
-	 * FalcoTheBold - transferred expressions from the old operator to the new overloaded operator
-	 */
+
     @Override
     public void setPointLight(int index, float x, float y, float z, float r, float g, float b, float w,
                               float ca, float la, float qa, float maxRange) {
@@ -111,7 +108,7 @@ class ES2MeshView extends BaseMeshView {
             lights[index] = new ES2Light(x, y, z, r, g, b, w, maxRange, ca, la, qa);
             context.setPointLight(nativeHandle, index, x, y, z, r, g, b, w, maxRange, ca, la, qa);
         }
-	}
+    }
 
     ES2Light[] getPointLights() {
         return lights;

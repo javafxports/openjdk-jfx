@@ -46,8 +46,7 @@ public interface MeshView {
 
     public void setAmbientLight(float r, float g, float b);
 
-    public void setPointLight(int index,
-                              float x, float y, float z,
+    public void setPointLight(int index, float x, float y, float z,
                               float r, float g, float b, float w,
                               float ca, float la, float qa, float maxRange);
 
