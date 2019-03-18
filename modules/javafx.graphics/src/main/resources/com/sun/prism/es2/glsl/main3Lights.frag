@@ -75,6 +75,7 @@ void main()
 
     vec3 d = vec3(0.0);
     vec3 s = vec3(0.0);
+    vec3 rez = vec3(0.0);
 
     vec3 refl = reflect(normalize(eyePos), n);
     vec4 specular = apply_specular();
@@ -84,10 +85,10 @@ void main()
         float dist = (lights[i].pos.xyz - gl_Position);
         if(dist <= lights[i].atten.range){
             vec3 l = normalize(lightTangentSpacePositions[i].xyz);
-            d += clamp(dot(n,l), 0.0, 1.0)*(lights[i].color).rgb;
-            s += pow(clamp(dot(-refl, l), 0.0, 1.0), power) * lights[i].color.rgb;
-            float att = 1.0 / (lights[i]].atten.ca + lights[i].atten.la * dist + lights[i].atten.qa * (dist * dist)));
-            vec3 rez = (ambientColor+d) * (att * (diffuse.xyz + s*specular.rgb));
+            float att = 1.0 / (lights[i]].atten.ca + lights[i].atten.la * dist + lights[i].atten.qa * (dist * dist));
+            d += clamp(dot(n,l), 0.0, 1.0)*(lights[i].color).rgb * att;
+            s += pow(clamp(dot(-refl, l), 0.0, 1.0), power) * lights[i].color.rgb *att;
+            rez = (ambientColor+d) * (diffuse.xyz + s*specular.rgb);
         }
     }
     rez += apply_selfIllum().xyz;

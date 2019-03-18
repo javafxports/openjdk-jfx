@@ -83,12 +83,11 @@ void main()
         float power = specular.a;
 
         vec3 l = normalize(lightTangentSpacePositions[0].xyz);
-        d = clamp(dot(n,l), 0.0, 1.0)*(lights[0].color).rgb;
-        s = pow(clamp(dot(-refl, l), 0.0, 1.0), power)*lights[0].color.rgb;
+        float att = 1.0 / (lights[0].atten.ca + lights[0].atten.la * dist + lights[0].atten.qa * (dist * dist));
+        d = clamp(dot(n,l), 0.0, 1.0)*(lights[0].color).rgb * att;
+        s = pow(clamp(dot(-refl, l), 0.0, 1.0), power)*lights[0].color.rgb * att;
 
-        float att = 1.0 / (lights[0].atten.ca + lights[0].atten.la * dist + lights[0].atten.qa * (dist * dist)));
-
-        vec3 rez = (ambientColor+d) * (att * (diffuse.xyz + s*specular.rgb));
+        vec3 rez = (ambientColor+d) * (diffuse.xyz + s*specular.rgb);
         rez += apply_selfIllum().xyz;
 
         gl_FragColor = vec4(clamp(rez, 0.0, 1.0) , diffuse.a);

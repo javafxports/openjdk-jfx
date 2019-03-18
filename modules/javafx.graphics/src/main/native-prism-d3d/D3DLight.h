@@ -47,5 +47,3 @@ private:
 };
 
 #endif  /* D3DLIGHT_H */
-
-
