@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
+export JAVA_HOME=$HOME/bootjdk/jdk-12
+export PATH=$JAVA_HOME/bin:$PATH
+
 echo "which java: $(which java)"
 ulimit -c unlimited -S
 
