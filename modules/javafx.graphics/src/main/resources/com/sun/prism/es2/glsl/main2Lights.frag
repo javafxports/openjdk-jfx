@@ -85,7 +85,7 @@ void main()
         float dist = (lights[i].pos.xyz - gl_Position);
         if(dist <= lights[i].atten.range){
             vec3 l = normalize(lightTangentSpacePositions[i].xyz);
-            float att = 1.0 / (lights[i]].atten.ca + lights[i].atten.la * dist + lights[i].atten.qa * (dist * dist));
+            float att = 1.0 / (lights[i].atten.ca + lights[i].atten.la * dist + lights[i].atten.qa * (dist * dist));
             d += clamp(dot(n,l), 0.0, 1.0)*(lights[i].color).rgb * att;
             s += pow(clamp(dot(-refl, l), 0.0, 1.0), power) * lights[i].color.rgb *att;
             rez = (ambientColor+d) * (diffuse.xyz + s*specular.rgb);
