@@ -1,6 +1,7 @@
 language: java
 sudo: false
 
+# Note that the boot JDK is downloaded from .ci/before_install.sh
 # jdk: openjdk12
 
 addons:
