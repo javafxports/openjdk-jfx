@@ -66,7 +66,7 @@ jstring toJavaMessageDigestAlgorithm(CryptoDigest::Algorithm algorithm)
     JNIEnv* env = WebCore_GetJavaEnv();
 
     const char* algorithmStr = "";
-    switch(algorithm) {
+    switch (algorithm) {
         case CryptoDigest::Algorithm::SHA_1:
             algorithmStr = "SHA-1";
             break;
@@ -87,8 +87,6 @@ jstring toJavaMessageDigestAlgorithm(CryptoDigest::Algorithm algorithm)
 }
 
 } // namespace CryptoDigestInternal
-
-jclass PG_GetWebPageClass(JNIEnv* env);
 
 struct CryptoDigestContext {
     JGObject jDigest { };
@@ -116,7 +114,7 @@ void CryptoDigest::addBytes(const void* input, size_t length)
     using namespace CryptoDigestInternal;
 
     JNIEnv* env = WebCore_GetJavaEnv();
-    if(!m_context->jDigest || !env) {
+    if (!m_context->jDigest || !env) {
         return;
     }
 
@@ -133,7 +131,7 @@ Vector<uint8_t> CryptoDigest::computeHash()
     using namespace CryptoDigestInternal;
 
     JNIEnv* env = WebCore_GetJavaEnv();
-    if(!m_context->jDigest || !env) {
+    if (!m_context->jDigest || !env) {
         return { };
     }
 
