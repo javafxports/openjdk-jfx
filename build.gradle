@@ -1564,6 +1564,12 @@ void addMavenPublication(Project project, List<String> projectDependencies) {
                     artifactId = "javafx-${project.name}"
 
                     afterEvaluate {
+                        // FIXME: remove debug print statements
+                        def moduleEmptyPublicationJarTask = project.tasks."moduleEmptyPublicationJar$t.capital"
+                        def modulePublicationJarTask = project.tasks."moduleEmptyPublicationJar$t.capital"
+                        println "KCR: publication artifact: ${moduleEmptyPublicationJarTask}"
+                        println "KCR: publication artifact: ${modulePublicationJarTask}"
+
                         artifact project.tasks."moduleEmptyPublicationJar$t.capital"
                         artifact project.tasks."modularPublicationJar$t.capital" {
                             classifier "$t.name"
@@ -4427,6 +4433,8 @@ compileTargets { t ->
                 )
             }
         }
+        // FIXME: remove debug print statement
+        println "KCR: Created modularEmptyPublicationJarTask for $project"
 
         def modularPublicationJarName = "${moduleName}-${t.name}.jar"
         def modularPublicationJarTask = project.task("modularPublicationJar${t.capital}", type: Jar, dependsOn: modularEmptyPublicationJarTask) {
@@ -4435,6 +4443,8 @@ compileTargets { t ->
             from srcLibsDir
             from srcClassesDir
         }
+        // FIXME: remove debug print statement
+        println "KCR: Created modularPublicationJarTask for $project"
 
         buildModulesTask.dependsOn(modularPublicationJarTask)
 
