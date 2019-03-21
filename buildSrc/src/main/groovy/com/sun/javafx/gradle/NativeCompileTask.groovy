@@ -102,7 +102,7 @@ class NativeCompileTask extends DefaultTask {
         updateFiles();
         def source = project.files(allFiles);
         boolean forceCompile = false;
-        final Set<File> files = new HashSet<File>();
+        Set<File> files = new HashSet<File>();
         source.each { File file ->
             final Map fileData = dependencies.get(file.toString());
             final boolean isModified = fileData == null ||
