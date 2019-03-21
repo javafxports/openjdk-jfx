@@ -35,26 +35,17 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.nio.channels.Channels;
-import java.text.MessageFormat;
 import java.util.stream.IntStream;
 import javax.imageio.ImageIO;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
  * Provides test cases for the {@code FramebufferY8} class.
  */
 public class FramebufferY8Test {
-
-    /**
-     * When {@code true}, saves a copy of the ARGB32 test image as
-     * <i>{@value #IMAGE_PATH}</i> and the converted Y8 grayscale image as
-     * <i>{@value #IMAGE_PATH_Y8}</i> in the current working directory. When
-     * running under Gradle, the current working directory is
-     * <i>modules/javafx.graphics</i>.
-     */
-    private static final boolean IMAGE_DEBUG = false;
 
     private static final String IMAGE_FORMAT = "png";
     private static final String IMAGE_NAME = "allrgb";
@@ -76,25 +67,7 @@ public class FramebufferY8Test {
     private static final int HEIGHT = VALUES_12_BIT;
 
     private static ByteBuffer bb;
-
-    /**
-     * Saves the pixel buffer to an image file in PNG format.
-     *
-     * @param pixels the pixels in ARGB32 format without alpha
-     */
-    private static void saveImage(IntBuffer pixels) {
-        var image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
-        for (int y = 0; y < HEIGHT; y++) {
-            for (int x = 0; x < WIDTH; x++) {
-                image.setRGB(x, y, pixels.get());
-            }
-        }
-        try {
-            ImageIO.write(image, IMAGE_FORMAT, new File(IMAGE_PATH));
-        } catch (IOException e) {
-            System.err.println(MessageFormat.format("Error saving {0} ({1})", IMAGE_PATH, e));
-        }
-    }
+    private static IntBuffer pixels;
 
     /**
      * Generates the test image in the composition buffer provided to the
@@ -105,27 +78,9 @@ public class FramebufferY8Test {
     public static void onlyOnce() {
         bb = ByteBuffer.allocate(WIDTH * HEIGHT * Integer.BYTES);
         bb.order(ByteOrder.nativeOrder());
-        IntBuffer pixels = bb.asIntBuffer();
+        pixels = bb.asIntBuffer();
         IntStream.range(0, WIDTH * HEIGHT).forEachOrdered(pixels::put);
         pixels.flip();
-        if (IMAGE_DEBUG) {
-            saveImage(pixels);
-        }
-    }
-
-    /**
-     * Prints the duration of a performance test.
-     *
-     * @param source the object containing the method tested
-     * @param method the name of the method whose performance was tested
-     * @param duration the duration of the performance test
-     */
-    private void printTime(Object source, String method, long duration) {
-        float msPerFrame = (float) duration / ITERATIONS;
-        System.out.println(String.format(
-                "Converted %,d frames of %,d × %,d px to RGB565 in %,d ms (%,.0f ms/frame): %s.%s",
-                ITERATIONS, WIDTH, HEIGHT, duration, msPerFrame,
-                source.getClass().getSuperclass().getSimpleName(), method));
     }
 
     /**
@@ -181,7 +136,7 @@ public class FramebufferY8Test {
      * older {@code FramebufferY8} superclass, {@code Framebuffer}.
      *
      * @param bitsPerPixel the number of bits per pixel in the output stream
-     * @return an output stream containing the copied pixels
+     * @return an output stream containing the written pixels
      * @throws IOException if an error occurs writing to the output stream
      */
     private ByteArrayOutputStream writeOld(int bitsPerPixel) throws IOException {
@@ -199,7 +154,7 @@ public class FramebufferY8Test {
      * newer {@code FramebufferY8} class.
      *
      * @param bitsPerPixel the number of bits per pixel in the output stream
-     * @return an output stream containing the copied pixels
+     * @return an output stream containing the written pixels
      * @throws IOException if an error occurs writing to the output stream
      */
     private ByteArrayOutputStream writeNew(int bitsPerPixel) throws IOException {
@@ -223,6 +178,109 @@ public class FramebufferY8Test {
         ByteArrayOutputStream oldStream = writeOld(bitsPerPixel);
         ByteArrayOutputStream newStream = writeNew(bitsPerPixel);
         Assert.assertArrayEquals(oldStream.toByteArray(), newStream.toByteArray());
+    }
+
+    /**
+     * Prints the duration of a performance test.
+     *
+     * @param source the object containing the tested method
+     * @param method the name of the tested method
+     * @param duration the duration of the performance test
+     */
+    private void printTime(Object source, String method, long duration) {
+        float msPerFrame = (float) duration / ITERATIONS;
+        System.out.println(String.format(
+                "Converted %,d frames of %,d × %,d px to RGB565 in %,d ms (%,.0f ms/frame): %s.%s",
+                ITERATIONS, WIDTH, HEIGHT, duration, msPerFrame,
+                source.getClass().getSuperclass().getSimpleName(), method));
+    }
+
+    /**
+     * Measures the time for the original implementation to copy the test image
+     * to a 16-bit buffer in RGB565 format {@value #ITERATIONS} times.
+     */
+    private long timeOldCopyTo16() {
+        int bitsPerPixel = Short.SIZE;
+        int bytesPerPixel = bitsPerPixel >>> BITS_TO_BYTES;
+        var source = new FramebufferY8SuperShim(bb, WIDTH, HEIGHT, bitsPerPixel, true);
+        var target = ByteBuffer.allocate(WIDTH * HEIGHT * bytesPerPixel);
+        long begin = System.currentTimeMillis();
+        for (int i = 0; i < ITERATIONS; i++) {
+            source.copyToBuffer(target);
+            target.flip();
+        }
+        long end = System.currentTimeMillis();
+        long duration = end - begin;
+        printTime(source, "copyToBuffer", duration);
+        return duration;
+    }
+
+    /**
+     * Measures the time for the updated implementation to copy the test image
+     * to a 16-bit buffer in RGB565 format {@value #ITERATIONS} times.
+     */
+    private long timeNewCopyTo16() {
+        int bitsPerPixel = Short.SIZE;
+        int bytesPerPixel = bitsPerPixel >>> BITS_TO_BYTES;
+        var source = new FramebufferY8Shim(bb, WIDTH, HEIGHT, bitsPerPixel, true);
+        var target = ByteBuffer.allocate(WIDTH * HEIGHT * bytesPerPixel);
+        long begin = System.currentTimeMillis();
+        for (int i = 0; i < ITERATIONS; i++) {
+            source.copyToBuffer(target);
+            target.flip();
+        }
+        long end = System.currentTimeMillis();
+        long duration = end - begin;
+        printTime(source, "copyToBuffer", duration);
+        return duration;
+    }
+
+    /**
+     * Measures the time for the original implementation to write the test image
+     * to a 16-bit output stream in RGB565 format {@value #ITERATIONS} times.
+     *
+     * @throws IOException if an error occurs writing to the output stream
+     */
+    private long timeOldWriteTo16() throws IOException {
+        int bitsPerPixel = Short.SIZE;
+        int bytesPerPixel = bitsPerPixel >>> BITS_TO_BYTES;
+        var source = new FramebufferY8SuperShim(bb, WIDTH, HEIGHT, bitsPerPixel, true);
+        try (var target = new ByteArrayOutputStream(WIDTH * HEIGHT * bytesPerPixel);
+                var channel = Channels.newChannel(target)) {
+            long begin = System.currentTimeMillis();
+            for (int i = 0; i < ITERATIONS; i++) {
+                source.write(channel);
+                target.reset();
+            }
+            long end = System.currentTimeMillis();
+            long duration = end - begin;
+            printTime(source, "write", duration);
+            return duration;
+        }
+    }
+
+    /**
+     * Measures the time for the updated implementation to write the test image
+     * to a 16-bit output stream in RGB565 format {@value #ITERATIONS} times.
+     *
+     * @throws IOException if an error occurs writing to the output stream
+     */
+    private long timeNewWriteTo16() throws IOException {
+        int bitsPerPixel = Short.SIZE;
+        int bytesPerPixel = bitsPerPixel >>> BITS_TO_BYTES;
+        var source = new FramebufferY8Shim(bb, WIDTH, HEIGHT, bitsPerPixel, true);
+        try (var target = new ByteArrayOutputStream(WIDTH * HEIGHT * bytesPerPixel);
+                var channel = Channels.newChannel(target)) {
+            long begin = System.currentTimeMillis();
+            for (int i = 0; i < ITERATIONS; i++) {
+                source.write(channel);
+                target.reset();
+            }
+            long end = System.currentTimeMillis();
+            long duration = end - begin;
+            printTime(source, "write", duration);
+            return duration;
+        }
     }
 
     /**
@@ -262,111 +320,76 @@ public class FramebufferY8Test {
     }
 
     /**
-     * Measures the time for the original implementation to copy the test image
-     * to a 16-bit buffer in RGB565 format {@value #ITERATIONS} times.
+     * Measures the time for the original and updated methods to copy the test
+     * image to a 16-bit buffer in RGB565 format. This method prints a warning
+     * when the newer updated method is slower than the older original one.
      */
     @Test
-    public void timeOldCopyTo16() {
-        int bitsPerPixel = Short.SIZE;
-        int bytesPerPixel = bitsPerPixel >>> BITS_TO_BYTES;
-        var source = new FramebufferY8SuperShim(bb, WIDTH, HEIGHT, bitsPerPixel, true);
-        var target = ByteBuffer.allocate(WIDTH * HEIGHT * bytesPerPixel);
-        long begin = System.currentTimeMillis();
-        for (int i = 0; i < ITERATIONS; i++) {
-            source.copyToBuffer(target);
-            target.flip();
+    public void timeCopyTo16() {
+        long oldTime = timeOldCopyTo16();
+        long newTime = timeNewCopyTo16();
+        if (newTime > oldTime) {
+            System.err.println("Warning: FramebufferY8.copyToBuffer with 16-bit target is slower");
         }
-        long end = System.currentTimeMillis();
-        printTime(source, "copyToBuffer", end - begin);
     }
 
     /**
-     * Measures the time for the updated implementation to copy the test image
-     * to a 16-bit buffer in RGB565 format {@value #ITERATIONS} times.
-     */
-    @Test
-    public void timeNewCopyTo16() {
-        int bitsPerPixel = Short.SIZE;
-        int bytesPerPixel = bitsPerPixel >>> BITS_TO_BYTES;
-        var source = new FramebufferY8Shim(bb, WIDTH, HEIGHT, bitsPerPixel, true);
-        var target = ByteBuffer.allocate(WIDTH * HEIGHT * bytesPerPixel);
-        long begin = System.currentTimeMillis();
-        for (int i = 0; i < ITERATIONS; i++) {
-            source.copyToBuffer(target);
-            target.flip();
-        }
-        long end = System.currentTimeMillis();
-        printTime(source, "copyToBuffer", end - begin);
-    }
-
-    /**
-     * Measures the time for the original implementation to write the test image
-     * to a 16-bit output stream in RGB565 format {@value #ITERATIONS} times.
+     * Measures the time for the original and updated methods to write the test
+     * image to a 16-bit output stream in RGB565 format. This method prints a
+     * warning when the newer updated method is slower than the older original
+     * one.
      *
      * @throws IOException if an error occurs writing to the output stream
      */
     @Test
-    public void timeOldWriteTo16() throws IOException {
-        int bitsPerPixel = Short.SIZE;
-        int bytesPerPixel = bitsPerPixel >>> BITS_TO_BYTES;
-        var source = new FramebufferY8SuperShim(bb, WIDTH, HEIGHT, bitsPerPixel, true);
-        try (var target = new ByteArrayOutputStream(WIDTH * HEIGHT * bytesPerPixel);
-                var channel = Channels.newChannel(target)) {
-            long begin = System.currentTimeMillis();
-            for (int i = 0; i < ITERATIONS; i++) {
-                source.write(channel);
-                target.reset();
-            }
-            long end = System.currentTimeMillis();
-            printTime(source, "write", end - begin);
+    public void timeWriteTo16() throws IOException {
+        long oldTime = timeOldWriteTo16();
+        long newTime = timeNewWriteTo16();
+        if (newTime > oldTime) {
+            System.err.println("Warning: FramebufferY8.write with 16-bit target is slower");
         }
     }
 
     /**
-     * Measures the time for the updated implementation to write the test image
-     * to a 16-bit output stream in RGB565 format {@value #ITERATIONS} times.
-     *
-     * @throws IOException if an error occurs writing to the output stream
+     * Saves the source test image to a file in PNG format.
      */
+    @Ignore("Saves the source ARGB32 buffer as a PNG image")
     @Test
-    public void timeNewWriteTo16() throws IOException {
-        int bitsPerPixel = Short.SIZE;
-        int bytesPerPixel = bitsPerPixel >>> BITS_TO_BYTES;
-        var source = new FramebufferY8Shim(bb, WIDTH, HEIGHT, bitsPerPixel, true);
-        try (var target = new ByteArrayOutputStream(WIDTH * HEIGHT * bytesPerPixel);
-                var channel = Channels.newChannel(target)) {
-            long begin = System.currentTimeMillis();
-            for (int i = 0; i < ITERATIONS; i++) {
-                source.write(channel);
-                target.reset();
+    public void saveImage() {
+        var image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < HEIGHT; y++) {
+            for (int x = 0; x < WIDTH; x++) {
+                image.setRGB(x, y, pixels.get());
             }
-            long end = System.currentTimeMillis();
-            printTime(source, "write", end - begin);
+        }
+        try {
+            ImageIO.write(image, IMAGE_FORMAT, new File(IMAGE_PATH));
+        } catch (IOException e) {
+            System.err.println(String.format("Error saving %s (%s)", IMAGE_PATH, e));
         }
     }
 
     /**
-     * Copies the test image to an 8-bit buffer in Y8 grayscale format and saves
-     * the result as a PNG file when {@link #IMAGE_DEBUG} is {@code true};
-     * otherwise, does nothing.
+     * Copies the source test image to a target 8-bit buffer in Y8 grayscale
+     * format with the method {@code FramebufferY8.copyToBuffer} and saves the
+     * resulting image as a PNG file.
      */
+    @Ignore("Saves the target Y8 buffer as a PNG image")
     @Test
     public void saveImageY8() {
-        if (IMAGE_DEBUG) {
-            int bitsPerPixel = Byte.SIZE;
-            int bytesPerPixel = bitsPerPixel >>> BITS_TO_BYTES;
-            var source = new FramebufferY8Shim(bb, WIDTH, HEIGHT, bitsPerPixel, true);
-            var target = ByteBuffer.allocate(WIDTH * HEIGHT * bytesPerPixel);
-            source.copyToBuffer(target);
-            target.flip();
-            var image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_BYTE_GRAY);
-            byte[] data = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
-            System.arraycopy(target.array(), 0, data, 0, WIDTH * HEIGHT);
-            try {
-                ImageIO.write(image, IMAGE_FORMAT, new File(IMAGE_PATH_Y8));
-            } catch (IOException e) {
-                System.err.println(MessageFormat.format("Error saving {0} ({1})", IMAGE_PATH_Y8, e));
-            }
+        int bitsPerPixel = Byte.SIZE;
+        int bytesPerPixel = bitsPerPixel >>> BITS_TO_BYTES;
+        var source = new FramebufferY8Shim(bb, WIDTH, HEIGHT, bitsPerPixel, true);
+        var target = ByteBuffer.allocate(WIDTH * HEIGHT * bytesPerPixel);
+        source.copyToBuffer(target);
+        target.flip();
+        var image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_BYTE_GRAY);
+        byte[] data = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
+        System.arraycopy(target.array(), 0, data, 0, WIDTH * HEIGHT);
+        try {
+            ImageIO.write(image, IMAGE_FORMAT, new File(IMAGE_PATH_Y8));
+        } catch (IOException e) {
+            System.err.println(String.format("Error saving %s (%s)", IMAGE_PATH_Y8, e));
         }
     }
 }
