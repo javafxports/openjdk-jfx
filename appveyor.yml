@@ -11,12 +11,12 @@ shallow_clone: true
 build_script:
   - ps: |
       $client = New-Object net.webclient
-      $client.DownloadFile('http://jdk.java.net/12/', 'C:\Users\appveyor\openjdk12.html')
-      $openJdk12 = cat C:\Users\appveyor\openjdk12.html | where { $_ -match "href.*https://download.java.net.*jdk12.*windows-x64.*zip\`"" } | %{ $_ -replace "^.*https:", "https:" } | %{ $_ -replace ".zip\`".*$", ".zip" }
-      echo "Download boot JDK from: $openJdk12"
-      $client.DownloadFile($openJdk12, 'C:\Users\appveyor\openjdk12.zip')
-      Expand-Archive -Path 'C:\Users\appveyor\openjdk12.zip' -DestinationPath 'C:\Users\appveyor\openjdk12'
-      Copy-Item -Path 'C:\Users\appveyor\openjdk12\*\' -Destination 'C:\jdk12' -Recurse -Force
+      $client.DownloadFile('http://jdk.java.net/12/', 'C:\Users\appveyor\openjdk.html')
+      $openJdk = cat C:\Users\appveyor\openjdk.html | where { $_ -match "href.*https://download.java.net.*jdk[1-9][0-9].*windows-x64.*zip\`"" } | %{ $_ -replace "^.*https:", "https:" } | %{ $_ -replace ".zip\`".*$", ".zip" }
+      echo "Download boot JDK from: $openJdk"
+      $client.DownloadFile($openJdk, 'C:\Users\appveyor\openjdk.zip')
+      Expand-Archive -Path 'C:\Users\appveyor\openjdk.zip' -DestinationPath 'C:\Users\appveyor\openjdk'
+      Copy-Item -Path 'C:\Users\appveyor\openjdk\*\' -Destination 'C:\jdk12' -Recurse -Force
       . .\tools\scripts\build.ps1 2>&1
 
 on_finish:
