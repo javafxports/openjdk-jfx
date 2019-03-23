@@ -16,8 +16,8 @@ build_script:
       echo "Download boot JDK from: $openJdk"
       $client.DownloadFile($openJdk, 'C:\Users\appveyor\openjdk.zip')
       Expand-Archive -Path 'C:\Users\appveyor\openjdk.zip' -DestinationPath 'C:\Users\appveyor\openjdk'
-      echo "JAVA_HOME = $JAVA_HOME"
-      Copy-Item -Path 'C:\Users\appveyor\openjdk\*\' -Destination "$JAVA_HOME" -Recurse -Force
+      echo "JAVA_HOME = $env:JAVA_HOME"
+      Copy-Item -Path 'C:\Users\appveyor\openjdk\*\' -Destination "$env:JAVA_HOME" -Recurse -Force
       . .\tools\scripts\build.ps1 2>&1
 
 on_finish:
