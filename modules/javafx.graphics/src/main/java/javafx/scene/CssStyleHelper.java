@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -612,20 +612,7 @@ final class CssStyleHelper {
         }
 
         final Set<PseudoClass>[] transitionStates = getTransitionStates(node);
-
-        final StyleCacheEntry.Key fontCacheKey = new StyleCacheEntry.Key(transitionStates, Font.getDefault());
-        CalculatedValue cachedFont = cacheContainer.fontSizeCache.get(fontCacheKey);
-
-        if (cachedFont == null) {
-
-            cachedFont = lookupFont(node, "-fx-font", styleMap, cachedFont);
-
-            if (cachedFont == SKIP) cachedFont = getCachedFont(node.getStyleableParent());
-            if (cachedFont == null) cachedFont = new CalculatedValue(Font.getDefault(), null, false);
-
-            cacheContainer.fontSizeCache.put(fontCacheKey,cachedFont);
-
-        }
+        CalculatedValue cachedFont = getCachedFont(node, styleMap, transitionStates);
 
         final Font fontForRelativeSizes = (Font)cachedFont.getValue();
 
@@ -1402,7 +1389,7 @@ final class CssStyleHelper {
                     CalculatedValue childsCachedFont = fontFromCacheEntry;
                     do {
 
-                        CalculatedValue parentsCachedFont = getCachedFont(parent.getStyleableParent());
+                        CalculatedValue parentsCachedFont = getFont(parent.getStyleableParent());
 
                         if (parentsCachedFont != null)  {
 
@@ -1526,43 +1513,47 @@ final class CssStyleHelper {
         }
     };
 
-    private CalculatedValue getCachedFont(final Styleable styleable) {
-
-        if (styleable instanceof Node == false) return null;
-
-        CalculatedValue cachedFont = null;
-
-        Node parent = (Node)styleable;
-
-        final CssStyleHelper parentHelper = parent.styleHelper;
-
-        // if there is no parentHelper,
-        // or there is a parentHelper but no cacheContainer,
-        // then look to the next parent
-        if (parentHelper == null || parentHelper.cacheContainer == null) {
-
-            cachedFont = getCachedFont(parent.getStyleableParent());
-
-        // there is a parent helper and a cacheContainer,
-        } else  {
-
-            CacheContainer parentCacheContainer = parentHelper.cacheContainer;
-            if ( parentCacheContainer != null
-                    && parentCacheContainer.fontSizeCache != null
-                    && parentCacheContainer.fontSizeCache.isEmpty() == false) {
-
-                Set<PseudoClass>[] transitionStates = parentHelper.getTransitionStates(parent);
-                StyleCacheEntry.Key parentCacheEntryKey = new StyleCacheEntry.Key(transitionStates, Font.getDefault());
-                cachedFont = parentCacheContainer.fontSizeCache.get(parentCacheEntryKey);
-            }
-
-            if (cachedFont == null)  {
-                StyleMap smap = parentHelper.getStyleMap(parent);
-                cachedFont = parentHelper.lookupFont(parent, "-fx-font", smap, null);
-            }
+    private CalculatedValue getCachedFont(final Node node, final StyleMap styleMap, final Set<PseudoClass>[] transitionStates) {
+        if (node.styleHelper != this) {
+            return node.styleHelper.getCachedFont(node, styleMap, transitionStates);
         }
+        final StyleCacheEntry.Key fontCacheKey = new StyleCacheEntry.Key(transitionStates, Font.getDefault());
+        CalculatedValue cachedFont = cacheContainer.fontSizeCache.get(fontCacheKey);
 
-        return cachedFont != SKIP ? cachedFont : null;
+        if (cachedFont == null) {
+
+            cachedFont = lookupFont(node, "-fx-font", styleMap, null);
+
+            if (cachedFont == SKIP) {
+                Styleable parent = node.getStyleableParent();
+                while (parent instanceof Node && (((Node)parent).styleHelper == null || ((Node)parent).styleHelper.cacheContainer == null)) {
+                    parent = (Node)parent.getStyleableParent();
+                }
+                if (parent instanceof Node && (((Node)parent).styleHelper != null && ((Node)parent).styleHelper.cacheContainer != null)) {
+                    Node parentNode = (Node)parent;
+                    Set<PseudoClass>[] parentTransitionStates = parentNode.styleHelper.getTransitionStates(parentNode);
+                    StyleMap parentStyleMap = parentNode.styleHelper.getStyleMap(parentNode);
+                    cachedFont = parentNode.styleHelper.getCachedFont(parentNode, parentStyleMap, parentTransitionStates);
+                } else {
+                    cachedFont = null;
+                }
+            }
+            if (cachedFont == null) cachedFont = new CalculatedValue(Font.getDefault(), null, false);
+
+            cacheContainer.fontSizeCache.put(fontCacheKey,cachedFont);
+        }
+        return cachedFont;
+    }
+    
+    private CalculatedValue getFont(final Styleable styleable) {
+        if (styleable instanceof Node == false) return null;
+        Node node = (Node)styleable;
+        if (node.styleHelper == null || node.styleHelper.cacheContainer == null) {
+            return getFont(styleable.getStyleableParent());
+        }
+        Set<PseudoClass>[] transitionStates = node.styleHelper.getTransitionStates(node);
+        StyleMap styleMap = node.styleHelper.getStyleMap(node);
+        return getCachedFont((Node)node, styleMap, transitionStates);
     }
 
     /*package access for testing*/ FontPosture getFontPosture(Font font) {
@@ -1694,7 +1685,7 @@ final class CssStyleHelper {
             }
         }
 
-        CalculatedValue parentCachedFont = getCachedFont(styleable.getStyleableParent());
+        CalculatedValue parentCachedFont = getFont(styleable.getStyleableParent());
         if (parentCachedFont == null) parentCachedFont = new CalculatedValue(Font.getDefault(), null, false);
 
         //
