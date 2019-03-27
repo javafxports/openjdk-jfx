@@ -1235,7 +1235,7 @@ if (gradle.gradleVersion != jfxGradleVersion) {
 
     logger.warn("*****************************************************************");
     logger.warn("Unsupported gradle version $gradle.gradleVersion in use.");
-    logger.warn("Only version 5.3 is supported. Use this version at your own risk");
+    logger.warn("Only version $jfxGradleVersion is supported. Use this version at your own risk");
     if ( err != "") logger.warn(err);
     logger.warn("*****************************************************************");
 }
