@@ -1544,7 +1544,7 @@ final class CssStyleHelper {
         }
         return cachedFont;
     }
-    
+
     private CalculatedValue getFont(final Styleable styleable) {
         if (styleable instanceof Node == false) return null;
         Node node = (Node)styleable;
