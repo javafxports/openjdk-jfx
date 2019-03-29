@@ -336,7 +336,7 @@ defineProperty("JAVA", cygpathExe("$JDK_HOME/bin/java"))
 defineProperty("JAVAC", cygpathExe("$JDK_HOME/bin/javac"))
 defineProperty("JAVADOC", cygpathExe("$JDK_HOME/bin/javadoc"))
 defineProperty("JMOD", cygpathExe("$JDK_HOME/bin/jmod"))
-defineProperty("JDK_DOCS", "https://docs.oracle.com/javase/10/docs/api/")
+defineProperty("JDK_DOCS", "https://docs.oracle.com/en/java/javase/12/docs/api/")
 defineProperty("JDK_JMODS", cygpath(System.getenv("JDK_JMODS")) ?: cygpath(System.getenv("JDK_HOME") + "/jmods"))
 
 defineProperty("javaRuntimeVersion", System.getProperty("java.runtime.version"))
@@ -1563,9 +1563,11 @@ void addMavenPublication(Project project, List<String> projectDependencies) {
                 maven(MavenPublication) {
                     artifactId = "javafx-${project.name}"
 
-                    artifact project.tasks."moduleEmptyPublicationJar$t.capital"
-                    artifact project.tasks."modularPublicationJar$t.capital" {
-                        classifier "$t.name"
+                    afterEvaluate {
+                        artifact project.tasks."moduleEmptyPublicationJar$t.capital"
+                        artifact project.tasks."modularPublicationJar$t.capital" {
+                            classifier "$t.name"
+                        }
                     }
 
                     pom.withXml {
@@ -1940,7 +1942,7 @@ project(":graphics") {
     dependencies {
         stubCompile group: "junit", name: "junit", version: "4.8.2"
 
-        antlr group: "org.antlr", name: "antlr-complete", version: "3.5.2"
+        antlr group: "org.antlr", name: "antlr4", version: "4.7.2", classifier: "complete"
         compile project(':base')
     }
 
@@ -1992,14 +1994,14 @@ project(":graphics") {
         executable = JAVA
         classpath = project.configurations.antlr
         workingDir = wd
-        main = "org.antlr.Tool"
+        main = "org.antlr.v4.Tool"
 
         args = [
-            "-Xconversiontimeout",
-            "30000",
             "-o",
             "$buildDir/gensrc/antlr",
-            "com/sun/scenario/effect/compiler/JSL.g" ]
+            "-package",
+            "com.sun.scenario.effect.compiler",
+            "com/sun/scenario/effect/compiler/JSL.g4" ]
 
         inputs.dir wd
         outputs.dir file("$buildDir/gensrc/antlr")
@@ -2320,7 +2322,7 @@ project(":graphics") {
             libsDir.mkdirs();
 
             def allLibsPresent = true
-            def libNames = [ "antlr-complete-3.5.2.jar" ]
+            def libNames = [ "antlr4-4.7.2-complete.jar" ]
             libNames.each { name ->
                 File f = new File(libsDir, name)
                 if (!f.exists()) allLibsPresent = false
@@ -2331,7 +2333,7 @@ project(":graphics") {
                 copy {
                     into libsDir
                     from f.getParentFile()
-                    include "**/antlr-complete-3.5.2.jar"
+                    include "**/antlr4-4.7.2-complete.jar"
                     includeEmptyDirs = false
                 }
             }
@@ -2431,14 +2433,15 @@ project(":swing") {
         //shims // no test shims needed
         test
     }
-            
+
     project.ext.moduleSourcePath = defaultModuleSourcePath
     project.ext.moduleSourcePathShim = defaultModuleSourcePathShim
 
     commonModuleSetup(project, [ 'base', 'graphics', 'swing' ])
 
     dependencies {
-        compile project(":media")
+        compile project(":base")
+        compile project(":graphics")
     }
 
     test {
@@ -3181,6 +3184,7 @@ project(":web") {
     dependencies {
         compile project(":base")
         compile project(":graphics")
+        compile project(":controls")
         compile project(":media")
     }
 
@@ -3931,7 +3935,8 @@ compileTargets { t ->
         enabled = COMPILE_SWT
         group = "Basic"
         description = "Creates the javafx-swt.jar for the $t.name target"
-        archiveName = "${project(":swt").buildDir}/libs/javafx-swt.jar";
+        destinationDir = file("${project(":swt").buildDir}/libs")
+        archiveName = "javafx-swt.jar"
         includeEmptyDirs = false
         from("${project(":swt").buildDir}/classes/java/main");
         include("**/javafx/embed/swt/**")
@@ -3951,7 +3956,7 @@ compileTargets { t ->
         dependsOn(javafxSwtTask)
 
         doLast() {
-            ant.jar (update: true, index: true, destfile: javafxSwtTask.archiveName)
+            ant.jar (update: true, index: true, destfile: "${javafxSwtTask.destinationDir}/${javafxSwtTask.archiveName}")
         }
     }
 
