@@ -82,7 +82,7 @@ public class EPDSettingsTest {
         settings = EPDSettingsShim.newInstance();
         Assert.assertEquals(32, settings.bitsPerPixel);
 
-        System.out.println(String.format(VERIFY_ERROR, BITS_PER_PIXEL, 64));
+        System.err.println(String.format(VERIFY_ERROR, BITS_PER_PIXEL, 64));
         System.setProperty(BITS_PER_PIXEL, "64");
         settings = EPDSettingsShim.newInstance();
         Assert.assertEquals(32, settings.bitsPerPixel);
@@ -109,7 +109,7 @@ public class EPDSettingsTest {
         settings = EPDSettingsShim.newInstance();
         Assert.assertEquals(3, settings.rotate);
 
-        System.out.println(String.format(VERIFY_ERROR, ROTATE, 4));
+        System.err.println(String.format(VERIFY_ERROR, ROTATE, 4));
         System.setProperty(ROTATE, "4");
         settings = EPDSettingsShim.newInstance();
         Assert.assertEquals(0, settings.rotate);
@@ -177,7 +177,7 @@ public class EPDSettingsTest {
         settings = EPDSettingsShim.newInstance();
         Assert.assertEquals(4, settings.waveformMode);
 
-        System.out.println(String.format(VERIFY_ERROR, WAVEFORM_MODE, 5));
+        System.err.println(String.format(VERIFY_ERROR, WAVEFORM_MODE, 5));
         System.setProperty(WAVEFORM_MODE, "5");
         settings = EPDSettingsShim.newInstance();
         Assert.assertEquals(257, settings.waveformMode);
