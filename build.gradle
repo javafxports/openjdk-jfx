@@ -1313,6 +1313,17 @@ logger.quiet("RELEASE_VERSION_PADDED: $RELEASE_VERSION_PADDED")
 logger.quiet("MAVEN_VERSION: $MAVEN_VERSION")
 logger.quiet("UPDATE_STUB_CACHE: $UPDATE_STUB_CACHE")
 
+if (IS_LINUX) {
+    logger.quiet("minimum gcc version: ${jfxBuildLinuxGccVersionMin}")
+} else if (IS_WINDOWS) {
+    logger.quiet("minimum msvc version: ${jfxBuildWindowsMsvcVersionMin}")
+} else if (IS_MAC) {
+    logger.quiet("minimum xcode version: ${jfxBuildMacosxXcodeVersionMin}")
+}
+logger.quiet("minimum cmake version: ${jfxBuildCmakeVersionMin}")
+logger.quiet("minimum ninja version: ${jfxBuildNinjaVersionMin}")
+logger.quiet("minimum ant version: ${jfxBuildAntVersionMin}")
+
 /******************************************************************************
  *                                                                            *
  *                Definition of Native Code Compilation Tasks                 *
