@@ -23,14 +23,12 @@
  * questions.
  */
 
-
-package test.javafx.scene;
+package test.javafx.scene.control;
 
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.control.Accordion;
-import javafx.scene.control.Button;
 import javafx.scene.control.TitledPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
