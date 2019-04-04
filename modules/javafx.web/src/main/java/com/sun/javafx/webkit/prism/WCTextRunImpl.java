@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.sun.webkit.prism;
+package com.sun.javafx.webkit.prism;
 
 import com.sun.javafx.scene.text.GlyphList;
 import com.sun.javafx.text.TextRun;
