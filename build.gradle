@@ -1642,10 +1642,14 @@ void validatePackages(File sourceRoot, boolean hasModuleName) {
         def endPos = packageRoot.lastIndexOf("/")
         def pkgEx = endPos > -1 ?  packageRoot.substring(0, endPos).replace("/", ".") : ""
         def pkg = ""
-        file.eachLine { line ->
-            def words = line.trim().split("[ ;]+")
-            if (words.length > 1 && words[0] == "package") {
-                pkg = words[1]
+        file.withReader { reader ->
+            def line
+            while ((line = reader.readLine()) != null) {
+                def words = line.trim().split("[ ;]+")
+                if (words.length > 1 && words[0] == "package") {
+                    pkg = words[1]
+                    break;
+                }
             }
         }
         if (pkg != pkgEx) {
