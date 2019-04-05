@@ -1654,12 +1654,7 @@ void validatePackages(File sourceRoot, boolean hasModuleName) {
         }
     }
     if (err) {
-        // FIXME: uncomment the call to "fail" and remove the print statement
-        //fail("Package validation failed")
-        println("Package validation failed")
-        println "**************************"
-        println "* FAIL THE BUILD!!!!!!!! *"
-        println "**************************"
+        fail("Package validation failed")
     }
 }
 
