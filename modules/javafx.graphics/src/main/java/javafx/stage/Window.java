@@ -1547,10 +1547,12 @@ public class Window implements EventTarget {
                 float newRX = (float) renderScaleX;
                 float newRY = (float) renderScaleY;
                 reset();
-                peer.setBounds(newX, newY, xSet, ySet,
-                                    newWW, newWH, newCW, newCH,
-                                    newXG, newYG,
-                                    newRX, newRY);
+                if (peer != null) {
+                    peer.setBounds(newX, newY, xSet, ySet,
+                            newWW, newWH, newCW, newCH,
+                            newXG, newYG,
+                            newRX, newRY);
+                }
             }
         }
 
