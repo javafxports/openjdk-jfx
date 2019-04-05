@@ -1630,12 +1630,12 @@ void validatePackages(File sourceRoot, boolean hasModuleName) {
         return;
     }
     def err = false;
-    String sourceString = sourceRoot.toString()
+    String sourceString = sourceRoot.toString().replace("\\", "/")
     def startPos = sourceString.length() + 1
     logger.info("validating packages for ${sourceRoot}")
     def inputFiles = fileTree(dir: sourceRoot, include: "**/*.java")
     inputFiles.each { file ->
-        def packageRoot = file.toString().substring(startPos)
+        def packageRoot = file.toString().replace("\\", "/").substring(startPos)
         if (hasModuleName) {
             packageRoot = packageRoot.substring(packageRoot.indexOf("/") + 1)
         }
