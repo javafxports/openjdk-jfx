@@ -2456,14 +2456,7 @@ project(":graphics") {
 
     addMavenPublication(project, [ 'base' ])
 
-    /*
-     * The following is a workaroud for JDK-8222036 (antlr generated
-     * files written to wrong location on Windows). This workaround should
-     * be removed as part of fixing JDK-8222036.
-     */
-    // addValidateSourceSets(project, sourceSets)
-    def srcSets = sourceSets - sourceSets.jslc
-    addValidateSourceSets(project, srcSets)
+    addValidateSourceSets(project, sourceSets)
 }
 
 project(":controls") {
