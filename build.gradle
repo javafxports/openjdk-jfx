@@ -2116,7 +2116,6 @@ project(":graphics") {
             "-package",
             "com.sun.scenario.effect.compiler",
             "-visitor",
-            "com/sun/scenario/effect/compiler/JSL.g4",
             inJSL ]
 
         inputs.dir wd
