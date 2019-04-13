@@ -1348,12 +1348,7 @@ void WindowContextTop::exit_fullscreen() {
 }
 
 void WindowContextTop::request_focus() {
-    //JDK-8212060: Window show and then move glitch.
-    //The WindowContextBase::set_visible will take care of showing the window.
-    //The below code will only handle later request_focus.
-    if (is_visible()) {
-        gtk_window_present(GTK_WINDOW(gtk_widget));
-    }
+    gtk_window_present(GTK_WINDOW(gtk_widget));
 }
 
 void WindowContextTop::set_focusable(bool focusable) {
