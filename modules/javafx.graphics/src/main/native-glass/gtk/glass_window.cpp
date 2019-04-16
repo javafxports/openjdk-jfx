@@ -570,11 +570,6 @@ void WindowContextBase::reparent_children(WindowContext* parent) {
 void WindowContextBase::set_visible(bool visible) {
     if (visible) {
         gtk_widget_show_all(gtk_widget);
-
-        //JDK-8220272 - fire event first because GDK_FOCUS_CHANGE is not always in order
-        if(jwindow && isEnabled()) {
-            mainEnv->CallVoidMethod(jwindow, jWindowNotifyFocus, com_sun_glass_events_WindowEvent_FOCUS_GAINED);
-        }
     } else {
         gtk_widget_hide(gtk_widget);
         if (jview && is_mouse_entered) {
@@ -1166,6 +1161,10 @@ void WindowContextTop::set_visible(bool visible)
         }
     }
     WindowContextBase::set_visible(visible);
+    //JDK-8220272 - fire event first because GDK_FOCUS_CHANGE is not always in order
+    if (visible && jwindow && isEnabled()) {
+        mainEnv->CallVoidMethod(jwindow, jWindowNotifyFocus, com_sun_glass_events_WindowEvent_FOCUS_GAINED);
+    }
 }
 
 void WindowContextTop::set_bounds(int x, int y, bool xSet, bool ySet, int w, int h, int cw, int ch) {
