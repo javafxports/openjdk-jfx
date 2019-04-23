@@ -1164,6 +1164,7 @@ void WindowContextTop::set_visible(bool visible)
     //JDK-8220272 - fire event first because GDK_FOCUS_CHANGE is not always in order
     if (visible && jwindow && isEnabled()) {
         mainEnv->CallVoidMethod(jwindow, jWindowNotifyFocus, com_sun_glass_events_WindowEvent_FOCUS_GAINED);
+        CHECK_JNI_EXCEPTION(mainEnv);
     }
 }
 
