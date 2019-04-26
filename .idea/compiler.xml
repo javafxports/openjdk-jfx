@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="CompilerConfiguration">
-    <option name="DEFAULT_COMPILER" value="Javac" />
-    <excludeFromCompile>
-    </excludeFromCompile>
-    <resourceExtensions />
     <wildcardResourcePatterns>
       <entry name="!?*.java" />
       <entry name="!?*.form" />
@@ -15,11 +11,42 @@
       <entry name="!?*.kt" />
       <entry name="!?*.clj" />
     </wildcardResourcePatterns>
-    <annotationProcessing>
-      <profile default="true" name="Default" enabled="false">
-        <processorPath useClasspath="true" />
-      </profile>
-    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="openjdk-jfx.base.main" target="11" />
+      <module name="openjdk-jfx.base.shims" target="11" />
+      <module name="openjdk-jfx.base.test" target="11" />
+      <module name="openjdk-jfx.buildSrc.main" target="12" />
+      <module name="openjdk-jfx.buildSrc.test" target="12" />
+      <module name="openjdk-jfx.controls.main" target="11" />
+      <module name="openjdk-jfx.controls.shims" target="11" />
+      <module name="openjdk-jfx.controls.test" target="11" />
+      <module name="openjdk-jfx.fxml.main" target="11" />
+      <module name="openjdk-jfx.fxml.shims" target="11" />
+      <module name="openjdk-jfx.fxml.test" target="11" />
+      <module name="openjdk-jfx.graphics.jslc" target="11" />
+      <module name="openjdk-jfx.graphics.main" target="11" />
+      <module name="openjdk-jfx.graphics.shaders" target="11" />
+      <module name="openjdk-jfx.graphics.shims" target="11" />
+      <module name="openjdk-jfx.graphics.stub" target="11" />
+      <module name="openjdk-jfx.graphics.test" target="11" />
+      <module name="openjdk-jfx.media.main" target="11" />
+      <module name="openjdk-jfx.media.test" target="11" />
+      <module name="openjdk-jfx.media.tools" target="11" />
+      <module name="openjdk-jfx.swing.main" target="11" />
+      <module name="openjdk-jfx.swing.test" target="11" />
+      <module name="openjdk-jfx.swt.main" target="11" />
+      <module name="openjdk-jfx.swt.test" target="11" />
+      <module name="openjdk-jfx.systemTests.main" target="11" />
+      <module name="openjdk-jfx.systemTests.test" target="11" />
+      <module name="openjdk-jfx.systemTests.testapp1" target="11" />
+      <module name="openjdk-jfx.systemTests.testapp2" target="11" />
+      <module name="openjdk-jfx.systemTests.testapp3" target="11" />
+      <module name="openjdk-jfx.systemTests.testapp4" target="11" />
+      <module name="openjdk-jfx.systemTests.testapp5" target="11" />
+      <module name="openjdk-jfx.systemTests.testapp6" target="11" />
+      <module name="openjdk-jfx.web.main" target="11" />
+      <module name="openjdk-jfx.web.shims" target="11" />
+      <module name="openjdk-jfx.web.test" target="11" />
+    </bytecodeTargetLevel>
   </component>
 </project>
-
