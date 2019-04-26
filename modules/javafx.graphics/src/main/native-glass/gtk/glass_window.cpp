@@ -1276,7 +1276,7 @@ void WindowContextTop::window_configure(XWindowChanges *windowChanges,
         //JDK-8193502: Moved here from WindowContextBase::set_view because set_view is called
         //first and the size is not set yet. This also guarantees that the size will be correct
         //see: gtk_window_get_size doc for more context.
-        if(jview) {
+        if (jview) {
             mainEnv->CallVoidMethod(jview, jViewNotifyResize, newWidth, newHeight);
             CHECK_JNI_EXCEPTION(mainEnv);
         }
