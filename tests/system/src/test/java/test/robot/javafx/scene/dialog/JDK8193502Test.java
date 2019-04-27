@@ -52,7 +52,6 @@ public class JDK8193502Test {
 	static final double DIALOG_HEIGHT = DIALOG_WIDTH;
 	static Robot robot;
 	static Button button;
-	static Button dialogButton;
 	static Stage stage;
 	static Scene scene;
 	static Dialog<Void> dialog;
@@ -137,8 +136,6 @@ public class JDK8193502Test {
 			testDialog.getDialogPane().setContent(dialogContent);
 			testDialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
 			testDialog.getDialogPane().setPrefSize(DIALOG_WIDTH, DIALOG_HEIGHT);
-
-			dialogButton = (Button) testDialog.getDialogPane().lookupButton(ButtonType.CLOSE);
 
 			testDialog.getDialogPane().getScene().getWindow().addEventHandler(WindowEvent.WINDOW_SHOWN,
 					e -> Platform.runLater(dialogShownLatch::countDown));
