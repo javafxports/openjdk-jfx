@@ -23,7 +23,7 @@
  * questions.
  */
 
-package test.robot.javafx.scene;
+package test.robot.javafx.stage;
 
 import javafx.application.Application;
 import javafx.application.Platform;
