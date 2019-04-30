@@ -40,7 +40,8 @@ import org.junit.Test;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-public class JDK8220272Test {
+//See JDK8220272
+public class CheckWindowOrderTest {
     static Scene scene;
     static Stage stage;
     static Stage firstWindow;
