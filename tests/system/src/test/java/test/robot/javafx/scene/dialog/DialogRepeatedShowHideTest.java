@@ -47,7 +47,8 @@ import test.util.Util;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-public class JDK8193502Test {
+//see JDK8193502
+public class DialogRepeatedShowHideTest {
 	static final double DIALOG_WIDTH = 300.0d;
 	static final double DIALOG_HEIGHT = DIALOG_WIDTH;
 	static Robot robot;
