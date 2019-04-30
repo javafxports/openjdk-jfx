@@ -1,4 +1,4 @@
-## Apache Lucene v7.4.0
+## Apache Lucene v7.7.1
 
 ### Apache Lucene Notice
 ```
@@ -9,7 +9,7 @@
     =========================================================================
 
     Apache Lucene
-    Copyright 2001-2018 The Apache Software Foundation
+    Copyright 2001-2019 The Apache Software Foundation
 
     This product includes software developed at
     The Apache Software Foundation (http://www.apache.org/).
