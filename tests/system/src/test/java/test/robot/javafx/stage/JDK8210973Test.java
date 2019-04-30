@@ -45,7 +45,8 @@ import test.util.Util;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-public class JDK8210973Test {
+//See JDK8210973
+public class FocusParentWindowOnChildCloseTest {
     static Robot robot;
     static Button button;
     static Stage stage;
