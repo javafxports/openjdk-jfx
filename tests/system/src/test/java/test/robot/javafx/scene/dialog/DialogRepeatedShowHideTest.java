@@ -49,106 +49,106 @@ import java.util.concurrent.TimeUnit;
 
 //see JDK8193502
 public class DialogRepeatedShowHideTest {
-	static final double DIALOG_WIDTH = 300.0d;
-	static final double DIALOG_HEIGHT = DIALOG_WIDTH;
-	static Robot robot;
-	static Button button;
-	static Stage stage;
-	static Scene scene;
-	static Dialog<Void> dialog;
-	static CountDownLatch startupLatch = new CountDownLatch(1);
-	static CountDownLatch dialogShownLatch;
-	static CountDownLatch dialogHideLatch;
+    static final double DIALOG_WIDTH = 300.0d;
+    static final double DIALOG_HEIGHT = DIALOG_WIDTH;
+    static Robot robot;
+    static Button button;
+    static Stage stage;
+    static Scene scene;
+    static Dialog<Void> dialog;
+    static CountDownLatch startupLatch = new CountDownLatch(1);
+    static CountDownLatch dialogShownLatch;
+    static CountDownLatch dialogHideLatch;
 
-	@Test(timeout = 15000)
-	public void dialogSizeOnReShownTest() throws Exception {
-		Thread.sleep(400);
-		clickButton();
-		hide();
-		clickButton();
-		Assert.assertEquals("Dialog width should remain the same", DIALOG_WIDTH, dialog.getDialogPane().getWidth(),
-				0.0);
-		Assert.assertEquals("Dialog height should remain the same", DIALOG_HEIGHT, dialog.getDialogPane().getHeight(),
-				0.0);
-		hide();
-	}
+    @Test(timeout = 15000)
+    public void dialogSizeOnReShownTest() throws Exception {
+        Thread.sleep(400);
+        clickButton();
+        hide();
+        clickButton();
+        Assert.assertEquals("Dialog width should remain the same", DIALOG_WIDTH, dialog.getDialogPane().getWidth(),
+                0.0);
+        Assert.assertEquals("Dialog height should remain the same", DIALOG_HEIGHT, dialog.getDialogPane().getHeight(),
+                0.0);
+        hide();
+    }
 
-	private void clickButton() throws Exception {
-		dialogShownLatch = new CountDownLatch(1);
-		mouseClick(button.getLayoutX() + button.getWidth() / 2, button.getLayoutY() + button.getHeight() / 2);
+    private void clickButton() throws Exception {
+        dialogShownLatch = new CountDownLatch(1);
+        mouseClick(button.getLayoutX() + button.getWidth() / 2, button.getLayoutY() + button.getHeight() / 2);
 
-		Thread.sleep(400);
-		waitForLatch(dialogShownLatch, 10, "Failed to show Dialog");
-	}
+        Thread.sleep(400);
+        waitForLatch(dialogShownLatch, 10, "Failed to show Dialog");
+    }
 
-	private void hide() throws Exception {
-		dialogHideLatch = new CountDownLatch(1);
-		Platform.runLater(() -> dialog.close());
-		Thread.sleep(600);
-		waitForLatch(dialogHideLatch, 10, "Failed to hide Dialog");
-	}
+    private void hide() throws Exception {
+        dialogHideLatch = new CountDownLatch(1);
+        Platform.runLater(() -> dialog.close());
+        Thread.sleep(600);
+        waitForLatch(dialogHideLatch, 10, "Failed to hide Dialog");
+    }
 
-	@BeforeClass
-	public static void initFX() throws Exception {
-		new Thread(() -> Application.launch(TestApp.class, (String[]) null)).start();
-		waitForLatch(startupLatch, 10, "FX runtime failed to start.");
-	}
+    @BeforeClass
+    public static void initFX() throws Exception {
+        new Thread(() -> Application.launch(TestApp.class, (String[]) null)).start();
+        waitForLatch(startupLatch, 10, "FX runtime failed to start.");
+    }
 
-	@AfterClass
-	public static void exit() {
-		Platform.runLater(() -> stage.hide());
-		Platform.exit();
-	}
+    @AfterClass
+    public static void exit() {
+        Platform.runLater(() -> stage.hide());
+        Platform.exit();
+    }
 
-	private void mouseClick(double x, double y) {
-		Util.runAndWait(() -> {
-			robot.mouseMove((int) (scene.getWindow().getX() + scene.getX() + x),
-					(int) (scene.getWindow().getY() + scene.getY() + y));
-			robot.mousePress(MouseButton.PRIMARY);
-			robot.mouseRelease(MouseButton.PRIMARY);
-		});
-	}
+    private void mouseClick(double x, double y) {
+        Util.runAndWait(() -> {
+            robot.mouseMove((int) (scene.getWindow().getX() + scene.getX() + x),
+                    (int) (scene.getWindow().getY() + scene.getY() + y));
+            robot.mousePress(MouseButton.PRIMARY);
+            robot.mouseRelease(MouseButton.PRIMARY);
+        });
+    }
 
-	public static class TestApp extends Application {
-		@Override
-		public void start(Stage primaryStage) {
-			robot = new Robot();
-			stage = primaryStage;
+    public static class TestApp extends Application {
+        @Override
+        public void start(Stage primaryStage) {
+            robot = new Robot();
+            stage = primaryStage;
 
-			dialog = getTestDialog();
-			button = new Button("Open Dialog");
-			button.setOnAction(evt -> dialog.show());
+            dialog = getTestDialog();
+            button = new Button("Open Dialog");
+            button.setOnAction(evt -> dialog.show());
 
-			scene = new Scene(button, 200, 200);
-			stage.setScene(scene);
+            scene = new Scene(button, 200, 200);
+            stage.setScene(scene);
 
-			stage.initStyle(StageStyle.UNDECORATED);
-			stage.addEventHandler(WindowEvent.WINDOW_SHOWN, e -> Platform.runLater(startupLatch::countDown));
+            stage.initStyle(StageStyle.UNDECORATED);
+            stage.addEventHandler(WindowEvent.WINDOW_SHOWN, e -> Platform.runLater(startupLatch::countDown));
 
-			stage.show();
-		}
+            stage.show();
+        }
 
-		private static Dialog<Void> getTestDialog() {
-			final Label dialogContent = new Label();
-			dialogContent.setText("Dialog content");
+        private static Dialog<Void> getTestDialog() {
+            final Label dialogContent = new Label();
+            dialogContent.setText("Dialog content");
 
-			final Dialog<Void> testDialog = new Dialog<>();
+            final Dialog<Void> testDialog = new Dialog<>();
 
-			testDialog.getDialogPane().setContent(dialogContent);
-			testDialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
-			testDialog.getDialogPane().setPrefSize(DIALOG_WIDTH, DIALOG_HEIGHT);
+            testDialog.getDialogPane().setContent(dialogContent);
+            testDialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+            testDialog.getDialogPane().setPrefSize(DIALOG_WIDTH, DIALOG_HEIGHT);
 
-			testDialog.getDialogPane().getScene().getWindow().addEventHandler(WindowEvent.WINDOW_SHOWN,
-					e -> Platform.runLater(dialogShownLatch::countDown));
+            testDialog.getDialogPane().getScene().getWindow().addEventHandler(WindowEvent.WINDOW_SHOWN,
+                    e -> Platform.runLater(dialogShownLatch::countDown));
 
-			testDialog.getDialogPane().getScene().getWindow().addEventHandler(WindowEvent.WINDOW_HIDDEN,
-					e -> Platform.runLater(dialogHideLatch::countDown));
+            testDialog.getDialogPane().getScene().getWindow().addEventHandler(WindowEvent.WINDOW_HIDDEN,
+                    e -> Platform.runLater(dialogHideLatch::countDown));
 
-			return testDialog;
-		}
-	}
+            return testDialog;
+        }
+    }
 
-	public static void waitForLatch(CountDownLatch latch, int seconds, String msg) throws Exception {
-		org.junit.Assert.assertTrue("Timeout: " + msg, latch.await(seconds, TimeUnit.SECONDS));
-	}
+    public static void waitForLatch(CountDownLatch latch, int seconds, String msg) throws Exception {
+        org.junit.Assert.assertTrue("Timeout: " + msg, latch.await(seconds, TimeUnit.SECONDS));
+    }
 }
