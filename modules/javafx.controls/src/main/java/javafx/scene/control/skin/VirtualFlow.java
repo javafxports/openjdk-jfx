@@ -1458,10 +1458,42 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
         if (cell != null) {
             scrollTo(cell);
         } else {
+            //see JDK-8197536
+            if(tryScrollOneUpOrDown(index, true))
+                return;
+            else if (tryScrollOneUpOrDown(index, false))
+                return;
+
             adjustPositionToIndex(index);
             addAllToPile();
             requestLayout();
         }
+    }
+
+    //will return true if scroll is successful
+    private boolean tryScrollOneUpOrDown(int targetIndex, boolean down) {
+        //if going down, cell diff is -1, because it will get the target cell index and check if previous
+        //cell is visible to base the position
+        int indexDiff = (down) ? -1 : 1;
+
+        T next = getVisibleCell(targetIndex + indexDiff);
+        if (next != null) {
+            T cell = getAvailableCell(targetIndex);
+            setCellIndex(cell, targetIndex);
+            resizeCell(cell); // resize must be after config
+            if(down) {
+                cells.addLast(cell);
+            } else {
+                cells.addFirst(cell);
+            }
+            positionCell(cell, getCellPosition(next) + (getCellLength(cell) * indexDiff * -1));
+            setMaxPrefBreadth(Math.max(getMaxPrefBreadth(), getCellBreadth(cell)));
+            cell.setVisible(true);
+            scrollTo(cell);
+            return true;
+        }
+
+        return false;
     }
 
     /**
