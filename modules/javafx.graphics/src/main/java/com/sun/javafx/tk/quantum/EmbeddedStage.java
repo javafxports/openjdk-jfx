@@ -318,6 +318,7 @@ final class EmbeddedStage extends GlassStage implements EmbeddedStageInterface {
         /* Perhaps this could return the ID for the window in which this
          * stage is embedded, but there is no current requirement for that.
          */
-        return 0L;
+        long handle = host.getWindowHandle();
+        return handle;
     }
 }

@@ -562,6 +562,10 @@ public abstract class Application {
      * type.
      */
     public abstract Window createWindow(Window owner, Screen screen, int styleMask);
+    
+    public Window createWindow(long owner, Screen screen, int styleMask) {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Create a window.

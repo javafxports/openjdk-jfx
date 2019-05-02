@@ -187,6 +187,11 @@ final class MacApplication extends Application implements InvokeLaterDispatcher.
     @Override public Window createWindow(Window owner, Screen screen, int styleMask) {
         return new MacWindow(owner, screen, styleMask);
     }
+    
+    @Override
+    public Window createWindow(long owner, Screen screen, int styleMask) {
+        return new MacWindow(owner, screen, styleMask);
+    }
 
     final static long BROWSER_PARENT_ID = -1L;
     @Override public Window createWindow(long parent) {

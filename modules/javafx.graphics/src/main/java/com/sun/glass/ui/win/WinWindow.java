@@ -252,6 +252,11 @@ class WinWindow extends Window {
     native private long _getInsets(long ptr);
     native private long _getAnchor(long ptr);
     @Override native protected long _createWindow(long ownerPtr, long screenPtr, int mask);
+    @Override
+    protected long _createEmbeddedWindow(long ownerPtr, long screenPtr, int mask) {
+        // TODO Auto-generated method stub
+        return 0;
+    }
     @Override native protected long _createChildWindow(long parent);
     @Override native protected boolean _close(long ptr);
     @Override native protected boolean _setView(long ptr, View view);

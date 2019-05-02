@@ -194,8 +194,15 @@ class WindowStage extends GlassStage {
                             break;
                     }
                 }
-                platformWindow =
-                        app.createWindow(ownerWindow, Screen.getMainScreen(), windowMask);
+                
+                if( ownerWindow == null && owner != null ) {
+                    platformWindow =
+                            app.createWindow(owner.getRawHandle(), Screen.getMainScreen(), windowMask);
+                } else {
+                    platformWindow =
+                            app.createWindow(ownerWindow, Screen.getMainScreen(), windowMask);
+                }
+                
                 platformWindow.setResizable(resizable);
                 platformWindow.setFocusable(focusable);
                 if (securityDialog) {

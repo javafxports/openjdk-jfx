@@ -1070,5 +1070,10 @@ public class JFXPanel extends JComponent {
                 }
             });
         }
+
+        @Override
+        public long getWindowHandle() {
+            return 0L;
+        }
     }
 }

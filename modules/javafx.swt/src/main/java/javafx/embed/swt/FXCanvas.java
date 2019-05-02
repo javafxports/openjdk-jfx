@@ -170,6 +170,20 @@ public class FXCanvas extends Canvas {
             control = control.getParent();
         };
     };
+    
+    private long getWindowHandle() {
+        if (SWT.getPlatform().equals("cocoa")) {
+            try {
+                Object nsWindow = windowField.get(this.getShell());
+                Long ptr = ((Number) idField.get(nsWindow)).longValue();
+                return ptr;
+            } catch (Throwable e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        return 0;
+    }
 
     private double getScaleFactor() {
         if (SWT.getPlatform().equals("cocoa")) {
@@ -232,6 +246,7 @@ public class FXCanvas extends Canvas {
     }
 
     private static Field windowField;
+    private static Field idField;
     private static Method windowMethod;
     private static Method screenMethod;
     private static Method backingScaleFactorMethod;
@@ -242,6 +257,9 @@ public class FXCanvas extends Canvas {
             try {
                 windowField = Shell.class.getDeclaredField("window");
                 windowField.setAccessible(true);
+                
+                Class idClass = Class.forName("org.eclipse.swt.internal.cocoa.id");
+                idField = idClass.getDeclaredField("id");
 
                 Class nsViewClass = Class.forName("org.eclipse.swt.internal.cocoa.NSView");
                 windowMethod = nsViewClass.getDeclaredMethod("window");
@@ -281,6 +299,7 @@ public class FXCanvas extends Canvas {
         registerEventListeners();
         Display display = parent.getDisplay();
         display.addFilter(SWT.Move, moveFilter);
+        System.err.println("=========> WINDOW: " + getWindowHandle());
     }
 
     /**
@@ -1075,6 +1094,11 @@ public class FXCanvas extends Canvas {
 
         final FXCanvas fxCanvas = FXCanvas.this;
 
+        @Override
+        public long getWindowHandle() {
+            return fxCanvas.getWindowHandle();
+        }
+        
         @Override
         public void setEmbeddedStage(EmbeddedStageInterface embeddedStage) {
             stagePeer = embeddedStage;

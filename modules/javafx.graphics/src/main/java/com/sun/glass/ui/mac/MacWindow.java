@@ -49,11 +49,15 @@ final class MacWindow extends Window {
     protected MacWindow(Window owner, Screen screen, int styleMask) {
         super(owner, screen, styleMask);
     }
+    protected MacWindow(long parent, Screen screen, int styleMask) {
+        super(parent, screen, styleMask);
+    }
     protected MacWindow(long parent) {
         super(parent);
     }
 
     @Override native protected long _createWindow(long ownerPtr, long screenPtr, int mask);
+    @Override native protected long _createEmbeddedWindow(long ownerPtr, long screenPtr, int mask);
     @Override native protected long _createChildWindow(long parent);
     @Override native protected boolean _close(long ptr);
     @Override native protected boolean _setView(long ptr, View view);

@@ -140,4 +140,6 @@ public interface HostInterface {
      * @see #grabFocus
      */
     public void ungrabFocus();
+    
+    public long getWindowHandle();
 }

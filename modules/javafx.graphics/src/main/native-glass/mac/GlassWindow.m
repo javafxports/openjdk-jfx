@@ -748,6 +748,19 @@ JNIEXPORT jlong JNICALL Java_com_sun_glass_ui_mac_MacWindow__1createWindow
     return _createWindowCommon(env, jWindow, jOwnerPtr, jScreenPtr, jStyleMask, JNI_FALSE);
 }
 
+JNIEXPORT jlong JNICALL Java_com_sun_glass_ui_mac_MacWindow__1createEmbeddedWindow
+(JNIEnv *env, jobject jWindow, jlong jOwnerPtr, jlong jScreenPtr, jint jStyleMask) 
+{
+   jlong window = _createWindowCommon(env, jWindow, 0L, jScreenPtr, jStyleMask, JNI_FALSE);
+   GlassEmbeddedWindow *gWindow = getGlassEmbeddedWindow(env, window);
+   NSWindow *oWindow = (NSWindow*)jlong_to_ptr(jOwnerPtr);
+   [oWindow addChildWindow:gWindow ordered:1];
+   // gWindow->parent = oWindow;
+   
+   return window;
+}
+  
+
 /*
  * Class:     com_sun_glass_ui_mac_MacWindow
  * Method:    _createChildWindow

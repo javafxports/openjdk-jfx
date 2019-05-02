@@ -70,6 +70,10 @@ final class IosWindow extends Window {
     @Override native protected void _exitModal(long ptr);
     @Override native protected boolean _grabFocus(long ptr);
     @Override native protected void _ungrabFocus(long ptr);
+    @Override
+    protected long _createEmbeddedWindow(long ownerPtr, long screenPtr, int mask) {
+        throw new UnsupportedOperationException();
+    }
 
     //No cursor on iOS. API compatibility call.
     @Override

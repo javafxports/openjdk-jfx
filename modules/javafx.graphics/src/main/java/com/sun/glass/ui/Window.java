@@ -240,6 +240,7 @@ public abstract class Window {
     private EventHandler eventHandler;
 
     protected abstract long _createWindow(long ownerPtr, long screenPtr, int mask);
+    protected abstract long _createEmbeddedWindow(long ownerPtr, long screenPtr, int mask);
     protected Window(Window owner, Screen screen, int styleMask) {
         Application.checkEventThread();
         switch (styleMask & (TITLED | TRANSPARENT)) {
@@ -285,6 +286,57 @@ public abstract class Window {
 
         this.ptr = _createWindow(owner != null ? owner.getNativeHandle() : 0L,
                 this.screen.getNativeScreen(), this.styleMask);
+        if (this.ptr == 0L) {
+            throw new RuntimeException("could not create platform window");
+        }
+    }
+    
+    protected Window(long owner, Screen screen, int styleMask) {
+        Application.checkEventThread();
+        switch (styleMask & (TITLED | TRANSPARENT)) {
+            case UNTITLED:
+            case TITLED:
+            case TRANSPARENT:
+                break;
+            default:
+                throw new RuntimeException("The visual kind should be UNTITLED, TITLED, or TRANSPARENT, but not a combination of these");
+        }
+        switch (styleMask & (POPUP | UTILITY)) {
+            case NORMAL:
+            case POPUP:
+            case UTILITY:
+                break;
+            default:
+                throw new RuntimeException("The functional type should be NORMAL, POPUP, or UTILITY, but not a combination of these");
+        }
+
+        if (((styleMask & UNIFIED) != 0)
+                && !Application.GetApplication().supportsUnifiedWindows()) {
+           styleMask &= ~UNIFIED;
+        }
+
+        if (((styleMask & TRANSPARENT) != 0)
+                && !Application.GetApplication().supportsTransparentWindows()) {
+            styleMask &= ~TRANSPARENT;
+        }
+
+
+        this.owner = null;
+        this.parent = owner;
+        this.styleMask = styleMask;
+        this.isDecorated = (this.styleMask & Window.TITLED) != 0;
+
+        this.screen = screen != null ? screen : Screen.getMainScreen();
+        if (PrismSettings.allowHiDPIScaling) {
+            this.platformScaleX = this.screen.getPlatformScaleX();
+            this.platformScaleY = this.screen.getPlatformScaleY();
+            this.outputScaleX = this.screen.getRecommendedOutputScaleX();
+            this.outputScaleY = this.screen.getRecommendedOutputScaleY();
+        }
+
+        System.err.println("CREATE WIHT POINTER: " + owner);
+        this.ptr = _createEmbeddedWindow(owner,this.screen.getNativeScreen(), this.styleMask);
+        System.err.println("DONE");
         if (this.ptr == 0L) {
             throw new RuntimeException("could not create platform window");
         }

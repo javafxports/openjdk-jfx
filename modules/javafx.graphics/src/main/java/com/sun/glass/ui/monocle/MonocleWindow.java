@@ -166,6 +166,11 @@ final class MonocleWindow extends Window {
         id = MonocleWindowManager.getInstance().addWindow(this);
         return id;
     }
+    
+    @Override
+    protected long _createEmbeddedWindow(long ownerPtr, long screenPtr, int mask) {
+        throw new UnsupportedOperationException();
+    }
 
     @Override
     protected long _createChildWindow(long parent) {
