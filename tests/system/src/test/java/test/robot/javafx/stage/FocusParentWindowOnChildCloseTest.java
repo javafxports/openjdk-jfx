@@ -45,7 +45,7 @@ import test.util.Util;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-//See JDK8210973
+// See JDK8210973
 public class FocusParentWindowOnChildCloseTest {
     static Robot robot;
     static Button button;
@@ -154,6 +154,6 @@ public class FocusParentWindowOnChildCloseTest {
     }
 
     public static void waitForLatch(CountDownLatch latch, int seconds, String msg) throws Exception {
-        org.junit.Assert.assertTrue("Timeout: " + msg, latch.await(seconds, TimeUnit.SECONDS));
+        Assert.assertTrue("Timeout: " + msg, latch.await(seconds, TimeUnit.SECONDS));
     }
 }
