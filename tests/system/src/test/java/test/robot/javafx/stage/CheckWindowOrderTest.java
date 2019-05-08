@@ -40,7 +40,7 @@ import org.junit.Test;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-//See JDK8220272
+// See JDK8220272
 public class CheckWindowOrderTest {
     static Scene scene;
     static Stage stage;
@@ -101,7 +101,7 @@ public class CheckWindowOrderTest {
     }
 
     public static void waitForLatch(CountDownLatch latch, int seconds, String msg) throws Exception {
-        org.junit.Assert.assertTrue("Timeout: " + msg, latch.await(seconds, TimeUnit.SECONDS));
+        Assert.assertTrue("Timeout: " + msg, latch.await(seconds, TimeUnit.SECONDS));
     }
 
     static class TestStage extends Stage {
