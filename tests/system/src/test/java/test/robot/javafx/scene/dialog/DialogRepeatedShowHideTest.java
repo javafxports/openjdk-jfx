@@ -149,6 +149,6 @@ public class DialogRepeatedShowHideTest {
     }
 
     public static void waitForLatch(CountDownLatch latch, int seconds, String msg) throws Exception {
-        org.junit.Assert.assertTrue("Timeout: " + msg, latch.await(seconds, TimeUnit.SECONDS));
+        Assert.assertTrue("Timeout: " + msg, latch.await(seconds, TimeUnit.SECONDS));
     }
 }
