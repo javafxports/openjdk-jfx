@@ -45,7 +45,7 @@ import test.util.Util;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-// See JDK8210973
+// See JDK-8210973
 public class FocusParentWindowOnChildCloseTest {
     static Robot robot;
     static Button button;
@@ -101,7 +101,6 @@ public class FocusParentWindowOnChildCloseTest {
         alertCloseLatch = new CountDownLatch(1);
         Platform.runLater(() -> {
                     Button okButton = (Button) alert.getDialogPane().lookupButton(ButtonType.OK);
-                    System.out.println(okButton);
                     okButton.fire();
                 });
         Thread.sleep(400);
@@ -129,6 +128,7 @@ public class FocusParentWindowOnChildCloseTest {
             scene = new Scene(root, 300, 250);
             stage.setScene(scene);
             stage.addEventHandler(WindowEvent.WINDOW_SHOWN, e -> Platform.runLater(startupLatch::countDown));
+            stage.setAlwaysOnTop(true);
             stage.show();
         }
 
