@@ -1,6 +1,6 @@
 # Introduction
 
-This file contains a list of the few "sandbox-only" file in this repo. The
+This file contains a list of the few "sandbox-only" files in this repo. The
 files in this list only exist in the `javafxports/openjdk-jfx` sandbox
 and are not in the upstream HG repo. This is a very minimal set of files
 limited primarily to "README" files that are unique to the sandbox and
