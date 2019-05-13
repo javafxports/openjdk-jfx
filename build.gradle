@@ -396,6 +396,9 @@ ext.IS_COMPILE_HARFBUZZ = Boolean.parseBoolean(COMPILE_HARFBUZZ)
 defineProperty("COMPILE_PARFAIT", "false")
 ext.IS_COMPILE_PARFAIT = Boolean.parseBoolean(COMPILE_PARFAIT)
 
+defineProperty("STATIC_BUILD", "false")
+ext.IS_STATIC_BUILD = Boolean.parseBoolean(STATIC_BUILD)
+
 // BUILD_TOOLS_DOWNLOAD_SCRIPT specifies a path of a gradle script which downloads
 // required build tools.
 defineProperty("BUILD_TOOLS_DOWNLOAD_SCRIPT", "")
