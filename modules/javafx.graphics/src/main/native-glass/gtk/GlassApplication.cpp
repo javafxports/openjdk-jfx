@@ -442,10 +442,6 @@ static void process_events(GdkEvent* event, gpointer data)
         }
     }
 
-    if (is_in_drag()) {
-        process_dnd_source(window, event);
-    }
-
     if (ctx != NULL) {
         EventsCounterHelper helper(ctx);
         try {
