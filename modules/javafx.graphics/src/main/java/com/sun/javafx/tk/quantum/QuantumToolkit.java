@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ package com.sun.javafx.tk.quantum;
 import javafx.application.ConditionalFeature;
 import javafx.geometry.Dimension2D;
 import javafx.scene.image.Image;
+import javafx.scene.image.PixelBuffer;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.InputMethodRequests;
 import javafx.scene.input.KeyCode;
@@ -1324,6 +1325,25 @@ public final class QuantumToolkit extends Toolkit {
             this.image = image;
         }
 
+        QuantumImage(PixelBuffer<ByteBuffer> pixelBuffer) {
+            PixelFormat pf;
+            System.err.println("$$$$ pixelFormat = " + pixelBuffer.getPixelFormat());
+            switch(pixelBuffer.getPixelFormat().getType()) {
+                case INT_ARGB_PRE:
+                    pf = PixelFormat.INT_ARGB_PRE;
+                    break;
+                case BYTE_BGRA_PRE:
+                    pf = PixelFormat.BYTE_BGRA_PRE;
+                    break;
+                case BYTE_RGB:
+                    pf = PixelFormat.BYTE_RGB;
+                    break;
+                default:
+                    throw new UnsupportedOperationException("Format Not yet supported");
+            }
+            this.image =  com.sun.prism.Image.fromPixelBufferPreData(pf, (ByteBuffer)pixelBuffer.getBuffer(), pixelBuffer.getWidth(), pixelBuffer.getHeight());
+        }
+
         RTTexture getRT(int w, int h, ResourceFactory rfNew) {
             boolean rttOk = rt != null && rf == rfNew &&
                     rt.getContentWidth() == w && rt.getContentHeight() == h;
@@ -1394,6 +1414,10 @@ public final class QuantumToolkit extends Toolkit {
 
         if (platformImage instanceof com.sun.prism.Image) {
             return new QuantumImage((com.sun.prism.Image) platformImage);
+        }
+
+        if (platformImage instanceof PixelBuffer) {
+            return new QuantumImage((PixelBuffer<ByteBuffer>) platformImage);
         }
 
         throw new UnsupportedOperationException("unsupported class for loadPlatformImage");
@@ -1477,7 +1501,7 @@ public final class QuantumToolkit extends Toolkit {
                 boolean errored = false;
                 try {
                     QuantumImage pImage = (params.platformImage instanceof QuantumImage) ?
-                            (QuantumImage)params.platformImage : new QuantumImage(null);
+                            (QuantumImage)params.platformImage : new QuantumImage((com.sun.prism.Image)null);
 
                     com.sun.prism.RTTexture rt = pImage.getRT(w, h, rf);
 

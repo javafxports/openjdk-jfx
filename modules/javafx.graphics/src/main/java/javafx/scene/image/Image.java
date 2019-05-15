@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -737,6 +737,17 @@ public class Image {
             throw new IllegalArgumentException("Image dimensions must be positive (w,h > 0)");
         }
         initialize(Toolkit.getToolkit().createPlatformImage(width, height));
+    }
+
+    /**
+     * Package private internal constructor used only by {@link WritableImage}.
+     *
+     * @param pixelBuffer The {@code PixelBuffer} to construct from.
+     */
+    Image(PixelBuffer pixelBuffer) {
+        this(null, null, pixelBuffer.getWidth(), pixelBuffer.getHeight(),
+                false, false, false);
+        initialize(pixelBuffer); // Creates an image using the provided PixelBuffer.
     }
 
     private Image(Object externalImage) {

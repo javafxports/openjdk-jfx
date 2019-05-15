@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 
 package javafx.scene.image;
 
+import com.sun.javafx.geom.Rectangle;
 import com.sun.javafx.tk.ImageLoader;
 import com.sun.javafx.tk.PlatformImage;
 import com.sun.javafx.tk.Toolkit;
@@ -73,6 +74,28 @@ public class WritableImage extends Image {
      */
     public WritableImage(@NamedArg("width") int width, @NamedArg("height") int height) {
         super(width, height);
+    }
+
+    /**
+     * Construct an image using the {@code PixelBuffer}.
+     * The image uses the same buffer provided by {@code PixelBuffer} and does
+     * not allocate new memory for the the pixels.
+     * The {@code PixelBuffer} can be shared by multiple WritableImages and
+     * different applications.
+     * Images constructed this way will also be readable and writable
+     * using {@code getPixelReader()} and {@code getPixelWriter()}.
+     *
+     * @param pixelBuffer the {@code PixelBuffer} to construct from.
+     *
+     * @throws IllegalArgumentException if either {@code pixelBuffer} dimension
+     *         is negative or zero.
+     * @throws NullPointerException if {@code pixelBuffer} is {@code null}.
+     *
+     * @since 13
+     */
+    public WritableImage(@NamedArg("PixelBuffer") PixelBuffer pixelBuffer) {
+        super(validatePixelBuffer(pixelBuffer));
+        pixelBuffer.addImage(this);
     }
 
     /**
@@ -143,6 +166,21 @@ public class WritableImage extends Image {
     @Override
     boolean pixelsReadable() {
         return true;
+    }
+
+    void bufferDirty(Rectangle rect) {
+        getWritablePlatformImage().bufferDirty(rect);
+        pixelsDirty();
+    }
+
+    private static PixelBuffer validatePixelBuffer(PixelBuffer pixelBuffer) {
+        if (pixelBuffer == null) {
+            throw new NullPointerException("PixelBuffer must be specified.");
+        }
+        if (pixelBuffer.getWidth() <= 0 || pixelBuffer.getHeight() <= 0) {
+            throw new IllegalArgumentException("PixelBuffer dimensions must be positive (w,h > 0)");
+        }
+        return pixelBuffer;
     }
 
     private PixelWriter writer;
