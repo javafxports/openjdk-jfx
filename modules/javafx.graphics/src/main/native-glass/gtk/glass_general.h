@@ -291,7 +291,7 @@ void
 glass_gdk_master_pointer_ungrab(GdkEvent *event);
 
 void
-glass_gdk_master_pointer_get_position(GdkEvent *event, gint *x, gint *y);
+glass_gdk_master_pointer_get_position(gint *x, gint *y);
 
 gboolean
 glass_gdk_device_is_grabbed(GdkDevice *device);

@@ -523,15 +523,6 @@ const char * const SOURCE_DND_ACTIONS = "fx-dnd-actions";
 static GdkWindow* get_dnd_window()
 {
     if (dnd_window == NULL) {
-
-//#ifdef GLASS_GTK3
-//        GtkWidget *gtk_window = gtk_window_new(GTK_WINDOW_POPUP);
-//        gtk_window_set_screen(GTK_WINDOW(gtk_window), gdk_screen_get_default());
-//        gtk_window_resize(GTK_WINDOW(gtk_window), 1, 1);
-//        gtk_window_move(GTK_WINDOW(gtk_window), -99, -99);
-//        gtk_widget_show(gtk_window);
-//        dnd_window = gtk_widget_get_window(gtk_window);
-//#else
         GdkWindowAttr attr;
         memset(&attr, 0, sizeof (GdkWindowAttr));
         attr.override_redirect = TRUE;
@@ -544,7 +535,6 @@ static GdkWindow* get_dnd_window()
         gdk_window_move(dnd_window, -99, -99);
         gdk_window_resize(dnd_window, 1, 1);
         gdk_window_show(dnd_window);
-//#endif
     }
     return dnd_window;
 }
@@ -823,6 +813,8 @@ static void process_dnd_source_selection_req(GdkWindow *window, GdkEvent *gdkEve
 
     gdk_selection_send_notify(event->requestor, event->selection, event->target,
                                (is_data_set) ? event->property : GDK_NONE, event->time);
+
+    gdk_threads_add_idle((GSourceFunc) dnd_finish_callback, NULL);
 }
 
 static void process_dnd_source_mouse_release(GdkWindow *window, GdkEvent *event) {
@@ -841,7 +833,6 @@ static void process_dnd_source_mouse_release(GdkWindow *window, GdkEvent *event)
 
 static void process_drag_motion(gint x_root, gint y_root, guint state)
 {
-    g_print("process_drag_motion\n");
     DragView::move(x_root, y_root);
 
     GdkWindow *dest_window;
@@ -851,7 +842,6 @@ static void process_drag_motion(gint x_root, gint y_root, guint state)
             x_root, y_root, &dest_window, &prot);
 
     if (prot != GDK_DRAG_PROTO_NONE) {
-        g_print("DRAG OK\n");
         GdkDragAction action, possible_actions;
         determine_actions(state, &action, &possible_actions);
         gdk_drag_motion(get_drag_context(), dest_window, prot, x_root, y_root,
@@ -895,14 +885,13 @@ static void process_dnd_source_key_press_release(GdkWindow *window, GdkEvent *ev
             state ^= new_mod;
         }
 
-        glass_gdk_master_pointer_get_position(event, &x, &y);
+        glass_gdk_master_pointer_get_position(&x, &y);
         process_drag_motion(x, y, state);
     }
 }
 
 static void process_dnd_source_drag_status(GdkWindow *window, GdkEvent *event)
 {
-    g_print("process_dnd_source_drag_status\n");
     (void)window;
 
     GdkEventDND *eventDnd = &event->dnd;
@@ -943,20 +932,19 @@ static void process_dnd_source_drag_status(GdkWindow *window, GdkEvent *event)
         }
     }
     if (cursor == NULL) {
-        cursor = gdk_cursor_new(GDK_LEFT_PTR);
-        g_print("cursor null\n");
+        cursor = gdk_cursor_new_from_name(gdk_display_get_default(), "default");
     }
 
     dnd_pointer_grab(event, cursor);
 }
 
-static void process_dnd_source_drop_finished(GdkWindow *window, GdkEvent *event)
-{
-    (void)window;
-    (void)event;
-
-    gdk_threads_add_idle((GSourceFunc) dnd_finish_callback, NULL);
-}
+//static void process_dnd_source_drop_finished(GdkWindow *window, GdkEvent *event)
+//{
+//    (void)window;
+//    (void)event;
+//
+//    gdk_threads_add_idle((GSourceFunc) dnd_finish_callback, NULL);
+//}
 
 void process_dnd_source(GdkWindow *window, GdkEvent *event) {
     switch(event->type) {
@@ -969,9 +957,9 @@ void process_dnd_source(GdkWindow *window, GdkEvent *event) {
         case GDK_DRAG_STATUS:
             process_dnd_source_drag_status(window, event);
             break;
-        case GDK_DROP_FINISHED:
-            process_dnd_source_drop_finished(window, event);
-            break;
+//        case GDK_DROP_FINISHED:
+//            process_dnd_source_drop_finished(window, event);
+//            break;
         case GDK_KEY_PRESS:
         case GDK_KEY_RELEASE:
             process_dnd_source_key_press_release(window, event);
@@ -1066,10 +1054,17 @@ static void dnd_source_push_data(JNIEnv *env, jobject data, jint supported)
     g_object_set_data(G_OBJECT(src_window), SOURCE_DND_CONTEXT, ctx);
 
 #ifdef GLASS_GTK3
-    gdk_device_grab(device, src_window, GDK_OWNERSHIP_NONE, FALSE,
-                    (GdkEventMask)(GDK_POINTER_MOTION_MASK
-                                       | GDK_BUTTON_RELEASE_MASK),
-                                       NULL, GDK_CURRENT_TIME);
+    if(gdk_device_grab(device, src_window, GDK_OWNERSHIP_NONE, FALSE,
+                    (GdkEventMask)
+                         (GDK_POINTER_MOTION_MASK
+                             | GDK_BUTTON_MOTION_MASK
+                             | GDK_BUTTON1_MOTION_MASK
+                             | GDK_BUTTON2_MOTION_MASK
+                             | GDK_BUTTON3_MOTION_MASK
+                             | GDK_BUTTON_RELEASE_MASK),
+                       NULL, GDK_CURRENT_TIME) != GDK_GRAB_SUCCESS) {
+        g_warning("Usable to grab pointer device.");
+    }
 #else
     dnd_pointer_grab(NULL, NULL);
 #endif
