@@ -116,7 +116,7 @@ public class NativeLibLoader {
         //   (only on non-modular builds)
         // - if the native library comes bundled as a resource it is extracted
         //   and loaded
-        // - the jna.library.path is searched for the library in definition
+        // - the java.library.path is searched for the library in definition
         //   order
         // - the library is loaded via System#loadLibrary
         // - on iOS native library is staticly linked and detected from the
