@@ -821,8 +821,9 @@ static void process_dnd_source_selection_req(GdkWindow *window, GdkEvent *gdkEve
     gdk_selection_send_notify(event->requestor, event->selection, event->target,
                               (is_data_set) ? event->property : GDK_NONE, event->time);
 
-#if GTK_CHECK_VERSION(3, 20, 0)
-    gdk_threads_add_idle((GSourceFunc) dnd_finish_callback, NULL);
+#ifdef GLASS_GTK3
+    if (gtk_get_major_version() >= 3 && gtk_get_minor_version() >= 20)
+        gdk_threads_add_idle((GSourceFunc) dnd_finish_callback, NULL);
 #endif
 }
 
