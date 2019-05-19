@@ -812,9 +812,7 @@ static void process_dnd_source_selection_req(GdkWindow *window, GdkEvent *gdkEve
     }
 
     gdk_selection_send_notify(event->requestor, event->selection, event->target,
-                               (is_data_set) ? event->property : GDK_NONE, event->time);
-
-    gdk_threads_add_idle((GSourceFunc) dnd_finish_callback, NULL);
+                              (is_data_set) ? event->property : GDK_NONE, event->time);
 }
 
 static void process_dnd_source_mouse_release(GdkWindow *window, GdkEvent *event) {
@@ -938,13 +936,13 @@ static void process_dnd_source_drag_status(GdkWindow *window, GdkEvent *event)
     dnd_pointer_grab(event, cursor);
 }
 
-//static void process_dnd_source_drop_finished(GdkWindow *window, GdkEvent *event)
-//{
-//    (void)window;
-//    (void)event;
-//
-//    gdk_threads_add_idle((GSourceFunc) dnd_finish_callback, NULL);
-//}
+static void process_dnd_source_drop_finished(GdkWindow *window, GdkEvent *event)
+{
+    (void)window;
+    (void)event;
+
+    gdk_threads_add_idle((GSourceFunc) dnd_finish_callback, NULL);
+}
 
 void process_dnd_source(GdkWindow *window, GdkEvent *event) {
     switch(event->type) {
@@ -957,9 +955,9 @@ void process_dnd_source(GdkWindow *window, GdkEvent *event) {
         case GDK_DRAG_STATUS:
             process_dnd_source_drag_status(window, event);
             break;
-//        case GDK_DROP_FINISHED:
-//            process_dnd_source_drop_finished(window, event);
-//            break;
+        case GDK_DROP_FINISHED:
+            process_dnd_source_drop_finished(window, event);
+            break;
         case GDK_KEY_PRESS:
         case GDK_KEY_RELEASE:
             process_dnd_source_key_press_release(window, event);
@@ -1054,7 +1052,7 @@ static void dnd_source_push_data(JNIEnv *env, jobject data, jint supported)
     g_object_set_data(G_OBJECT(src_window), SOURCE_DND_CONTEXT, ctx);
 
 #ifdef GLASS_GTK3
-    if(gdk_device_grab(device, src_window, GDK_OWNERSHIP_NONE, FALSE,
+    if(gdk_device_grab(device, src_window, GDK_OWNERSHIP_APPLICATION, FALSE,
                     (GdkEventMask)
                          (GDK_POINTER_MOTION_MASK
                              | GDK_BUTTON_MOTION_MASK

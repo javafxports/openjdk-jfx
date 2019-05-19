@@ -592,7 +592,7 @@ glass_gdk_master_pointer_grab(GdkEvent *event, GdkWindow *window, GdkCursor *cur
 #ifdef GLASS_GTK3
         GdkDevice *device = gdk_event_get_device(event);
 
-        gdk_device_grab(device, window, GDK_OWNERSHIP_NONE, FALSE,
+        gdk_device_grab(device, window, GDK_OWNERSHIP_APPLICATION, FALSE,
                         (GdkEventMask)
                              (GDK_POINTER_MOTION_MASK
                                  | GDK_BUTTON_MOTION_MASK
