@@ -523,6 +523,13 @@ const char * const SOURCE_DND_ACTIONS = "fx-dnd-actions";
 static GdkWindow* get_dnd_window()
 {
     if (dnd_window == NULL) {
+//        GtkWidget *widget = gtk_window_new(GTK_WINDOW_POPUP);
+//        gtk_window_set_screen(GTK_WINDOW(widget), gdk_screen_get_default());
+//        gtk_window_resize(GTK_WINDOW(widget), 1, 1);
+//        gtk_window_move(GTK_WINDOW(widget), -99, -99);
+//        gtk_widget_show(widget);
+//
+//        dnd_window = gtk_widget_get_window(GTK_WIDGET(widget));
         GdkWindowAttr attr;
         memset(&attr, 0, sizeof (GdkWindowAttr));
         attr.override_redirect = TRUE;
@@ -853,7 +860,6 @@ static void process_dnd_source_mouse_motion(GdkWindow *window, GdkEvent *event)
 
     GdkEventMotion *eventMotion = &event->motion;
     process_drag_motion(eventMotion->x_root, eventMotion->y_root, eventMotion->state);
-    gdk_event_request_motions(eventMotion);
 }
 
 static void process_dnd_source_key_press_release(GdkWindow *window, GdkEvent *event)
