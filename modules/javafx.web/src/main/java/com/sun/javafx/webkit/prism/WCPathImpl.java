@@ -38,6 +38,7 @@ import com.sun.webkit.graphics.WCPathIterator;
 import com.sun.webkit.graphics.WCRectangle;
 import com.sun.javafx.logging.PlatformLogger;
 import com.sun.javafx.logging.PlatformLogger.Level;
+import com.sun.prism.BasicStroke;
 
 final class WCPathImpl extends WCPath<Path2D> {
     private final Path2D path;
@@ -343,5 +344,21 @@ final class WCPathImpl extends WCPath<Path2D> {
                     new Object[] {getID(), mxx, myx, mxy, myy, mxt, myt});
         }
         path.transform(BaseTransform.getInstance(mxx, myx, mxy, myy, mxt, myt));
+    }
+
+    @Override
+    public boolean strokeContains(double x, double y, double strokeWidth ) {
+
+        boolean result = new BasicStroke(
+            (float) strokeWidth, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 10f)
+            .createCenteredStrokedShape(path)
+            .contains((float) x, (float) y);
+
+        if (log.isLoggable(Level.FINE)) {
+            log.fine("WCPathImpl({0}).strokeContains({1},{2},{3}) = {4}",
+                new Object[]{getID(), x, y, strokeWidth, result});
+        }
+
+        return result;
     }
 }

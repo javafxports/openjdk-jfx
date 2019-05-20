@@ -142,10 +142,4 @@ Color focusRingColor()
     return Color();
 }
 
-bool Path::strokeContains(StrokeStyleApplier*, const FloatPoint&) const
-{
-    notImplemented();
-    return false;
-}
-
 } // namespace WebCore

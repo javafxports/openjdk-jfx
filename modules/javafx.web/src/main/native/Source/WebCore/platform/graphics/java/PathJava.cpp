@@ -490,4 +490,33 @@ void Path::apply(const PathApplierFunction& function) const
     }
 }
 
+bool Path::strokeContains(StrokeStyleApplier *applier, const FloatPoint& p) const
+    {
+        ASSERT(m_path);
+
+        float thickness;
+        if (applier) {
+            GraphicsContext& gc = scratchContext();
+            gc.save();
+            applier->strokeStyle(&gc);
+            thickness = gc.strokeThickness();
+            gc.restore();
+        } else {
+            return false;
+        }
+
+        JNIEnv* env = WebCore_GetJavaEnv();
+
+        static jmethodID mid = env->GetMethodID(PG_GetPathClass(env), "strokeContains",
+            "(DDD)Z");
+        ASSERT(mid);
+
+        jboolean res = env->CallBooleanMethod(*m_path, mid, (jdouble)p.x(),
+            (jdouble)p.y(), (jdouble) thickness);
+
+        CheckAndClearException(env);
+
+        return jbool_to_bool(res);
+    }
+
 }

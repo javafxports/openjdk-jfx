@@ -99,4 +99,7 @@ public abstract class WCPath<P> extends Ref {
     public abstract P getPlatformPath();
 
     public abstract WCPathIterator getPathIterator();
+
+    public abstract boolean strokeContains(double x, double y,
+                                           double strokeWidth);
 }
