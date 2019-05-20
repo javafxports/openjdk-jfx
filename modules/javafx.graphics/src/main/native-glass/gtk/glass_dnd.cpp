@@ -523,13 +523,6 @@ const char * const SOURCE_DND_ACTIONS = "fx-dnd-actions";
 static GdkWindow* get_dnd_window()
 {
     if (dnd_window == NULL) {
-//        GtkWidget *widget = gtk_window_new(GTK_WINDOW_POPUP);
-//        gtk_window_set_screen(GTK_WINDOW(widget), gdk_screen_get_default());
-//        gtk_window_resize(GTK_WINDOW(widget), 1, 1);
-//        gtk_window_move(GTK_WINDOW(widget), -99, -99);
-//        gtk_widget_show(widget);
-//
-//        dnd_window = gtk_widget_get_window(GTK_WIDGET(widget));
         GdkWindowAttr attr;
         memset(&attr, 0, sizeof (GdkWindowAttr));
         attr.override_redirect = TRUE;
@@ -821,11 +814,6 @@ static void process_dnd_source_selection_req(GdkWindow *window, GdkEvent *gdkEve
     gdk_selection_send_notify(event->requestor, event->selection, event->target,
                               (is_data_set) ? event->property : GDK_NONE, event->time);
 
-#ifdef GLASS_GTK3
-    if (gtk_get_major_version() >= 3 && gtk_get_minor_version() >= 20) {
-        gdk_threads_add_idle((GSourceFunc) dnd_finish_callback, NULL);
-    }
-#endif
 }
 
 static void process_dnd_source_mouse_release(GdkWindow *window, GdkEvent *event) {
@@ -975,7 +963,15 @@ void process_dnd_source(GdkWindow *window, GdkEvent *event) {
             process_dnd_source_key_press_release(window, event);
             break;
         case GDK_DRAG_ENTER:
-            gdk_selection_owner_set(dnd_window, gdk_drag_get_selection(get_drag_context()), GDK_CURRENT_TIME, FALSE);
+            gdk_selection_owner_set(dnd_window, gdk_drag_get_selection(get_drag_context()),
+                                    GDK_CURRENT_TIME, FALSE);
+
+#ifdef GLASS_GTK3
+        if (gtk_get_major_version() >= 3 && gtk_get_minor_version() >= 20) {
+                g_signal_connect (get_drag_context(), "dnd-finished",
+                    G_CALLBACK (dnd_finish_callback), NULL);
+        }
+#endif
             break;
         case GDK_SELECTION_REQUEST:
             process_dnd_source_selection_req(window, event);
