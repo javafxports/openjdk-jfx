@@ -822,8 +822,9 @@ static void process_dnd_source_selection_req(GdkWindow *window, GdkEvent *gdkEve
                               (is_data_set) ? event->property : GDK_NONE, event->time);
 
 #ifdef GLASS_GTK3
-    if (gtk_get_major_version() >= 3 && gtk_get_minor_version() >= 20)
+    if (gtk_get_major_version() >= 3 && gtk_get_minor_version() >= 20) {
         gdk_threads_add_idle((GSourceFunc) dnd_finish_callback, NULL);
+    }
 #endif
 }
 
@@ -1063,7 +1064,7 @@ static void dnd_source_push_data(JNIEnv *env, jobject data, jint supported)
     g_object_set_data(G_OBJECT(src_window), SOURCE_DND_CONTEXT, ctx);
 
 #ifdef GLASS_GTK3
-    if(gdk_device_grab(device, src_window, GDK_OWNERSHIP_APPLICATION, FALSE,
+    if(gdk_device_grab(device, src_window, GDK_OWNERSHIP_NONE, FALSE,
                     (GdkEventMask)
                          (GDK_POINTER_MOTION_MASK
                              | GDK_BUTTON_MOTION_MASK
