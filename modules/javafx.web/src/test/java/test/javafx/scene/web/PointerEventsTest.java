@@ -24,45 +24,19 @@
  */
 package test.javafx.scene.web;
 
-import java.io.File;
 import static java.util.Arrays.asList;
-import java.util.concurrent.CountDownLatch;
 import javafx.event.EventType;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.web.WebView;
-import javafx.scene.Scene;
-import javafx.stage.Stage;
-import javafx.application.Platform;
-import org.junit.BeforeClass;
-import com.sun.javafx.application.PlatformImpl;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
-import javafx.concurrent.Worker.State;
+import com.sun.webkit.WebPage;
+import com.sun.webkit.WebPageShim;
+import javafx.scene.web.WebEngineShim;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-public class PointerEventsTest {
-
-    @BeforeClass
-    public static void setupOnce() {
-        final CountDownLatch startupLatch = new CountDownLatch(1);
-
-        PlatformImpl.startup(() -> {
-            startupLatch.countDown();
-        });
-
-        try {
-            startupLatch.await();
-        } catch (InterruptedException ex) {
-        }
-    }
+public class PointerEventsTest extends TestBase {
 
     /**
      * This test loads a website with SVG shapes "polyline", "path", "rect",
@@ -78,62 +52,26 @@ public class PointerEventsTest {
      */
     @Test
     public void testClickOnStrokePointerEventsStroke() throws Exception {
-        WebView[] viewHolder = new WebView[1];
-        CountDownLatch waitTestDocumentLoaded = new CountDownLatch(1);
+        load(PointerEventsTest.class.getClassLoader().getResource("test/html/pointerevents-stroke.html").toExternalForm());
+        submit(() -> {
+            final WebPage page = WebEngineShim.getPage(getEngine());
+            // Render WebPage so that all of the svg paths also will be rendered.
+            WebPageShim.paint(page, 0, 0, 800, 600);
 
-        Platform.runLater(() -> {
-            final Stage primaryStage = new Stage();
-            final WebView view = new WebView();
-            viewHolder[0] = view;
-            primaryStage.setScene(new Scene(view, 800, 600));
-            primaryStage.show();
-
-            view.getEngine().getLoadWorker().stateProperty().addListener(new ChangeListener<State>() {
-                @Override
-                public void changed(ObservableValue<? extends State> ov, State t, State t1) {
-                    if(t1 == State.SUCCEEDED) {
-                        waitTestDocumentLoaded.countDown();
-                    }
-                }
-            });
-
-            String url = new File("src/test/resources/test/html/pointerevents-stroke.html").toURI().toASCIIString();
-            view.getEngine().load(url);
-        });
-
-        waitTestDocumentLoaded.await();
-
-        CountDownLatch resultMapDone = new CountDownLatch(1);
-        final Map<String,Boolean> resultMap = new HashMap<>();
-
-        Platform.runLater(() -> {
-            WebView view = viewHolder[0];
-
-            view.fireEvent( generateMouseEvent(MouseEvent.MOUSE_PRESSED, 130, 80));
-            view.fireEvent( generateMouseEvent(MouseEvent.MOUSE_RELEASED, 130, 80));
-            view.fireEvent( generateMouseEvent(MouseEvent.MOUSE_PRESSED, 330, 80));
-            view.fireEvent( generateMouseEvent(MouseEvent.MOUSE_RELEASED, 330, 80));
-            view.fireEvent( generateMouseEvent(MouseEvent.MOUSE_PRESSED, 530, 80));
-            view.fireEvent( generateMouseEvent(MouseEvent.MOUSE_RELEASED, 530, 80));
-            view.fireEvent( generateMouseEvent(MouseEvent.MOUSE_PRESSED, 130, 280));
-            view.fireEvent( generateMouseEvent(MouseEvent.MOUSE_RELEASED, 130, 280));
-            view.fireEvent( generateMouseEvent(MouseEvent.MOUSE_PRESSED, 330, 280));
-            view.fireEvent( generateMouseEvent(MouseEvent.MOUSE_RELEASED, 330, 280));
-            view.fireEvent( generateMouseEvent(MouseEvent.MOUSE_PRESSED, 530, 280));
-            view.fireEvent( generateMouseEvent(MouseEvent.MOUSE_RELEASED, 530, 280));
+            WebPageShim.click(page, 130, 80);
+            WebPageShim.click(page, 330, 80);
+            WebPageShim.click(page, 530, 80);
+            WebPageShim.click(page, 130, 280);
+            WebPageShim.click(page, 330, 280);
+            WebPageShim.click(page, 530, 280);
 
             for (String s : asList("polyline", "path", "rect", "circle", "ellipse", "polygon")) {
-                resultMap.put(s, (boolean) view.getEngine().executeScript("isActivated(\"" + s + "\")"));
+                getEngine().executeScript("document.getElementById('%s').click()".format(s));
+                assertTrue("Expected element '" + s + "' to be activated", (boolean) getEngine().executeScript("isActivated('" + s + "')"));
             }
-
-            resultMapDone.countDown();
         });
-
-        resultMapDone.await(20, TimeUnit.SECONDS);
-        for(Entry<String,Boolean> e: resultMap.entrySet()) {
-            assertTrue("Expected element '" + e.getKey() + "' to be activated", e.getValue());
-        }
     }
+
 
     /**
      * This test loads a website with SVG shapes "polyline", "path", "rect",
@@ -149,58 +87,24 @@ public class PointerEventsTest {
      */
     @Test
     public void testClickOnFillPointerEventsStroke() throws Exception {
-        WebView[] view = new WebView[1];
-        CountDownLatch waitTestDocumentLoaded = new CountDownLatch(1);
+        load(PointerEventsTest.class.getClassLoader().getResource("test/html/pointerevents-stroke.html").toExternalForm());
+        submit(() -> {
+            final WebPage page = WebEngineShim.getPage(getEngine());
+            // Render WebPage so that all of the svg paths also will be rendered.
+            WebPageShim.paint(page, 0, 0, 800, 600);
 
-        Platform.runLater(() -> {
-            final Stage primaryStage = new Stage();
-            view[0] = new WebView();
-            primaryStage.setScene(new Scene(view[0], 800, 600));
-            primaryStage.show();
-
-            view[0].getEngine().getLoadWorker().stateProperty().addListener(new ChangeListener<State>() {
-                @Override
-                public void changed(ObservableValue<? extends State> ov, State t, State t1) {
-                    if(t1 == State.SUCCEEDED) {
-                        waitTestDocumentLoaded.countDown();
-                    }
-                }
-            });
-
-            String url = new File("src/test/resources/test/html/pointerevents-stroke.html").toURI().toASCIIString();
-            view[0].getEngine().load(url);
-        });
-
-        waitTestDocumentLoaded.await();
-
-        CountDownLatch resultMapDone = new CountDownLatch(1);
-        final Map<String,Boolean> resultMap = new HashMap<>();
-
-        Platform.runLater(() -> {
-            view[0].fireEvent( generateMouseEvent(MouseEvent.MOUSE_PRESSED, 80, 80));
-            view[0].fireEvent( generateMouseEvent(MouseEvent.MOUSE_RELEASED, 80, 80));
-            view[0].fireEvent( generateMouseEvent(MouseEvent.MOUSE_PRESSED, 280, 80));
-            view[0].fireEvent( generateMouseEvent(MouseEvent.MOUSE_RELEASED, 280, 80));
-            view[0].fireEvent( generateMouseEvent(MouseEvent.MOUSE_PRESSED, 480, 80));
-            view[0].fireEvent( generateMouseEvent(MouseEvent.MOUSE_RELEASED, 480, 80));
-            view[0].fireEvent( generateMouseEvent(MouseEvent.MOUSE_PRESSED, 80, 280));
-            view[0].fireEvent( generateMouseEvent(MouseEvent.MOUSE_RELEASED, 80, 280));
-            view[0].fireEvent( generateMouseEvent(MouseEvent.MOUSE_PRESSED, 280, 280));
-            view[0].fireEvent( generateMouseEvent(MouseEvent.MOUSE_RELEASED, 280, 280));
-            view[0].fireEvent( generateMouseEvent(MouseEvent.MOUSE_PRESSED, 480, 280));
-            view[0].fireEvent( generateMouseEvent(MouseEvent.MOUSE_RELEASED, 480, 280));
+            WebPageShim.click(page, 80, 80);
+            WebPageShim.click(page, 280, 80);
+            WebPageShim.click(page, 480, 80);
+            WebPageShim.click(page, 80, 280);
+            WebPageShim.click(page, 280, 280);
+            WebPageShim.click(page, 480, 280);
 
             for (String s : asList("polyline", "path", "rect", "circle", "ellipse", "polygon")) {
-                resultMap.put(s, (boolean) view[0].getEngine().executeScript("isActivated(\"" + s + "\")"));
+                getEngine().executeScript("document.getElementById('%s').click()".format(s));
+                assertFalse("Expected element '" + s + "' not to be activated", (boolean) getEngine().executeScript("isActivated('" + s + "')"));
             }
-
-            resultMapDone.countDown();
         });
-
-        resultMapDone.await(20, TimeUnit.SECONDS);
-        for(Entry<String,Boolean> e: resultMap.entrySet()) {
-            assertFalse("Expected element '" + e.getKey() + "' not to be activated", e.getValue());
-        }
     }
 
     public static MouseEvent generateMouseEvent(EventType<MouseEvent> type,
