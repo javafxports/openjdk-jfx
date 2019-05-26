@@ -65,6 +65,7 @@ public class DndTest extends Application {
 
         source.setOnDragDetected(event -> {
             Dragboard db = source.startDragAndDrop(TransferMode.ANY);
+            db.setDragView(source.snapshot(null, null), 0, -30);
 
             ClipboardContent content = new ClipboardContent();
             content.putString(source.getText());
