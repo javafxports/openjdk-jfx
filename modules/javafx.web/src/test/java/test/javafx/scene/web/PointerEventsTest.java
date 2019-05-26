@@ -40,9 +40,9 @@ public class PointerEventsTest extends TestBase {
 
     /**
      * This test loads a website with SVG shapes "polyline", "path", "rect",
-     * "circle", "ellipse", "polygon". By setting the CSS property
-     * "pointer-events" to "stroke", the rendering engine is configured to only
-     * react to clicks on the stroke of the shapes.
+     * "circle", "ellipse", "polygon". In addition a "dashed" path is included.
+     * By setting the CSS property "pointer-events" to "stroke", the rendering
+     * engine is configured to only react to clicks on the stroke of the shapes.
      *
      * <p>With a javascript event click handler, mouse events on the shapes
      * are recorded.</p>
@@ -64,8 +64,9 @@ public class PointerEventsTest extends TestBase {
             WebPageShim.click(page, 130, 280);
             WebPageShim.click(page, 330, 280);
             WebPageShim.click(page, 530, 280);
+            WebPageShim.click(page, 70, 410);
 
-            for (String s : asList("polyline", "path", "rect", "circle", "ellipse", "polygon")) {
+            for (String s : asList("polyline", "path", "rect", "circle", "ellipse", "polygon", "dashed")) {
                 getEngine().executeScript("document.getElementById('%s').click()".format(s));
                 assertTrue("Expected element '" + s + "' to be activated", (boolean) getEngine().executeScript("isActivated('" + s + "')"));
             }
@@ -75,9 +76,9 @@ public class PointerEventsTest extends TestBase {
 
     /**
      * This test loads a website with SVG shapes "polyline", "path", "rect",
-     * "circle", "ellipse", "polygon". By setting the CSS property
-     * "pointer-events" to "stroke", the rendering engine is configured to only
-     * react to clicks on the stroke of the shapes.
+     * "circle", "ellipse", "polygon". In addition a "dashed" path is included.
+     * By setting the CSS property "pointer-events" to "stroke", the rendering
+     * engine is configured to only react to clicks on the stroke of the shapes.
      *
      * <p>With a javascript event click handler, mouse events on the shapes
      * are recorded.</p>
@@ -99,8 +100,9 @@ public class PointerEventsTest extends TestBase {
             WebPageShim.click(page, 80, 280);
             WebPageShim.click(page, 280, 280);
             WebPageShim.click(page, 480, 280);
+            WebPageShim.click(page, 30, 410);
 
-            for (String s : asList("polyline", "path", "rect", "circle", "ellipse", "polygon")) {
+            for (String s : asList("polyline", "path", "rect", "circle", "ellipse", "polygon", "dashed")) {
                 getEngine().executeScript("document.getElementById('%s').click()".format(s));
                 assertFalse("Expected element '" + s + "' not to be activated", (boolean) getEngine().executeScript("isActivated('" + s + "')"));
             }

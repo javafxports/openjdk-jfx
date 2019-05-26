@@ -171,6 +171,15 @@ public abstract class WCRenderQueue extends Ref {
         return opaque;
     }
 
+    /*is called from native*/
+    private boolean strokeContains(WCPath path, float x, float y) {
+        if(gc == null) {
+            return false;
+        }
+        flush();
+        return gc.strokeContains(path, x, y);
+    }
+
     @Override public synchronized String toString() {
         return "WCRenderQueue{"
                 + "clip=" + clip + ", "

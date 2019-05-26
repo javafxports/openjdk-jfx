@@ -61,6 +61,7 @@ import java.util.List;
 import static com.sun.scenario.effect.Blend.Mode.*;
 import com.sun.scenario.effect.impl.Renderer;
 import com.sun.scenario.effect.impl.prism.PrRenderer;
+import java.util.Arrays;
 
 class WCGraphicsPrismContext extends WCGraphicsContext {
 
@@ -698,6 +699,23 @@ class WCGraphicsPrismContext extends WCGraphicsContext {
             log.fine("setMiterLimit(" + miterLimit + ")");
         }
         state.getStrokeNoClone().setMiterLimit(miterLimit);
+    }
+
+    @Override
+    public boolean strokeContains(WCPath path, float x, float y) {
+        BasicStroke stroke = state.getStrokeNoClone().getPlatformStroke();
+        boolean result = stroke
+            .createCenteredStrokedShape((Path2D) path.getPlatformPath())
+            .contains(x, y);
+
+        if (log.isLoggable(Level.FINE)) {
+            log.fine("strokeContains(%f, %f, %f, %f, %d, %d, %f, %s) => %b%n",
+                new Object[]{x, y, stroke.getLineWidth(), stroke.getMiterLimit(),
+                    stroke.getEndCap(), stroke.getLineJoin(), stroke.getDashPhase(),
+                    Arrays.toString(stroke.getDashArray()), result});
+        }
+
+        return result;
     }
 
     @Override

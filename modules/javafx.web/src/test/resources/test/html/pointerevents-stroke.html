@@ -12,12 +12,16 @@
                 stroke-width: 10px;
                 fill: transparent;
             }
+            #dashed {
+                stroke-dasharray: 20px;
+                stroke-dashoffset: 20px;
+            }
             rect.clicked, path.clicked, polyline.clicked, line.clicked, circle.clicked, ellipse.clicked, polygon.clicked {
                 stroke: green;
             }
         </style>
         <script>
-            var testElements = [ "polyline", "path", "rect", "circle", "ellipse", "polygon" ];
+            var testElements = [ "polyline", "path", "rect", "circle", "ellipse", "polygon", "dashed" ];
             window.addEventListener( 'DOMContentLoaded', ( event ) => {
                 for ( var el of testElements ) {
                     document.getElementById( el ).addEventListener( "mousedown", function ( evt ) {
@@ -45,8 +49,8 @@
             xmlns="http://www.w3.org/2000/svg"
             id="svg8"
             version="1.1"
-            viewBox="0 0 300 200"
-            height="400px"
+            viewBox="0 0 300 220"
+            height="440px"
             width="600px">
 
         <polyline points="10,10 60,10 60,60 10,60 " id="polyline" />
@@ -55,6 +59,7 @@
         <rect x="10" y="110" width="50" height="50" id="rect"/>
         <circle cx="135" cy="135" r="25" id="circle"/>
         <ellipse cx="235" cy="135" rx="25" ry="25" id="ellipse"/>
+        <path d="M0 200 H 200" id="dashed" />
         </svg>
         <p>
             It is expected, that a click on each of the shapes is recorded.
