@@ -405,11 +405,11 @@ static jobject dnd_target_get_image(JNIEnv *env)
     GInputStream *stream;
     jobject result = NULL;
     GdkAtom targets[] = {
-       TARGET_MIME_PNG_ATOM,
-       TARGET_MIME_JPEG_ATOM,
-       TARGET_MIME_TIFF_ATOM,
-       TARGET_MIME_BMP_ATOM,
-       0};
+        TARGET_MIME_PNG_ATOM,
+        TARGET_MIME_JPEG_ATOM,
+        TARGET_MIME_TIFF_ATOM,
+        TARGET_MIME_BMP_ATOM,
+        0};
     GdkAtom *cur_target = targets;
     selection_data_ctx ctx;
 
@@ -562,8 +562,8 @@ static gboolean dnd_finish_callback(gpointer) {
     if (dnd_window) {
         dnd_set_performed_action(
                 translate_gdk_action_to_glass(
-                        gdk_drag_context_get_selected_action(
-                                get_drag_context())));
+                    gdk_drag_context_get_selected_action(
+                        get_drag_context())));
 
         gdk_window_destroy(dnd_window);
         dnd_window = NULL;
@@ -650,7 +650,7 @@ static gboolean dnd_source_set_utf8_string(GdkWindow *requestor, GdkAtom propert
     gint size = strlen(cstring);
 
     gdk_property_change(requestor, property, GDK_SELECTION_TYPE_STRING,
-                8, GDK_PROP_MODE_REPLACE, (guchar *)cstring, size);
+            8, GDK_PROP_MODE_REPLACE, (guchar *)cstring, size);
 
     mainEnv->ReleaseStringUTFChars(string, cstring);
     return TRUE;
@@ -708,9 +708,9 @@ static gboolean dnd_source_set_image(GdkWindow *requestor, GdkAtom property, Gdk
     mainEnv->CallVoidMethod(pixels, jPixelsAttachData, PTR_TO_JLONG(&pixbuf));
 
     if (!EXCEPTION_OCCURED(mainEnv)
-        && gdk_pixbuf_save_to_buffer(pixbuf, &buffer, &size, type, NULL, NULL)) {
+            && gdk_pixbuf_save_to_buffer(pixbuf, &buffer, &size, type, NULL, NULL)) {
         gdk_property_change(requestor, property, target,
-                            8, GDK_PROP_MODE_REPLACE, (guchar *)buffer, size);
+                8, GDK_PROP_MODE_REPLACE, (guchar *)buffer, size);
         result = TRUE;
     }
     g_object_unref(pixbuf);
@@ -759,7 +759,7 @@ static gboolean dnd_source_set_uri_list(GdkWindow *requestor, GdkAtom property)
     }
 
     gdk_property_change(requestor, property, GDK_SELECTION_TYPE_STRING,
-                        8, GDK_PROP_MODE_REPLACE, (guchar *) res->str, res->len);
+            8, GDK_PROP_MODE_REPLACE, (guchar *) res->str, res->len);
 
     g_string_free(res, TRUE);
     return TRUE;
@@ -788,7 +788,7 @@ static gboolean dnd_source_set_raw(GdkWindow *requestor, GdkAtom property, GdkAt
                     jsize nraw = mainEnv->GetArrayLength(byteArray);
 
                     gdk_property_change(requestor, property, target,
-                                        8, GDK_PROP_MODE_REPLACE, (guchar *) raw, nraw);
+                            8, GDK_PROP_MODE_REPLACE, (guchar *) raw, nraw);
 
                     mainEnv->ReleaseByteArrayElements(byteArray, raw, JNI_ABORT);
                     is_data_set = TRUE;
