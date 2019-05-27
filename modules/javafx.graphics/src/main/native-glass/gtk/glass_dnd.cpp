@@ -830,7 +830,7 @@ static void process_dnd_source_selection_req(GdkWindow *window, GdkEvent *gdkEve
     }
 
     gdk_selection_send_notify(event->requestor, event->selection, event->target,
-                              (is_data_set) ? event->property : GDK_NONE, event->time);
+                               (is_data_set) ? event->property : GDK_NONE, event->time);
 
 }
 
@@ -1293,7 +1293,7 @@ static gboolean on_expose(GtkWidget *widget, GdkEventExpose *event, gpointer vie
 }
 
 DragView::View::View(GdkPixbuf* _pixbuf, gboolean _is_raw_image,
-                     gboolean _is_offset_set, gint _offset_x, gint _offset_y) :
+                                gboolean _is_offset_set, gint _offset_x, gint _offset_y) :
         pixbuf(_pixbuf),
         is_raw_image(_is_raw_image),
         is_offset_set(_is_offset_set),
