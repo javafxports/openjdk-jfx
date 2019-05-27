@@ -775,7 +775,7 @@ static gboolean dnd_source_set_raw(GdkWindow *requestor, GdkAtom property, GdkAt
             const char *cstring = mainEnv->GetStringUTFChars((jstring)data, NULL);
             if (cstring) {
                 gdk_property_change(requestor, property, GDK_SELECTION_TYPE_STRING,
-                                    8, GDK_PROP_MODE_REPLACE, (guchar *) cstring, strlen(cstring));
+                        8, GDK_PROP_MODE_REPLACE, (guchar *) cstring, strlen(cstring));
 
                 mainEnv->ReleaseStringUTFChars((jstring)data, cstring);
                 is_data_set = TRUE;
@@ -816,7 +816,7 @@ static void process_dnd_source_selection_req(GdkWindow *window, GdkEvent *gdkEve
 
     gboolean is_data_set = FALSE;
     if (event->target == TARGET_UTF8_STRING_ATOM
-        || event->target == TARGET_MIME_TEXT_PLAIN_ATOM) {
+            || event->target == TARGET_MIME_TEXT_PLAIN_ATOM) {
         is_data_set = dnd_source_set_utf8_string(requestor, event->property);
     } else if (event->target == TARGET_STRING_ATOM) {
         is_data_set = dnd_source_set_string(requestor, event->property);
@@ -858,7 +858,7 @@ static void process_drag_motion(gint x_root, gint y_root, guint state)
 #endif
 
     gdk_drag_find_window_for_screen(get_drag_context(), NULL, gdk_screen_get_default(),
-                                    x_root, y_root, &dest_window, &prot);
+            x_root, y_root, &dest_window, &prot);
 
     if (prot != GDK_DRAG_PROTO_NONE) {
         GdkDragAction action, possible_actions;
@@ -887,13 +887,13 @@ static void process_dnd_source_key_press_release(GdkWindow *window, GdkEvent *ev
         guint new_mod = 0;
         gint x,y;
         if (eventKey->keyval == GLASS_GDK_KEY_CONSTANT(Control_L) ||
-            eventKey->keyval == GLASS_GDK_KEY_CONSTANT(Control_R)) {
+                eventKey->keyval == GLASS_GDK_KEY_CONSTANT(Control_R)) {
             new_mod = GDK_CONTROL_MASK;
         } else if (eventKey->keyval == GLASS_GDK_KEY_CONSTANT(Alt_L) ||
-                   eventKey->keyval == GLASS_GDK_KEY_CONSTANT(Alt_R)) {
+                eventKey->keyval == GLASS_GDK_KEY_CONSTANT(Alt_R)) {
             new_mod = GDK_MOD1_MASK;
         } else if (eventKey->keyval == GLASS_GDK_KEY_CONSTANT(Shift_L) ||
-                   eventKey->keyval == GLASS_GDK_KEY_CONSTANT(Shift_R)) {
+                eventKey->keyval == GLASS_GDK_KEY_CONSTANT(Shift_R)) {
             new_mod = GDK_SHIFT_MASK;
         }
 
