@@ -38,7 +38,6 @@ import com.sun.webkit.graphics.WCPathIterator;
 import com.sun.webkit.graphics.WCRectangle;
 import com.sun.javafx.logging.PlatformLogger;
 import com.sun.javafx.logging.PlatformLogger.Level;
-import com.sun.prism.BasicStroke;
 
 final class WCPathImpl extends WCPath<Path2D> {
     private final Path2D path;

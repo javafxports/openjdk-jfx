@@ -21,26 +21,26 @@
             }
         </style>
         <script>
-            var testElements = [ "polyline", "path", "rect", "circle", "ellipse", "polygon", "dashed" ];
-            window.addEventListener( 'DOMContentLoaded', ( event ) => {
-                for ( var el of testElements ) {
-                    document.getElementById( el ).addEventListener( "mousedown", function ( evt ) {
-                        this.classList.add( "clicked" );
-                        console.log( "mousedown(" + evt.pageX + ", " + evt.pageY + ")" );
+            var testElements = ["polyline", "path", "rect", "circle", "ellipse", "polygon", "dashed"];
+            window.addEventListener("DOMContentLoaded", (event) => {
+                for (var el of testElements) {
+                    document.getElementById(el).addEventListener("mousedown", function (evt) {
+                        this.classList.add("clicked");
+                        console.log("mousedown(" + evt.pageX + ", " + evt.pageY + ")");
                     } );
                 }
             } );
 
             function clearState() {
-                for ( var el of testElements ) {
-                    document.getElementById( el ).addEventListener( "mousedown", function ( evt ) {
-                        this.classList.remove( "clicked" );
+                for (var el of testElements) {
+                    document.getElementById(el).addEventListener("mousedown", function (evt) {
+                        this.classList.remove("clicked");
                     } );
                 }
             }
 
-            function isActivated( id ) {
-                return document.getElementById( id ).classList.contains( "clicked" );
+            function isActivated(id) {
+                return document.getElementById(id).classList.contains("clicked");
             }
         </script>
     </head>

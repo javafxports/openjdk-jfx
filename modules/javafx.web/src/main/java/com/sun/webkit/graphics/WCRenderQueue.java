@@ -172,11 +172,11 @@ public abstract class WCRenderQueue extends Ref {
     }
 
     /*is called from native*/
-    private boolean strokeContains(WCPath path, float x, float y) {
-        if(gc == null) {
+    private synchronized boolean strokeContains(WCPath path, float x, float y) {
+        if (gc == null) {
             return false;
         }
-        flush();
+        decode();
         return gc.strokeContains(path, x, y);
     }
 

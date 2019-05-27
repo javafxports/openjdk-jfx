@@ -709,7 +709,7 @@ class WCGraphicsPrismContext extends WCGraphicsContext {
             .contains(x, y);
 
         if (log.isLoggable(Level.FINE)) {
-            log.fine("strokeContains(%f, %f, %f, %f, %d, %d, %f, %s) => %b%n",
+            log.fine("strokeContains({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}) => {8}",
                 new Object[]{x, y, stroke.getLineWidth(), stroke.getMiterLimit(),
                     stroke.getEndCap(), stroke.getLineJoin(), stroke.getDashPhase(),
                     Arrays.toString(stroke.getDashArray()), result});
