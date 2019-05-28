@@ -511,8 +511,6 @@ jobject dnd_target_get_data(JNIEnv *env, jstring mime)
 }
 
 /************************* SOURCE *********************************************/
-
-
 static GdkWindow *dnd_window = NULL;
 static jint dnd_performed_action;
 
@@ -854,6 +852,7 @@ static void process_drag_motion(gint x_root, gint y_root, guint state)
     GdkDragProtocol prot;
 
 #ifndef GLASS_GTK3
+    // gtk3 uses a move-when-idle method
     DragView::move(x_root, y_root);
 #endif
 
@@ -921,9 +920,11 @@ static void process_dnd_source_drag_status(GdkWindow *window, GdkEvent *event)
     GdkCursor* cursor;
 
 #ifdef GLASS_GTK3
+    // dragview shows content when dragging - this updates the position
     gdk_threads_add_idle_full (GDK_PRIORITY_REDRAW + 5, dnd_update_drag_view,
                                NULL, NULL);
 
+    // gtk3 has well defined cursor names
     if (selected & GDK_ACTION_COPY) {
         cursor = gdk_cursor_new_from_name(gdk_display_get_default(), "copy");
     } else if (selected & (GDK_ACTION_MOVE | GDK_ACTION_PRIVATE)) {
@@ -1098,8 +1099,8 @@ static void dnd_source_push_data(JNIEnv *env, jobject data, jint supported)
         // according to GDK docs, this is only fired on managed mode, but
         // on 3.20+ the GDK_DROP_FINISHED event stopped working and this signal
         // works (even when not managed).
-        g_signal_connect (ctx, "dnd-finished",
-            G_CALLBACK (dnd_finished_callback), NULL);
+        g_signal_connect(ctx, "dnd-finished",
+            G_CALLBACK(dnd_finished_callback), NULL);
     }
 
     if(gdk_device_grab(device, src_window, GDK_OWNERSHIP_NONE, FALSE,
@@ -1343,7 +1344,6 @@ void DragView::View::expose(cairo_t *context) {
 #ifndef GLASS_GTK3
     context = gdk_cairo_create(gtk_widget_get_window(widget));
 #endif
-
     cairo_surface_t* cairo_surface;
 
     guchar* pixels = is_raw_image
@@ -1374,6 +1374,7 @@ void DragView::View::expose(cairo_t *context) {
 
 void DragView::View::move(gint x, gint y) {
 #ifdef GLASS_GTK3
+    // gtk3 method uses a move-when-idle method
     gtk_window_move(GTK_WINDOW(widget), x - offset_x, y - offset_y);
 #else
     if (!gtk_events_pending()) { // avoid sluggish window move
