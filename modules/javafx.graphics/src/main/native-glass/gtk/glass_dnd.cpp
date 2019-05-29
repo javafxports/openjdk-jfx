@@ -924,17 +924,8 @@ static void process_dnd_source_drag_status(GdkWindow *window, GdkEvent *event)
     gdk_threads_add_idle_full (GDK_PRIORITY_REDRAW + 5, dnd_update_drag_view,
                                NULL, NULL);
 
-    // gtk3 has well defined cursor names
-    if (selected & GDK_ACTION_COPY) {
-        cursor = gdk_cursor_new_from_name(gdk_display_get_default(), "copy");
-    } else if (selected & (GDK_ACTION_MOVE | GDK_ACTION_PRIVATE)) {
-        cursor = gdk_cursor_new_from_name(gdk_display_get_default(), "move");
-    } else if (selected & GDK_ACTION_LINK) {
-        cursor = gdk_cursor_new_from_name(gdk_display_get_default(), "alias");
-    } else {
-        cursor = gdk_cursor_new_from_name(gdk_display_get_default(), "no-drop");
-    }
-#else
+#endif
+
     if (selected & GDK_ACTION_COPY) {
         cursor = gdk_cursor_new_from_name(gdk_display_get_default(), "dnd-copy");
         if (cursor == NULL) {
@@ -971,7 +962,6 @@ static void process_dnd_source_drag_status(GdkWindow *window, GdkEvent *event)
             cursor = gdk_cursor_new_from_name(gdk_display_get_default(), "dnd-none");
         }
     }
-#endif
 
     if (cursor == NULL) {
         cursor = gdk_cursor_new_from_name(gdk_display_get_default(), "default");
