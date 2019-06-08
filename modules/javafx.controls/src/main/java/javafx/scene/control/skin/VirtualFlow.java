@@ -1459,10 +1459,11 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
             scrollTo(cell);
         } else {
             // see JDK-8197536
-            if (tryScrollOneCell(index, true))
+            if (tryScrollOneCell(index, true)) {
                 return;
-            else if (tryScrollOneCell(index, false))
+            } else if (tryScrollOneCell(index, false)) {
                 return;
+            }
 
             adjustPositionToIndex(index);
             addAllToPile();

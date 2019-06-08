@@ -1127,9 +1127,8 @@ public class VirtualFlowTest {
         assertEquals(flow.getViewportLength()-25.0, VirtualFlowShim.<IndexedCell>cells_getLast(flow.cells).getLayoutY(), 0.0);
     }
 
-    @Test
-    // see JDK-8197536
-    public void testScrollOneCell() {
+    private void assertLastCellInsideViewport(boolean vertical) {
+        flow.setVertical(vertical);
         flow.resize(400, 400);
 
         int total = 10000;
@@ -1160,9 +1159,14 @@ public class VirtualFlowTest {
 
     @Test
     // see JDK-8197536
+    public void testScrollOneCell() {
+        assertLastCellInsideViewport(true);
+    }
+
+    @Test
+    // see JDK-8197536
     public void testScrollOneCellHorizontal() {
-        flow.setVertical(false);
-        testScrollOneCell();
+        assertLastCellInsideViewport(false);
     }
 }
 
