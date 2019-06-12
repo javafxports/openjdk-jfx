@@ -29,10 +29,12 @@ import java.text.Collator;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import javafx.beans.Observable;
 import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.MappedList;
 import javafx.collections.transformation.SortedList;
 
 /**
@@ -102,6 +104,17 @@ public interface ObservableList<E> extends List<E>, Observable {
      * @throws IndexOutOfBoundsException if an illegal range is provided
      */
     public void remove(int from, int to);
+
+    /**
+     * Creates a {@link MappedList} wrapper of this list using
+     * the specified mapper.
+     * @param mapper the mapper to use
+     * @return new {@code MappedList}
+     * @since JavaFX 13.0
+     */
+    public default <F> MappedList<F, E> mapped(Function<E, F> mapper) {
+        return new MappedList<F, E>(this, mapper);
+    }
 
     /**
      * Creates a {@link FilteredList} wrapper of this list using
