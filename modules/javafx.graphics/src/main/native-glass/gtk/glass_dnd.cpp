@@ -1026,7 +1026,8 @@ DragView::View::View(GdkDragContext* _context, GdkPixbuf* _pixbuf, gint _width, 
 #endif
 }
 
-void DragView::View::screen_changed() {
+void DragView::View::screen_changed()
+{
     GdkScreen *screen = gtk_widget_get_screen(widget);
 
     glass_configure_window_transparency(widget, true);
