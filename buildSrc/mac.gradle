@@ -222,7 +222,11 @@ MAC.font.lib = "javafx_font"
 MAC.media = [:]
 MAC.media.compiler = "${compiler} ${ccBaseFlags.join(" ")}"
 //MAC.media.ccFlags = ccBaseFlags
-MAC.media.linker = "${linker} ${commonParams.join(" ")}"
+if (IS_STATIC_BUILD) {
+    MAC.media.linker = "${linker}"
+} else {
+    MAC.media.linker = "${linker} ${commonParams.join(" ")}"
+}
 //MAC.media.linkFlags = commonParams
 MAC.media.ar = "${toolchainDir}libtool"
 

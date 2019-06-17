@@ -17,7 +17,11 @@ DIRLIST = glib \
 	  gthread/ \
 	  gmodule/
 
+ifeq ($(STATIC_BUILD), true)
+TARGET_NAME = lib$(BASE_NAME).a
+else
 TARGET_NAME = lib$(BASE_NAME).dylib
+endif
 TARGET = $(BUILD_DIR)/$(TARGET_NAME)
 
 CFLAGS += -fPIC \
@@ -194,5 +198,10 @@ $(OBJ_DIRS):
 $(TARGET_DIRS):
 	mkdir -p $(TARGET_DIRS)
 
+ifeq ($(STATIC_BUILD), true)
+$(TARGET): $(OBJECTS)
+	$(LINKER) $(OBJECTS) -o $@
+else
 $(TARGET): $(OBJECTS)
 	$(LINKER) -dynamiclib $(OBJECTS) $(LDFLAGS) -o $@
+endif

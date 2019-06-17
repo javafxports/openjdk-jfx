@@ -2796,7 +2796,8 @@ project(":media") {
                     args("JAVA_HOME=${JDK_HOME}", "GENERATED_HEADERS_DIR=${generatedHeadersDir}",
                          "OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}", "BASE_NAME=jfxmedia",
                          "COMPILE_PARFAIT=${compileParfait}",
-                         IS_64 ? "ARCH=x64" : "ARCH=x32",
+                         IS_64 ? "ARCH=x64" : "ARCH=x32", 
+                         STATIC_BUILD ? "STATIC_BUILD=true" : "STATIC_BUILD=false",
                         "CC=${mediaProperties.compiler}", "LINKER=${mediaProperties.linker}")
 
                     if (t.name == "win") {
@@ -2824,6 +2825,7 @@ project(":media") {
                         commandLine ("make", "${makeJobsFlag}", "-C", "${nativeSrcDir}/gstreamer/projects/${projectDir}/gstreamer-lite")
                         args("OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}", "BASE_NAME=gstreamer-lite",
                              IS_64 ? "ARCH=x64" : "ARCH=x32", "CC=${mediaProperties.compiler}",
+                             STATIC_BUILD ? "STATIC_BUILD=true" : "STATIC_BUILD=false",
                              "AR=${mediaProperties.ar}", "LINKER=${mediaProperties.linker}")
 
                         if (t.name == "win") {
@@ -2842,6 +2844,7 @@ project(":media") {
                         commandLine ("make", "${makeJobsFlag}", "-C", "${nativeSrcDir}/gstreamer/projects/${projectDir}/fxplugins")
                         args("OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}", "BASE_NAME=fxplugins",
                              IS_64 ? "ARCH=x64" : "ARCH=x32",
+                             STATIC_BUILD ? "STATIC_BUILD=true" : "STATIC_BUILD=false",
                              "CC=${mediaProperties.compiler}", "AR=${mediaProperties.ar}", "LINKER=${mediaProperties.linker}")
 
                         if (t.name == "win") {
@@ -3159,6 +3162,7 @@ project(":media") {
                                         args("CC=${mediaProperties.compiler}", "LINKER=${mediaProperties.linker}",
                                              "OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}",
                                              "BASE_NAME=avplugin", "VERSION=${version}", "LIBAV_DIR=${libavDir}",
+                                             STATIC_BUILD ? "STATIC_BUILD=true" : "STATIC_BUILD=false",
                                              "SUFFIX=", IS_64 ? "ARCH=x64" : "ARCH=x32")
                                     }
                                 }
@@ -3173,6 +3177,7 @@ project(":media") {
                                         args("CC=${mediaProperties.compiler}", "LINKER=${mediaProperties.linker}",
                                              "OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}",
                                              "BASE_NAME=avplugin", "VERSION=${version}", "LIBAV_DIR=${libavDir}",
+                                              STATIC_BUILD ? "STATIC_BUILD=true" : "STATIC_BUILD=false",
                                              "SUFFIX=-ffmpeg", IS_64 ? "ARCH=x64" : "ARCH=x32")
                                     }
                                 }
@@ -3187,6 +3192,7 @@ project(":media") {
                                         args("CC=${mediaProperties.compiler}", "LINKER=${mediaProperties.linker}",
                                              "OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}",
                                              "BASE_NAME=avplugin", "VERSION=${version}", "LIBAV_DIR=${libavDir}",
+                                             STATIC_BUILD ? "STATIC_BUILD=true" : "STATIC_BUILD=false",
                                              "SUFFIX=-ffmpeg", IS_64 ? "ARCH=x64" : "ARCH=x32")
                                     }
                                 }
@@ -3197,6 +3203,7 @@ project(":media") {
                                 commandLine ("make", "${makeJobsFlag}", "-C", "${nativeSrcDir}/gstreamer/projects/linux/avplugin")
                                 args("CC=${mediaProperties.compiler}", "LINKER=${mediaProperties.linker}",
                                      "OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}",
+                                     STATIC_BUILD ? "STATIC_BUILD=true" : "STATIC_BUILD=false",
                                      "BASE_NAME=avplugin", IS_64 ? "ARCH=x64" : "ARCH=x32")
                             }
                         }
@@ -3248,6 +3255,7 @@ project(":media") {
                             commandLine ("make", "${makeJobsFlag}", "-C", "${nativeSrcDir}/gstreamer/projects/${projectDir}/glib-lite")
                             args("OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}", "BASE_NAME=glib-lite",
                                  IS_64 ? "ARCH=x64" : "ARCH=x32", "RESOURCE=${nativeOutputDir}/${buildType}/${WIN.media.glibRcFile}",
+                                 STATIC_BUILD ? "STATIC_BUILD=true" : "STATIC_BUILD=false",
                                  "CC=${mediaProperties.compiler}", "AR=${mediaProperties.ar}", "LINKER=${mediaProperties.linker}")
                         }
                     }
@@ -3260,13 +3268,17 @@ project(":media") {
                     doLast {
                         exec {
                             commandLine ("make", "${makeJobsFlag}", "-C", "${nativeSrcDir}/gstreamer/projects/${projectDir}/libffi")
-                            args("OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}", "BASE_NAME=ffi")
+                            args("OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}",
+                                  STATIC_BUILD ? "STATIC_BUILD=true" : "STATIC_BUILD=false",
+                                 "BASE_NAME=ffi")
                             args ("CC=${mediaProperties.compiler}", "LINKER=${mediaProperties.linker}", "AR=${mediaProperties.ar}")
                         }
 
                         exec {
                             commandLine ("make", "${makeJobsFlag}", "-C", "${nativeSrcDir}/gstreamer/projects/${projectDir}/glib-lite")
-                            args("OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}", "BASE_NAME=glib-lite")
+                            args("OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}", 
+                                 STATIC_BUILD ? "STATIC_BUILD=true" : "STATIC_BUILD=false",
+                                 "BASE_NAME=glib-lite")
                             args ("CC=${mediaProperties.compiler}", "LINKER=${mediaProperties.linker}")
                         }
                     }
