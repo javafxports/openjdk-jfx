@@ -241,8 +241,8 @@ LINUX.glass.glass.lib = "glass"
 LINUX.glass.glassgtk2 = [:]
 LINUX.glass.glassgtk2.nativeSource =  ft_gtk.getFiles()
 LINUX.glass.glassgtk2.compiler = compiler
-LINUX.glass.glassgtk2.ccFlags = IS_STATIC_BUILD ? 
-        ["-fno-threadsafe-statics", ccFlags, gtk2CCFlags].flatten() : 
+LINUX.glass.glassgtk2.ccFlags = IS_STATIC_BUILD ?
+        ["-fno-threadsafe-statics", ccFlags, gtk2CCFlags].flatten() :
         [ccFlags, gtk2CCFlags, "-Werror"].flatten()
 LINUX.glass.glassgtk2.linker = linker
 LINUX.glass.glassgtk2.linkFlags = IS_STATIC_BUILD ? linkFlags :[linkFlags, gtk2LinkFlags ].flatten()

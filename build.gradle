@@ -2796,7 +2796,7 @@ project(":media") {
                     args("JAVA_HOME=${JDK_HOME}", "GENERATED_HEADERS_DIR=${generatedHeadersDir}",
                          "OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}", "BASE_NAME=jfxmedia",
                          "COMPILE_PARFAIT=${compileParfait}",
-                         IS_64 ? "ARCH=x64" : "ARCH=x32", 
+                         IS_64 ? "ARCH=x64" : "ARCH=x32",
                          STATIC_BUILD ? "STATIC_BUILD=true" : "STATIC_BUILD=false",
                         "CC=${mediaProperties.compiler}", "LINKER=${mediaProperties.linker}")
 
@@ -3276,7 +3276,7 @@ project(":media") {
 
                         exec {
                             commandLine ("make", "${makeJobsFlag}", "-C", "${nativeSrcDir}/gstreamer/projects/${projectDir}/glib-lite")
-                            args("OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}", 
+                            args("OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}",
                                  STATIC_BUILD ? "STATIC_BUILD=true" : "STATIC_BUILD=false",
                                  "BASE_NAME=glib-lite")
                             args ("CC=${mediaProperties.compiler}", "LINKER=${mediaProperties.linker}")
