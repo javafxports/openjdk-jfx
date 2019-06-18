@@ -35,7 +35,11 @@ DIRLIST = gstreamer/gst \
           gst-plugins-bad/gst/aiff \
           gst-plugins-base/gst/app
 
+ifeq ($(STATIC_BUILD), true)
+TARGET = $(BUILD_DIR)/lib$(BASE_NAME).a
+else
 TARGET = $(BUILD_DIR)/lib$(BASE_NAME).so
+endif
 
 CFLAGS =-fPIC                   \
         -Wformat                \
@@ -79,6 +83,8 @@ PACKAGES_LIBS := $(shell pkg-config --libs alsa glib-2.0 gobject-2.0 gmodule-2.0
 LDFLAGS = -L$(BUILD_DIR) -lm $(PACKAGES_LIBS) \
           -z relro \
           -static-libgcc -static-libstdc++ -Wl,--gc-sections
+
+STATIC_LDFLAGS = r
 
 ifeq ($(ARCH), x32)
     CFLAGS += -m32
@@ -276,4 +282,8 @@ $(TARGET_DIRS):
 	mkdir -p $(TARGET_DIRS)
 
 $(TARGET): $(OBJECTS)
+ifeq ($(STATIC_BUILD), true)
+	$(LINKER) $(STATIC_LDFLAGS) $@ $(OBJECTS)
+else
 	$(LINKER) -shared $(OBJECTS) $(LDFLAGS) -o $@
+endif

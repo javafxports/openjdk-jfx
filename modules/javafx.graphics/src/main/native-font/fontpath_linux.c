@@ -42,7 +42,7 @@
 #include <jni.h>
 
 #ifdef STATIC_BUILD
-JNIEXPORT jint JNICALL 
+JNIEXPORT jint JNICALL
 JNI_OnLoad_javafx_font(JavaVM * vm, void * reserved) {
 #ifdef JNI_VERSION_1_8
     //min. returned JNI_VERSION required by JDK8 for builtin libraries
