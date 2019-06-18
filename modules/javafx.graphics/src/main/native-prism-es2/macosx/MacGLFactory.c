@@ -36,7 +36,6 @@
 #ifdef STATIC_BUILD
 JNIEXPORT jint JNICALL
 JNI_OnLoad_prism_es2(JavaVM *vm, void * reserved) {
-fprintf(stderr, "ONLOAD PRISM_ES2\n");
 #ifdef JNI_VERSION_1_8
     //min. returned JNI_VERSION required by JDK8 for builtin libraries
     JNIEnv *env;
