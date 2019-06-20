@@ -651,6 +651,9 @@ void GraphicsContext::setLineDash(const DashArray& dashes, float dashOffset)
         platformContext()->rq()
         << dashes.at(i);
     }
+
+    platformContext()->setDashArray(dashes);
+    platformContext()->setDashOffset(dashOffset);
 }
 
 void GraphicsContext::setLineCap(LineCap cap)
@@ -662,6 +665,8 @@ void GraphicsContext::setLineCap(LineCap cap)
     platformContext()->rq().freeSpace(8)
     << (jint)com_sun_webkit_graphics_GraphicsDecoder_SET_LINE_CAP
     << (jint)cap;
+
+    platformContext()->setLineCap(cap);
 }
 
 void GraphicsContext::setLineJoin(LineJoin join)
@@ -672,6 +677,8 @@ void GraphicsContext::setLineJoin(LineJoin join)
     platformContext()->rq().freeSpace(8)
     << (jint)com_sun_webkit_graphics_GraphicsDecoder_SET_LINE_JOIN
     << (jint)join;
+
+    platformContext()->setLineJoin(join);
 }
 
 void GraphicsContext::setMiterLimit(float limit)
@@ -682,6 +689,8 @@ void GraphicsContext::setMiterLimit(float limit)
     platformContext()->rq().freeSpace(8)
     << (jint)com_sun_webkit_graphics_GraphicsDecoder_SET_MITER_LIMIT
     << (jfloat)limit;
+
+    platformContext()->setMiterLimit(limit);
 }
 
 void GraphicsContext::setPlatformAlpha(float alpha)

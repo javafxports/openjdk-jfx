@@ -68,8 +68,6 @@ public abstract class WCGraphicsContext {
     public abstract void setLineJoin(int lineJoin);
     public abstract void setMiterLimit(float miterLimit);
 
-    public abstract boolean strokeContains(WCPath path, float x, float y);
-
     public abstract void drawPolygon(WCPath path, boolean shouldAntialias);
     public abstract void drawLine(int x0, int y0, int x1, int y1);
 

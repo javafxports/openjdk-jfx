@@ -83,9 +83,55 @@ namespace WebCore {
             return m_path.platformPath();
         }
 
+        const DashArray& dashArray() const {
+            return m_dashArray;
+        }
+
+        void setDashArray(const DashArray& dashArray) {
+            m_dashArray = dashArray;
+        }
+
+        float dashOffset() const {
+            return m_dashOffset;
+        }
+
+        void setDashOffset(float dashOffset) {
+            m_dashOffset = dashOffset;
+        }
+
+        LineCap lineCap() const {
+            return m_lineCap;
+        }
+
+        void setLineCap(LineCap lineCap) {
+            m_lineCap = lineCap;
+        }
+
+        LineJoin lineJoin() const {
+            return m_lineJoin;
+        }
+
+        void setLineJoin(LineJoin lineJoin) {
+            m_lineJoin = lineJoin;
+        }
+
+        float miterLimit() const {
+            return m_miterLimit;
+        }
+
+        void setMiterLimit(float miterLimit) {
+            m_miterLimit = miterLimit;
+        }
     private:
         RefPtr<RenderingQueue> m_rq;
         RefPtr<RQRef> m_jRenderTheme;
         Path m_path;
+        // Buffer the last set stroke styles on the native side to make them
+        // acessible outside the java graphics context
+        DashArray m_dashArray;
+        float m_dashOffset;
+        LineCap m_lineCap;
+        LineJoin m_lineJoin;
+        float m_miterLimit;
     };
 }

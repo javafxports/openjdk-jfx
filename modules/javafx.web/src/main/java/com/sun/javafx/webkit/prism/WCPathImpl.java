@@ -38,6 +38,7 @@ import com.sun.webkit.graphics.WCPathIterator;
 import com.sun.webkit.graphics.WCRectangle;
 import com.sun.javafx.logging.PlatformLogger;
 import com.sun.javafx.logging.PlatformLogger.Level;
+import com.sun.prism.BasicStroke;
 
 final class WCPathImpl extends WCPath<Path2D> {
     private final Path2D path;
@@ -343,5 +344,49 @@ final class WCPathImpl extends WCPath<Path2D> {
                     new Object[] {getID(), mxx, myx, mxy, myy, mxt, myt});
         }
         path.transform(BaseTransform.getInstance(mxx, myx, mxy, myy, mxt, myt));
+    }
+
+    @Override
+    public boolean strokeContains(double x, double y,
+                                  double thickness, double miterLimit,
+                                  int cap, int join, double dashOffset,
+                                  double[] dashArray) {
+
+        BasicStroke stroke =  new BasicStroke(
+            (float) thickness, cap, join, (float) miterLimit);
+
+        boolean hasDash = false;
+        for(double d: dashArray) {
+            if(d > 0) {
+                hasDash = true;
+                break;
+            }
+        }
+
+        if(hasDash) {
+            stroke.set(dashArray, (float) dashOffset);
+        }
+
+        boolean result = stroke
+            .createCenteredStrokedShape(path)
+            .contains((float) x, (float) y);
+
+        if (log.isLoggable(Level.FINE)) {
+            StringBuilder dashArrayString = new StringBuilder();
+            dashArrayString.append("[");
+            for(int i = 0; i < dashArray.length; i++) {
+                if(i != 0) {
+                    dashArrayString.append(",");
+                }
+                dashArrayString.append(dashArray[i]);
+            }
+            dashArrayString.append("]");
+            log.fine(
+                "WCPathImpl({0}).strokeContains({1},{2},{3},{4},{5},{6},{7},{8}) = {9}",
+                new Object[]{getID(), x, y, thickness, miterLimit, cap, join,
+                             dashOffset, dashArrayString.toString(), result});
+        }
+
+        return result;
     }
 }

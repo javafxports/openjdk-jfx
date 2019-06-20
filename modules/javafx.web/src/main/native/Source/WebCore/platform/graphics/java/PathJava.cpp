@@ -497,25 +497,49 @@ bool Path::strokeContains(StrokeStyleApplier *applier, const FloatPoint& p) cons
     GraphicsContext& gc = scratchContext();
     gc.save();
 
+    // Stroke style is set to SolidStroke if the path is not dashed, else it
+    // is unchanged. Setting it to NoStroke enables us to detect the switch.
+    gc.setStrokeStyle(NoStroke);
+
     if (applier) {
         applier->strokeStyle(&gc);
     }
 
-    JNIEnv* env = WebCore_GetJavaEnv();
-    JLObject wcRenderingQueue = gc.platformContext()->rq().getWCRenderingQueue();
-
-    static jmethodID mid = env->GetMethodID(PG_GetRenderQueueClass(env),
-        "strokeContains", "(Lcom/sun/webkit/graphics/WCPath;FF)Z");
-
-    gc.platformContext()->rq().flushBuffer();
-    jboolean res = env->CallBooleanMethod(wcRenderingQueue, mid,
-                                          (jobject) *m_path,
-                                          (jfloat) p.x(),
-                                          (jfloat) p.y());
-
-    CheckAndClearException(env);
+    float thickness = gc.strokeThickness();
+    StrokeStyle strokeStyle = gc.strokeStyle();
+    float miterLimit = gc.platformContext()->miterLimit();
+    LineCap cap = gc.platformContext()->lineCap();
+    LineJoin join = gc.platformContext()->lineJoin();
+    float dashOffset = gc.platformContext()->dashOffset();
+    DashArray dashes = gc.platformContext()->dashArray();
 
     gc.restore();
+
+    JNIEnv* env = WebCore_GetJavaEnv();
+
+    static jmethodID mid = env->GetMethodID(PG_GetPathClass(env), "strokeContains",
+        "(DDDDIID[D)Z");
+
+    ASSERT(mid);
+
+    size_t size = strokeStyle == SolidStroke ? 0 : dashes.size();
+    jdouble* dashArrayJavaPrep = new jdouble[size];
+    for (size_t i = 0; i < size; i++) {
+        dashArrayJavaPrep[i] = (jdouble) dashes.at(i);
+    }
+
+    jdoubleArray dashArray = env->NewDoubleArray(size);
+    env->SetDoubleArrayRegion(dashArray, 0, size, dashArrayJavaPrep);
+
+    delete[] dashArrayJavaPrep;
+
+    jboolean res = env->CallBooleanMethod(*m_path, mid, (jdouble)p.x(),
+        (jdouble)p.y(), (jdouble) thickness, (jdouble) miterLimit,
+        (jint) cap, (jint) join, (jdouble) dashOffset, dashArray);
+
+    env->DeleteLocalRef(dashArray);
+
+    CheckAndClearException(env);
 
     return jbool_to_bool(res);
 }

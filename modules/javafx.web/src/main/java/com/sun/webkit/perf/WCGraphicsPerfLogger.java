@@ -203,14 +203,6 @@ public final class WCGraphicsPerfLogger extends WCGraphicsContext {
     }
 
     @Override
-    public boolean strokeContains(WCPath path, float x, float y) {
-        logger.resumeCount("STROKE_CONTAINS");
-        boolean result = gc.strokeContains(path, x, y);
-        logger.suspendCount("STROKE_CONTAINS");
-        return result;
-    }
-
-    @Override
     public void setShadow(float dx, float dy, float blur, int color) {
         logger.resumeCount("SETSHADOW");
         gc.setShadow(dx, dy, blur, color);
