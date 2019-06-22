@@ -228,7 +228,7 @@ installLibs() {
 
     getPackages  \
         $DESTINATION \
-        http://ftp.us.debian.org/debian/ wheezy main armhf \
+        http://ftp.us.debian.org/debian/ stable main armhf \
             libatk1.0-dev \
             libatk1.0-0 \
             libc6 \
@@ -389,7 +389,7 @@ installLibs() {
     # get some rapberry Pi specials
     getPackages  \
         $DESTINATION \
-        http://archive.raspbian.org/raspbian wheezy firmware armhf \
+        http://archive.raspbian.org/raspbian stable firmware armhf \
         libraspberrypi-dev
 }
 
