@@ -107,6 +107,7 @@ def linkFlags = ["-shared", commonFlags].flatten()
 def extraCFlags = [
         ccFlags,
         "-marm", "-mfloat-abi=hard", "-mfpu=vfp",
+        "-I$sdk/usr/include/arm-linux-gnueabihf/",
         "-I$sdk/usr/include",
         "-I$sdk/opt/vc/include",
         "-I$sdk/opt/vc/include/interface/vcos/pthreads",
