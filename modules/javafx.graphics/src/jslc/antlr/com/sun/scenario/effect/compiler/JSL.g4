@@ -134,8 +134,7 @@ equality_operator
 
 equality_expression
         : a=relational_expression
-          (c=equality_operator b=relational_expression
-          | NEQ b=relational_expression)*
+          (c=equality_operator b=relational_expression)*
         ;
 
 logical_and_expression

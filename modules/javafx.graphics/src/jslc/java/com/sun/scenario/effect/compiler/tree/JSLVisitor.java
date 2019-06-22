@@ -283,15 +283,12 @@ public class JSLVisitor extends JSLBaseVisitor<Tree> {
         if (ctx.multiplicative_operator() != null) {
             for (int i = 0; i < ctx.multiplicative_expression().size(); i++) {
                 JSLParser.Multiplicative_expressionContext context = ctx.multiplicative_expression(i);
-                switch (ctx.multiplicative_operator(i).getText()) {
-                    case "*":
-                        expr = tm.binary(BinaryOpType.MUL, expr, visitMultiplicative_expression(context));
-                        break;
-                    case "/":
-                        expr = tm.binary(BinaryOpType.DIV, expr, visitMultiplicative_expression(context));
-                        break;
-                    default:
-                        throw new RuntimeException("unexpected multiplicative operator");
+                if (ctx.multiplicative_operator(i).STAR() != null) {
+                    expr = tm.binary(BinaryOpType.MUL, expr, visitMultiplicative_expression(context));
+                } else if (ctx.multiplicative_operator(i).SLASH() != null) {
+                    expr = tm.binary(BinaryOpType.DIV, expr, visitMultiplicative_expression(context));
+                } else {
+                    throw new RuntimeException("unexpected multiplicative operator");
                 }
             }
         }
@@ -305,15 +302,12 @@ public class JSLVisitor extends JSLBaseVisitor<Tree> {
         if (ctx.additive_operator() != null) {
             for (int i = 1; i < ctx.multiplicative_expression().size(); i++) {
                 JSLParser.Multiplicative_expressionContext context = ctx.multiplicative_expression(i);
-                switch (ctx.additive_operator(i - 1).getText()) {
-                    case "+":
-                        expr = tm.binary(BinaryOpType.ADD, expr, visitMultiplicative_expression(context));
-                        break;
-                    case "-":
-                        expr = tm.binary(BinaryOpType.SUB, expr, visitMultiplicative_expression(context));
-                        break;
-                    default:
-                        throw new RuntimeException("unexpected additive operator");
+                if (ctx.additive_operator(i - 1).PLUS() != null) {
+                    expr = tm.binary(BinaryOpType.ADD, expr, visitMultiplicative_expression(context));
+                } else if (ctx.additive_operator(i - 1).DASH() != null) {
+                    expr = tm.binary(BinaryOpType.SUB, expr, visitMultiplicative_expression(context));
+                } else {
+                    throw new RuntimeException("unexpected additive operator");
                 }
             }
         }
@@ -327,21 +321,16 @@ public class JSLVisitor extends JSLBaseVisitor<Tree> {
         if (ctx.relational_operator() != null) {
             for (int i = 1; i < ctx.additive_expression().size(); i++) {
                 JSLParser.Additive_expressionContext context = ctx.additive_expression(i);
-                switch (ctx.relational_operator(i - 1).getText()) {
-                    case "<=":
-                        expr = tm.binary(BinaryOpType.LTEQ, expr, visitAdditive_expression(context));
-                        break;
-                    case ">=":
-                        expr = tm.binary(BinaryOpType.GTEQ, expr, visitAdditive_expression(context));
-                        break;
-                    case "<":
-                        expr = tm.binary(BinaryOpType.LT, expr, visitAdditive_expression(context));
-                        break;
-                    case ">":
-                        expr = tm.binary(BinaryOpType.GT, expr, visitAdditive_expression(context));
-                        break;
-                    default:
-                        throw new RuntimeException("unexpected relational operator");
+                if (ctx.relational_operator(i - 1).LTEQ() != null) {
+                    expr = tm.binary(BinaryOpType.LTEQ, expr, visitAdditive_expression(context));
+                } else if (ctx.relational_operator(i - 1).GTEQ() != null) {
+                    expr = tm.binary(BinaryOpType.GTEQ, expr, visitAdditive_expression(context));
+                } else if (ctx.relational_operator(i - 1).LT() != null) {
+                    expr = tm.binary(BinaryOpType.LT, expr, visitAdditive_expression(context));
+                } else if (ctx.relational_operator(i - 1).GT() != null) {
+                    expr = tm.binary(BinaryOpType.GT, expr, visitAdditive_expression(context));
+                } else {
+                    throw new RuntimeException("unexpected relational operator");
                 }
             }
 
@@ -357,15 +346,12 @@ public class JSLVisitor extends JSLBaseVisitor<Tree> {
 
         for (int i = 1; i < ctx.relational_expression().size(); i++) {
             JSLParser.Relational_expressionContext context = ctx.relational_expression(i);
-            switch (ctx.equality_operator(i - 1).getText()) {
-                case "==":
-                    expr = tm.binary(BinaryOpType.EQEQ, expr, visitRelational_expression(context));
-                    break;
-                case "!=":
-                    expr = tm.binary(BinaryOpType.NEQ, expr, visitRelational_expression(context));
-                    break;
-                default:
-                    throw new RuntimeException("unexpected equality operator");
+            if (ctx.equality_operator(i - 1).EQEQ() != null) {
+                expr = tm.binary(BinaryOpType.EQEQ, expr, visitRelational_expression(context));
+            } else if (ctx.equality_operator(i - 1).NEQ() != null) {
+                expr = tm.binary(BinaryOpType.NEQ, expr, visitRelational_expression(context));
+            } else {
+                throw new RuntimeException("unexpected equality operator");
             }
         }
 
