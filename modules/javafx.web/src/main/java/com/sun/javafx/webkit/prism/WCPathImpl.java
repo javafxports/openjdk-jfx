@@ -352,18 +352,18 @@ final class WCPathImpl extends WCPath<Path2D> {
                                   int cap, int join, double dashOffset,
                                   double[] dashArray) {
 
-        BasicStroke stroke =  new BasicStroke(
+        BasicStroke stroke = new BasicStroke(
             (float) thickness, cap, join, (float) miterLimit);
 
         boolean hasDash = false;
-        for(double d: dashArray) {
-            if(d > 0) {
+        for (double d : dashArray) {
+            if (d > 0) {
                 hasDash = true;
                 break;
             }
         }
 
-        if(hasDash) {
+        if (hasDash) {
             stroke.set(dashArray, (float) dashOffset);
         }
 
@@ -374,8 +374,8 @@ final class WCPathImpl extends WCPath<Path2D> {
         if (log.isLoggable(Level.FINE)) {
             StringBuilder dashArrayString = new StringBuilder();
             dashArrayString.append("[");
-            for(int i = 0; i < dashArray.length; i++) {
-                if(i != 0) {
+            for (int i = 0; i < dashArray.length; i++) {
+                if (i != 0) {
                     dashArrayString.append(",");
                 }
                 dashArrayString.append(dashArray[i]);
