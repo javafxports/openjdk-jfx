@@ -31,7 +31,6 @@ import com.sun.scenario.effect.compiler.JSLParser;
 import com.sun.scenario.effect.compiler.model.Precision;
 import com.sun.scenario.effect.compiler.tree.FuncDef;
 import com.sun.scenario.effect.compiler.tree.JSLVisitor;
-import com.sun.scenario.effect.compiler.tree.ProgramUnit;
 
 /**
  */

@@ -36,7 +36,6 @@ import com.sun.scenario.effect.compiler.model.Variable;
 import com.sun.scenario.effect.compiler.tree.Expr;
 import com.sun.scenario.effect.compiler.tree.FuncDef;
 import com.sun.scenario.effect.compiler.tree.JSLVisitor;
-import com.sun.scenario.effect.compiler.tree.ProgramUnit;
 import com.sun.scenario.effect.compiler.tree.VarDecl;
 
 /**
