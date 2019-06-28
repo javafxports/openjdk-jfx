@@ -14,18 +14,10 @@ GLIB_LITE_DIR = $(BASE_DIR)/gstreamer/3rd_party/glib
 
 OSX_PLATFORM_BASE = $(SRCBASE_DIR)/platform/osx
 
-ifeq ($(STATIC_BUILD), true)
-TARGET_NAME = lib$(BASE_NAME).a
-else
 TARGET_NAME = lib$(BASE_NAME).dylib
-endif
 TARGET = $(BUILD_DIR)/$(TARGET_NAME)
 
-ifeq ($(STATIC_BUILD), true)
-AVF_NAME = lib$(BASE_NAME)_avf.a
-else
 AVF_NAME = lib$(BASE_NAME)_avf.dylib
-endif
 AVF_LIB = $(BUILD_DIR)/$(AVF_NAME)
 
 # Set up base search path for source and headers
@@ -177,11 +169,7 @@ $(OBJBASE_DIR)/%.o: %.m
 
 $(TARGET): $(JFXMEDIA_OBJECTS)
 	@mkdir -p $(dir $@)
-ifeq ($(STATIC_BUILD), true)
-	$(LINKER) $(JFXMEDIA_OBJECTS) -o $@
-else
 	$(LINKER) -dynamiclib $(JFXMEDIA_LDFLAGS) $(JFXMEDIA_OBJECTS) -o $@
-endif
 
 
 # ------------------------------------------------------------------
@@ -258,8 +246,4 @@ $(AVF_OBJBASE)/%.o: %.mm
 
 $(AVF_LIB): $(TARGET) $(AVF_OBJECTS)
 	@mkdir -p $(dir $@)
-ifeq ($(STATIC_BUILD), true)
-	$(LINKER)  $(AVF_OBJECTS) -o $@
-else
 	$(LINKER)  $(AVF_LDFLAGS) -dynamiclib $(AVF_OBJECTS) -l$(BASE_NAME) -o $@
-endif

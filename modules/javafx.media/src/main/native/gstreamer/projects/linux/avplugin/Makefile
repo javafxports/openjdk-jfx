@@ -10,18 +10,10 @@ SRCBASE_DIR = ../../../plugins
 DIRLIST = av
 
 ifneq ($(strip $(VERSION)),)
-ifeq ($(STATIC_BUILD), true)
-TARGET = $(BUILD_DIR)/lib$(BASE_NAME)$(SUFFIX)-$(VERSION).a
-else
 TARGET = $(BUILD_DIR)/lib$(BASE_NAME)$(SUFFIX)-$(VERSION).so
-endif
 OBJBASE_DIR = $(BUILD_DIR)/obj/plugins/$(BASE_NAME)$(SUFFIX)-$(VERSION)
 else
-ifeq ($(STATIC_BUILD), true)
-TARGET = $(BUILD_DIR)/lib$(BASE_NAME).a
-else
 TARGET = $(BUILD_DIR)/lib$(BASE_NAME).so
-endif
 OBJBASE_DIR = $(BUILD_DIR)/obj/plugins/avplugin
 endif
 
@@ -60,8 +52,6 @@ LDFLAGS = -L$(BUILD_DIR)    \
            $(PACKAGES_LIBS) \
           -z relro          \
           -static-libgcc -static-libstdc++ -Wl,--gc-sections
-
-STATIC_LDFLAGS = r
 
 ifneq ($(strip $(LIBAV_DIR)),)
 INCLUDES += -I$(LIBAV_DIR)/include
@@ -102,8 +92,4 @@ $(TARGET_DIRS):
 	mkdir -p $(TARGET_DIRS)
 
 $(TARGET): $(OBJECTS)
-ifeq ($(STATIC_BUILD), true)
-	$(LINKER) $(STATIC_LDFLAGS) $@ $(OBJECTS)
-else
 	$(LINKER) -shared $(OBJECTS) $(LDFLAGS) -o $@
-endif

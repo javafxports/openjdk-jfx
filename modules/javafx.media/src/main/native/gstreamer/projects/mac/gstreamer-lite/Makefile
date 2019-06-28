@@ -37,11 +37,7 @@ DIRLIST = gstreamer/gst                     \
 	  gst-plugins-base/gst/app \
           gst-plugins-good/sys/osxaudio
 
-ifeq ($(STATIC_BUILD), true)
-TARGET_NAME = lib$(BASE_NAME).a
-else
 TARGET_NAME = lib$(BASE_NAME).dylib
-endif
 TARGET = $(BUILD_DIR)/$(TARGET_NAME)
 
 CFLAGS += -fPIC \
@@ -275,8 +271,4 @@ $(TARGET_DIRS):
 	mkdir -p $(TARGET_DIRS)
 
 $(TARGET): $(OBJECTS)
-ifeq ($(STATIC_BUILD), true)
-	$(LINKER) $(OBJECTS) -o $@
-else
 	$(LINKER) -dynamiclib $(OBJECTS) $(LDFLAGS) -o $@
-endif
