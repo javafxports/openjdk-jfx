@@ -38,6 +38,7 @@ import java.util.concurrent.CancellationException;
 import java.util.regex.Pattern;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.beans.NamedArg;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
@@ -785,9 +786,11 @@ public class Image {
      */
     void dispose() {
         cancel();
-        if (animation != null) {
-            animation.stop();
-        }
+        Platform.runLater(() -> {
+            if (animation != null) {
+                animation.stop();
+            }
+        });
     }
 
     private ImageTask backgroundTask;
@@ -844,6 +847,7 @@ public class Image {
 
     // Support for animated images.
     private Animation animation;
+    private volatile boolean isAnimated;
     // We keep the animation frames associated with the Image rather than with
     // the animation, so most of the data can be garbage collected while
     // the animation is still running.
@@ -864,8 +868,11 @@ public class Image {
         double h = loader.getHeight() / zeroFrame.getPixelScale();
         setPlatformImageWH(zeroFrame, w, h);
 
-        animation = new Animation(this, loader);
-        animation.start();
+        isAnimated = true;
+        Platform.runLater(() -> {
+            animation = new Animation(this, loader);
+            animation.start();
+        });
     }
 
     private static final class Animation {
@@ -1150,7 +1157,7 @@ public class Image {
      * Indicates whether image is animated.
      */
     boolean isAnimation() {
-        return animation != null;
+        return isAnimated;
     }
 
     boolean pixelsReadable() {
