@@ -12,11 +12,7 @@ DIRLIST = progressbuffer       \
           progressbuffer/posix \
           javasource
 
-ifeq ($(STATIC_BUILD), true)
-TARGET = $(BUILD_DIR)/lib$(BASE_NAME).a
-else
 TARGET = $(BUILD_DIR)/lib$(BASE_NAME).so
-endif
 
 CFLAGS = -fPIC                   \
          -Wformat                \
@@ -56,8 +52,6 @@ LDFLAGS = -L$(BUILD_DIR) -lgstreamer-lite $(PACKAGES_LIBS) \
           -z relro \
           -static-libgcc -static-libstdc++ -Wl,--gc-sections
 
-STATIC_LDFLAGS = r
-
 ifeq ($(ARCH), x32)
     CFLAGS += -m32
     LDFLAGS += -m32
@@ -89,8 +83,4 @@ $(TARGET_DIRS):
 	mkdir -p $(TARGET_DIRS)
 
 $(TARGET): $(OBJECTS)
-ifeq ($(STATIC_BUILD), true)
-	$(LINKER) $(STATIC_LDFLAGS) $@ $(OBJECTS)
-else
 	$(LINKER) -shared $(OBJECTS) $(LDFLAGS) -o $@
-endif

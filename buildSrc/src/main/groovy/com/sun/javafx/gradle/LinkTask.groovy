@@ -48,7 +48,7 @@ class LinkTask extends DefaultTask {
             if (project.IS_WINDOWS) {
                 args("/out:$lib");
             } else {
-                if(! ((project.IS_LINUX) && (project.IS_STATIC_BUILD))) {
+                if (! ((project.IS_LINUX) && (project.IS_STATIC_BUILD))) {
                     args("-o", "$lib");
                 }
             }

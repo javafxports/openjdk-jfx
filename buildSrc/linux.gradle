@@ -37,7 +37,7 @@ LINUX.compileSWT = true;
 LINUX.libDest = "lib"
 
 // Lambda for naming the generated libs
-LINUX.library = { name ->  return (IS_STATIC_BUILD ? "lib${name}.a" : "lib${name}.so")  as String }
+LINUX.library = { name -> return (IS_STATIC_BUILD ? "lib${name}.a" : "lib${name}.so") as String }
 
 // A set of common parameters to use for both compiling and linking
 def commonFlags = [
@@ -210,8 +210,7 @@ setupTools("linux_freetype_tools",
 )
 
 def compiler = IS_COMPILE_PARFAIT ? "parfait-gcc" : "${toolchainDir}gcc";
-def AR = "ar"
-def linker = IS_STATIC_BUILD ? AR : IS_COMPILE_PARFAIT ? "parfait-g++" : "${toolchainDir}g++";
+def linker = IS_STATIC_BUILD ? "ar" : IS_COMPILE_PARFAIT ? "parfait-g++" : "${toolchainDir}g++";
 
 LINUX.glass = [:]
 LINUX.glass.variants = ["glass", "glassgtk2"]
@@ -235,7 +234,7 @@ LINUX.glass.glass.nativeSource = ft_gtk_launcher.getFiles()
 LINUX.glass.glass.compiler = compiler
 LINUX.glass.glass.ccFlags = [ccFlags, gtk2CCFlags,  "-Werror"].flatten()
 LINUX.glass.glass.linker = linker
-LINUX.glass.glass.linkFlags = IS_STATIC_BUILD? linkFlags : [linkFlags, "-lX11", "-ldl" ].flatten()
+LINUX.glass.glass.linkFlags = IS_STATIC_BUILD? linkFlags : [linkFlags, "-lX11", "-ldl"].flatten()
 LINUX.glass.glass.lib = "glass"
 
 LINUX.glass.glassgtk2 = [:]
@@ -245,7 +244,7 @@ LINUX.glass.glassgtk2.ccFlags = IS_STATIC_BUILD ?
         ["-fno-threadsafe-statics", ccFlags, gtk2CCFlags].flatten() :
         [ccFlags, gtk2CCFlags, "-Werror"].flatten()
 LINUX.glass.glassgtk2.linker = linker
-LINUX.glass.glassgtk2.linkFlags = IS_STATIC_BUILD ? linkFlags :[linkFlags, gtk2LinkFlags ].flatten()
+LINUX.glass.glassgtk2.linkFlags = IS_STATIC_BUILD ? linkFlags : [linkFlags, gtk2LinkFlags].flatten()
 LINUX.glass.glassgtk2.lib = "glassgtk2"
 
 LINUX.glass.glassgtk3 = [:]
@@ -255,7 +254,7 @@ LINUX.glass.glassgtk3.ccFlags = IS_STATIC_BUILD ?
         ["-fno-threadsafe-statics", ccFlags, gtk3CCFlags].flatten() :
         [ccFlags, gtk3CCFlags, "-Werror"].flatten()
 LINUX.glass.glassgtk3.linker = linker
-LINUX.glass.glassgtk3.linkFlags = IS_STATIC_BUILD ? linkFlags :[linkFlags, gtk3LinkFlags ].flatten()
+LINUX.glass.glassgtk3.linkFlags = IS_STATIC_BUILD ? linkFlags : [linkFlags, gtk3LinkFlags].flatten()
 LINUX.glass.glassgtk3.lib = "glassgtk3"
 
 LINUX.decora = [:]
@@ -317,7 +316,7 @@ LINUX.fontFreetype.nativeSource = ["src/main/native-font/freetype.c"]
 LINUX.fontFreetype.compiler = compiler
 LINUX.fontFreetype.ccFlags = ["-DJFXFONT_PLUS", ccFlags, freetypeCCFlags].flatten()
 LINUX.fontFreetype.linker = linker
-LINUX.fontFreetype.linkFlags = IS_STATIC_BUILD ? linkFlags :[linkFlags, freetypeLinkFlags].flatten()
+LINUX.fontFreetype.linkFlags = IS_STATIC_BUILD ? linkFlags : [linkFlags, freetypeLinkFlags].flatten()
 LINUX.fontFreetype.lib = "javafx_font_freetype"
 
 LINUX.fontPango = [:]

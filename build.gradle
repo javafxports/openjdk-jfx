@@ -3201,7 +3201,6 @@ project(":media") {
                                 commandLine ("make", "${makeJobsFlag}", "-C", "${nativeSrcDir}/gstreamer/projects/linux/avplugin")
                                 args("CC=${mediaProperties.compiler}", "LINKER=${mediaProperties.linker}",
                                      "OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}",
-                                     STATIC_BUILD ? "STATIC_BUILD=true" : "STATIC_BUILD=false",
                                      "BASE_NAME=avplugin", IS_64 ? "ARCH=x64" : "ARCH=x32")
                             }
                         }
@@ -3253,7 +3252,6 @@ project(":media") {
                             commandLine ("make", "${makeJobsFlag}", "-C", "${nativeSrcDir}/gstreamer/projects/${projectDir}/glib-lite")
                             args("OUTPUT_DIR=${nativeOutputDir}", "BUILD_TYPE=${buildType}", "BASE_NAME=glib-lite",
                                  IS_64 ? "ARCH=x64" : "ARCH=x32", "RESOURCE=${nativeOutputDir}/${buildType}/${WIN.media.glibRcFile}",
-                                 STATIC_BUILD ? "STATIC_BUILD=true" : "STATIC_BUILD=false",
                                  "CC=${mediaProperties.compiler}", "AR=${mediaProperties.ar}", "LINKER=${mediaProperties.linker}")
                         }
                     }
