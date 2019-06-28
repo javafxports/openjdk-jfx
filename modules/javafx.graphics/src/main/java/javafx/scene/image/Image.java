@@ -743,12 +743,12 @@ public class Image {
     /**
      * Package private internal constructor used only by {@link WritableImage}.
      *
-     * @param pixelBuffer The {@code PixelBuffer} to construct from.
+     * @param pixelBuffer the {@code PixelBuffer} to construct from.
      */
     Image(PixelBuffer pixelBuffer) {
         this(null, null, pixelBuffer.getWidth(), pixelBuffer.getHeight(),
                 false, false, false);
-        initialize(pixelBuffer); // Creates an image using the provided PixelBuffer.
+        initialize(pixelBuffer); // Creates an image using the java.nio.Buffer provided by PixelBuffer.
     }
 
     private Image(Object externalImage) {

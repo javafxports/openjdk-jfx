@@ -113,7 +113,7 @@ public class Image implements PlatformImage {
         return new Image(PixelFormat.BYTE_BGRA_PRE, pixels, width, height);
     }
 
-    public static Image fromPixelBufferPreData(PixelFormat pf, ByteBuffer pixels, int width, int height) {
+    public static Image fromPixelBufferPreData(PixelFormat pf, Buffer pixels, int width, int height) {
         return new Image(pf, pixels, width, height);
     }
 

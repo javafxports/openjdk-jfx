@@ -57,6 +57,7 @@ import javafx.stage.StageStyle;
 import javafx.stage.Window;
 import java.io.File;
 import java.io.InputStream;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.security.AccessControlContext;
@@ -132,7 +133,6 @@ import com.sun.scenario.effect.impl.prism.PrImage;
 import com.sun.javafx.logging.PulseLogger;
 import static com.sun.javafx.logging.PulseLogger.PULSE_LOGGING_ENABLED;
 import com.sun.javafx.scene.input.DragboardHelper;
-import com.sun.prism.impl.ManagedResource;
 
 public final class QuantumToolkit extends Toolkit {
 
@@ -1325,23 +1325,21 @@ public final class QuantumToolkit extends Toolkit {
             this.image = image;
         }
 
-        QuantumImage(PixelBuffer<ByteBuffer> pixelBuffer) {
-            PixelFormat pf;
-            System.err.println("$$$$ pixelFormat = " + pixelBuffer.getPixelFormat());
-            switch(pixelBuffer.getPixelFormat().getType()) {
+        QuantumImage(PixelBuffer<Buffer> pixelBuffer) {
+            switch (pixelBuffer.getPixelFormat().getType()) {
                 case INT_ARGB_PRE:
-                    pf = PixelFormat.INT_ARGB_PRE;
+                    image = com.sun.prism.Image.fromPixelBufferPreData(PixelFormat.INT_ARGB_PRE,
+                            pixelBuffer.getBuffer(), pixelBuffer.getWidth(), pixelBuffer.getHeight());
                     break;
+
                 case BYTE_BGRA_PRE:
-                    pf = PixelFormat.BYTE_BGRA_PRE;
+                    image = com.sun.prism.Image.fromPixelBufferPreData(PixelFormat.BYTE_BGRA_PRE,
+                            pixelBuffer.getBuffer(), pixelBuffer.getWidth(), pixelBuffer.getHeight());
                     break;
-                case BYTE_RGB:
-                    pf = PixelFormat.BYTE_RGB;
-                    break;
+
                 default:
-                    throw new UnsupportedOperationException("Format Not yet supported");
+                    throw new InternalError("Unsupported PixelFormat: " + pixelBuffer.getPixelFormat().getType());
             }
-            this.image =  com.sun.prism.Image.fromPixelBufferPreData(pf, (ByteBuffer)pixelBuffer.getBuffer(), pixelBuffer.getWidth(), pixelBuffer.getHeight());
         }
 
         RTTexture getRT(int w, int h, ResourceFactory rfNew) {
@@ -1417,7 +1415,7 @@ public final class QuantumToolkit extends Toolkit {
         }
 
         if (platformImage instanceof PixelBuffer) {
-            return new QuantumImage((PixelBuffer<ByteBuffer>) platformImage);
+            return new QuantumImage((PixelBuffer<Buffer>) platformImage);
         }
 
         throw new UnsupportedOperationException("unsupported class for loadPlatformImage");

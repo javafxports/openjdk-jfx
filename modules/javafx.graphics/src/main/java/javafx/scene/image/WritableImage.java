@@ -36,6 +36,7 @@ import javafx.scene.paint.Color;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.util.Objects;
 
 /**
  * The {@code WritableImage} class represents a custom graphical image
@@ -76,19 +77,21 @@ public class WritableImage extends Image {
         super(width, height);
     }
 
+    private PixelBuffer pixelBuffer = null;
+
     /**
-     * Construct an image using the {@code PixelBuffer}.
-     * The image uses the same buffer provided by {@code PixelBuffer} and does
-     * not allocate new memory for the the pixels.
-     * The {@code PixelBuffer} can be shared by multiple WritableImages and
-     * different applications.
-     * Images constructed this way will also be readable and writable
-     * using {@code getPixelReader()} and {@code getPixelWriter()}.
+     * Construct a {@code WritableImage} using the provided {@code PixelBuffer}.
+     * The {@code java.nio.Buffer} provided by {@code PixelBuffer} will be used
+     * as pixel data for this image.
+     * {@code PixelBuffer} must be created with either {@code PixelFormat.INT_ARGB_PRE}
+     * or {@code PixelFormat.BYTE_BGRA_PRE} {@code PixelFormat}.
+     * The {@code PixelBuffer} can be shared by multiple {@code WritableImage}s
+     * and different applications.
+     * Images constructed this way are readable using {@code Image.getPixelReader()}
+     * but are not writable using {@code WritableImage.getPixelWriter()}.
      *
      * @param pixelBuffer the {@code PixelBuffer} to construct from.
      *
-     * @throws IllegalArgumentException if either {@code pixelBuffer} dimension
-     *         is negative or zero.
      * @throws NullPointerException if {@code pixelBuffer} is {@code null}.
      *
      * @since 13
@@ -96,6 +99,7 @@ public class WritableImage extends Image {
     public WritableImage(@NamedArg("PixelBuffer") PixelBuffer pixelBuffer) {
         super(validatePixelBuffer(pixelBuffer));
         pixelBuffer.addImage(this);
+        this.pixelBuffer = pixelBuffer;
     }
 
     /**
@@ -174,25 +178,26 @@ public class WritableImage extends Image {
     }
 
     private static PixelBuffer validatePixelBuffer(PixelBuffer pixelBuffer) {
-        if (pixelBuffer == null) {
-            throw new NullPointerException("PixelBuffer must be specified.");
-        }
-        if (pixelBuffer.getWidth() <= 0 || pixelBuffer.getHeight() <= 0) {
-            throw new IllegalArgumentException("PixelBuffer dimensions must be positive (w,h > 0)");
-        }
+        Objects.requireNonNull(pixelBuffer, "PixelBuffer must be specified.");
         return pixelBuffer;
     }
 
     private PixelWriter writer;
     /**
      * This method returns a {@code PixelWriter} that provides access to
-     * write the pixels of the image.
+     * write the pixels of the image. {@code PixelWriter} is not supported for
+     * images constructed from a {@link PixelBuffer}.
      *
      * @return the {@code PixelWriter} for writing pixels to the image
+     *
+     * @throws UnsupportedOperationException if this image is created using a {@link PixelBuffer}
      */
     public final PixelWriter getPixelWriter() {
         if (getProgress() < 1.0 || isError()) {
             return null;
+        }
+        if (pixelBuffer != null) {
+            throw new UnsupportedOperationException("PixelWriter is not supported with PixelBuffer");
         }
         if (writer == null) {
             writer = new PixelWriter() {
