@@ -117,9 +117,9 @@ class D3DMeshView extends BaseMeshView {
             this.nativeHandle = nativeHandle;
         }
 
-        void traceDispose() {
-        }
+        void traceDispose() {}
 
+        @Override
         public void dispose() {
             if (nativeHandle != 0L) {
                 traceDispose();

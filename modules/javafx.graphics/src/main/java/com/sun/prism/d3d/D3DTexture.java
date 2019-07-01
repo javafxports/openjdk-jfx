@@ -84,6 +84,7 @@ class D3DTexture extends BaseTexture<D3DTextureResource>
         return resource.getResource().getContext();
     }
 
+    @Override
     public void update(MediaFrame frame, boolean skipFlush)
     {
         if (frame.getPixelFormat() == PixelFormat.MULTI_YCbCr_420) {
@@ -92,7 +93,7 @@ class D3DTexture extends BaseTexture<D3DTextureResource>
         }
         frame.holdFrame();
 
-        ByteBuffer pixels = (ByteBuffer)frame.getBufferForPlane(0);
+        ByteBuffer pixels = frame.getBufferForPlane(0);
         int result;
 
         // FIXME: checkVideoParams since they differ from normal params slightly
@@ -128,6 +129,7 @@ class D3DTexture extends BaseTexture<D3DTextureResource>
         frame.releaseFrame();
     }
 
+    @Override
     public void update(Buffer pixels, PixelFormat format,
                        int dstx, int dsty,
                        int srcx, int srcy,

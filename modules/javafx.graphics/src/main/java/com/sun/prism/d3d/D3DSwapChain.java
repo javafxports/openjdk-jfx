@@ -78,46 +78,56 @@ class D3DSwapChain
         return true;
     }
 
+    @Override
     public boolean present() {
         D3DContext context = getContext();
         int res = nPresent(context.getContextHandle(), d3dResRecord.getResource());
         return context.validatePresent(res);
     }
 
+    @Override
     public long getResourceHandle() {
         return d3dResRecord.getResource();
     }
 
+    @Override
     public int getPhysicalWidth() {
         return D3DResourceFactory.nGetTextureWidth(d3dResRecord.getResource());
     }
 
+    @Override
     public int getPhysicalHeight() {
         return D3DResourceFactory.nGetTextureHeight(d3dResRecord.getResource());
     }
 
+    @Override
     public int getContentWidth() {
         return getPhysicalWidth();
     }
 
+    @Override
     public int getContentHeight() {
         return getPhysicalHeight();
     }
 
+    @Override
     public int getContentX() {
         return 0;
     }
 
+    @Override
     public int getContentY() {
         return 0;
     }
 
     private static native int nPresent(long context, long pSwapChain);
 
+    @Override
     public D3DContext getContext() {
         return d3dResRecord.getContext();
     }
 
+    @Override
     public boolean lockResources(PresentableState pState) {
         if (pState.getRenderWidth() != texBackBuffer.getContentWidth() ||
             pState.getRenderHeight() != texBackBuffer.getContentHeight() ||
@@ -140,6 +150,7 @@ class D3DSwapChain
         return texBackBuffer;
     }
 
+    @Override
     public Screen getAssociatedScreen() {
         return getContext().getAssociatedScreen();
     }
@@ -154,14 +165,17 @@ class D3DSwapChain
         return pixelScaleFactorY;
     }
 
+    @Override
     public boolean isOpaque() {
         return texBackBuffer.isOpaque();
     }
 
+    @Override
     public void setOpaque(boolean opaque) {
         texBackBuffer.setOpaque(opaque);
     }
 
+    @Override
     public boolean isMSAA() {
         return texBackBuffer != null ? texBackBuffer.isMSAA() : false;
     }

@@ -631,6 +631,7 @@ class ES2Texture<T extends ES2TextureData> extends BaseTexture<ES2TextureResourc
         return resource.getResource().getTexID();
     }
 
+    @Override
     public void update(Buffer pixels, PixelFormat format,
             int dstx, int dsty,
             int srcx, int srcy,
@@ -752,6 +753,7 @@ class ES2Texture<T extends ES2TextureData> extends BaseTexture<ES2TextureResourc
         }
     }
 
+    @Override
     public void update(MediaFrame frame, boolean skipFlush) {
         if (!skipFlush) {
             context.flushVertexBuffer();

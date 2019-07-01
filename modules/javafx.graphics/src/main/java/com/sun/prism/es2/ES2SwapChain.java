@@ -96,6 +96,7 @@ class ES2SwapChain implements ES2RenderTarget, Presentable, GraphicsResource {
                 nativeWindow, context.getPixelFormat());
     }
 
+    @Override
     public boolean lockResources(PresentableState pState) {
         if (this.pState != pState ||
             pixelScaleFactorX != pState.getRenderScaleX() ||
@@ -120,6 +121,7 @@ class ES2SwapChain implements ES2RenderTarget, Presentable, GraphicsResource {
         return false;
     }
 
+    @Override
     public boolean prepare(Rectangle clip) {
         try {
             ES2Graphics g = ES2Graphics.create(context, this);
@@ -177,12 +179,14 @@ class ES2SwapChain implements ES2RenderTarget, Presentable, GraphicsResource {
         g.setCompositeMode(savedMode);
     }
 
+    @Override
     public boolean present() {
         boolean presented = drawable.swapBuffers(context.getGLContext());
         context.makeCurrent(null);
         return presented;
     }
 
+    @Override
     public ES2Graphics createGraphics() {
         if (drawable.getNativeWindow() != pState.getNativeWindow()) {
             drawable = ES2Pipeline.glFactory.createGLDrawable(
@@ -229,22 +233,27 @@ class ES2SwapChain implements ES2RenderTarget, Presentable, GraphicsResource {
         return g;
     }
 
+    @Override
     public int getFboID() {
         return nativeDestHandle;
     }
 
+    @Override
     public Screen getAssociatedScreen() {
         return context.getAssociatedScreen();
     }
 
+    @Override
     public int getPhysicalWidth() {
         return pState.getOutputWidth();
     }
 
+    @Override
     public int getPhysicalHeight() {
         return pState.getOutputHeight();
     }
 
+    @Override
     public int getContentX() {
         // EGL doesn't have a window manager, so we need to ask the window for
         // the x/y offset to use
@@ -255,6 +264,7 @@ class ES2SwapChain implements ES2RenderTarget, Presentable, GraphicsResource {
         }
     }
 
+    @Override
     public int getContentY() {
         // EGL doesn't have a window manager, so we need to ask the window
         // for the x/y offset to use
@@ -266,10 +276,12 @@ class ES2SwapChain implements ES2RenderTarget, Presentable, GraphicsResource {
         }
     }
 
+    @Override
     public int getContentWidth() {
         return pState.getOutputWidth();
     }
 
+    @Override
     public int getContentHeight() {
         return pState.getOutputHeight();
     }
@@ -292,6 +304,7 @@ class ES2SwapChain implements ES2RenderTarget, Presentable, GraphicsResource {
         }
     }
 
+    @Override
     public boolean isMSAA() {
         return stableBackbuffer != null ? stableBackbuffer.isMSAA() :
                 msaa;

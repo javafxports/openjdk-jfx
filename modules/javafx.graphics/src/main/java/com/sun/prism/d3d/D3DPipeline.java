@@ -134,6 +134,7 @@ public final class D3DPipeline extends GraphicsPipeline {
     private D3DPipeline() {
     }
 
+    @Override
     public boolean init() {
         return d3dEnabled;
     }
@@ -234,6 +235,7 @@ public final class D3DPipeline extends GraphicsPipeline {
         return _default;
     }
 
+    @Override
     public ResourceFactory getResourceFactory(Screen screen) {
         return getD3DResourceFactory(screen.getAdapterOrdinal(), screen);
     }

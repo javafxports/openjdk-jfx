@@ -109,6 +109,7 @@ class D3DResource extends BaseGraphicsResource {
             pResource = 0L;
         }
 
+        @Override
         public void dispose() {
             if (pResource != 0L) {
                 context.getResourceFactory().removeRecord(this);

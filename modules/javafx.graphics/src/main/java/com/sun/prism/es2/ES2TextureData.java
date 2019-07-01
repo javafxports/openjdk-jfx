@@ -79,6 +79,7 @@ class ES2TextureData implements Disposer.Record {
         PrismTrace.textureDisposed(texID);
     }
 
+    @Override
     public void dispose() {
         if (texID != 0) {
             traceDispose();

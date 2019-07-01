@@ -77,6 +77,7 @@ class ES2PhongMaterial extends BaseGraphicsResource implements PhongMaterial {
         specularColor = new Color(r,g,b,a);
     }
 
+    @Override
     public void setTextureMap(TextureMap map) {
         maps[map.getType().ordinal()] = map;
     }
@@ -88,6 +89,7 @@ class ES2PhongMaterial extends BaseGraphicsResource implements PhongMaterial {
         return texture;
     }
 
+    @Override
     public void lockTextureMaps() {
         for (int i = 0; i < MAX_MAP_TYPE; i++) {
             Texture texture = maps[i].getTexture();
@@ -110,6 +112,7 @@ class ES2PhongMaterial extends BaseGraphicsResource implements PhongMaterial {
         }
     }
 
+    @Override
     public void unlockTextureMaps() {
         for (int i = 0; i < MAX_MAP_TYPE; i++ ) {
             Texture texture = maps[i].getTexture();
@@ -139,9 +142,9 @@ class ES2PhongMaterial extends BaseGraphicsResource implements PhongMaterial {
             this.nativeHandle = nativeHandle;
         }
 
-        void traceDispose() {
-        }
+        void traceDispose() {}
 
+        @Override
         public void dispose() {
             if (nativeHandle != 0L) {
                 traceDispose();
