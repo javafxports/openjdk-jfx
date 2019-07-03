@@ -36,6 +36,7 @@
 #include "ImageBuffer.h"
 
 #include <wtf/text/WTFString.h>
+#include <wtf/java/JavaRef.h>
 
 #include "com_sun_webkit_graphics_WCPathIterator.h"
 
@@ -515,7 +516,7 @@ bool Path::strokeContains(StrokeStyleApplier *applier, const FloatPoint& p) cons
 
     gc.restore();
 
-    JNIEnv* env = WebCore_GetJavaEnv();
+    JNIEnv* env = WTF::GetJavaEnv();
 
     static jmethodID mid = env->GetMethodID(PG_GetPathClass(env), "strokeContains",
         "(DDDDIID[D)Z");
@@ -539,7 +540,7 @@ bool Path::strokeContains(StrokeStyleApplier *applier, const FloatPoint& p) cons
 
     env->DeleteLocalRef(dashArray);
 
-    CheckAndClearException(env);
+    WTF::CheckAndClearException(env);
 
     return jbool_to_bool(res);
 }
