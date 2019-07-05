@@ -151,7 +151,7 @@ public class SpinnerBehavior<T> extends BehaviorBase<Spinner<T>> {
      *                                                                         *
      **************************************************************************/
 
-    private boolean arrowsAreVertical() {
+    public boolean arrowsAreVertical() {
         final List<String> styleClass = getNode().getStyleClass();
 
         return ! (styleClass.contains(Spinner.STYLE_CLASS_ARROWS_ON_LEFT_HORIZONTAL)  ||
