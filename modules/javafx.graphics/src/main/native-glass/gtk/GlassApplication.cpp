@@ -458,10 +458,13 @@ static void process_events(GdkEvent* event, gpointer data)
                     ctx->process_configure(&event->configure);
                     gtk_main_do_event(event);
                     break;
-                case GDK_FOCUS_CHANGE:
-                    ctx->process_focus(&event->focus_change);
-                    gtk_main_do_event(event);
-                    break;
+                // Fix JDK-8227366: this event is fired on all windows, changing the
+                // window order controlled on WindowStage.java -> activeWindows
+                // and causing the wrong window to receive the focus.
+                // case GDK_FOCUS_CHANGE:
+                //     ctx->process_focus(&event->focus_change);
+                //     gtk_main_do_event(event);
+                //     break;
                 case GDK_DESTROY:
                     destroy_and_delete_ctx(ctx);
                     gtk_main_do_event(event);
