@@ -308,6 +308,7 @@ class D3DContext extends BaseShaderContext {
         validate(res);
     }
 
+    @Override
     protected void updateWorldTransform(BaseTransform xform) {
         if ((xform == null) || xform.isIdentity()) {
             nSetWorldTransformToIdentity(pContext);

@@ -140,6 +140,7 @@ class D3DSwapChain
         return texBackBuffer.isSurfaceLost();
     }
 
+    @Override
     public Graphics createGraphics() {
         Graphics g = D3DGraphics.create(texBackBuffer, getContext());
         g.scale(pixelScaleFactorX, pixelScaleFactorY);

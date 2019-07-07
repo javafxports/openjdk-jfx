@@ -65,6 +65,7 @@ class D3DGraphics extends BaseShaderGraphics implements D3DContextSource {
         return new D3DGraphics(context, target);
     }
 
+    @Override
     public void clearQuad(float x1, float y1, float x2, float y2) {
         // note that unlike clear(), this method does not currently
         // attempt to clear the depth buffer...
@@ -82,18 +83,21 @@ class D3DGraphics extends BaseShaderGraphics implements D3DContextSource {
         setCompositeMode(oldMode);
     }
 
+    @Override
     public void clear(Color color) {
         context.validateClearOp(this);
         this.getRenderTarget().setOpaque(color.isOpaque());
         int res = nClear(context.getContextHandle(),
                           color.getIntArgbPre(), isDepthBuffer(), false);
-        context.validate(res);
+        D3DContext.validate(res);
     }
 
+    @Override
     public void sync() {
         context.flushVertexBuffer();
     }
 
+    @Override
     public D3DContext getContext() {
         return context;
     }

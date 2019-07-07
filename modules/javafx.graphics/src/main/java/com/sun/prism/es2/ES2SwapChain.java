@@ -69,6 +69,7 @@ class ES2SwapChain implements ES2RenderTarget, Presentable, GraphicsResource {
     private RTTexture stableBackbuffer;
     private boolean copyFullBuffer;
 
+    @Override
     public boolean isOpaque() {
         if (stableBackbuffer != null) {
             return stableBackbuffer.isOpaque();
@@ -77,6 +78,7 @@ class ES2SwapChain implements ES2RenderTarget, Presentable, GraphicsResource {
         }
     }
 
+    @Override
     public void setOpaque(boolean isOpaque) {
         if (stableBackbuffer != null) {
             stableBackbuffer.setOpaque(isOpaque);

@@ -59,6 +59,7 @@ class ES2Mesh extends BaseMesh {
         count--;
     }
 
+    @Override
     public int getCount() {
         return count;
     }

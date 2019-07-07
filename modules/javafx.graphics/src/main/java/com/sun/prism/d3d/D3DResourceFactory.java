@@ -442,6 +442,7 @@ class D3DResourceFactory extends BaseShaderFactory {
         return size;
     }
 
+    @Override
     public int getMaximumTextureSize() {
         return maxTextureSize;
     }

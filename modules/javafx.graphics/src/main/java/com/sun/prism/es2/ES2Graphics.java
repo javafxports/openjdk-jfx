@@ -57,6 +57,7 @@ public class ES2Graphics extends BaseShaderGraphics {
 
     }
 
+    @Override
     public void clearQuad(float x1, float y1, float x2, float y2) {
         // note that unlike clear(), this method does not currently
         // attempt to clear the depth buffer...
@@ -74,6 +75,7 @@ public class ES2Graphics extends BaseShaderGraphics {
         context.updateCompositeMode(mode);
     }
 
+    @Override
     public void clear(Color color) {
         context.validateClearOp(this);
         this.getRenderTarget().setOpaque(color.isOpaque());
@@ -81,6 +83,7 @@ public class ES2Graphics extends BaseShaderGraphics {
 
     }
 
+    @Override
     public void sync() {
         context.flushVertexBuffer();
         context.getGLContext().finish();

@@ -80,6 +80,7 @@ class D3DTexture extends BaseTexture<D3DTextureResource>
         return D3DResourceFactory.nGetNativeTextureObject(getNativeSourceHandle());
     }
 
+    @Override
     public D3DContext getContext() {
         return resource.getResource().getContext();
     }
