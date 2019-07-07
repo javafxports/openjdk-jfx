@@ -33,7 +33,6 @@ import com.sun.prism.MultiTexture;
 import com.sun.prism.PixelFormat;
 import com.sun.prism.impl.BaseTexture;
 import com.sun.prism.impl.BufferUtil;
-import com.sun.prism.impl.PrismSettings;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
