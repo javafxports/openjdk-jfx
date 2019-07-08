@@ -28,6 +28,7 @@ import com.sun.glass.ui.monocle.EPDSystem.FbVarScreenInfo;
 import com.sun.glass.ui.monocle.EPDSystem.IntStructure;
 import com.sun.glass.ui.monocle.EPDSystem.MxcfbUpdateData;
 import com.sun.glass.ui.monocle.EPDSystem.MxcfbWaveformModes;
+import com.sun.glass.ui.monocle.EPDSystem.MxcfbWaveformModesV2;
 import com.sun.javafx.logging.PlatformLogger;
 import com.sun.javafx.logging.PlatformLogger.Level;
 import com.sun.javafx.util.Logging;
@@ -309,6 +310,11 @@ class EPDFrameBuffer {
         modes.setModes(modes.p, init, du, gc4, gc8, gc16, gc32);
         int rc = system.ioctl(fd, driver.MXCFB_SET_WAVEFORM_MODES, modes.p);
         if (rc != 0) {
+            modes = new MxcfbWaveformModesV2();
+            modes.setModes(modes.p, init, du, gc4, gc8, gc16, gc32);
+            rc = system.ioctl(fd, driver.MXCFB_SET_WAVEFORM_MODES_V2, modes.p);
+        }
+        if (rc != 0) {
             logger.severe("Failed setting waveform modes: {0} ({1})",
                     system.getErrorMessage(), system.errno());
         }
@@ -578,13 +584,50 @@ class EPDFrameBuffer {
     /**
      * Creates a new mapping of the Linux frame buffer device into memory.
      *
+     * @implNote The virtual y-resolution reported by the frame buffer device
+     * can be wrong as shown by the following example in which the system
+     * reports 2,304 pixels when the actual value is 1,152 (6,782,976 / 5888).
+     * Therefore, this method cannot use the frame buffer virtual resolution to
+     * calculate its size.
+     *
+     * <pre>{@code
+     * $ sudo fbset -i
+     *
+     * mode "1448x1072-46"
+     * # D: 80.000 MHz, H: 50.188 kHz, V: 46.385 Hz
+     * geometry 1448 1072 1472 2304 32
+     * timings 12500 16 102 4 4 28 2
+     * rgba 8/16,8/8,8/0,8/24
+     * endmode
+     *
+     * Frame buffer device information:
+     * Name        : mxc_epdc_fb
+     * Address     : 0x88000000
+     * Size        : 6782976
+     * Type        : PACKED PIXELS
+     * Visual      : TRUECOLOR
+     * XPanStep    : 1
+     * YPanStep    : 1
+     * YWrapStep   : 0
+     * LineLength  : 5888
+     * Accelerator : No
+     * }</pre>
+     *
      * @return a byte buffer containing the mapping of the Linux frame buffer
-     * device
+     * device if successful; otherwise {@code null}
      */
     ByteBuffer getMappedBuffer() {
-        int size = xresVirtual * yresVirtual * bytesPerPixel;
+        ByteBuffer buffer = null;
+        int size = xresVirtual * yres * bytesPerPixel;
+        logger.fine("Mapping frame buffer: {0} bytes", size);
         long addr = system.mmap(0l, size, LinuxSystem.PROT_WRITE, LinuxSystem.MAP_SHARED, fd, 0);
-        return addr == LinuxSystem.MAP_FAILED ? null : C.getC().NewDirectByteBuffer(addr, size);
+        if (addr == LinuxSystem.MAP_FAILED) {
+            logger.severe("Failed mapping {2} bytes of frame buffer: {0} ({1})",
+                    system.getErrorMessage(), system.errno(), size);
+        } else {
+            buffer = C.getC().NewDirectByteBuffer(addr, size);
+        }
+        return buffer;
     }
 
     /**
@@ -594,7 +637,13 @@ class EPDFrameBuffer {
      * buffer device
      */
     void releaseMappedBuffer(ByteBuffer buffer) {
-        system.munmap(C.getC().GetDirectBufferAddress(buffer), buffer.capacity());
+        int size = buffer.capacity();
+        logger.fine("Unmapping frame buffer: {0} bytes", size);
+        int rc = system.munmap(C.getC().GetDirectBufferAddress(buffer), size);
+        if (rc != 0) {
+            logger.severe("Failed unmapping {2} bytes of frame buffer: {0} ({1})",
+                    system.getErrorMessage(), system.errno(), size);
+        }
     }
 
     /**

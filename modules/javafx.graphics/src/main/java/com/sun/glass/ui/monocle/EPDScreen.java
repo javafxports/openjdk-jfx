@@ -112,8 +112,12 @@ class EPDScreen implements NativeScreen {
              * display, though, allows us to reuse the same frame buffer region
              * immediately after sending an update.
              */
+            ByteBuffer mapping = null;
             if (bitDepth == Integer.SIZE) {
-                fbMapping = fbDevice.getMappedBuffer();
+                mapping = fbDevice.getMappedBuffer();
+            }
+            if (mapping != null) {
+                fbMapping = mapping;
                 fbChannel = null;
             } else {
                 Path path = FileSystems.getDefault().getPath(fbPath);

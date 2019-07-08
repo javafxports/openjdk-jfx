@@ -241,6 +241,42 @@ class EPDSystem {
      */
     static final int WAVEFORM_MODE_A2 = 4;
 
+    /**
+     * GL16 mode, not available on all devices (0x0...0xF → 0x0...0xF). Supports
+     * sparse 4-bit grayscale content on a white background.
+     * <p>
+     * This waveform mode updates sparse content on a white background, such as
+     * a page of anti-aliased text, with less flashing than
+     * {@link WAVEFORM_MODE_GC16}. The EPDC frame buffer driver may upgrade a
+     * standard waveform mode to this mode automatically when available.</p>
+     */
+    static final int WAVEFORM_MODE_GL16 = 5;
+
+    /**
+     * REAGL mode, <i>E Ink Regal</i> waveform technology, not available on all
+     * devices (0x0...0xF → 0x0...0xF). Supports sparse 4-bit grayscale content
+     * on a white background.
+     * <p>
+     * This waveform mode updates sparse content on a white background, such as
+     * a page of anti-aliased text, with less flashing and less image artifacts
+     * than {@link WAVEFORM_MODE_GL16}. The EPDC frame buffer driver may upgrade
+     * a standard waveform mode to this mode automatically when available.</p>
+     */
+    static final int WAVEFORM_MODE_GLR16 = 6;
+
+    /**
+     * REAGL-D mode, <i>E Ink Regal</i> waveform technology, not available on
+     * all devices (0x0...0xF → 0x0...0xF). Supports sparse 4-bit grayscale
+     * content on a white background with full display updates.
+     * <p>
+     * This waveform mode updates sparse content on a white background, such as
+     * a page of anti-aliased text and graphics, with even less image artifacts
+     * than {@link WAVEFORM_MODE_GLR16}. It is recommended only for full display
+     * updates. The EPDC frame buffer driver may upgrade a standard waveform
+     * mode to this mode automatically when available.</p>
+     */
+    static final int WAVEFORM_MODE_GLD16 = 7;
+
     private static final Permission PERMISSION = new RuntimePermission("loadLibrary.*");
     private static final EPDSystem INSTANCE = new EPDSystem();
 
@@ -270,8 +306,17 @@ class EPDSystem {
 
     /**
      * The IOCTL request code to define a mapping for common waveform modes.
+     * This IOCTL code is appropriate for most devices, but some devices require
+     * the alternative {@link MXCFB_SET_WAVEFORM_MODES_V2}.
      */
     final int MXCFB_SET_WAVEFORM_MODES;
+
+    /**
+     * The IOCTL request code to define a mapping for common waveform modes.
+     * This alternative IOCTL code is for devices with the i.MX6SL processor,
+     * such as the Kobo Glo HD Model N437.
+     */
+    final int MXCFB_SET_WAVEFORM_MODES_V2;
 
     /**
      * The IOCTL request code to set the temperature used by the EPDC driver in
@@ -325,6 +370,7 @@ class EPDSystem {
         system = LinuxSystem.getLinuxSystem();
 
         MXCFB_SET_WAVEFORM_MODES = system.IOW('F', 0x2B, MxcfbWaveformModes.BYTES);
+        MXCFB_SET_WAVEFORM_MODES_V2 = system.IOW('F', 0x2B, MxcfbWaveformModesV2.BYTES);
         MXCFB_SET_TEMPERATURE = system.IOW('F', 0x2C, Integer.BYTES);
         MXCFB_SET_AUTO_UPDATE_MODE = system.IOW('F', 0x2D, Integer.BYTES);
         MXCFB_SEND_UPDATE = system.IOW('F', 0x2E, MxcfbUpdateData.BYTES);
@@ -358,7 +404,7 @@ class EPDSystem {
     native int ioctl(long fd, int request, int value);
 
     /**
-     * A structure for passing an integer by value in an IOCTL call.
+     * A structure for passing the address of an integer in an IOCTL call.
      */
     static class IntStructure extends C.Structure {
 
@@ -389,8 +435,18 @@ class EPDSystem {
     }
 
     /**
-     * Wraps the C structure {@code mxcfb_waveform_modes}, defined in
-     * <i>mxcfb.h</i>.
+     * Wraps the C structure {@code mxcfb_waveform_modes} defined in
+     * <i>mxcfb.h</i> as shown below.
+     * <pre>{@code
+     * struct mxcfb_waveform_modes {
+     *     int mode_init;
+     *     int mode_du;
+     *     int mode_gc4;
+     *     int mode_gc8;
+     *     int mode_gc16;
+     *     int mode_gc32;
+     * };
+     * }</pre>
      */
     static class MxcfbWaveformModes extends C.Structure {
 
@@ -404,11 +460,22 @@ class EPDSystem {
         private static final int NUM_INTS = 6;
         private static final int BYTES = NUM_INTS * Integer.BYTES;
 
-        private final IntBuffer data;
+        protected IntBuffer data;
 
+        /**
+         * Creates a new structure for the waveform modes. This constructor
+         * initializes the default waveform modes with the same values as the
+         * Electrophoretic Display Controller frame buffer driver.
+         */
         MxcfbWaveformModes() {
             b.order(ByteOrder.nativeOrder());
             data = b.asIntBuffer();
+            data.put(MODE_INIT, WAVEFORM_MODE_INIT);
+            data.put(MODE_DU, WAVEFORM_MODE_DU);
+            data.put(MODE_GC4, WAVEFORM_MODE_GC4);
+            data.put(MODE_GC8, WAVEFORM_MODE_GC16);
+            data.put(MODE_GC16, WAVEFORM_MODE_GC16);
+            data.put(MODE_GC32, WAVEFORM_MODE_GC16);
         }
 
         @Override
@@ -440,6 +507,30 @@ class EPDSystem {
             return data.get(MODE_GC32);
         }
 
+        void setModeInit(long p, int init) {
+            data.put(MODE_INIT, init);
+        }
+
+        void setModeDu(long p, int du) {
+            data.put(MODE_DU, du);
+        }
+
+        void setModeGc4(long p, int gc4) {
+            data.put(MODE_GC4, gc4);
+        }
+
+        void setModeGc8(long p, int gc8) {
+            data.put(MODE_GC8, gc8);
+        }
+
+        void setModeGc16(long p, int gc16) {
+            data.put(MODE_GC16, gc16);
+        }
+
+        void setModeGc32(long p, int gc32) {
+            data.put(MODE_GC32, gc32);
+        }
+
         void setModes(long p, int init, int du, int gc4, int gc8, int gc16, int gc32) {
             data.put(MODE_INIT, init);
             data.put(MODE_DU, du);
@@ -459,8 +550,181 @@ class EPDSystem {
     }
 
     /**
-     * Wraps the C structure {@code mxcfb_update_data}, defined in
-     * <i>mxcfb.h</i>.
+     * Wraps the C structure {@code mxcfb_waveform_modes} defined in
+     * <i>mxcfb.h</i> as shown below. This alternative is for devices with an
+     * i.MX6SL processor, such as the Kobo Glo HD Model N437.
+     * <pre>{@code
+     * struct mxcfb_waveform_modes {
+     *     int mode_init;
+     *     int mode_du;
+     *     int mode_gc4;
+     *     int mode_gc8;
+     *     int mode_gc16;
+     *     int mode_gc32;
+     *
+     *     int mode_aa;
+     *     int mode_aad;
+     *     int mode_gl16;
+     *     int mode_a2;
+     * };
+     * }</pre>
+     * <p>
+     * This version of the structure adds four fields, changing its size and
+     * therefore its corresponding IOCTL request code. An IOCTL call using the
+     * original structure on these devices returns -1 with errno set to ENOTTY
+     * (25), "Inappropriate ioctl for device."</p>
+     *
+     * @implNote Newer devices based on the i.MX6SLL processor are backward
+     * compatible and support both the original structure and one similarly
+     * extended, but with a different ordering of the four additional fields.
+     * Because the IOCTL request codes for both extended structures are the
+     * same, there is no direct method for determining which is appropriate. The
+     * Monocle EPD classes use the extended structure defined by this subclass,
+     * but only if the IOCTL call using the original structure fails.
+     * <p>
+     * For reference, the extended format defined for i.MX6SLL devices is shown
+     * below. It is not defined in Java nor used by the Monocle EPD
+     * platform.</p>
+     * <pre>{@code
+     * struct mxcfb_waveform_modes_ntx {
+     *     int mode_init;
+     *     int mode_du;
+     *     int mode_gc4;
+     *     int mode_gc8;
+     *     int mode_gc16;
+     *     int mode_gc32;
+     *
+     *     int mode_gl16;
+     *     int mode_a2;
+     *     int mode_aa;
+     *     int mode_aad;
+     * };
+     * }</pre>
+     */
+    static class MxcfbWaveformModesV2 extends MxcfbWaveformModes {
+
+        /**
+         * Index of default REAGL mode.
+         */
+        private static final int MODE_AA = 6;
+
+        /**
+         * Index of default REAGL-D mode.
+         */
+        private static final int MODE_AAD = 7;
+
+        /**
+         * Index of default GL16 mode.
+         */
+        private static final int MODE_GL16 = 8;
+
+        /**
+         * Index of default A2 mode.
+         */
+        private static final int MODE_A2 = 9;
+
+        private static final int NUM_INTS = 10;
+        private static final int BYTES = NUM_INTS * Integer.BYTES;
+
+        /**
+         * Creates a new structure for the waveform modes. This constructor
+         * initializes the default waveform modes with the same values as the
+         * Electrophoretic Display Controller frame buffer driver.
+         */
+        MxcfbWaveformModesV2() {
+            data.put(MODE_AA, WAVEFORM_MODE_GC4);
+            data.put(MODE_AAD, WAVEFORM_MODE_GC4);
+            data.put(MODE_GL16, WAVEFORM_MODE_GC16);
+            data.put(MODE_A2, WAVEFORM_MODE_DU);
+        }
+
+        @Override
+        int sizeof() {
+            return BYTES;
+        }
+
+        int getModeAa(long p) {
+            return data.get(MODE_AA);
+        }
+
+        int getModeAad(long p) {
+            return data.get(MODE_AAD);
+        }
+
+        int getModeGl16(long p) {
+            return data.get(MODE_GL16);
+        }
+
+        int getModeA2(long p) {
+            return data.get(MODE_A2);
+        }
+
+        void setModeAa(long p, int aa) {
+            data.put(MODE_AA, aa);
+        }
+
+        void setModeAad(long p, int aad) {
+            data.put(MODE_AAD, aad);
+        }
+
+        void setModeGl16(long p, int gl16) {
+            data.put(MODE_GL16, gl16);
+        }
+
+        void setModeA2(long p, int a2) {
+            data.put(MODE_A2, a2);
+        }
+
+        void setModes(long p, int init, int du, int gc4, int gc8, int gc16, int gc32,
+                int aa, int aad, int gl16, int a2) {
+            setModes(p, init, du, gc4, gc8, gc16, gc32);
+            data.put(MODE_AA, aa);
+            data.put(MODE_AAD, aad);
+            data.put(MODE_GL16, gl16);
+            data.put(MODE_A2, a2);
+        }
+
+        @Override
+        public String toString() {
+            return MessageFormat.format(
+                    "{0}[mode_init={1} mode_du={2} mode_gc4={3} mode_gc8={4} mode_gc16={5} mode_gc32={6} "
+                    + "mode_aa={7} mode_aad={8} mode_gl16={9} mode_a2={10}]",
+                    getClass().getName(), getModeInit(p), getModeDu(p),
+                    getModeGc4(p), getModeGc8(p), getModeGc16(p), getModeGc32(p),
+                    getModeAa(p), getModeAad(p), getModeGl16(p), getModeA2(p));
+        }
+    }
+
+    /**
+     * Wraps the C structure {@code mxcfb_update_data} defined in
+     * <i>mxcfb.h</i> as shown below. The definition below shows the most recent
+     * version in which the structure is named {@code mxcfb_update_data_v1_ntx}.
+     * <pre>{@code
+     * struct mxcfb_rect {
+     *     __u32 top;
+     *     __u32 left;
+     *     __u32 width;
+     *     __u32 height;
+     * };
+     *
+     * struct mxcfb_alt_buffer_data_ntx {
+     *     void *virt_addr;
+     *     __u32 phys_addr;
+     *     __u32 width; // width of entire buffer
+     *     __u32 height; // height of entire buffer
+     *     struct mxcfb_rect alt_update_region; // region within buffer to update
+     * };
+     *
+     * struct mxcfb_update_data_v1_ntx {
+     *     struct mxcfb_rect update_region;
+     *     __u32 waveform_mode;
+     *     __u32 update_mode;
+     *     __u32 update_marker;
+     *     int temp;
+     *     unsigned int flags;
+     *     struct mxcfb_alt_buffer_data_ntx alt_buffer_data;
+     * };
+     * }</pre>
      */
     static class MxcfbUpdateData extends C.Structure {
 
@@ -732,11 +996,14 @@ class EPDSystem {
 
     @Override
     public String toString() {
-        return MessageFormat.format("{0}[MXCFB_SET_WAVEFORM_MODES=0x{1} MXCFB_SET_TEMPERATURE=0x{2} "
-                + "MXCFB_SET_AUTO_UPDATE_MODE=0x{3} MXCFB_SEND_UPDATE=0x{4} MXCFB_WAIT_FOR_UPDATE_COMPLETE=0x{5} "
-                + "MXCFB_SET_PWRDOWN_DELAY=0x{6} MXCFB_GET_PWRDOWN_DELAY=0x{7} MXCFB_SET_UPDATE_SCHEME=0x{8}]",
+        return MessageFormat.format("{0}[MXCFB_SET_WAVEFORM_MODES=0x{1} "
+                + "MXCFB_SET_WAVEFORM_MODES_V2=0x{2} MXCFB_SET_TEMPERATURE=0x{3} "
+                + "MXCFB_SET_AUTO_UPDATE_MODE=0x{4} MXCFB_SEND_UPDATE=0x{5} "
+                + "MXCFB_WAIT_FOR_UPDATE_COMPLETE=0x{6} MXCFB_SET_PWRDOWN_DELAY=0x{7} "
+                + "MXCFB_GET_PWRDOWN_DELAY=0x{8} MXCFB_SET_UPDATE_SCHEME=0x{9}]",
                 getClass().getName(),
                 Integer.toHexString(MXCFB_SET_WAVEFORM_MODES),
+                Integer.toHexString(MXCFB_SET_WAVEFORM_MODES_V2),
                 Integer.toHexString(MXCFB_SET_TEMPERATURE),
                 Integer.toHexString(MXCFB_SET_AUTO_UPDATE_MODE),
                 Integer.toHexString(MXCFB_SEND_UPDATE),
