@@ -148,15 +148,13 @@ void WindowContextBase::process_focus(GdkEventFocus* event) {
         }
     }
 
-    if (jwindow) {
-        if (!event->in || isEnabled()) {
-            mainEnv->CallVoidMethod(jwindow, jWindowNotifyFocus,
-                    event->in ? com_sun_glass_events_WindowEvent_FOCUS_GAINED : com_sun_glass_events_WindowEvent_FOCUS_LOST);
-            CHECK_JNI_EXCEPTION(mainEnv)
-        } else {
-            mainEnv->CallVoidMethod(jwindow, jWindowNotifyFocusDisabled);
-            CHECK_JNI_EXCEPTION(mainEnv)
-        }
+    // Fix JDK-8227366: the FOCUS_GAINED event fired here caused the window order
+    // controlled on WindowStage.java -> activeWindows to get out-of-order so the
+    // wrong window would get the focus. This remaining event is just to prevent
+    // focus on APPLICATION_MODAL on disabled windows.
+    if (jwindow && !isEnabled()) {
+        mainEnv->CallVoidMethod(jwindow, jWindowNotifyFocusDisabled);
+        CHECK_JNI_EXCEPTION(mainEnv)
     }
 }
 
