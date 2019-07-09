@@ -31,9 +31,9 @@ public:
     enum class AnimationState { Playing, Paused, Stopped };
 
     struct ApplicationResult {
-        std::optional<TransformationMatrix> transform;
-        std::optional<double> opacity;
-        std::optional<FilterOperations> filters;
+        Optional<TransformationMatrix> transform;
+        Optional<double> opacity;
+        Optional<FilterOperations> filters;
         bool hasRunningAnimations { false };
     };
 
@@ -44,6 +44,7 @@ public:
     WEBCORE_EXPORT TextureMapperAnimation(const TextureMapperAnimation&);
 
     void apply(ApplicationResult&, MonotonicTime);
+    void applyKeepingInternalState(ApplicationResult&, MonotonicTime);
     void pause(Seconds);
     void resume();
     bool isActive() const;
@@ -81,6 +82,7 @@ public:
     void resume();
 
     void apply(TextureMapperAnimation::ApplicationResult&, MonotonicTime);
+    void applyKeepingInternalState(TextureMapperAnimation::ApplicationResult&, MonotonicTime);
 
     bool isEmpty() const { return m_animations.isEmpty(); }
     size_t size() const { return m_animations.size(); }

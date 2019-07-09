@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2019 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  * Copyright (C) 2007 Samuel Weinig (sam@webkit.org)
  *
@@ -193,8 +193,6 @@ void HTMLTextAreaElement::parseAttribute(const QualifiedName& name, const Atomic
             if (renderer())
                 renderer()->setNeedsLayoutAndPrefWidthsRecalc();
         }
-    } else if (name == accesskeyAttr) {
-        // ignore for the moment
     } else if (name == maxlengthAttr)
         maxLengthAttributeChanged(value);
     else if (name == minlengthAttr)
@@ -225,6 +223,7 @@ bool HTMLTextAreaElement::appendFormData(DOMFormData& formData, bool)
     if (name().isEmpty())
         return false;
 
+    Ref<HTMLTextAreaElement> protectedThis(*this);
     document().updateLayout();
 
     formData.append(name(), m_wrap == HardWrap ? valueWithHardLineBreaks() : value());
@@ -553,7 +552,7 @@ RenderStyle HTMLTextAreaElement::createInnerTextStyle(const RenderStyle& style)
     adjustInnerTextStyle(style, textBlockStyle);
     textBlockStyle.setDisplay(DisplayType::Block);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // We're adding three extra pixels of padding to line textareas up with text fields.
     textBlockStyle.setPaddingLeft(Length(3, Fixed));
     textBlockStyle.setPaddingRight(Length(3, Fixed));

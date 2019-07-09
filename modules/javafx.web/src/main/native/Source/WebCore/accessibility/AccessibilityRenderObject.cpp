@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2008 Apple Inc. All rights reserved.
+* Copyright (C) 2008-2019 Apple Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions
@@ -640,10 +640,7 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
             // defining one based in the two external positions defining the boundaries of the subtree.
             RenderObject* firstChildRenderer = m_renderer->firstChildSlow();
             RenderObject* lastChildRenderer = m_renderer->lastChildSlow();
-            if (firstChildRenderer && lastChildRenderer) {
-                ASSERT(firstChildRenderer->node());
-                ASSERT(lastChildRenderer->node());
-
+            if (firstChildRenderer && firstChildRenderer->node() && lastChildRenderer && lastChildRenderer->node()) {
                 // We define the start and end positions for the range as the ones right before and after
                 // the first and the last nodes in the DOM tree that is wrapped inside the anonymous block.
                 Node* firstNodeInBlock = firstChildRenderer->node();
@@ -766,7 +763,7 @@ String AccessibilityRenderObject::stringValue() const
     if (isTextControl())
         return text();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (isInputTypePopupButton())
         return textUnderElement();
 #endif
@@ -1511,7 +1508,7 @@ const AtomicString& AccessibilityRenderObject::accessKey() const
     Node* node = m_renderer->node();
     if (!is<Element>(node))
         return nullAtom();
-    return downcast<Element>(*node).getAttribute(accesskeyAttr);
+    return downcast<Element>(*node).attributeWithoutSynchronization(accesskeyAttr);
 }
 
 VisibleSelection AccessibilityRenderObject::selection() const
@@ -1561,9 +1558,10 @@ void AccessibilityRenderObject::setSelectedTextRange(const PlainTextRange& range
         HTMLTextFormControlElement& textControl = downcast<RenderTextControl>(*m_renderer).textFormControlElement();
         textControl.setSelectionRange(range.start, range.start + range.length);
     } else {
-        ASSERT(node());
-        VisiblePosition start = visiblePositionForIndexUsingCharacterIterator(*node(), range.start);
-        VisiblePosition end = visiblePositionForIndexUsingCharacterIterator(*node(), range.start + range.length);
+        auto node = this->node();
+        ASSERT(node);
+        VisiblePosition start = visiblePositionForIndexUsingCharacterIterator(*node, range.start);
+        VisiblePosition end = visiblePositionForIndexUsingCharacterIterator(*node, range.start + range.length);
         m_renderer->frame().selection().setSelection(VisibleSelection(start, end), FrameSelection::defaultSetSelectionOptions(UserTriggered));
     }
 
@@ -2160,7 +2158,7 @@ VisiblePosition AccessibilityRenderObject::visiblePositionForPoint(const IntPoin
         HitTestRequest request(HitTestRequest::ReadOnly |
                                HitTestRequest::Active);
         HitTestResult result(ourpoint);
-        renderView->hitTest(request, result);
+        renderView->document().hitTest(request, result);
         innerNode = result.innerNode();
         if (!innerNode)
             return VisiblePosition();
@@ -2366,6 +2364,9 @@ AccessibilityObject* AccessibilityRenderObject::accessibilityHitTest(const IntPo
 
     m_renderer->document().updateLayout();
 
+    if (!m_renderer || !m_renderer->hasLayer())
+        return nullptr;
+
     RenderLayer* layer = downcast<RenderBox>(*m_renderer).layer();
 
     HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AccessibilityHitTest);
@@ -2523,7 +2524,7 @@ RenderObject* AccessibilityRenderObject::targetElementForActiveDescendant(const 
 {
     AccessibilityObject::AccessibilityChildrenVector elements;
     ariaElementsFromAttribute(elements, attributeName);
-    for (auto element : elements) {
+    for (const auto& element : elements) {
         if (activeDescendant->isDescendantOfObject(element.get()))
             return element->renderer();
     }
@@ -2714,7 +2715,7 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
         if (input.isTextButton())
             return buttonRoleType();
         // On iOS, the date field and time field are popup buttons. On other platforms they are text fields.
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         if (input.isDateField() || input.isTimeField())
             return AccessibilityRole::PopUpButton;
 #endif
@@ -3490,7 +3491,7 @@ void AccessibilityRenderObject::tabChildren(AccessibilityChildrenVector& result)
 
 const String& AccessibilityRenderObject::actionVerb() const
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // FIXME: Need to add verbs for select elements.
     static NeverDestroyed<const String> buttonAction(AXButtonActionVerb());
     static NeverDestroyed<const String> textFieldAction(AXTextFieldActionVerb());
@@ -3676,7 +3677,7 @@ String AccessibilityRenderObject::positionalDescriptionForMSAA() const
     // See "positional descriptions",
     // https://wiki.mozilla.org/Accessibility/AT-Windows-API
     if (isHeading())
-        return "L" + String::number(headingLevel());
+        return makeString('L', headingLevel());
 
     // FIXME: Add positional descriptions for other elements.
     return String();
