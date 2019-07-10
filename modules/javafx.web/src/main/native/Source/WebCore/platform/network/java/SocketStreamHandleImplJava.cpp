@@ -106,7 +106,7 @@ Optional<size_t> SocketStreamHandleImpl::platformSendInternal(const uint8_t* dat
     if (WTF::CheckAndClearException(env)) {
         return { };
     }
-    return { res };
+    return { static_cast<size_t>(res) };
 }
 
 void SocketStreamHandleImpl::platformClose()
