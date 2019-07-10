@@ -1,5 +1,5 @@
-Contributing to OpenJFX on GitHub
-=============================
+Contributing to OpenJFX
+=======================
 
 OpenJFX is an open source project and we love to receive contributions from our community &mdash; you! There are many ways to contribute, from improving the documentation, submitting bug reports and feature requests or writing code which can be incorporated into OpenJFX itself.
 
@@ -32,7 +32,7 @@ converting all generic interface instances to use the diamond operator.
 
 ### Fork and clone the repository
 
-Once you have created a bug report or confirmed its existence on JBS, you will need to fork the [repository](https://github.com/javafxports/openjdk-jfx) and clone it to your local machine. See
+Once you have created a bug report or confirmed its existence on JBS, you will need to fork the [repository](https://github.com/openjdk/jfx) and clone it to your local machine. See
 the [GitHub help page](https://help.github.com/articles/fork-a-repo) for help.
 
 ### Before submitting a pull request
@@ -59,11 +59,11 @@ Once your changes and tests are ready to submit for review:
 
 2. Rebase your changes
 
-    Update your local repository with the most recent code from the main [repository]((https://github.com/javafxports/openjdk-jfx)), and rebase your branch on top of the latest `develop` branch. We prefer your initial changes to be squashed into a single commit. See the [GitHub help page](https://help.github.com/articles/about-git-rebase/) for help. Later, if we ask you to make changes, add them as separate commits. This makes them easier to review.
+    Update your local repository with the most recent code from the main [repository]((https://github.com/openjdk/jfx)), and rebase your branch on top of the latest `master` branch. We prefer your initial changes to be squashed into a single commit. See the [GitHub help page](https://help.github.com/articles/about-git-rebase/) for help. Later, if we ask you to make changes, add them as separate commits. This makes them easier to review.
 
 3. File a bug in JBS
 
-    If there isn't already a bug filed in [JBS](https://bugs.openjdk.java.net), then please file one at [bugreport.java.com](http://bugreport.java.com/). A JBS bug ID is needed even if you have already filed an issue in the GitHub issue tracker. A GitHub issue can be used as a convenience, but JBS is the official bug database for the OpenJFX Project. Once you submit a pull request, you can add the "github-bug" label on the JBS bug, along with an Issue link to the PR. If you don't have direct JBS access, one of the Project Committers or Authors will do this for you.
+    If there isn't already a bug filed in [JBS](https://bugs.openjdk.java.net), then please file one at [bugreport.java.com](http://bugreport.java.com/). A JBS bug ID is needed even if you have already filed an issue in the GitHub issue tracker. A GitHub issue can be used as a convenience, but JBS is the official bug database for the OpenJFX Project. Once you submit a pull request, you can add an Issue link to the PR in the JBS bug. If you don't have direct JBS access, one of the Project Committers or Authors will do this for you.
 
 4. Submit a pull request
 
@@ -71,13 +71,15 @@ Once your changes and tests are ready to submit for review:
 
 5. Send an email requesting a code review
 
+    NOTE: Project Skara will automate the RFR email, so this step will likely be removed.
+
     Send a Request For Review (RFR) email to the [openjfx-dev](mailto:openjfx-dev@openjdk.java.net) mailing list. The email subject should include the JBS bug ID. The body of the review request should contain a pointer to the JBS issue and a pointer to the pull request. Here is an example RFR email:
     ```
     Subject: RFR: 8888888: The Bug Synopsis
 
     Please review the fix for The Bug Synopsis:
     https://bugs.openjdk.java.net/browse/JDK-8888888
-    https://github.com/javafxports/openjdk-jfx/pull/12345
+    https://github.com/openjdk/jfx/pull/12345
     ```
 
 Then sit back and wait. There will probably be discussion about the pull request and, if any changes are needed, we would love to work with you to get your pull request merged into OpenJFX.
@@ -86,8 +88,8 @@ Please adhere to the general guideline that you should never force push
 to a publicly shared branch. Once you have opened your pull request, you
 should consider your branch publicly shared. Instead of force pushing
 you can just add incremental commits; this is generally easier on your
-reviewers. If you need to pick up changes from `develop`, you can merge
-`develop` into your branch. A reviewer might ask you to rebase a
+reviewers. If you need to pick up changes from `master`, you can merge
+`master` into your branch. A reviewer might ask you to rebase a
 long-running pull request in which case force pushing is okay for that
 request. Note that squashing at the end of the review process should
 also not be done, that will be done when the pull request is [integrated
