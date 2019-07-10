@@ -14,7 +14,9 @@ Please note that while the issue tracker in this Github project can be a conveni
 
 ## Getting Started
 
-Full instruction can be found at https://wiki.openjdk.java.net/display/OpenJFX/Building+OpenJFX
+For instructions on building JavaFX, see the [Building OpenJFX](https://wiki.openjdk.java.net/display/OpenJFX/Building+OpenJFX) Wiki page.
+
+For information about downloading and using JavaFX, see the [JavaFX community site](https://openjfx.io/).
 
 
 ## Contributing
