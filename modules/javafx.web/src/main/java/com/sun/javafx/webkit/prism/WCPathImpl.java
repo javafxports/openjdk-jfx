@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import com.sun.webkit.graphics.WCRectangle;
 import com.sun.javafx.logging.PlatformLogger;
 import com.sun.javafx.logging.PlatformLogger.Level;
 import com.sun.prism.BasicStroke;
+import java.util.Arrays;
 
 final class WCPathImpl extends WCPath<Path2D> {
     private final Path2D path;
@@ -372,19 +373,10 @@ final class WCPathImpl extends WCPath<Path2D> {
             .contains((float) x, (float) y);
 
         if (log.isLoggable(Level.FINE)) {
-            StringBuilder dashArrayString = new StringBuilder();
-            dashArrayString.append("[");
-            for (int i = 0; i < dashArray.length; i++) {
-                if (i != 0) {
-                    dashArrayString.append(",");
-                }
-                dashArrayString.append(dashArray[i]);
-            }
-            dashArrayString.append("]");
             log.fine(
                 "WCPathImpl({0}).strokeContains({1},{2},{3},{4},{5},{6},{7},{8}) = {9}",
                 new Object[]{getID(), x, y, thickness, miterLimit, cap, join,
-                             dashOffset, dashArrayString.toString(), result});
+                             dashOffset, Arrays.toString(dashArray), result});
         }
 
         return result;

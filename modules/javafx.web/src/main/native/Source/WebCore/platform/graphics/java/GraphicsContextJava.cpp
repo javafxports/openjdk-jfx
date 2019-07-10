@@ -652,8 +652,7 @@ void GraphicsContext::setLineDash(const DashArray& dashes, float dashOffset)
         << dashes.at(i);
     }
 
-    platformContext()->setDashArray(dashes);
-    platformContext()->setDashOffset(dashOffset);
+    platformContext()->setLineDash(dashes, dashOffset);
 }
 
 void GraphicsContext::setLineCap(LineCap cap)

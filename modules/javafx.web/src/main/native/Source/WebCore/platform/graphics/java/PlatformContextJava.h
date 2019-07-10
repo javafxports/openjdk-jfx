@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,15 +87,12 @@ namespace WebCore {
             return m_dashArray;
         }
 
-        void setDashArray(const DashArray& dashArray) {
-            m_dashArray = dashArray;
-        }
-
         float dashOffset() const {
             return m_dashOffset;
         }
 
-        void setDashOffset(float dashOffset) {
+        void setLineDash(const DashArray& dashArray, float dashOffset) {
+            m_dashArray = dashArray;
             m_dashOffset = dashOffset;
         }
 
@@ -129,9 +126,9 @@ namespace WebCore {
         // Buffer the last set stroke styles on the native side to make them
         // acessible outside the java graphics context
         DashArray m_dashArray;
-        float m_dashOffset;
-        LineCap m_lineCap;
-        LineJoin m_lineJoin;
-        float m_miterLimit;
+        float m_dashOffset { };
+        LineCap m_lineCap { };
+        LineJoin m_lineJoin { };
+        float m_miterLimit { };
     };
 }
