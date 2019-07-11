@@ -28,7 +28,6 @@ import com.sun.glass.ui.monocle.EPDSystem.FbVarScreenInfo;
 import com.sun.glass.ui.monocle.EPDSystem.IntStructure;
 import com.sun.glass.ui.monocle.EPDSystem.MxcfbUpdateData;
 import com.sun.glass.ui.monocle.EPDSystem.MxcfbWaveformModes;
-import com.sun.glass.ui.monocle.EPDSystem.MxcfbWaveformModesV2;
 import com.sun.javafx.logging.PlatformLogger;
 import com.sun.javafx.logging.PlatformLogger.Level;
 import com.sun.javafx.util.Logging;
@@ -69,6 +68,11 @@ class EPDFrameBuffer {
      * supplies.
      */
     private static final int POWERDOWN_DELAY = 1_000;
+
+    /**
+     * Linux system error: ENOTTY 25 Inappropriate ioctl for device.
+     */
+    private static final int ENOTTY = 25;
 
     private final PlatformLogger logger = Logging.getJavaFXLogger();
     private final EPDSettings settings;
@@ -297,6 +301,16 @@ class EPDFrameBuffer {
      * <li>{@link EPDSystem#WAVEFORM_MODE_A2}</li>
      * </ul>
      *
+     * @implNote This method fails on the Kobo Glo HD Model N437 with the error
+     * ENOTTY (25), "Inappropriate ioctl for device." The driver on that device
+     * uses an extended structure with four additional integers, changing its
+     * size and its corresponding request code. This method could use the
+     * extended structure, but the driver on the Kobo Glo HD ignores it and
+     * returns immediately, anyway. Furthermore, newer devices support both the
+     * current structure and the extended one, but define the extra fields in a
+     * different order. Therefore, simply use the current structure and ignore
+     * an error of ENOTTY, picking up the default values for any extra fields.
+     *
      * @param init the initialization mode for clearing the screen to all white
      * @param du the direct update mode for changing any gray values to either
      * all black or all white
@@ -309,12 +323,7 @@ class EPDFrameBuffer {
         var modes = new MxcfbWaveformModes();
         modes.setModes(modes.p, init, du, gc4, gc8, gc16, gc32);
         int rc = system.ioctl(fd, driver.MXCFB_SET_WAVEFORM_MODES, modes.p);
-        if (rc != 0) {
-            modes = new MxcfbWaveformModesV2();
-            modes.setModes(modes.p, init, du, gc4, gc8, gc16, gc32);
-            rc = system.ioctl(fd, driver.MXCFB_SET_WAVEFORM_MODES_V2, modes.p);
-        }
-        if (rc != 0) {
+        if (rc != 0 && system.errno() != ENOTTY) {
             logger.severe("Failed setting waveform modes: {0} ({1})",
                     system.getErrorMessage(), system.errno());
         }
@@ -577,7 +586,7 @@ class EPDFrameBuffer {
          * "QuantumRenderer modifies buffer in use by JavaFX Application Thread"
          * <https://bugs.openjdk.java.net/browse/JDK-8201567>.
          */
-        int size = xresVirtual * yresVirtual * Integer.SIZE;
+        int size = xresVirtual * yres * Integer.BYTES;
         return ByteBuffer.allocateDirect(size);
     }
 
@@ -585,10 +594,10 @@ class EPDFrameBuffer {
      * Creates a new mapping of the Linux frame buffer device into memory.
      *
      * @implNote The virtual y-resolution reported by the frame buffer device
-     * can be wrong as shown by the following example in which the system
-     * reports 2,304 pixels when the actual value is 1,152 (6,782,976 / 5888).
-     * Therefore, this method cannot use the frame buffer virtual resolution to
-     * calculate its size.
+     * can be wrong, as shown by the following example on the Kobo Glo HD Model
+     * N437 which reports 2,304 pixels when the correct value is 1,152
+     * (6,782,976 / 5888). Therefore, this method cannot use the frame buffer
+     * virtual resolution to calculate its size.
      *
      * <pre>{@code
      * $ sudo fbset -i
@@ -665,6 +674,14 @@ class EPDFrameBuffer {
     /**
      * Gets the virtual horizontal resolution of the frame buffer. See the notes
      * for the {@linkplain EPDFrameBuffer#EPDFrameBuffer constructor} above.
+     *
+     * @implNote When using an 8-bit frame buffer, set by the system property
+     * {@code monocle.epd.bitsPerPixel=8}, the Kobo Touch Models N905B and N905C
+     * and the Kobo Glo HD Model N437 work only when this method returns
+     * {@code xresVirtual}, while the Kobo Clara HD Model N249 works only when
+     * this method returns {@code xres}.
+     * <p>
+     * TODO: Make 8-bit frame buffers work for all devices.</p>
      *
      * @return the virtual width in pixels
      */

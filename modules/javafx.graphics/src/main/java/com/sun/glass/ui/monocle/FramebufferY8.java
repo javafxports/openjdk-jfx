@@ -187,7 +187,6 @@ class FramebufferY8 extends Framebuffer {
                 String msg = MessageFormat.format("byteDepth={0}", byteDepth);
                 logger.severe(msg);
                 throw new IllegalStateException(msg);
-
         }
     }
 
@@ -247,7 +246,6 @@ class FramebufferY8 extends Framebuffer {
                 String msg = MessageFormat.format("byteDepth={0}", byteDepth);
                 logger.severe(msg);
                 throw new IllegalStateException(msg);
-
         }
     }
 
