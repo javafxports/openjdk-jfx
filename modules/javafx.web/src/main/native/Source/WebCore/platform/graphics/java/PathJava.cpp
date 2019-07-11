@@ -532,6 +532,8 @@ bool Path::strokeContains(StrokeStyleApplier *applier, const FloatPoint& p) cons
     JLocalRef<jdoubleArray> dashArray(env->NewDoubleArray(size));
     env->SetDoubleArrayRegion(dashArray, 0, size, dashArrayJavaPrep);
 
+    delete[] dashArrayJavaPrep;
+
     jboolean res = env->CallBooleanMethod(*m_path, mid, (jdouble)p.x(),
         (jdouble)p.y(), (jdouble) thickness, (jdouble) miterLimit,
         (jint) cap, (jint) join, (jdouble) dashOffset, (jdoubleArray) dashArray);
