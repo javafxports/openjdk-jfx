@@ -1429,7 +1429,7 @@ public class SpinnerTest {
         assertEquals(400.0, spinner.getInitialDelay().toMillis(), 0.001);
         assertEquals(100.0, spinner.getRepeatDelay().toMillis(), 0.001);
     }
-    
+
     // Test for JDK-8185937
     @Test public void testIncDecKeys() {
         Toolkit tk = (StubToolkit)Toolkit.getToolkit();
@@ -1439,7 +1439,7 @@ public class SpinnerTest {
         stage.setScene(scene);
         stage.setWidth(200);
         stage.setHeight(200);
-        
+
         Spinner<Integer> spinner = new Spinner<>(-100, 100, 0);
         spinner.setEditable(true);
         assertEquals(0, spinner.getValue().intValue());
