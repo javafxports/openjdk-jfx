@@ -2,6 +2,8 @@
 
 Here are the instructions for updating the JavaFX release version number
 for a feature release or security (dot-dot) release.
+See [JDK-8226365](https://bugs.openjdk.java.net/browse/JDK-8226365)
+for a recent example.
 
 ## Incrementing the feature version
 
