@@ -356,15 +356,7 @@ final class WCPathImpl extends WCPath<Path2D> {
         BasicStroke stroke = new BasicStroke(
             (float) thickness, cap, join, (float) miterLimit);
 
-        boolean hasDash = false;
-        for (double d : dashArray) {
-            if (d > 0) {
-                hasDash = true;
-                break;
-            }
-        }
-
-        if (hasDash) {
+        if (dashArray.length > 0) {
             stroke.set(dashArray, (float) dashOffset);
         }
 
