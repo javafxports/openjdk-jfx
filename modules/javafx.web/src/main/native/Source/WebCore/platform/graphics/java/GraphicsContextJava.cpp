@@ -649,7 +649,7 @@ void GraphicsContext::setLineDash(const DashArray& dashes, float dashOffset)
 
     for (size_t i = 0; i < size; i++) {
         platformContext()->rq()
-        << dashes.at(i);
+        << (float) dashes.at(i);
     }
 
     platformContext()->setLineDash(dashes, dashOffset);

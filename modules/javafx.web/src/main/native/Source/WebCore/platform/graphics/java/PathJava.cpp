@@ -524,15 +524,8 @@ bool Path::strokeContains(StrokeStyleApplier *applier, const FloatPoint& p) cons
     ASSERT(mid);
 
     size_t size = strokeStyle == SolidStroke ? 0 : dashes.size();
-    jdouble* dashArrayJavaPrep = new jdouble[size];
-    for (size_t i = 0; i < size; i++) {
-        dashArrayJavaPrep[i] = (jdouble) dashes.at(i);
-    }
-
     JLocalRef<jdoubleArray> dashArray(env->NewDoubleArray(size));
-    env->SetDoubleArrayRegion(dashArray, 0, size, dashArrayJavaPrep);
-
-    delete[] dashArrayJavaPrep;
+    env->SetDoubleArrayRegion(dashArray, 0, size, dashes.data());
 
     jboolean res = env->CallBooleanMethod(*m_path, mid, (jdouble)p.x(),
         (jdouble)p.y(), (jdouble) thickness, (jdouble) miterLimit,
