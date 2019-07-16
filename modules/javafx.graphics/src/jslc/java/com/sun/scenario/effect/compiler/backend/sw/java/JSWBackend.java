@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,24 +37,29 @@ import com.sun.scenario.effect.compiler.model.Qualifier;
 import com.sun.scenario.effect.compiler.model.Type;
 import com.sun.scenario.effect.compiler.model.Variable;
 import com.sun.scenario.effect.compiler.tree.FuncDef;
+import com.sun.scenario.effect.compiler.tree.JSLVisitor;
 import com.sun.scenario.effect.compiler.tree.ProgramUnit;
 import com.sun.scenario.effect.compiler.tree.TreeScanner;
-import org.antlr.stringtemplate.StringTemplate;
-import org.antlr.stringtemplate.StringTemplateGroup;
-import org.antlr.stringtemplate.language.DefaultTemplateLexer;
+import org.stringtemplate.v4.ST;
+import org.stringtemplate.v4.STGroup;
+import org.stringtemplate.v4.STGroupFile;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  */
 public class JSWBackend extends TreeScanner {
 
     private final JSLParser parser;
+    private final JSLVisitor visitor;
     private final String body;
 
-    public JSWBackend(JSLParser parser, ProgramUnit program) {
+    public JSWBackend(JSLParser parser, JSLVisitor visitor, ProgramUnit program) {
         // TODO: will be removed once we clean up static usage
         resetStatics();
 
         this.parser = parser;
+        this.visitor = visitor;
 
         JSWTreeScanner scanner = new JSWTreeScanner();
         scanner.scan(program);
@@ -66,7 +71,7 @@ public class JSWBackend extends TreeScanner {
                                    String genericsName,
                                    String interfaceName)
     {
-        Map<String, Variable> vars = parser.getSymbolTable().getGlobalVariables();
+        Map<String, Variable> vars = visitor.getSymbolTable().getGlobalVariables();
         StringBuilder genericsDecl = new StringBuilder();
         StringBuilder interfaceDecl = new StringBuilder();
         StringBuilder constants = new StringBuilder();
@@ -219,27 +224,26 @@ public class JSWBackend extends TreeScanner {
             interfaceDecl.append("implements "+interfaceName);
         }
 
-        Reader template = new InputStreamReader(getClass().getResourceAsStream("JSWGlue.stg"));
-        StringTemplateGroup group = new StringTemplateGroup(template, DefaultTemplateLexer.class);
-        StringTemplate glue = group.getInstanceOf("glue");
-        glue.setAttribute("effectName", effectName);
-        glue.setAttribute("peerName", peerName);
-        glue.setAttribute("genericsDecl", genericsDecl.toString());
-        glue.setAttribute("interfaceDecl", interfaceDecl.toString());
-        glue.setAttribute("usercode", usercode.toString());
-        glue.setAttribute("samplers", samplers.toString());
-        glue.setAttribute("cleanup", cleanup.toString());
-        glue.setAttribute("srcRects", srcRects.toString());
-        glue.setAttribute("constants", constants.toString());
-        glue.setAttribute("posDecls", posDecls.toString());
-        glue.setAttribute("pixInitY", pixInitY.toString());
-        glue.setAttribute("pixInitX", pixInitX.toString());
-        glue.setAttribute("posIncrY", posIncrY.toString());
-        glue.setAttribute("posInitY", posInitY.toString());
-        glue.setAttribute("posIncrX", posIncrX.toString());
-        glue.setAttribute("posInitX", posInitX.toString());
-        glue.setAttribute("body", body);
-        return glue.toString();
+        STGroup group = new STGroupFile(getClass().getResource("JSWGlue.stg"), UTF_8.displayName(), '$', '$');
+        ST glue = group.getInstanceOf("glue");
+        glue.add("effectName", effectName);
+        glue.add("peerName", peerName);
+        glue.add("genericsDecl", genericsDecl.toString());
+        glue.add("interfaceDecl", interfaceDecl.toString());
+        glue.add("usercode", usercode.toString());
+        glue.add("samplers", samplers.toString());
+        glue.add("cleanup", cleanup.toString());
+        glue.add("srcRects", srcRects.toString());
+        glue.add("constants", constants.toString());
+        glue.add("posDecls", posDecls.toString());
+        glue.add("pixInitY", pixInitY.toString());
+        glue.add("pixInitX", pixInitX.toString());
+        glue.add("posIncrY", posIncrY.toString());
+        glue.add("posInitY", posInitY.toString());
+        glue.add("posIncrX", posIncrX.toString());
+        glue.add("posInitX", posInitX.toString());
+        glue.add("body", body);
+        return glue.render();
     }
 
     // TODO: need better mechanism for querying fields

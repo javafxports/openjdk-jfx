@@ -34,7 +34,6 @@
 #include "DFGBasicBlockInlines.h"
 #include "DFGGraph.h"
 #include "DFGInPlaceAbstractState.h"
-#include "DFGInferredTypeCheck.h"
 #include "DFGInsertionSet.h"
 #include "DFGPhase.h"
 #include "GetByIdStatus.h"
@@ -341,7 +340,9 @@ private:
                 JSValue right = m_state.forNode(node->child2()).value();
                 if (left && right && left.isInt32() && right.isInt32()
                     && static_cast<uint32_t>(left.asInt32()) < static_cast<uint32_t>(right.asInt32())) {
-                    node->remove(m_graph);
+
+                    Node* zero = m_insertionSet.insertConstant(indexInBlock, node->origin, jsNumber(0));
+                    node->convertToIdentityOn(zero);
                     eliminated = true;
                     break;
                 }
@@ -410,10 +411,11 @@ private:
 
                 Node* length = emitCodeToGetArgumentsArrayLength(
                     m_insertionSet, arguments, indexInBlock, node->origin);
-                m_insertionSet.insertNode(
+                Node* check = m_insertionSet.insertNode(
                     indexInBlock, SpecNone, CheckInBounds, node->origin,
                     node->child2(), Edge(length, Int32Use));
                 node->convertToGetStack(data);
+                node->child1() = Edge(check, UntypedUse);
                 eliminated = true;
                 break;
             }
@@ -477,8 +479,7 @@ private:
                         && variant.oldStructure().onlyStructure() == variant.newStructure()) {
                         variant = PutByIdVariant::replace(
                             variant.oldStructure(),
-                            variant.offset(),
-                            variant.requiredType());
+                            variant.offset());
                         changed = true;
                     }
                 }
@@ -727,10 +728,6 @@ private:
                                         StorageAccessData* data = m_graph.m_storageAccessData.add();
                                         data->offset = knownPolyProtoOffset;
                                         data->identifierNumber = m_graph.identifiers().ensure(m_graph.m_vm.propertyNames->builtinNames().polyProtoName().impl());
-                                        InferredType::Descriptor inferredType = InferredType::Top;
-                                        data->inferredType = inferredType;
-                                        m_graph.registerInferredType(inferredType);
-
                                         NodeOrigin origin = node->origin.withInvalidExit();
                                         Node* prototypeNode = m_insertionSet.insertConstant(
                                             indexInBlock + 1, origin, m_graph.freeze(prototype));
@@ -762,6 +759,25 @@ private:
                     // FIXME: We should get a structure for a constant prototype. We need to allow concurrent
                     // access to StructureCache from compiler threads.
                     // https://bugs.webkit.org/show_bug.cgi?id=186199
+                }
+                break;
+            }
+
+            case ObjectKeys: {
+                if (node->child1().useKind() == ObjectUse) {
+                    auto& structureSet = m_state.forNode(node->child1()).m_structure;
+                    if (structureSet.isFinite() && structureSet.size() == 1) {
+                        RegisteredStructure structure = structureSet.onlyStructure();
+                        if (auto* rareData = structure->rareDataConcurrently()) {
+                            if (auto* immutableButterfly = rareData->cachedOwnKeysConcurrently()) {
+                                if (m_graph.isWatchingHavingABadTimeWatchpoint(node)) {
+                                    node->convertToNewArrayBuffer(m_graph.freeze(immutableButterfly));
+                                    changed = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
                 break;
             }
@@ -1055,7 +1071,7 @@ private:
 
     void emitGetByOffset(
         unsigned indexInBlock, Node* node, Edge childEdge, unsigned identifierNumber,
-        PropertyOffset offset, const InferredType::Descriptor& inferredType = InferredType::Top)
+        PropertyOffset offset)
     {
         childEdge.setUseKind(KnownCellUse);
 
@@ -1071,7 +1087,6 @@ private:
         StorageAccessData& data = *m_graph.m_storageAccessData.add();
         data.offset = offset;
         data.identifierNumber = identifierNumber;
-        data.inferredType = inferredType;
 
         node->convertToGetByOffset(data, propertyStorage, childEdge);
     }
@@ -1082,8 +1097,6 @@ private:
         Edge childEdge = node->child1();
 
         addBaseCheck(indexInBlock, node, baseValue, variant.oldStructure());
-        insertInferredTypeCheck(
-            m_insertionSet, indexInBlock, origin, node->child2().node(), variant.requiredType());
 
         node->child1().setUseKind(KnownCellUse);
         childEdge.setUseKind(KnownCellUse);

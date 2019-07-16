@@ -144,6 +144,14 @@ static inline PropertyWhitelistType determinePropertyWhitelistType(const CSSSele
 #endif
         if (component->match() == CSSSelector::PseudoElement && component->pseudoElementType() == CSSSelector::PseudoElementMarker)
             return PropertyWhitelistMarker;
+
+        if (const auto* selectorList = selector->selectorList()) {
+            for (const auto* subSelector = selectorList->first(); subSelector; subSelector = CSSSelectorList::next(subSelector)) {
+                auto whitelistType = determinePropertyWhitelistType(subSelector);
+                if (whitelistType != PropertyWhitelistNone)
+                    return whitelistType;
+            }
+        }
     }
     return PropertyWhitelistNone;
 }
@@ -242,7 +250,6 @@ void RuleSet::addRule(StyleRule* rule, unsigned selectorIndex, unsigned selector
             break;
         case CSSSelector::PseudoElement:
             switch (selector->pseudoElementType()) {
-            case CSSSelector::PseudoElementUserAgentCustom:
             case CSSSelector::PseudoElementWebKitCustom:
             case CSSSelector::PseudoElementWebKitCustomLegacyPrefixed:
                 customPseudoElementSelector = selector;

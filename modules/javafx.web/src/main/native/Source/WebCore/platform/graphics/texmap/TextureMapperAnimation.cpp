@@ -54,11 +54,11 @@ static FilterOperations applyFilterAnimation(const FilterOperations& from, const
         if (blendedOp)
             result.operations().append(blendedOp);
         else {
-            RefPtr<FilterOperation> identityOp = PassthroughFilterOperation::create();
+            auto identityOp = PassthroughFilterOperation::create();
             if (progress > 0.5)
-                result.operations().append(toOp ? toOp : identityOp);
+                result.operations().append(toOp ? toOp : WTFMove(identityOp));
             else
-                result.operations().append(fromOp ? fromOp : identityOp);
+                result.operations().append(fromOp ? fromOp : WTFMove(identityOp));
         }
     }
 
@@ -239,6 +239,19 @@ void TextureMapperAnimation::apply(ApplicationResult& applicationResults, Monoto
     }
 }
 
+void TextureMapperAnimation::applyKeepingInternalState(ApplicationResult& applicationResults, MonotonicTime time)
+{
+    MonotonicTime oldLastRefreshedTime = m_lastRefreshedTime;
+    Seconds oldTotalRunningTime = m_totalRunningTime;
+    AnimationState oldState = m_state;
+
+    apply(applicationResults, time);
+
+    m_lastRefreshedTime = oldLastRefreshedTime;
+    m_totalRunningTime = oldTotalRunningTime;
+    m_state = oldState;
+}
+
 void TextureMapperAnimation::pause(Seconds time)
 {
     m_state = AnimationState::Paused;
@@ -336,6 +349,12 @@ void TextureMapperAnimations::apply(TextureMapperAnimation::ApplicationResult& a
 {
     for (auto& animation : m_animations)
         animation.apply(applicationResults, time);
+}
+
+void TextureMapperAnimations::applyKeepingInternalState(TextureMapperAnimation::ApplicationResult& applicationResults, MonotonicTime time)
+{
+    for (auto& animation : m_animations)
+        animation.applyKeepingInternalState(applicationResults, time);
 }
 
 bool TextureMapperAnimations::hasActiveAnimationsOfType(AnimatedPropertyID type) const

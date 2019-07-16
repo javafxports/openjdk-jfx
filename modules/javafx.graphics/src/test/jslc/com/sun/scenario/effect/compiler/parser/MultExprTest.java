@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ package com.sun.scenario.effect.compiler.parser;
 import com.sun.scenario.effect.compiler.JSLParser;
 import com.sun.scenario.effect.compiler.model.BinaryOpType;
 import com.sun.scenario.effect.compiler.tree.BinaryExpr;
+import com.sun.scenario.effect.compiler.tree.JSLVisitor;
 import org.antlr.runtime.RecognitionException;
 import org.junit.Before;
 import org.junit.Test;
@@ -67,9 +68,10 @@ public class MultExprTest extends UnaryExprTest {
         parseTreeFor("3 + 3");
     }
 
-    private BinaryExpr parseTreeFor(String text) throws RecognitionException {
+    private BinaryExpr parseTreeFor(String text) throws Exception {
         JSLParser parser = parserOver(text);
-        return (BinaryExpr)parser.multiplicative_expression();
+        JSLVisitor visitor = new JSLVisitor();
+        return (BinaryExpr) visitor.visit(parser.multiplicative_expression());
     }
 
     protected String multiplicative() {

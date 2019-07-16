@@ -194,6 +194,9 @@ class WindowStage extends GlassStage {
                             break;
                     }
                 }
+                if (modality != Modality.NONE) {
+                    windowMask |= Window.MODAL;
+                }
                 platformWindow =
                         app.createWindow(ownerWindow, Screen.getMainScreen(), windowMask);
                 platformWindow.setResizable(resizable);
@@ -512,15 +515,15 @@ class WindowStage extends GlassStage {
                 }
             } else if (modality == Modality.APPLICATION_MODAL) {
                 windowsSetEnabled(true);
-            } else {
-                // Note: This method is required to workaround a glass issue
-                // mentioned in RT-12607
-                // If the hiding stage is unfocusable (i.e. it's a PopupStage),
-                // then we don't do this to avoid stealing the focus.
-                if (!isPopupStage && owner != null && owner instanceof WindowStage) {
-                    WindowStage ownerStage = (WindowStage)owner;
-                    ownerStage.requestToFront();
-                }
+            }
+            // Note: This method is required to workaround a glass issue
+            // mentioned in RT-12607
+            // If the hiding stage is unfocusable (i.e. it's a PopupStage),
+            // then we don't do this to avoid stealing the focus.
+            // JDK-8210973: APPLICATION_MODAL window can have owner.
+            if (!isPopupStage && owner != null && owner instanceof WindowStage) {
+                WindowStage ownerStage = (WindowStage)owner;
+                ownerStage.requestToFront();
             }
         }
         QuantumToolkit.runWithRenderLock(() -> {
@@ -832,7 +835,10 @@ class WindowStage extends GlassStage {
     // closed notification. This state is necessary to prevent the platform
     // window from being closed more than once.
     void setPlatformWindowClosed() {
-        platformWindow = null;
+        if (platformWindow != null) {
+            platformWindows.remove(platformWindow);
+            platformWindow = null;
+        }
     }
 
     static void addActiveWindow(WindowStage window) {

@@ -3,7 +3,7 @@ version: "{branch} {build}"
 image: Visual Studio 2017
 
 environment:
-  JAVA_HOME: C:\jdk11
+  JAVA_HOME: C:\jdk12
   APPVEYOR_CACHE_ENTRY_ZIP_ARGS: "-t7z -m0=lzma -mx=9"
 
 shallow_clone: true
@@ -11,12 +11,13 @@ shallow_clone: true
 build_script:
   - ps: |
       $client = New-Object net.webclient
-      $client.DownloadFile('http://jdk.java.net/11/', 'C:\Users\appveyor\openjdk11.html')
-      $openJdk11 = cat C:\Users\appveyor\openjdk11.html | where { $_ -match "href.*https://download.java.net.*jdk11.*windows-x64.*zip\`"" } | %{ $_ -replace "^.*https:", "https:" } | %{ $_ -replace ".zip\`".*$", ".zip" }
-      echo "Download boot JDK from: $openJdk11"
-      $client.DownloadFile($openJdk11, 'C:\Users\appveyor\openjdk11.zip')
-      Expand-Archive -Path 'C:\Users\appveyor\openjdk11.zip' -DestinationPath 'C:\Users\appveyor\openjdk11'
-      Copy-Item -Path 'C:\Users\appveyor\openjdk11\*\' -Destination 'C:\jdk11' -Recurse -Force
+      $client.DownloadFile('http://jdk.java.net/12/', 'C:\Users\appveyor\openjdk.html')
+      $openJdk = cat C:\Users\appveyor\openjdk.html | where { $_ -match "href.*https://download.java.net.*jdk[1-9][0-9].*windows-x64.*zip\`"" } | %{ $_ -replace "^.*https:", "https:" } | %{ $_ -replace ".zip\`".*$", ".zip" }
+      echo "Download boot JDK from: $openJdk"
+      $client.DownloadFile($openJdk, 'C:\Users\appveyor\openjdk.zip')
+      Expand-Archive -Path 'C:\Users\appveyor\openjdk.zip' -DestinationPath 'C:\Users\appveyor\openjdk'
+      echo "JAVA_HOME = $env:JAVA_HOME"
+      Copy-Item -Path 'C:\Users\appveyor\openjdk\*\' -Destination "$env:JAVA_HOME" -Recurse -Force
       . .\tools\scripts\build.ps1 2>&1
 
 on_finish:

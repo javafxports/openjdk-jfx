@@ -25,14 +25,15 @@
 
 #pragma once
 
-#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300)
+#if (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300)
 #define HAVE_CCRSAGetCRTComponents 1
 #endif
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "CryptoAlgorithmIdentifier.h"
 #include <CommonCrypto/CommonCryptor.h>
+#include <CommonCrypto/CommonRandom.h>
 #include <wtf/Vector.h>
 
 #if USE(APPLE_INTERNAL_SDK)
@@ -41,7 +42,6 @@
 // FIXME: <rdar://problem/31508959>
 // #include <CommonCrypto/CommonKeyDerivationSPI.h>
 #include <CommonCrypto/CommonRSACryptor.h>
-#include <CommonCrypto/CommonRandomSPI.h>
 #endif
 
 #if USE(APPLE_INTERNAL_SDK) && HAVE(CCRSAGetCRTComponents)
@@ -71,17 +71,9 @@ enum {
     ccRSAPSSPadding = 1005
 };
 typedef uint32_t CCAsymmetricPadding;
-
-enum {
-    kCCNotVerified = -4306
-};
 #endif
 
 typedef struct _CCBigNumRef *CCBigNumRef;
-
-typedef struct __CCRandom *CCRandomRef;
-extern const CCRandomRef kCCRandomDefault;
-extern "C" int CCRandomCopyBytes(CCRandomRef rnd, void *bytes, size_t count);
 
 typedef struct _CCRSACryptor *CCRSACryptorRef;
 extern "C" CCCryptorStatus CCRSACryptorEncrypt(CCRSACryptorRef publicKey, CCAsymmetricPadding padding, const void *plainText, size_t plainTextLen, void *cipherText, size_t *cipherTextLen, const void *tagData, size_t tagDataLen, CCDigestAlgorithm digestType);
@@ -173,4 +165,4 @@ bool getCommonCryptoDigestAlgorithm(CryptoAlgorithmIdentifier, CCDigestAlgorithm
 
 } // namespace WebCore
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

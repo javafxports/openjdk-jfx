@@ -78,6 +78,28 @@ void TextureMapperLayer::computeTransformsRecursive()
             m_layerTransforms.combinedForChildren = m_layerTransforms.combinedForChildren.to2dTransform();
         m_layerTransforms.combinedForChildren.multiply(m_state.childrenTransform);
         m_layerTransforms.combinedForChildren.translate3d(-originX, -originY, -m_state.anchorPoint.z());
+
+#if USE(COORDINATED_GRAPHICS)
+        // Compute transforms for the future as well.
+        TransformationMatrix futureParentTransform;
+        if (m_parent)
+            futureParentTransform = m_parent->m_layerTransforms.futureCombinedForChildren;
+        else if (m_effectTarget)
+            futureParentTransform = m_effectTarget->m_layerTransforms.futureCombined;
+
+        m_layerTransforms.futureCombined = futureParentTransform;
+        m_layerTransforms.futureCombined
+            .translate3d(originX + m_state.pos.x(), originY + m_state.pos.y(), m_state.anchorPoint.z())
+            .multiply(m_layerTransforms.futureLocalTransform);
+
+        m_layerTransforms.futureCombinedForChildren = m_layerTransforms.futureCombined;
+        m_layerTransforms.futureCombined.translate3d(-originX, -originY, -m_state.anchorPoint.z());
+
+        if (!m_state.preserves3D)
+            m_layerTransforms.futureCombinedForChildren = m_layerTransforms.futureCombinedForChildren.to2dTransform();
+        m_layerTransforms.futureCombinedForChildren.multiply(m_state.childrenTransform);
+        m_layerTransforms.futureCombinedForChildren.translate3d(-originX, -originY, -m_state.anchorPoint.z());
+#endif
     }
 
     m_state.visible = m_state.backfaceVisibility || !m_layerTransforms.combined.isBackFaceVisible();
@@ -97,6 +119,11 @@ void TextureMapperLayer::computeTransformsRecursive()
     // Reorder children if needed on the way back up.
     if (m_state.preserves3D)
         sortByZOrder(m_children);
+
+#if USE(COORDINATED_GRAPHICS)
+    if (m_backingStore && m_animatedBackingStoreClient)
+        m_animatedBackingStoreClient->requestBackingStoreUpdateIfNeeded(m_layerTransforms.futureCombined);
+#endif
 }
 
 void TextureMapperLayer::paint()
@@ -130,7 +157,7 @@ void TextureMapperLayer::paintSelf(const TextureMapperPaintOptions& options)
     transform.multiply(m_layerTransforms.combined);
 
     if (m_state.solidColor.isValid() && !m_state.contentsRect.isEmpty() && m_state.solidColor.isVisible()) {
-        options.textureMapper.drawSolidColor(m_state.contentsRect, transform, blendWithOpacity(m_state.solidColor, options.opacity));
+        options.textureMapper.drawSolidColor(m_state.contentsRect, transform, blendWithOpacity(m_state.solidColor, options.opacity), true);
         if (m_state.showDebugBorders)
             options.textureMapper.drawBorder(m_state.debugBorderColor, m_state.debugBorderWidth, layerRect(), transform);
         return;
@@ -236,7 +263,7 @@ void TextureMapperLayer::paintSelfAndChildrenWithReplica(const TextureMapperPain
         TextureMapperPaintOptions replicaOptions(options);
         replicaOptions.transform
             .multiply(m_state.replicaLayer->m_layerTransforms.combined)
-            .multiply(m_layerTransforms.combined.inverse().value_or(TransformationMatrix()));
+            .multiply(m_layerTransforms.combined.inverse().valueOr(TransformationMatrix()));
         paintSelfAndChildren(replicaOptions);
     }
 
@@ -246,7 +273,7 @@ void TextureMapperLayer::paintSelfAndChildrenWithReplica(const TextureMapperPain
 TransformationMatrix TextureMapperLayer::replicaTransform()
 {
     return TransformationMatrix(m_state.replicaLayer->m_layerTransforms.combined)
-        .multiply(m_layerTransforms.combined.inverse().value_or(TransformationMatrix()));
+        .multiply(m_layerTransforms.combined.inverse().valueOr(TransformationMatrix()));
 }
 
 static void resolveOverlaps(Region& newRegion, Region& overlapRegion, Region& nonOverlapRegion)
@@ -623,6 +650,13 @@ void TextureMapperLayer::setBackingStore(TextureMapperBackingStore* backingStore
     m_backingStore = backingStore;
 }
 
+#if USE(COORDINATED_GRAPHICS)
+void TextureMapperLayer::setAnimatedBackingStoreClient(Nicosia::AnimatedBackingStoreClient* client)
+{
+    m_animatedBackingStoreClient = client;
+}
+#endif
+
 bool TextureMapperLayer::descendantsOrSelfHaveRunningAnimations() const
 {
     if (m_animations.hasRunningAnimations())
@@ -647,9 +681,16 @@ bool TextureMapperLayer::syncAnimations(MonotonicTime time)
     TextureMapperAnimation::ApplicationResult applicationResults;
     m_animations.apply(applicationResults, time);
 
-    m_layerTransforms.localTransform = applicationResults.transform.value_or(m_state.transform);
-    m_currentOpacity = applicationResults.opacity.value_or(m_state.opacity);
-    m_currentFilters = applicationResults.filters.value_or(m_state.filters);
+    m_layerTransforms.localTransform = applicationResults.transform.valueOr(m_state.transform);
+    m_currentOpacity = applicationResults.opacity.valueOr(m_state.opacity);
+    m_currentFilters = applicationResults.filters.valueOr(m_state.filters);
+
+#if USE(COORDINATED_GRAPHICS)
+    // Calculate localTransform 50ms in the future.
+    TextureMapperAnimation::ApplicationResult futureApplicationResults;
+    m_animations.applyKeepingInternalState(futureApplicationResults, time + 50_ms);
+    m_layerTransforms.futureLocalTransform = futureApplicationResults.transform.valueOr(m_layerTransforms.localTransform);
+#endif
 
     return applicationResults.hasRunningAnimations;
 }

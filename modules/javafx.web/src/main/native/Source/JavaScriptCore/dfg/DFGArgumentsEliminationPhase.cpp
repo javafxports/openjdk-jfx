@@ -624,9 +624,12 @@ private:
 
     void transform()
     {
+        bool modifiedCFG = false;
+
         InsertionSet insertionSet(m_graph);
 
         for (BasicBlock* block : m_graph.blocksInPreOrder()) {
+            Node* pseudoTerminal = nullptr;
             for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
                 Node* node = block->at(nodeIndex);
 
@@ -753,11 +756,11 @@ private:
                         InlineCallFrame* inlineCallFrame = candidate->origin.semantic.inlineCallFrame;
                         index += numberOfArgumentsToSkip;
 
-                        bool safeToGetStack;
+                        bool safeToGetStack = index >= numberOfArgumentsToSkip;
                         if (inlineCallFrame)
-                            safeToGetStack = index < inlineCallFrame->argumentCountIncludingThis - 1;
+                            safeToGetStack &= index < inlineCallFrame->argumentCountIncludingThis - 1;
                         else {
-                            safeToGetStack =
+                            safeToGetStack &=
                                 index < static_cast<unsigned>(codeBlock()->numParameters()) - 1;
                         }
                         if (safeToGetStack) {
@@ -767,14 +770,15 @@ private:
                                 arg += inlineCallFrame->stackOffset;
                             data = m_graph.m_stackAccessData.add(arg, FlushedJSValue);
 
+                            Node* check = nullptr;
                             if (!inlineCallFrame || inlineCallFrame->isVarargs()) {
-                                insertionSet.insertNode(
+                                check = insertionSet.insertNode(
                                     nodeIndex, SpecNone, CheckInBounds, node->origin,
                                     m_graph.varArgChild(node, 1), Edge(getArrayLength(candidate), Int32Use));
                             }
 
                             result = insertionSet.insertNode(
-                                nodeIndex, node->prediction(), GetStack, node->origin, OpInfo(data));
+                                nodeIndex, node->prediction(), GetStack, node->origin, OpInfo(data), Edge(check, UntypedUse));
                         }
                     }
 
@@ -1210,11 +1214,32 @@ private:
                 default:
                     break;
                 }
-                if (node->isPseudoTerminal())
+
+                if (node->isPseudoTerminal()) {
+                    pseudoTerminal = node;
                     break;
+                }
             }
 
             insertionSet.execute(block);
+
+            if (pseudoTerminal) {
+                for (unsigned i = 0; i < block->size(); ++i) {
+                    Node* node = block->at(i);
+                    if (node != pseudoTerminal)
+                        continue;
+                    block->resize(i + 1);
+                    block->append(m_graph.addNode(SpecNone, Unreachable, node->origin));
+                    modifiedCFG = true;
+                    break;
+                }
+            }
+        }
+
+        if (modifiedCFG) {
+            m_graph.invalidateCFG();
+            m_graph.resetReachability();
+            m_graph.killUnreachableBlocks();
         }
     }
 

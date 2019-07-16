@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -336,7 +336,7 @@ defineProperty("JAVA", cygpathExe("$JDK_HOME/bin/java"))
 defineProperty("JAVAC", cygpathExe("$JDK_HOME/bin/javac"))
 defineProperty("JAVADOC", cygpathExe("$JDK_HOME/bin/javadoc"))
 defineProperty("JMOD", cygpathExe("$JDK_HOME/bin/jmod"))
-defineProperty("JDK_DOCS", "https://docs.oracle.com/javase/10/docs/api/")
+defineProperty("JDK_DOCS", "https://docs.oracle.com/en/java/javase/12/docs/api/")
 defineProperty("JDK_JMODS", cygpath(System.getenv("JDK_JMODS")) ?: cygpath(System.getenv("JDK_HOME") + "/jmods"))
 
 defineProperty("javaRuntimeVersion", System.getProperty("java.runtime.version"))
@@ -1216,14 +1216,17 @@ if (Integer.parseInt(NUM_COMPILE_THREADS.toString()) < 1) {
     NUM_COMPILE_THREADS = 1
 }
 
-// Check for Gradle 4.8, error if < 4.8.
-if (gradle.gradleVersion != "4.8") {
+// Check gradle version
+if (gradle.gradleVersion != jfxGradleVersion) {
     def ver = gradle.gradleVersion.split("[\\.]");
+    def verMin = jfxGradleVersionMin.split("[\\.]");
     def gradleMajor = Integer.parseInt(ver[0]);
     def gradleMinor = Integer.parseInt(ver[1].split("[^0-9]")[0]);
+    def gradleMajorMin = Integer.parseInt(verMin[0]);
+    def gradleMinorMin = Integer.parseInt(verMin[1].split("[^0-9]")[0]);
     def err = "";
-    if (gradleMajor < 4 || (gradleMajor == 4 && gradleMinor < 8)) {
-        err = "Gradle version too old: ${gradle.gradleVersion}; must be at least 4.8"
+    if (gradleMajor < gradleMajorMin || (gradleMajor == gradleMajorMin && gradleMinor < gradleMinorMin)) {
+        err = "Gradle version too old: ${gradle.gradleVersion}; must be at least ${jfxGradleVersionMin}"
     }
 
     if (IS_GRADLE_VERSION_CHECK && err != "") {
@@ -1232,7 +1235,7 @@ if (gradle.gradleVersion != "4.8") {
 
     logger.warn("*****************************************************************");
     logger.warn("Unsupported gradle version $gradle.gradleVersion in use.");
-    logger.warn("Only version 4.8 is supported. Use this version at your own risk");
+    logger.warn("Only version $jfxGradleVersion is supported. Use this version at your own risk");
     if ( err != "") logger.warn(err);
     logger.warn("*****************************************************************");
 }
@@ -1292,6 +1295,18 @@ logger.quiet("jdk version: ${jdkVersion}")
 logger.quiet("jdk build number: ${jdkBuildNumber}")
 logger.quiet("minimum jdk version: ${jfxBuildJdkVersionMin}")
 logger.quiet("minimum jdk build number: ${jfxBuildJdkBuildnumMin}")
+
+if (IS_LINUX) {
+    logger.quiet("GCC version: ${jfxBuildLinuxGccVersion}")
+} else if (IS_WINDOWS) {
+    logger.quiet("MSVC version: ${jfxBuildWindowsMsvcVersion}")
+} else if (IS_MAC) {
+    logger.quiet("XCODE version: ${jfxBuildMacosxXcodeVersion}")
+}
+logger.quiet("cmake version: ${jfxBuildCmakeVersion}")
+logger.quiet("ninja version: ${jfxBuildNinjaVersion}")
+logger.quiet("ant version: ${jfxBuildAntVersion}")
+
 logger.quiet("HAS_JAVAFX_MODULES: $HAS_JAVAFX_MODULES")
 logger.quiet("STUB_RUNTIME: $STUB_RUNTIME")
 logger.quiet("CONF: $CONF")
@@ -1563,9 +1578,11 @@ void addMavenPublication(Project project, List<String> projectDependencies) {
                 maven(MavenPublication) {
                     artifactId = "javafx-${project.name}"
 
-                    artifact project.tasks."moduleEmptyPublicationJar$t.capital"
-                    artifact project.tasks."modularPublicationJar$t.capital" {
-                        classifier "$t.name"
+                    afterEvaluate {
+                        artifact project.tasks."moduleEmptyPublicationJar$t.capital"
+                        artifact project.tasks."modularPublicationJar$t.capital" {
+                            classifier "$t.name"
+                        }
                     }
 
                     pom.withXml {
@@ -1597,6 +1614,98 @@ void addMavenPublication(Project project, List<String> projectDependencies) {
         }
     }
 }
+
+/**
+ * Verifies that all of the *.java files in a source tree have the
+ * correct package name. If not, fail the build.
+ *
+ * @param sourceRoot the root of the source tree to check
+ * @param hasModuleName true if the sources under sourceRoot are being
+ * compiled as modules, with the immediate child directories being the
+ * root(s) of the named modules being compiled. In this case the package
+ * root is one directory below the sourceRoot.
+ */
+void validatePackages(File sourceRoot, boolean hasModuleName) {
+    if (!sourceRoot.isDirectory()) {
+        return;
+    }
+    def err = false;
+    String sourceString = sourceRoot.toString().replace("\\", "/")
+    def startPos = sourceString.length() + 1
+    logger.info("validating packages for ${sourceRoot}")
+    def inputFiles = fileTree(dir: sourceRoot, include: "**/*.java")
+    inputFiles.each { file ->
+        def packageRoot = file.toString().replace("\\", "/").substring(startPos)
+        if (hasModuleName) {
+            packageRoot = packageRoot.substring(packageRoot.indexOf("/") + 1)
+        }
+        def endPos = packageRoot.lastIndexOf("/")
+        def pkgEx = endPos > -1 ?  packageRoot.substring(0, endPos).replace("/", ".") : ""
+        def pkg = ""
+        file.withReader { reader ->
+            def line
+            while ((line = reader.readLine()) != null) {
+                def words = line.trim().split("[ ;]+")
+                if (words.length > 1 && words[0] == "package") {
+                    pkg = words[1]
+                    break;
+                }
+            }
+        }
+        if (pkg != pkgEx) {
+            err = true
+            println "*** ERROR: File location <${file}> does not match package name <${pkg}>"
+        }
+    }
+    if (err) {
+        fail("Package validation failed")
+    }
+}
+
+/**
+ * Add a task to the given project to validate that the package names
+ * of all java files in the given source sets have the correct package
+ * name. If not, fail the build.
+ */
+void addValidateSourceSets(Project project,
+                           Collection<SourceSet> sourceSets,
+                           Collection<SourceSet> modSourceSets) {
+    def validateSourceSetsTask = project.task("validateSourceSets") {
+        doLast {
+            // Accumulate the root directories from all sourceSets.
+            // We use a Set to elide duplicates (the shims sourceset
+            // will include the dirs from the main sourceset)
+            Set<File> sourceRoots = []
+            sourceSets.each { srcSet ->
+                srcSet.java.srcDirs.each { rootDir ->
+                    sourceRoots += rootDir
+                }
+            }
+            sourceRoots.each { rootDir ->
+                validatePackages(rootDir, false)
+            }
+
+            Set<File> modSourceRoots = []
+            modSourceSets.each { srcSet ->
+                srcSet.java.srcDirs.each { rootDir ->
+                    modSourceRoots += rootDir
+                }
+            }
+            modSourceRoots.each { rootDir ->
+                validatePackages(rootDir, true)
+            }
+        }
+    }
+
+    // Run this for all projects when compiling the test sources
+    // (i.e., when running "gradle test")
+    project.compileTestJava.dependsOn(validateSourceSetsTask)
+}
+
+void addValidateSourceSets(Project project, Collection<SourceSet> sourceSets) {
+    addValidateSourceSets(project, sourceSets, []);
+}
+
 
 /**
  * Parses a JDK version string. The string must be in one of the following
@@ -1729,7 +1838,7 @@ allprojects {
         repositories {
             mavenCentral()
             ivy {
-                url "http://download.eclipse.org/eclipse/updates/4.6/R-4.6.3-201703010400/plugins/"
+                url "https://download.eclipse.org/eclipse/updates/4.6/R-4.6.3-201703010400/plugins/"
                 layout "pattern", {
                     artifact "[artifact].[ext]"
                 }
@@ -1847,12 +1956,24 @@ project(":base") {
 
     sourceSets {
         main
-        shims
-        test
+        shims {
+            java {
+                compileClasspath += sourceSets.main.output
+                runtimeClasspath += sourceSets.main.output
+            }
+        }
+        test {
+            java {
+                compileClasspath += sourceSets.shims.output
+                runtimeClasspath += sourceSets.shims.output
+            }
+        }
     }
 
     dependencies {
         testCompile group: "junit", name: "junit", version: "4.8.2"
+        testCompile sourceSets.main.output
+        testCompile sourceSets.shims.output
     }
 
     commonModuleSetup(project, [ 'base' ])
@@ -1890,6 +2011,7 @@ project(":base") {
     compileJava.dependsOn processVersionInfo
     addMavenPublication(project, [])
 
+    addValidateSourceSets(project, sourceSets)
 }
 
 // The graphics module is needed for any graphical JavaFX application. It requires
@@ -1909,16 +2031,27 @@ project(":graphics") {
     sourceSets {
         jslc   // JSLC gramar subset
         main
-        shims
+        shims {
+            java {
+                compileClasspath += sourceSets.main.output
+                runtimeClasspath += sourceSets.main.output
+            }
+        }
         shaders // generated shaders (prism & decora)
-        test
+        test {
+            java {
+                compileClasspath += sourceSets.shims.output
+                runtimeClasspath += sourceSets.shims.output
+            }
+        }
         stub
     }
 
     dependencies {
         stubCompile group: "junit", name: "junit", version: "4.8.2"
 
-        antlr group: "org.antlr", name: "antlr-complete", version: "3.5.2"
+        antlr group: "org.antlr", name: "antlr4", version: "4.7.2", classifier: "complete"
+        compile project(':base')
     }
 
     project.ext.moduleSourcePath = defaultModuleSourcePath_GraphicsOne
@@ -1965,21 +2098,28 @@ project(":graphics") {
         // so we will do this by hand
 
         File wd = file(project.projectDir.path + "/src/jslc/antlr")
+        File outDir = file("$buildDir/gensrc/antlr")
+        def inJSL = "com/sun/scenario/effect/compiler/JSL.g4"
+        if (IS_WINDOWS) {
+            // antlr needs backslashes on Windows
+            inJSL = inJSL.replace("/", "\\")
+        }
 
         executable = JAVA
         classpath = project.configurations.antlr
         workingDir = wd
-        main = "org.antlr.Tool"
+        main = "org.antlr.v4.Tool"
 
         args = [
-            "-Xconversiontimeout",
-            "30000",
             "-o",
-            "$buildDir/gensrc/antlr",
-            "com/sun/scenario/effect/compiler/JSL.g" ]
+            outDir.toString(),
+            "-package",
+            "com.sun.scenario.effect.compiler",
+            "-visitor",
+            inJSL ]
 
         inputs.dir wd
-        outputs.dir file("$buildDir/gensrc/antlr")
+        outputs.dir outDir
     }
     sourceSets.jslc.java.srcDirs += "$buildDir/gensrc/antlr"
 
@@ -2049,57 +2189,57 @@ project(":graphics") {
                 def PASSTHROUGH_VS_SRC = file("src/main/native-prism-d3d/PassThroughVS.hlsl")
                 def jobs = [
                         ["$FXC", "/nologo", "/T", "vs_3_0", "/Fh", "$buildDir/headers/PrismD3D/PassThroughVS.h", "/E", "passThrough", "$PASSTHROUGH_VS_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS.h", "/DSpec=0", "/DSType=0", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_i.h", "/DSpec=0", "/DSType=0", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1n.h", "/DSpec=1", "/DSType=0", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2n.h", "/DSpec=2", "/DSType=0", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3n.h", "/DSpec=3", "/DSType=0", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1t.h", "/DSpec=1", "/DSType=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2t.h", "/DSpec=2", "/DSType=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3t.h", "/DSpec=3", "/DSType=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1c.h", "/DSpec=1", "/DSType=2", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2c.h", "/DSpec=2", "/DSType=2", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3c.h", "/DSpec=3", "/DSType=2", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1m.h", "/DSpec=1", "/DSType=3", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2m.h", "/DSpec=2", "/DSType=3", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3m.h", "/DSpec=3", "/DSType=3", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1n.h", "/DSpec=1", "/DSType=0", "/DBump=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2n.h", "/DSpec=2", "/DSType=0", "/DBump=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3n.h", "/DSpec=3", "/DSType=0", "/DBump=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1t.h", "/DSpec=1", "/DSType=1", "/DBump=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2t.h", "/DSpec=2", "/DSType=1", "/DBump=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3t.h", "/DSpec=3", "/DSType=1", "/DBump=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1c.h", "/DSpec=1", "/DSType=2", "/DBump=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2c.h", "/DSpec=2", "/DSType=2", "/DBump=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3c.h", "/DSpec=3", "/DSType=2", "/DBump=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1m.h", "/DSpec=1", "/DSType=3", "/DBump=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2m.h", "/DSpec=2", "/DSType=3", "/DBump=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3m.h", "/DSpec=3", "/DSType=3", "/DBump=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1ni.h", "/DSpec=1", "/DSType=0", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2ni.h", "/DSpec=2", "/DSType=0", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3ni.h", "/DSpec=3", "/DSType=0", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1ti.h", "/DSpec=1", "/DSType=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2ti.h", "/DSpec=2", "/DSType=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3ti.h", "/DSpec=3", "/DSType=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1ci.h", "/DSpec=1", "/DSType=2", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2ci.h", "/DSpec=2", "/DSType=2", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3ci.h", "/DSpec=3", "/DSType=2", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1mi.h", "/DSpec=1", "/DSType=3", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2mi.h", "/DSpec=2", "/DSType=3", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3mi.h", "/DSpec=3", "/DSType=3", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1ni.h", "/DSpec=1", "/DSType=0", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2ni.h", "/DSpec=2", "/DSType=0", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3ni.h", "/DSpec=3", "/DSType=0", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1ti.h", "/DSpec=1", "/DSType=1", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2ti.h", "/DSpec=2", "/DSType=1", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3ti.h", "/DSpec=3", "/DSType=1", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1ci.h", "/DSpec=1", "/DSType=2", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2ci.h", "/DSpec=2", "/DSType=2", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3ci.h", "/DSpec=3", "/DSType=2", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1mi.h", "/DSpec=1", "/DSType=3", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2mi.h", "/DSpec=2", "/DSType=3", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "ps_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3mi.h", "/DSpec=3", "/DSType=3", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
-                        ["$FXC", "/nologo", "/T", "vs_2_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1VS_Obj.h", "/DVertexType=ObjVertex", "$VS_3D_SRC"]
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS.h", "/DSpec=0", "/DSType=0", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_i.h", "/DSpec=0", "/DSType=0", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1n.h", "/DSpec=1", "/DSType=0", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2n.h", "/DSpec=2", "/DSType=0", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3n.h", "/DSpec=3", "/DSType=0", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1t.h", "/DSpec=1", "/DSType=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2t.h", "/DSpec=2", "/DSType=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3t.h", "/DSpec=3", "/DSType=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1c.h", "/DSpec=1", "/DSType=2", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2c.h", "/DSpec=2", "/DSType=2", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3c.h", "/DSpec=3", "/DSType=2", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1m.h", "/DSpec=1", "/DSType=3", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2m.h", "/DSpec=2", "/DSType=3", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3m.h", "/DSpec=3", "/DSType=3", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1n.h", "/DSpec=1", "/DSType=0", "/DBump=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2n.h", "/DSpec=2", "/DSType=0", "/DBump=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3n.h", "/DSpec=3", "/DSType=0", "/DBump=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1t.h", "/DSpec=1", "/DSType=1", "/DBump=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2t.h", "/DSpec=2", "/DSType=1", "/DBump=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3t.h", "/DSpec=3", "/DSType=1", "/DBump=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1c.h", "/DSpec=1", "/DSType=2", "/DBump=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2c.h", "/DSpec=2", "/DSType=2", "/DBump=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3c.h", "/DSpec=3", "/DSType=2", "/DBump=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1m.h", "/DSpec=1", "/DSType=3", "/DBump=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2m.h", "/DSpec=2", "/DSType=3", "/DBump=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3m.h", "/DSpec=3", "/DSType=3", "/DBump=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1ni.h", "/DSpec=1", "/DSType=0", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2ni.h", "/DSpec=2", "/DSType=0", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3ni.h", "/DSpec=3", "/DSType=0", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1ti.h", "/DSpec=1", "/DSType=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2ti.h", "/DSpec=2", "/DSType=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3ti.h", "/DSpec=3", "/DSType=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1ci.h", "/DSpec=1", "/DSType=2", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2ci.h", "/DSpec=2", "/DSType=2", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3ci.h", "/DSpec=3", "/DSType=2", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s1mi.h", "/DSpec=1", "/DSType=3", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s2mi.h", "/DSpec=2", "/DSType=3", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_s3mi.h", "/DSpec=3", "/DSType=3", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1ni.h", "/DSpec=1", "/DSType=0", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2ni.h", "/DSpec=2", "/DSType=0", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3ni.h", "/DSpec=3", "/DSType=0", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1ti.h", "/DSpec=1", "/DSType=1", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2ti.h", "/DSpec=2", "/DSType=1", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3ti.h", "/DSpec=3", "/DSType=1", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1ci.h", "/DSpec=1", "/DSType=2", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2ci.h", "/DSpec=2", "/DSType=2", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3ci.h", "/DSpec=3", "/DSType=2", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b1mi.h", "/DSpec=1", "/DSType=3", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b2mi.h", "/DSpec=2", "/DSType=3", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "ps_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1PS_b3mi.h", "/DSpec=3", "/DSType=3", "/DBump=1", "/DIllumMap=1", "$PS_3D_SRC"],
+                        ["$FXC", "/nologo", "/T", "vs_3_0", "/Fh", "$buildDir/headers/PrismD3D/hlsl/Mtl1VS_Obj.h", "/DVertexType=ObjVertex", "$VS_3D_SRC"]
                 ]
                 final ExecutorService executor = Executors.newFixedThreadPool(Integer.parseInt(project.NUM_COMPILE_THREADS.toString()));
                 final CountDownLatch latch = new CountDownLatch(jobs.size());
@@ -2297,7 +2437,7 @@ project(":graphics") {
             libsDir.mkdirs();
 
             def allLibsPresent = true
-            def libNames = [ "antlr-complete-3.5.2.jar" ]
+            def libNames = [ "antlr4-4.7.2-complete.jar" ]
             libNames.each { name ->
                 File f = new File(libsDir, name)
                 if (!f.exists()) allLibsPresent = false
@@ -2308,7 +2448,7 @@ project(":graphics") {
                 copy {
                     into libsDir
                     from f.getParentFile()
-                    include "**/antlr-complete-3.5.2.jar"
+                    include "**/antlr4-4.7.2-complete.jar"
                     includeEmptyDirs = false
                 }
             }
@@ -2317,6 +2457,7 @@ project(":graphics") {
 
     addMavenPublication(project, [ 'base' ])
 
+    addValidateSourceSets(project, sourceSets)
 }
 
 project(":controls") {
@@ -2327,8 +2468,18 @@ project(":controls") {
 
     sourceSets {
         main
-        shims
-        test
+        shims {
+            java {
+                compileClasspath += sourceSets.main.output
+                runtimeClasspath += sourceSets.main.output
+            }
+        }
+        test {
+            java {
+                compileClasspath += sourceSets.shims.output
+                runtimeClasspath += sourceSets.shims.output
+            }
+        }
     }
 
     project.ext.moduleSourcePath = defaultModuleSourcePath
@@ -2339,6 +2490,8 @@ project(":controls") {
     dependencies {
         testCompile project(":graphics").sourceSets.test.output
         testCompile project(":base").sourceSets.test.output
+        compile project(':base')
+        compile project(':graphics')
     }
 
     test {
@@ -2378,6 +2531,7 @@ project(":controls") {
 
     addMavenPublication(project, [ 'graphics' ])
 
+    addValidateSourceSets(project, sourceSets)
 }
 
 project(":swing") {
@@ -2403,6 +2557,8 @@ project(":swing") {
     commonModuleSetup(project, [ 'base', 'graphics', 'swing' ])
 
     dependencies {
+        compile project(":base")
+        compile project(":graphics")
     }
 
     test {
@@ -2412,6 +2568,8 @@ project(":swing") {
     if (COMPILE_SWING) {
         addMavenPublication(project, [ 'graphics' ])
     }
+
+    addValidateSourceSets(project, sourceSets)
 }
 
 project(":swt") {
@@ -2471,6 +2629,8 @@ project(":swt") {
             logger.info("SWT tests are disabled on MAC, because Gradle test runner does not handle -XstartOnFirstThread properly (https://issues.gradle.org/browse/GRADLE-3290).")
         }
     }
+
+    addValidateSourceSets(project, sourceSets)
 }
 
 project(":fxml") {
@@ -2481,8 +2641,18 @@ project(":fxml") {
 
     sourceSets {
         main
-        shims
-        test
+        shims {
+            java {
+                compileClasspath += sourceSets.main.output
+                runtimeClasspath += sourceSets.main.output
+            }
+        }
+        test {
+            java {
+                compileClasspath += sourceSets.shims.output
+                runtimeClasspath += sourceSets.shims.output
+            }
+        }
     }
 
     project.ext.moduleSourcePath = defaultModuleSourcePath
@@ -2494,6 +2664,8 @@ project(":fxml") {
     dependencies {
         testCompile project(":graphics").sourceSets.test.output
         testCompile project(":base").sourceSets.test.output
+        compile project(":base")
+        compile project(":graphics")
     }
 
     test {
@@ -2507,6 +2679,7 @@ project(":fxml") {
 
     addMavenPublication(project, [ 'controls' ])
 
+    addValidateSourceSets(project, sourceSets)
 }
 
 project(":media") {
@@ -2539,7 +2712,10 @@ project(":media") {
             media name: "libav-11.4", ext: "tar.gz"
             media name: "libav-12.1", ext: "tar.gz"
             media name: "ffmpeg-3.3.3", ext: "tar.gz"
+            media name: "ffmpeg-4.0.2", ext: "tar.gz"
         }
+        compile project(":base")
+        compile project(":graphics")
     }
 
     compileJava.dependsOn updateCacheIfNeeded
@@ -2707,7 +2883,7 @@ project(":media") {
                                                      "cpu_internal.h", "intfloat.h", "opt.h", "version.h", "avutil.h",
                                                      "crc.h", "intreadwrite.h", "parseutils.h", "xtea.h", "base64.h",
                                                      "dict.h", "lfg.h", "pixdesc.h", "intfloat_readwrite.h", "old_pix_fmts.h", "audioconvert.h",
-                                                     "cpu.h")
+                                                     "cpu.h", "hwcontext.h")
                     FileCollection libavutil_x86 = files("cpu.h") // Use cpu.h from x86 instead of libavutil root if exist
                     FileCollection libswscale = files("swscale.h", "version.h")
 
@@ -2889,8 +3065,8 @@ project(":media") {
                     doLast {
                         project.ext.libav = [:]
                         project.ext.libav.basedir = "${buildDir}/native/linux/ffmpeg"
-                        project.ext.libav.versions = [ "3.3.3" ]
-                        project.ext.libav.versionmap = [ "3.3.3" : "57" ]
+                        project.ext.libav.versions = [ "3.3.3", "4.0.2" ]
+                        project.ext.libav.versionmap = [ "3.3.3" : "57", "4.0.2" : "58" ]
 
                         libav.versions.each { version ->
                             def libavDir = "${libav.basedir}/ffmpeg-${version}"
@@ -2909,13 +3085,28 @@ project(":media") {
                             def libavDir = "${libav.basedir}/ffmpeg-${version}"
                             File dir = file(libavDir)
                             if (dir.exists()) {
-                                def configFile = "${libav.basedir}/ffmpeg-${version}/config.h"
+                                def configFile = "${libavDir}/config.h"
                                 File cfgFile = file(configFile)
                                 if (!cfgFile.exists()) {
                                     // Add execute permissions to version.sh, otherwise build fails
-                                    exec {
-                                        workingDir("$libavDir")
-                                        commandLine("chmod", "+x", "version.sh")
+                                    def versionFile = "${libavDir}/version.sh"
+                                    File verFile = file(versionFile)
+                                    if (verFile.exists()) {
+                                        exec {
+                                            workingDir("$libavDir")
+                                            commandLine("chmod", "+x", "version.sh")
+                                        }
+                                    } else {
+                                        versionFile = "${libavDir}/ffbuild/version.sh"
+                                        verFile = file(versionFile)
+                                        if (verFile.exists()) {
+                                            exec {
+                                                workingDir("${libavDir}/ffbuild")
+                                                commandLine("chmod")
+                                                args += "+x"
+                                                args += ["version.sh", "libversion.sh", "pkgconfig_generate.sh"]
+                                            }
+                                        }
                                     }
                                     exec {
                                         workingDir("$libavDir")
@@ -2955,7 +3146,7 @@ project(":media") {
                             project.ext.libav.libavffmpeg.versions = [ "56" ]
                             project.ext.libav.ffmpeg = [:]
                             project.ext.libav.ffmpeg.basedir = "${buildDir}/native/linux/ffmpeg/ffmpeg"
-                            project.ext.libav.ffmpeg.versions = [ "57" ]
+                            project.ext.libav.ffmpeg.versions = [ "57", "58" ]
 
                             project.ext.libav.versions.each { version ->
                                 def libavDir = "${project.ext.libav.basedir}-${version}"
@@ -3096,6 +3287,7 @@ project(":media") {
 
     addMavenPublication(project, [ 'graphics' ])
 
+    addValidateSourceSets(project, sourceSets)
 }
 
 project(":web") {
@@ -3109,8 +3301,18 @@ project(":web") {
 
     sourceSets {
         main
-        shims
-        test
+        shims {
+            java {
+                compileClasspath += sourceSets.main.output
+                runtimeClasspath += sourceSets.main.output
+            }
+        }
+        test {
+            java {
+                compileClasspath += sourceSets.shims.output
+                runtimeClasspath += sourceSets.shims.output
+            }
+        }
     }
 
     project.ext.moduleSourcePath = defaultModuleSourcePath
@@ -3119,6 +3321,10 @@ project(":web") {
     commonModuleSetup(project, [ 'base', 'graphics', 'controls', 'media', 'web' ])
 
     dependencies {
+        compile project(":base")
+        compile project(":graphics")
+        compile project(":controls")
+        compile project(":media")
     }
 
     compileJava.dependsOn updateCacheIfNeeded
@@ -3256,7 +3462,7 @@ project(":web") {
                     cmakeArgs += " -DJAVAFX_RELEASE_VERSION=${jfxReleaseMajorVersion}"
                     commandLine("perl", "$projectDir/src/main/native/Tools/Scripts/build-webkit",
                         "--java", "--icu-unicode", targetCpuBitDepthSwitch,
-                        "--cmakeargs=${cmakeArgs}")
+                        "--no-experimental-features", "--cmakeargs=${cmakeArgs}")
                 }
             }
         }
@@ -3271,7 +3477,7 @@ project(":web") {
         }
 
         def copyNativeTask = task("copyNative${t.capital}", type: Copy,
-                dependsOn: [compileNativeTask, , copyDumpTreeNativeTask]) {
+                dependsOn: [compileNativeTask, copyDumpTreeNativeTask]) {
             enabled =  (IS_COMPILE_WEBKIT)
             def library = rootProject.ext[t.upper].library
             from "$webkitOutputDir/$webkitConfig/$dllDir/${library('jfxwebkit')}"
@@ -3324,6 +3530,7 @@ project(":web") {
 
     addMavenPublication(project, [ 'controls', 'media' ])
 
+    addValidateSourceSets(project, sourceSets)
 }
 
 // This project is for system tests that need to run with a full SDK.
@@ -3346,6 +3553,19 @@ project(":systemTests") {
         testapp5
         testapp6
     }
+
+    def nonModSrcSets = [
+        sourceSets.test,
+        sourceSets.testapp1
+    ]
+
+    def modSrcSets = [
+        sourceSets.testapp2,
+        sourceSets.testapp3,
+        sourceSets.testapp4,
+        sourceSets.testapp5,
+        sourceSets.testapp6
+    ]
 
     project.ext.buildModule = false
     project.ext.moduleRuntime = false
@@ -3532,6 +3752,8 @@ project(":systemTests") {
 
         forkEvery = 1
     }
+
+    addValidateSourceSets(project, nonModSrcSets, modSrcSets)
 }
 
 allprojects {
@@ -3868,7 +4090,8 @@ compileTargets { t ->
         enabled = COMPILE_SWT
         group = "Basic"
         description = "Creates the javafx-swt.jar for the $t.name target"
-        archiveName = "${project(":swt").buildDir}/libs/javafx-swt.jar";
+        destinationDir = file("${project(":swt").buildDir}/libs")
+        archiveName = "javafx-swt.jar"
         includeEmptyDirs = false
         from("${project(":swt").buildDir}/classes/java/main");
         include("**/javafx/embed/swt/**")
@@ -3888,7 +4111,7 @@ compileTargets { t ->
         dependsOn(javafxSwtTask)
 
         doLast() {
-            ant.jar (update: true, index: true, destfile: javafxSwtTask.archiveName)
+            ant.jar (update: true, index: true, destfile: "${javafxSwtTask.destinationDir}/${javafxSwtTask.archiveName}")
         }
     }
 
@@ -3904,7 +4127,7 @@ project(":apps") {
     // The apps build is Ant based, we will exec ant from gradle.
 
     // Download the Lucene libraries needed for the Ensemble8 app
-    def luceneVersion = "7.4.0"
+    def luceneVersion = "7.7.1"
     getConfigurations().create("lucene");
     dependencies {
         lucene group: "org.apache.lucene", name: "lucene-core", version: luceneVersion
