@@ -77,26 +77,22 @@ public class WritableImage extends Image {
         super(width, height);
     }
 
-    private PixelBuffer pixelBuffer = null;
+    private PixelBuffer<? extends Buffer> pixelBuffer = null;
 
     /**
-     * Construct a {@code WritableImage} using the provided {@code PixelBuffer}.
-     * The {@code java.nio.Buffer} provided by {@code PixelBuffer} will be used
-     * as pixel data for this image.
-     * {@code PixelBuffer} must be created with either {@code PixelFormat.INT_ARGB_PRE}
-     * or {@code PixelFormat.BYTE_BGRA_PRE} {@code PixelFormat}.
-     * The {@code PixelBuffer} can be shared by multiple {@code WritableImage}s
-     * and different applications.
+     * Constructs a {@code WritableImage} using the provided {@code PixelBuffer}.
+     * The {@code java.nio.Buffer} provided by the {@code PixelBuffer} will be used
+     * as the pixel data for this image.
+     * The {@code PixelBuffer} can be shared by multiple {@code WritableImage}s.
      * Images constructed this way are readable using {@code Image.getPixelReader()}
      * but are not writable using {@code WritableImage.getPixelWriter()}.
      *
-     * @param pixelBuffer the {@code PixelBuffer} to construct from.
-     *
-     * @throws NullPointerException if {@code pixelBuffer} is {@code null}.
+     * @param pixelBuffer the {@code PixelBuffer} used to construct this image
+     * @throws NullPointerException if {@code pixelBuffer} is {@code null}
      *
      * @since 13
      */
-    public WritableImage(@NamedArg("PixelBuffer") PixelBuffer pixelBuffer) {
+    public WritableImage(@NamedArg("PixelBuffer") PixelBuffer<? extends Buffer> pixelBuffer) {
         super(validatePixelBuffer(pixelBuffer));
         pixelBuffer.addImage(this);
         this.pixelBuffer = pixelBuffer;
@@ -177,27 +173,25 @@ public class WritableImage extends Image {
         pixelsDirty();
     }
 
-    private static PixelBuffer validatePixelBuffer(PixelBuffer pixelBuffer) {
-        Objects.requireNonNull(pixelBuffer, "PixelBuffer must be specified.");
-        return pixelBuffer;
+    private static PixelBuffer validatePixelBuffer(PixelBuffer<? extends Buffer> pixelBuffer) {
+        return (Objects.requireNonNull(pixelBuffer, "pixelBuffer must not be null."));
     }
 
     private PixelWriter writer;
     /**
      * This method returns a {@code PixelWriter} that provides access to
-     * write the pixels of the image. {@code PixelWriter} is not supported for
-     * images constructed from a {@link PixelBuffer}.
+     * write the pixels of the image. This method is not supported for
+     * images constructed using a {@link PixelBuffer}.
      *
      * @return the {@code PixelWriter} for writing pixels to the image
-     *
-     * @throws UnsupportedOperationException if this image is created using a {@link PixelBuffer}
+     * @throws UnsupportedOperationException if this image was created using a {@link PixelBuffer}
      */
     public final PixelWriter getPixelWriter() {
-        if (getProgress() < 1.0 || isError()) {
-            return null;
-        }
         if (pixelBuffer != null) {
             throw new UnsupportedOperationException("PixelWriter is not supported with PixelBuffer");
+        }
+        if (getProgress() < 1.0 || isError()) {
+            return null;
         }
         if (writer == null) {
             writer = new PixelWriter() {

@@ -46,8 +46,6 @@ public abstract class BaseResourceFactory implements ResourceFactory {
     // Solely used by diffuse and selfillum maps in PhongMaterial for 3D rendering
     private final Map<Image,Texture> mipmapTexCache;
 
-    // Maximum number of updates to partially update the texture in one pulse.
-    private static final int NUM_UPDATE = 1;
     // Use a WeakHashMap as it automatically removes dead objects when they're
     // collected
     private final WeakHashMap<ResourceFactoryListener,Boolean> listenerMap =
@@ -227,9 +225,9 @@ public abstract class BaseResourceFactory implements ResourceFactory {
                 texCache.put(image, tex);
             }
         } else if (tex.getLastImageSerial() != idRect.getKey()) {
-            // If the image was updated only once(NUM_UPDATE), then the image is partially updated.
+            // If the image was updated only once, then the image is partially updated.
             // Else whole image is updated.
-            if (idRect.getKey() - tex.getLastImageSerial() == NUM_UPDATE && idRect.getValue() != null) {
+            if (idRect.getKey() - tex.getLastImageSerial() == 1 && idRect.getValue() != null) {
                 Rectangle dirtyRect = idRect.getValue();
                 tex.update(image.getPixelBuffer(), image.getPixelFormat(),
                         dirtyRect.x, dirtyRect.y, dirtyRect.x, dirtyRect.y,

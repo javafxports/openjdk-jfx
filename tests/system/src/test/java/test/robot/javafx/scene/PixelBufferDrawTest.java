@@ -40,6 +40,7 @@ import javafx.stage.StageStyle;
 import javafx.stage.WindowEvent;
 import javafx.util.Callback;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.concurrent.CountDownLatch;
@@ -92,14 +93,15 @@ public class PixelBufferDrawTest {
     private static final Color TEST_COLOR = Color.CYAN;
     private static final Color INIT_COLOR = Color.MAROON;
     private static volatile Color actualColor = Color.BLACK;
-    private static PixelBuffer pixelBuffer;
-    private static IntBuffer modifyIntBuffer;
-    private static ByteBuffer modifyByteBuffer;
+    private PixelBuffer<ByteBuffer> bytePixelBuffer;
+    private PixelBuffer<IntBuffer> intPixelBuffer;
+    private IntBuffer sourceIntBuffer;
+    private ByteBuffer sourceByteBuffer;
 
-    private static Callback<PixelBuffer, Rectangle2D> byteBufferCallback = pixelBuffer -> {
-        ByteBuffer dst = (ByteBuffer) pixelBuffer.getBuffer();
-        dst.put(modifyByteBuffer);
-        modifyByteBuffer.rewind();
+    private Callback<PixelBuffer<ByteBuffer>, Rectangle2D> byteBufferCallback = pixelBuffer -> {
+        ByteBuffer dst = pixelBuffer.getBuffer();
+        dst.put(sourceByteBuffer);
+        sourceByteBuffer.rewind();
         dst.rewind();
         return new Rectangle2D(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT / 2);
     };
@@ -128,17 +130,17 @@ public class PixelBufferDrawTest {
         return byteBuffer;
     }
 
-    private static void createBytePixelBuffer(boolean isDirect) {
+    private void createBytePixelBuffer(boolean isDirect) {
         ByteBuffer sharedBuffer = createByteBuffer(IMAGE_WIDTH, IMAGE_HEIGHT, isDirect, INIT_COLOR);
-        modifyByteBuffer = createByteBuffer(IMAGE_WIDTH, IMAGE_HEIGHT / 2, isDirect, TEST_COLOR);
+        sourceByteBuffer = createByteBuffer(IMAGE_WIDTH, IMAGE_HEIGHT / 2, isDirect, TEST_COLOR);
         PixelFormat<ByteBuffer> pixelFormat = PixelFormat.getByteBgraPreInstance();
-        pixelBuffer = new PixelBuffer(IMAGE_WIDTH, IMAGE_HEIGHT, sharedBuffer, pixelFormat);
+        bytePixelBuffer = new PixelBuffer<>(IMAGE_WIDTH, IMAGE_HEIGHT, sharedBuffer, pixelFormat);
     }
 
-    private static Callback<PixelBuffer, Rectangle2D> intBufferCallback = pixelBuffer -> {
-        IntBuffer dst = (IntBuffer) pixelBuffer.getBuffer();
-        dst.put(modifyIntBuffer);
-        modifyIntBuffer.rewind();
+    private Callback<PixelBuffer<IntBuffer>, Rectangle2D> intBufferCallback = pixelBuffer -> {
+        IntBuffer dst = pixelBuffer.getBuffer();
+        dst.put(sourceIntBuffer);
+        sourceIntBuffer.rewind();
         dst.rewind();
         return new Rectangle2D(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT / 2);
     };
@@ -168,14 +170,14 @@ public class PixelBufferDrawTest {
         return intBuffer;
     }
 
-    private static void createIntPixelBuffer(boolean isDirect) {
+    private void createIntPixelBuffer(boolean isDirect) {
         IntBuffer sharedBuffer = createIntBuffer(IMAGE_WIDTH, IMAGE_HEIGHT, isDirect, INIT_COLOR);
-        modifyIntBuffer = createIntBuffer(IMAGE_WIDTH, IMAGE_HEIGHT / 2, isDirect, TEST_COLOR);
+        sourceIntBuffer = createIntBuffer(IMAGE_WIDTH, IMAGE_HEIGHT / 2, isDirect, TEST_COLOR);
         PixelFormat<IntBuffer> pixelFormat = PixelFormat.getIntArgbPreInstance();
-        pixelBuffer = new PixelBuffer(IMAGE_WIDTH, IMAGE_HEIGHT, sharedBuffer, pixelFormat);
+        intPixelBuffer = new PixelBuffer<>(IMAGE_WIDTH, IMAGE_HEIGHT, sharedBuffer, pixelFormat);
     }
 
-    private ImageView createImageViewPB() {
+    private ImageView createImageViewPB(PixelBuffer<? extends Buffer> pixelBuffer) {
         return new ImageView(new WritableImage(pixelBuffer));
     }
 
@@ -201,11 +203,11 @@ public class PixelBufferDrawTest {
         }
     }
 
-    private void performTest(Callback<PixelBuffer, Rectangle2D> callback) {
+    private <T extends Buffer>void performTest(PixelBuffer<T> pixelBuffer, Callback<PixelBuffer<T>, Rectangle2D> callback) {
         // Step #2
         Util.runAndWait(() -> {
             for (int i = 0; i < NUM_IMAGES; i++)
-            root.getChildren().add(createImageViewPB());
+            root.getChildren().add(createImageViewPB(pixelBuffer));
         });
         delay();
         // Step #3
@@ -225,28 +227,28 @@ public class PixelBufferDrawTest {
     public void testIntArgbPreDirectBuffer() {
         // Step #1
         createIntPixelBuffer(true);
-        performTest(intBufferCallback);
+        performTest(intPixelBuffer, intBufferCallback);
     }
 
     @Test
     public void testIntArgbPreIndirectBuffer() {
         // Step #1
         createIntPixelBuffer(false);
-        performTest(intBufferCallback);
+        performTest(intPixelBuffer,intBufferCallback);
     }
 
     @Test
     public void testByteBgraPreDirectBuffer() {
         // Step #1
         createBytePixelBuffer(true);
-        performTest(byteBufferCallback);
+        performTest(bytePixelBuffer, byteBufferCallback);
     }
 
     @Test
     public void testByteBgraPreIndirectBuffer() {
         // Step #1
         createBytePixelBuffer(false);
-        performTest(byteBufferCallback);
+        performTest(bytePixelBuffer, byteBufferCallback);
     }
 
     public static class TestApp extends Application {
@@ -278,9 +280,10 @@ public class PixelBufferDrawTest {
             root = new HBox(1);
             scene = new Scene(root, SCENE_WIDTH, SCENE_HEIGHT);
             stage.setScene(scene);
-            modifyIntBuffer = null;
-            modifyByteBuffer = null;
-            pixelBuffer = null;
+            sourceIntBuffer = null;
+            sourceByteBuffer = null;
+            intPixelBuffer = null;
+            bytePixelBuffer = null;
             actualColor = Color.BLACK;
         });
         delay();
