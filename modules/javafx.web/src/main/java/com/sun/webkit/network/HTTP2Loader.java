@@ -431,7 +431,7 @@ final class HTTP2Loader extends URLLoaderBase {
         canceled = true;
     }
 
-    private void callBackIfNotCancelled(final Runnable r) {
+    private void callBackIfNotCanceled(final Runnable r) {
         Invoker.getInvoker().invokeOnEventThread(() -> {
             if (!canceled) {
                 r.run();
@@ -493,7 +493,7 @@ final class HTTP2Loader extends URLLoaderBase {
     }
 
     private void willSendRequest(final HttpResponse.ResponseInfo rsp) {
-        callBackIfNotCancelled(() -> {
+        callBackIfNotCanceled(() -> {
             twkWillSendRequest(
                     rsp.statusCode(),
                     getContentType(rsp),
@@ -506,7 +506,7 @@ final class HTTP2Loader extends URLLoaderBase {
     }
 
     private void didReceiveResponse(final HttpResponse.ResponseInfo rsp) {
-        callBackIfNotCancelled(() -> {
+        callBackIfNotCanceled(() -> {
             twkDidReceiveResponse(
                     rsp.statusCode(),
                     getContentType(rsp),
@@ -534,13 +534,13 @@ final class HTTP2Loader extends URLLoaderBase {
 
     // another variant to use from createZIPEncodedBodySubscriber
     private void didReceiveData(final byte[] bytes, int size) {
-        callBackIfNotCancelled(() -> {
+        callBackIfNotCanceled(() -> {
             notifyDidReceiveData(getDirectBuffer(size).put(bytes, 0, size).flip());
         });
     }
 
     private void didReceiveData(final List<ByteBuffer> bytes) {
-        callBackIfNotCancelled(() -> bytes.stream()
+        callBackIfNotCanceled(() -> bytes.stream()
                                           .map(this::copyToDirectBuffer)
                                           .forEach(this::notifyDidReceiveData)
         );
@@ -563,7 +563,7 @@ final class HTTP2Loader extends URLLoaderBase {
     }
 
     private void didFinishLoading() {
-        callBackIfNotCancelled(this::notifyDidFinishLoading);
+        callBackIfNotCanceled(this::notifyDidFinishLoading);
     }
 
     private void notifyDidFinishLoading() {
@@ -576,8 +576,8 @@ final class HTTP2Loader extends URLLoaderBase {
 
 
     private Void didFail(final Throwable th) {
-        callBackIfNotCancelled(() ->  {
-            // FIXME: simply copied from URLLoade.java, it should be
+        callBackIfNotCanceled(() ->  {
+            // FIXME: simply copied from URLLoader.java, it should be
             // retwritten using if..else rather than throw.
             int errorCode;
             try {
@@ -627,7 +627,7 @@ final class HTTP2Loader extends URLLoaderBase {
     private void didSendData(final long totalBytesSent,
                              final long totalBytesToBeSent)
     {
-        callBackIfNotCancelled(() -> notifyDidSendData(totalBytesSent, totalBytesToBeSent));
+        callBackIfNotCanceled(() -> notifyDidSendData(totalBytesSent, totalBytesToBeSent));
     }
 
     private void notifyDidSendData(long totalBytesSent,
