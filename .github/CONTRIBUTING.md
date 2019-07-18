@@ -6,7 +6,7 @@ OpenJFX is an open source project and we love to receive contributions from our 
 Bug reports
 -----------
 
-If you think you have found a bug in OpenJFX, first make sure that you are testing against the latest version - your issue may already have been fixed. If not, search our [issues list](https://bugs.openjdk.java.net) in the Java Bug System (JBS) in case a similar issue has already been opened. More information on where and how to report a bug can be found at [bugreport.java.com](http://bugreport.java.com/).
+If you think you have found a bug in OpenJFX, first make sure that you are testing against the latest version - your issue may already have been fixed. If not, search our [issues list](https://bugs.openjdk.java.net) in the Java Bug System (JBS) in case a similar issue has already been opened. More information on where and how to report a bug can be found at [bugreport.java.com](https://bugreport.java.com/).
 
 It is very helpful if you can prepare a reproduction of the bug. In other words, provide a small test case which we can run to confirm your bug. It makes it easier to find the problem and to fix it.
 
@@ -41,7 +41,7 @@ If you are a first time contributor to OpenJFX, welcome! Please do the following
 
 * Sign the Contributor Agreement
 
-    In order for us to evaluate your contribution, you need to sign the [Oracle Contributor Agreement](http://www.oracle.com/technetwork/community/oca-486395.html) (OCA). Ultimately, the goal is to send accepted Pull Requests upstream to the OpenJFX repository hosted on openjdk.java.net. We are not asking you to give up your copyright, but to give us the right to distribute your code without restriction. By doing this you assert that the code you contribute is *yours* to contribute, and not third-party code that you do not own. We ask this of all contributors in order to assure our users of the origin and continuing existence of the code. You only need to sign the OCA once.
+    In order for us to evaluate your contribution, you need to sign the [Oracle Contributor Agreement](https://www.oracle.com/technetwork/community/oca-486395.html) (OCA). Ultimately, the goal is to send accepted Pull Requests upstream to the OpenJFX repository hosted on openjdk.java.net. We are not asking you to give up your copyright, but to give us the right to distribute your code without restriction. By doing this you assert that the code you contribute is *yours* to contribute, and not third-party code that you do not own. We ask this of all contributors in order to assure our users of the origin and continuing existence of the code. You only need to sign the OCA once.
 
 * Read the code review policies
 
@@ -63,7 +63,7 @@ Once your changes and tests are ready to submit for review:
 
 3. File a bug in JBS
 
-    If there isn't already a bug filed in [JBS](https://bugs.openjdk.java.net), then please file one at [bugreport.java.com](http://bugreport.java.com/). A JBS bug ID is needed even if you have already filed an issue in the GitHub issue tracker. A GitHub issue can be used as a convenience, but JBS is the official bug database for the OpenJFX Project. Once you submit a pull request, you can add the "github-bug" label on the JBS bug, along with an Issue link to the PR. If you don't have direct JBS access, one of the Project Committers or Authors will do this for you.
+    If there isn't already a bug filed in [JBS](https://bugs.openjdk.java.net), then please file one at [bugreport.java.com](https://bugreport.java.com/). A JBS bug ID is needed even if you have already filed an issue in the GitHub issue tracker. A GitHub issue can be used as a convenience, but JBS is the official bug database for the OpenJFX Project. Once you submit a pull request, you can add the "github-bug" label on the JBS bug, along with an Issue link to the PR. If you don't have direct JBS access, one of the Project Committers or Authors will do this for you.
 
 4. Submit a pull request
 
