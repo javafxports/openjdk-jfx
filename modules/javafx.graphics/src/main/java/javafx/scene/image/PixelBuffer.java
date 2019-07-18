@@ -40,18 +40,17 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The {@code PixelBuffer} class provides a way to share the provided {@link java.nio.Buffer}
- * as pixel data among multiple {@link WritableImage}s.
- * Pixel data should be stored either in an {@link java.nio.IntBuffer} using
- * {@code INT_ARGB_PRE} {@code PixelFormat} or in a {@link java.nio.ByteBuffer} using
- * {@code BYTE_BGRA_PRE} {@code PixelFormat}. When the {@link java.nio.Buffer} is updated
- * using the API {@code PixelBuffer.updateBuffer()}, all the {@code WritableImage}s that were
- * created using the this {@code PixelBuffer} get redrawn.
- *
+ * The {@code PixelBuffer} class represents pixel data that is constructed from
+ * a {@link Buffer java.nio.Buffer} supplied by the application.
+ * A {@link WritableImage} can use this {@code PixelBuffer} directly without copying the pixel data.
+ * This {@code PixelBuffer} can be shared among multiple {@code WritableImage}s.
+ * Pixel data should be stored either in an {@link IntBuffer} using a {@link PixelFormat} of type
+ * {@code INT_ARGB_PRE} or in a {@link ByteBuffer} using a {@link PixelFormat} of type {@code BYTE_BGRA_PRE}.
+ * When the {@code Buffer} is updated using the {@link #updateBuffer PixelBuffer.updateBuffer} method,
+ * all {@code WritableImage}s that were created using this {@code PixelBuffer} are redrawn.
  * <p>
  * Example code that shows how to create a {@code PixelBuffer}:
  * <pre>{@code
- *
  * // Creating a PixelBuffer using BYTE_BGRA_PRE pixel format.
  * ByteBuffer byteBuffer = ByteBuffer.allocateDirect(width * height * 4);
  * PixelFormat<ByteBuffer> pixelFormat = PixelFormat.getByteBgraPreInstance();
@@ -65,8 +64,7 @@ import java.util.Objects;
  * Image img = new WritableImage(pixelBuffer);
  * }</pre>
  *
- * @param <T> the type of {@link java.nio.Buffer} that should be either {@link java.nio.IntBuffer}
- *           or {@link java.nio.ByteBuffer}
+ * @param <T> the type of {@link Buffer} that should be either {@link IntBuffer} or {@link ByteBuffer}
  * @see WritableImage#WritableImage(PixelBuffer)
  * @since 13
  */
@@ -79,24 +77,24 @@ public class PixelBuffer<T extends Buffer> {
     private final List<WeakReference<WritableImage>> imageRefs;
 
     /**
-     * Constructs a {@code PixelBuffer} using the provided {@link java.nio.Buffer} and {@link PixelFormat}.
-     * The type of specified {@code PixelFormat} must be either {@code PixelFormat.Type.INT_ARGB_PRE} or
-     * {@code PixelFormat.Type.BYTE_BGRA_PRE}. Any other type of {@code PixelFormat} will cause an exception to be thrown.
-     * The constructor does not allocate memory to store the pixel data. The application must allocate
-     * sufficient memory required for the combination of dimensions(width, height) and {@code PixelFormat}.
-     * {@code PixelFormat.Type.INT_ARGB_PRE} requires an {@link java.nio.IntBuffer} with minimum capacity of
-     * (width * height) and  {@code PixelFormat.Type.BYTE_BGRA_PRE} requires a {@link java.nio.ByteBuffer}
-     * with minimum capacity of (width * height * 4).
+     * Constructs a {@code PixelBuffer} using the specified {@code Buffer} and {@code PixelFormat}.
+     * The type of the specified {@code PixelFormat} must be either {@code PixelFormat.Type.INT_ARGB_PRE}
+     * or {@code PixelFormat.Type.BYTE_BGRA_PRE}.
+     * The constructor does not allocate memory to store the pixel data. The application must provide
+     * a buffer with sufficient memory for the combination of dimensions {@code (width, height)} and
+     * {@code PixelFormat}. The {@code PixelFormat.Type.INT_ARGB_PRE} requires an {@link IntBuffer} with
+     * minimum capacity of {@code width * height} and the {@code PixelFormat.Type.BYTE_BGRA_PRE} requires
+     * a {@link ByteBuffer} with minimum capacity of {@code width * height * 4}.
      *
      * @param width       width in pixels of this {@code PixelBuffer}
      * @param height      height in pixels of this {@code PixelBuffer}
-     * @param buffer      {@link java.nio.Buffer} that stores the pixel data
-     * @param pixelFormat {@code PixelFormat} of pixels in the {@code buffer}
+     * @param buffer      {@code java.nio.Buffer} that stores the pixel data
+     * @param pixelFormat format of pixels in the {@code buffer}
      * @throws IllegalArgumentException if either {@code width} or {@code height}
-     *                                  is negative or zero, or if {@code pixelFormat}
-     *                                  is unsupported, or if the  {@code buffer} does
-     *                                  not have sufficient memory, or if the type of {@code java.nio.Buffer}
-     *                                  and {@code PixelFormat} do not match
+     *                                  is negative or zero, or if the type of {@code pixelFormat}
+     *                                  is unsupported, or if the {@code buffer} does
+     *                                  not have sufficient memory, or if the type of {@code buffer}
+     *                                  and {@code pixelFormat} do not match
      * @throws NullPointerException     if {@code buffer} or {@code pixelFormat} is {@code null}
      */
     public PixelBuffer(int width, int height, T buffer, PixelFormat<T> pixelFormat) {
@@ -164,29 +162,31 @@ public class PixelBuffer<T extends Buffer> {
      *
      * @return the {@code PixelFormat} of this {@code PixelBuffer}
      */
-    public PixelFormat getPixelFormat() {
+    public PixelFormat<T> getPixelFormat() {
         return pixelFormat;
     }
 
     /**
-     * Updates the pixel data in the {@link java.nio.Buffer} using the provided {@link javafx.util.Callback}.
+     * Invokes the specified {@link Callback} method and updates the dirty region of
+     * all {@code WritableImage}s that were created using this {@code PixelBuffer}.
+     * The {@code Callback} method is expected to update the {@code Buffer} and
+     * return a {@link Rectangle2D} that encloses the dirty region, or
+     * return {@code null} to indicate that entire buffer is dirty.
      * This method must be called on the JavaFX Application thread.
-     * The {@code callback} method should update the {@link java.nio.Buffer} and
-     * return a {@code Rectangle2D} which encloses the modified region, or
-     * {@code null} to indicate that entire buffer is dirty.
      * <p>
      * Example code that shows how to use this method:
      * <pre>{@code
      * Callback<PixelBuffer<ByteBuffer>, Rectangle2D> callback = pixelBuffer -> {
      *     ByteBuffer buffer = pixelBuffer.getBuffer();
      *     // Update the buffer.
-     *     return new Rectangle2D(x, y, width, height);
+     *     return new Rectangle2D(x, y, dirtyWidth, dirtyHeight);
      * };
      * pixelBuffer.updateBuffer(callback);
      * }</pre>
      *
-     * @param callback the {@link javafx.util.Callback} method that updates the {@link java.nio.Buffer}
-     * @throws IllegalStateException if this method is not called on the JavaFX Application Thread
+     * @param callback the {@code Callback} method that updates the {@code Buffer}
+     * @throws IllegalStateException if this method is called on a thread
+     *                               other than the JavaFX Application Thread.
      * @throws NullPointerException  if {@code callback} is {@code null}
      **/
     public void updateBuffer(Callback<PixelBuffer<T>, Rectangle2D> callback) {

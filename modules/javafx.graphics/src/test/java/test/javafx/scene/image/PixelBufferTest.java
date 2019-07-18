@@ -71,7 +71,15 @@ public final class PixelBufferTest {
     public void testCreatePixelBufferDimensionsOverflow() {
         try {
             PixelBuffer<ByteBuffer> pb = new PixelBuffer<>(0xFFFFF, 0xFFFFF, byteBuffer, byteBGRAPrePf);
-            //TBD: test when, w * h * 4 = 0x80000000
+            fail("Expected IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+        }
+    }
+
+    @Test
+    public void testCreatePixelBufferWx4xHIsMaxint() {
+        try {
+            PixelBuffer<ByteBuffer> pb = new PixelBuffer<>(0x4000, 0x8000, byteBuffer, byteBGRAPrePf);
             fail("Expected IllegalArgumentException");
         } catch (IllegalArgumentException e) {
         }
@@ -156,7 +164,15 @@ public final class PixelBufferTest {
     public void testCreatePixelBufferIntArgbPreDimensionsOverflow() {
         try {
             PixelBuffer<IntBuffer> pb = new PixelBuffer<>(0xFFFFF, 0xFFFFF, intBuffer, intARGBPrePf);
-            //TBD: test when, w * h = 0x80000000
+            fail("Expected IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+        }
+    }
+
+    @Test
+    public void testCreatePixelBufferIntArgbPreWxHIsMaxint() {
+        try {
+            PixelBuffer<IntBuffer> pb = new PixelBuffer<>(0x8000, 0x10000, intBuffer, intARGBPrePf);
             fail("Expected IllegalArgumentException");
         } catch (IllegalArgumentException e) {
         }
