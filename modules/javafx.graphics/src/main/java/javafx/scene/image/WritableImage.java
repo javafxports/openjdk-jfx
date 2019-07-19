@@ -80,7 +80,7 @@ public class WritableImage extends Image {
     private PixelBuffer<? extends Buffer> pixelBuffer = null;
 
     /**
-     * Constructs a {@code WritableImage} using the provided {@code PixelBuffer}.
+     * Constructs a {@code WritableImage} using the specified {@code PixelBuffer}.
      * The {@code java.nio.Buffer} provided by the {@code PixelBuffer} will be used
      * directly as the pixel data for this image.
      * The {@code PixelBuffer} can be shared by multiple {@code WritableImage}s.
@@ -89,7 +89,6 @@ public class WritableImage extends Image {
      *
      * @param pixelBuffer the {@code PixelBuffer} used to construct this image
      * @throws NullPointerException if {@code pixelBuffer} is {@code null}
-     *
      * @since 13
      */
     public WritableImage(@NamedArg("PixelBuffer") PixelBuffer<? extends Buffer> pixelBuffer) {
@@ -181,10 +180,10 @@ public class WritableImage extends Image {
     /**
      * This method returns a {@code PixelWriter} that provides access to
      * write the pixels of the image. This method is not supported for
-     * images constructed using a {@link PixelBuffer}.
+     * images constructed using a {@code PixelBuffer}.
      *
      * @return the {@code PixelWriter} for writing pixels to the image
-     * @throws UnsupportedOperationException if this image was created using a {@link PixelBuffer}
+     * @throws UnsupportedOperationException if this image was created using a {@code PixelBuffer}
      */
     public final PixelWriter getPixelWriter() {
         if (pixelBuffer != null) {
