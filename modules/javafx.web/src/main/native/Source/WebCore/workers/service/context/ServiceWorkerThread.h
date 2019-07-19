@@ -55,7 +55,7 @@ public:
 
     WorkerObjectProxy& workerObjectProxy() const { return m_workerObjectProxy; }
 
-    WEBCORE_EXPORT void postFetchTask(Ref<ServiceWorkerFetch::Client>&&, std::optional<ServiceWorkerClientIdentifier>&&, ResourceRequest&&, String&& referrer, FetchOptions&&);
+    WEBCORE_EXPORT void postFetchTask(Ref<ServiceWorkerFetch::Client>&&, Optional<ServiceWorkerClientIdentifier>&&, ResourceRequest&&, String&& referrer, FetchOptions&&);
     WEBCORE_EXPORT void postMessageToServiceWorker(MessageWithMessagePorts&&, ServiceWorkerOrClientData&& sourceData);
 
     void fireInstallEvent();
@@ -66,11 +66,13 @@ public:
     ServiceWorkerIdentifier identifier() const { return m_data.serviceWorkerIdentifier; }
 
 protected:
-    Ref<WorkerGlobalScope> createWorkerGlobalScope(const URL&, const String& identifier, const String& userAgent, bool isOnline, const ContentSecurityPolicyResponseHeaders&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, PAL::SessionID) final;
+    Ref<WorkerGlobalScope> createWorkerGlobalScope(const URL&, Ref<SecurityOrigin>&&, const String& name, const String& identifier, const String& userAgent, bool isOnline, const ContentSecurityPolicyResponseHeaders&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, PAL::SessionID) final;
     void runEventLoop() override;
 
 private:
     WEBCORE_EXPORT ServiceWorkerThread(const ServiceWorkerContextData&, PAL::SessionID, String&& userAgent, WorkerLoaderProxy&, WorkerDebuggerProxy&, IDBClient::IDBConnectionProxy*, SocketProvider*);
+
+    bool isServiceWorkerThread() const final { return true; }
 
     ServiceWorkerContextData m_data;
     WorkerObjectProxy& m_workerObjectProxy;

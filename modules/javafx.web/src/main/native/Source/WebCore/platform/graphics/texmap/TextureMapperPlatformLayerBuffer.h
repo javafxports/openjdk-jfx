@@ -25,12 +25,12 @@
 
 #pragma once
 
+#if USE(COORDINATED_GRAPHICS)
+
 #include "BitmapTextureGL.h"
 #include "TextureMapperGLHeaders.h"
 #include "TextureMapperPlatformLayer.h"
-#include <wtf/CurrentTime.h>
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
+#include <wtf/MonotonicTime.h>
 
 namespace WebCore {
 
@@ -48,8 +48,8 @@ public:
     bool canReuseWithoutReset(const IntSize&, GLint internalFormat);
     BitmapTextureGL& textureGL() { return static_cast<BitmapTextureGL&>(*m_texture); }
 
-    inline void markUsed() { m_timeLastUsed = monotonicallyIncreasingTime(); }
-    double lastUsedTime() const { return m_timeLastUsed; }
+    inline void markUsed() { m_timeLastUsed = MonotonicTime::now(); }
+    MonotonicTime lastUsedTime() const { return m_timeLastUsed; }
 
     class UnmanagedBufferDataHolder {
         WTF_MAKE_NONCOPYABLE(UnmanagedBufferDataHolder);
@@ -63,12 +63,19 @@ public:
     void setUnmanagedBufferDataHolder(std::unique_ptr<UnmanagedBufferDataHolder> holder) { m_unmanagedBufferDataHolder = WTFMove(holder); }
     void setExtraFlags(TextureMapperGL::Flags flags) { m_extraFlags = flags; }
 
-    std::unique_ptr<TextureMapperPlatformLayerBuffer> clone(TextureMapperGL&);
+    std::unique_ptr<TextureMapperPlatformLayerBuffer> clone();
+
+    class HolePunchClient {
+    public:
+        virtual void setVideoRectangle(const IntRect&) = 0;
+    };
+
+    void setHolePunchClient(std::unique_ptr<HolePunchClient>&& client) { m_holePunchClient = WTFMove(client); }
 
 private:
 
     RefPtr<BitmapTexture> m_texture;
-    double m_timeLastUsed { 0 };
+    MonotonicTime m_timeLastUsed;
 
     GLuint m_textureID;
     IntSize m_size;
@@ -76,8 +83,9 @@ private:
     TextureMapperGL::Flags m_extraFlags;
     bool m_hasManagedTexture;
     std::unique_ptr<UnmanagedBufferDataHolder> m_unmanagedBufferDataHolder;
+    std::unique_ptr<HolePunchClient> m_holePunchClient;
 };
 
 } // namespace WebCore
 
-#endif // COORDINATED_GRAPHICS_THREADED
+#endif // USE(COORDINATED_GRAPHICS)

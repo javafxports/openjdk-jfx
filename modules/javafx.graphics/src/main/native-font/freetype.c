@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,21 @@
 #define OS_NATIVE(func) Java_com_sun_javafx_font_freetype_OSFreetype_##func
 
 extern jboolean checkAndClearException(JNIEnv *env);
+#ifdef STATIC_BUILD
+JNIEXPORT jint JNICALL
+JNI_OnLoad_javafx_font_freetype(JavaVM * vm, void * reserved) {
+#ifdef JNI_VERSION_1_8
+    JNIEnv *env;
+    if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_8) != JNI_OK) {
+        return JNI_VERSION_1_4;
+    }
+    return JNI_VERSION_1_8;
+#else
+    return JNI_VERSION_1_4;
+#endif
+}
+#endif
+
 
 jboolean checkAndClearException(JNIEnv *env)
 {
@@ -389,21 +404,10 @@ JNIEXPORT void JNICALL OS_NATIVE(FT_1Set_1Transform)
     }
 }
 
-#define LIB_FREETYPE "libfreetype.so"
 JNIEXPORT jint JNICALL OS_NATIVE(FT_1Library_1SetLcdFilter)
     (JNIEnv *env, jclass that, jlong arg0, jint arg1)
 {
-//  return (jint)FT_Library_SetLcdFilter((FT_Library)arg0, (FT_LcdFilter)arg1);
-    static void *fp = NULL;
-    if (!fp) {
-        void* handle = dlopen(LIB_FREETYPE, RTLD_LAZY);
-        if (handle) fp = dlsym(handle, "FT_Library_SetLcdFilter");
-    }
-    jint rc = 0;
-    if (fp) {
-        rc = (jint)((jint (*)(jlong, jint))fp)(arg0, arg1);
-    }
-    return rc;
+    return (jint)FT_Library_SetLcdFilter((FT_Library)arg0, (FT_LcdFilter)arg1);
 }
 
 JNIEXPORT jint JNICALL OS_NATIVE(FT_1Done_1Face)

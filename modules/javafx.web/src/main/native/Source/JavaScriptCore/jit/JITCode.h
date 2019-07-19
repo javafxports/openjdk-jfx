@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,6 +43,9 @@ namespace FTL {
 class ForOSREntryJITCode;
 class JITCode;
 }
+namespace DOMJIT {
+class Signature;
+}
 
 struct ProtoCallFrame;
 class TrackedReferences;
@@ -50,8 +53,8 @@ class VM;
 
 class JITCode : public ThreadSafeRefCounted<JITCode> {
 public:
-    typedef MacroAssemblerCodeRef CodeRef;
-    typedef MacroAssemblerCodePtr CodePtr;
+    template<PtrTag tag> using CodePtr = MacroAssemblerCodePtr<tag>;
+    template<PtrTag tag> using CodeRef = MacroAssemblerCodeRef<tag>;
 
     enum JITType : uint8_t {
         None,
@@ -153,6 +156,8 @@ public:
         return jitType == InterpreterThunk || jitType == BaselineJIT;
     }
 
+    virtual const DOMJIT::Signature* signature() const { return nullptr; }
+
 protected:
     JITCode(JITType);
 
@@ -172,7 +177,7 @@ public:
         return jitCode->jitType();
     }
 
-    virtual CodePtr addressForCall(ArityCheckMode) = 0;
+    virtual CodePtr<JSEntryPtrTag> addressForCall(ArityCheckMode) = 0;
     virtual void* executableAddressAtOffset(size_t offset) = 0;
     void* executableAddress() { return executableAddressAtOffset(0); }
     virtual void* dataAddressAtOffset(size_t offset) = 0;
@@ -195,17 +200,21 @@ public:
 
 #if ENABLE(JIT)
     virtual RegisterSet liveRegistersToPreserveAtExceptionHandlingCallSite(CodeBlock*, CallSiteIndex);
-    virtual std::optional<CodeOrigin> findPC(CodeBlock*, void* pc) { UNUSED_PARAM(pc); return std::nullopt; }
+    virtual Optional<CodeOrigin> findPC(CodeBlock*, void* pc) { UNUSED_PARAM(pc); return WTF::nullopt; }
 #endif
+
+    Intrinsic intrinsic() { return m_intrinsic; }
 
 private:
     JITType m_jitType;
+protected:
+    Intrinsic m_intrinsic { NoIntrinsic }; // Effective only in NativeExecutable.
 };
 
 class JITCodeWithCodeRef : public JITCode {
 protected:
     JITCodeWithCodeRef(JITType);
-    JITCodeWithCodeRef(CodeRef, JITType);
+    JITCodeWithCodeRef(CodeRef<JSEntryPtrTag>, JITType);
 
 public:
     virtual ~JITCodeWithCodeRef();
@@ -217,32 +226,43 @@ public:
     bool contains(void*) override;
 
 protected:
-    CodeRef m_ref;
+    CodeRef<JSEntryPtrTag> m_ref;
 };
 
 class DirectJITCode : public JITCodeWithCodeRef {
 public:
     DirectJITCode(JITType);
-    DirectJITCode(CodeRef, CodePtr withArityCheck, JITType);
+    DirectJITCode(CodeRef<JSEntryPtrTag>, CodePtr<JSEntryPtrTag> withArityCheck, JITType);
+    DirectJITCode(CodeRef<JSEntryPtrTag>, CodePtr<JSEntryPtrTag> withArityCheck, JITType, Intrinsic); // For generated thunk.
     virtual ~DirectJITCode();
 
-    void initializeCodeRef(CodeRef, CodePtr withArityCheck);
+    CodePtr<JSEntryPtrTag> addressForCall(ArityCheckMode) override;
 
-    CodePtr addressForCall(ArityCheckMode) override;
+protected:
+    void initializeCodeRefForDFG(CodeRef<JSEntryPtrTag>, CodePtr<JSEntryPtrTag> withArityCheck);
 
 private:
-    CodePtr m_withArityCheck;
+    CodePtr<JSEntryPtrTag> m_withArityCheck;
 };
 
 class NativeJITCode : public JITCodeWithCodeRef {
 public:
     NativeJITCode(JITType);
-    NativeJITCode(CodeRef, JITType);
+    NativeJITCode(CodeRef<JSEntryPtrTag>, JITType, Intrinsic);
     virtual ~NativeJITCode();
 
-    void initializeCodeRef(CodeRef);
+    CodePtr<JSEntryPtrTag> addressForCall(ArityCheckMode) override;
+};
 
-    CodePtr addressForCall(ArityCheckMode) override;
+class NativeDOMJITCode final : public NativeJITCode {
+public:
+    NativeDOMJITCode(CodeRef<JSEntryPtrTag>, JITType, Intrinsic, const DOMJIT::Signature*);
+    virtual ~NativeDOMJITCode() = default;
+
+    const DOMJIT::Signature* signature() const override { return m_signature; }
+
+private:
+    const DOMJIT::Signature* m_signature;
 };
 
 } // namespace JSC

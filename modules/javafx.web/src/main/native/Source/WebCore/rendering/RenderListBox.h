@@ -141,7 +141,7 @@ private:
     bool usesMockScrollAnimator() const override;
     void logMockScrollAnimatorMessage(const String&) const override;
 
-    // NOTE: This should only be called by the overriden setScrollOffset from ScrollableArea.
+    // NOTE: This should only be called by the overridden setScrollOffset from ScrollableArea.
     void scrollTo(int newOffset);
 
     using PaintFunction = WTF::Function<void(PaintInfo&, const LayoutPoint&, int listItemIndex)>;
@@ -178,8 +178,8 @@ private:
     int m_optionsWidth;
     int m_indexOffset;
 
-    std::optional<int> m_indexOfFirstVisibleItemInsidePaddingTopArea;
-    std::optional<int> m_indexOfFirstVisibleItemInsidePaddingBottomArea;
+    Optional<int> m_indexOfFirstVisibleItemInsidePaddingTopArea;
+    Optional<int> m_indexOfFirstVisibleItemInsidePaddingBottomArea;
 
     RefPtr<Scrollbar> m_vBar;
 };

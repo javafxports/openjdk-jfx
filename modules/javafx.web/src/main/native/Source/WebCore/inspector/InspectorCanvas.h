@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc.  All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,9 +28,7 @@
 #include "CallTracerTypes.h"
 #include <JavaScriptCore/InspectorProtocolObjects.h>
 #include <JavaScriptCore/ScriptCallFrame.h>
-#include <wtf/HashMap.h>
-#include <wtf/Ref.h>
-#include <wtf/RefPtr.h>
+#include <JavaScriptCore/ScriptCallStack.h>
 #include <wtf/Variant.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -45,9 +43,6 @@ class HTMLImageElement;
 class HTMLVideoElement;
 class ImageBitmap;
 class ImageData;
-class InstrumentingAgents;
-
-typedef String ErrorString;
 
 class InspectorCanvas final : public RefCounted<InspectorCanvas> {
 public:
@@ -77,36 +72,38 @@ public:
     bool hasBufferSpace() const;
     long bufferUsed() const { return m_bufferUsed; }
 
-    bool singleFrame() const { return m_singleFrame; }
-    void setSingleFrame(bool singleFrame) { m_singleFrame = singleFrame; }
+    void setFrameCount(long);
+    bool overFrameCount() const;
 
-    Ref<Inspector::Protocol::Canvas::Canvas> buildObjectForCanvas(InstrumentingAgents&, bool captureBacktrace);
+    Ref<Inspector::Protocol::Canvas::Canvas> buildObjectForCanvas(bool captureBacktrace);
 
 private:
     InspectorCanvas(CanvasRenderingContext&);
     void appendActionSnapshotIfNeeded();
     String getCanvasContentAsDataURL();
 
-    typedef Variant<
-        CanvasGradient*,
-        CanvasPattern*,
-        HTMLCanvasElement*,
-        HTMLImageElement*,
+    using DuplicateDataVariant = Variant<
+        RefPtr<CanvasGradient>,
+        RefPtr<CanvasPattern>,
+        RefPtr<HTMLCanvasElement>,
+        RefPtr<HTMLImageElement>,
 #if ENABLE(VIDEO)
-        HTMLVideoElement*,
+        RefPtr<HTMLVideoElement>,
 #endif
-        ImageData*,
-        ImageBitmap*,
+        RefPtr<ImageData>,
+        RefPtr<ImageBitmap>,
+        RefPtr<Inspector::ScriptCallStack>,
         Inspector::ScriptCallFrame,
         String
-    > DuplicateDataVariant;
+    >;
 
     int indexForData(DuplicateDataVariant);
-    RefPtr<Inspector::Protocol::Recording::InitialState> buildInitialState();
-    RefPtr<JSON::ArrayOf<JSON::Value>> buildAction(const String&, Vector<RecordCanvasActionVariant>&& = { });
-    RefPtr<JSON::ArrayOf<JSON::Value>> buildArrayForCanvasGradient(const CanvasGradient&);
-    RefPtr<JSON::ArrayOf<JSON::Value>> buildArrayForCanvasPattern(const CanvasPattern&);
-    RefPtr<JSON::ArrayOf<JSON::Value>> buildArrayForImageData(const ImageData&);
+    String stringIndexForKey(const String&);
+    Ref<Inspector::Protocol::Recording::InitialState> buildInitialState();
+    Ref<JSON::ArrayOf<JSON::Value>> buildAction(const String&, Vector<RecordCanvasActionVariant>&& = { });
+    Ref<JSON::ArrayOf<JSON::Value>> buildArrayForCanvasGradient(const CanvasGradient&);
+    Ref<JSON::ArrayOf<JSON::Value>> buildArrayForCanvasPattern(const CanvasPattern&);
+    Ref<JSON::ArrayOf<JSON::Value>> buildArrayForImageData(const ImageData&);
 
     String m_identifier;
     CanvasRenderingContext& m_context;
@@ -119,11 +116,11 @@ private:
     Vector<DuplicateDataVariant> m_indexedDuplicateData;
 
     String m_recordingName;
-    double m_currentFrameStartTime { NAN };
+    MonotonicTime m_currentFrameStartTime { MonotonicTime::nan() };
     size_t m_bufferLimit { 100 * 1024 * 1024 };
     size_t m_bufferUsed { 0 };
-    bool m_singleFrame { true };
+    Optional<size_t> m_frameCount;
+    size_t m_framesCaptured { 0 };
 };
 
 } // namespace WebCore
-

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 Joseph Pecoraro. All rights reserved.
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "URL.h"
+#include <wtf/URL.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
@@ -34,33 +34,21 @@
 #include <objc/objc.h>
 #endif
 
+#if USE(SOUP)
+typedef struct _SoupCookie SoupCookie;
+#endif
+
 namespace WebCore {
 
 struct Cookie {
-    Cookie() { }
-
+    Cookie() = default;
     Cookie(WTF::HashTableDeletedValueType)
         : name(WTF::HashTableDeletedValue)
-    { }
-
-    Cookie(const String& name, const String& value, const String& domain, const String& path, double created, double expires, bool httpOnly, bool secure, bool session, const String& comment, const URL& commentURL, const Vector<uint16_t> ports)
-        : name(name)
-        , value(value)
-        , domain(domain)
-        , path(path)
-        , created(created)
-        , expires(expires)
-        , httpOnly(httpOnly)
-        , secure(secure)
-        , session(session)
-        , comment(comment)
-        , commentURL(commentURL)
-        , ports(ports)
     {
     }
 
     template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static std::optional<Cookie> decode(Decoder&);
+    template<class Decoder> static Optional<Cookie> decode(Decoder&);
 
     WEBCORE_EXPORT bool operator==(const Cookie&) const;
     WEBCORE_EXPORT unsigned hash() const;
@@ -76,16 +64,16 @@ struct Cookie {
     bool isNull() const
     {
         return name.isNull()
-        && value.isNull()
-        && domain.isNull()
-        && path.isNull()
-        && created == 0
-        && expires == 0
-        && !httpOnly
-        && !secure
-        && !session
-        && comment.isNull()
-        && commentURL.isNull();
+            && value.isNull()
+            && domain.isNull()
+            && path.isNull()
+            && !created
+            && !expires
+            && !httpOnly
+            && !secure
+            && !session
+            && comment.isNull()
+            && commentURL.isNull();
     }
 
     String name;
@@ -101,6 +89,9 @@ struct Cookie {
     String comment;
     URL commentURL;
     Vector<uint16_t> ports;
+
+    enum class SameSitePolicy { None, Lax, Strict };
+    SameSitePolicy sameSite { SameSitePolicy::None };
 };
 
 struct CookieHash {
@@ -119,72 +110,52 @@ struct CookieHash {
 template<class Encoder>
 void Cookie::encode(Encoder& encoder) const
 {
-    encoder << name << value << domain << path << created << expires << httpOnly << secure << session << comment << commentURL << ports;
+    encoder << name;
+    encoder << value;
+    encoder << domain;
+    encoder << path;
+    encoder << created;
+    encoder << expires;
+    encoder << httpOnly;
+    encoder << secure;
+    encoder << session;
+    encoder << comment;
+    encoder << commentURL;
+    encoder << ports;
+    encoder << sameSite;
 }
 
 template<class Decoder>
-std::optional<Cookie> Cookie::decode(Decoder& decoder)
+Optional<Cookie> Cookie::decode(Decoder& decoder)
 {
-    std::optional<String> name;
-    decoder >> name;
-    if (!name)
-        return std::nullopt;
-
-    std::optional<String> value;
-    decoder >> value;
-    if (!value)
-        return std::nullopt;
-
-    std::optional<String> domain;
-    decoder >> domain;
-    if (!domain)
-        return std::nullopt;
-
-    std::optional<String> path;
-    decoder >> path;
-    if (!path)
-        return std::nullopt;
-
-    std::optional<double> created;
-    decoder >> created;
-    if (!created)
-        return std::nullopt;
-
-    std::optional<double> expires;
-    decoder >> expires;
-    if (!expires)
-        return std::nullopt;
-
-    std::optional<bool> httpOnly;
-    decoder >> httpOnly;
-    if (!httpOnly)
-        return std::nullopt;
-
-    std::optional<bool> secure;
-    decoder >> secure;
-    if (!secure)
-        return std::nullopt;
-
-    std::optional<bool> session;
-    decoder >> session;
-    if (!session)
-        return std::nullopt;
-
-    std::optional<String> comment;
-    decoder >> comment;
-    if (!comment)
-        return std::nullopt;
-
-    URL commentURL;
-    if (!decoder.decode(commentURL))
-        return std::nullopt;
-
-    std::optional<Vector<uint16_t>> ports;
-    decoder >> ports;
-    if (!ports)
-        return std::nullopt;
-
-    return {{ WTFMove(*name), WTFMove(*value), WTFMove(*domain), WTFMove(*path), WTFMove(*created), WTFMove(*expires), WTFMove(*httpOnly), WTFMove(*secure), WTFMove(*session), WTFMove(*comment), WTFMove(commentURL), WTFMove(*ports) }};
+    Cookie cookie;
+    if (!decoder.decode(cookie.name))
+        return WTF::nullopt;
+    if (!decoder.decode(cookie.value))
+        return WTF::nullopt;
+    if (!decoder.decode(cookie.domain))
+        return WTF::nullopt;
+    if (!decoder.decode(cookie.path))
+        return WTF::nullopt;
+    if (!decoder.decode(cookie.created))
+        return WTF::nullopt;
+    if (!decoder.decode(cookie.expires))
+        return WTF::nullopt;
+    if (!decoder.decode(cookie.httpOnly))
+        return WTF::nullopt;
+    if (!decoder.decode(cookie.secure))
+        return WTF::nullopt;
+    if (!decoder.decode(cookie.session))
+        return WTF::nullopt;
+    if (!decoder.decode(cookie.comment))
+        return WTF::nullopt;
+    if (!decoder.decode(cookie.commentURL))
+        return WTF::nullopt;
+    if (!decoder.decode(cookie.ports))
+        return WTF::nullopt;
+    if (!decoder.decode(cookie.sameSite))
+        return WTF::nullopt;
+    return cookie;
 }
 
 }
@@ -199,4 +170,12 @@ namespace WTF {
         static void constructDeletedValue(WebCore::Cookie& slot) { slot = WebCore::Cookie(WTF::HashTableDeletedValue); }
         static bool isDeletedValue(const WebCore::Cookie& slot) { return slot.name.isHashTableDeletedValue(); }
     };
+    template<> struct EnumTraits<WebCore::Cookie::SameSitePolicy> {
+    using values = EnumValues<
+        WebCore::Cookie::SameSitePolicy,
+        WebCore::Cookie::SameSitePolicy::None,
+        WebCore::Cookie::SameSitePolicy::Lax,
+        WebCore::Cookie::SameSitePolicy::Strict
+    >;
+};
 }

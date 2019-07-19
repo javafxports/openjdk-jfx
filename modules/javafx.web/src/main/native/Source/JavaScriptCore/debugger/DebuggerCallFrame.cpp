@@ -57,8 +57,8 @@ public:
     unsigned column() const { return m_column; }
 
 private:
-    mutable unsigned m_line;
-    mutable unsigned m_column;
+    mutable unsigned m_line { 0 };
+    mutable unsigned m_column { 0 };
 };
 
 Ref<DebuggerCallFrame> DebuggerCallFrame::create(VM& vm, CallFrame* callFrame)
@@ -70,7 +70,8 @@ Ref<DebuggerCallFrame> DebuggerCallFrame::create(VM& vm, CallFrame* callFrame)
     }
 
     Vector<ShadowChicken::Frame> frames;
-    vm.shadowChicken().iterate(vm, callFrame, [&] (const ShadowChicken::Frame& frame) -> bool {
+    vm.ensureShadowChicken();
+    vm.shadowChicken()->iterate(vm, callFrame, [&] (const ShadowChicken::Frame& frame) -> bool {
         frames.append(frame);
         return true;
     });
@@ -118,7 +119,8 @@ JSC::JSGlobalObject* DebuggerCallFrame::vmEntryGlobalObject() const
     ASSERT(isValid());
     if (!isValid())
         return nullptr;
-    return m_validMachineFrame->vmEntryGlobalObject();
+    VM& vm = m_validMachineFrame->vm();
+    return vm.vmEntryGlobalObject(m_validMachineFrame);
 }
 
 SourceID DebuggerCallFrame::sourceID() const
@@ -127,7 +129,7 @@ SourceID DebuggerCallFrame::sourceID() const
     if (!isValid())
         return noSourceID;
     if (isTailDeleted())
-        return m_shadowChickenFrame.codeBlock->ownerScriptExecutable()->sourceID();
+        return m_shadowChickenFrame.codeBlock->ownerExecutable()->sourceID();
     return sourceIDForCallFrame(m_validMachineFrame);
 }
 
@@ -231,7 +233,7 @@ JSValue DebuggerCallFrame::evaluateWithScopeExtension(const String& script, JSOb
     if (!codeBlock)
         return jsUndefined();
 
-    DebuggerEvalEnabler evalEnabler(callFrame);
+    DebuggerEvalEnabler evalEnabler(callFrame, DebuggerEvalEnabler::Mode::EvalOnCallFrameAtDebuggerEntry);
 
     EvalContextType evalContextType;
 
@@ -252,7 +254,7 @@ JSValue DebuggerCallFrame::evaluateWithScopeExtension(const String& script, JSOb
         return jsUndefined();
     }
 
-    JSGlobalObject* globalObject = callFrame->vmEntryGlobalObject();
+    JSGlobalObject* globalObject = vm.vmEntryGlobalObject(callFrame);
     if (scopeExtensionObject) {
         JSScope* ignoredPreviousScope = globalObject->globalScope();
         globalObject->setGlobalScopeExtension(JSWithScope::create(vm, globalObject, ignoredPreviousScope, scopeExtensionObject));
@@ -292,7 +294,7 @@ TextPosition DebuggerCallFrame::currentPosition(VM& vm)
 
     if (isTailDeleted()) {
         CodeBlock* codeBlock = m_shadowChickenFrame.codeBlock;
-        if (std::optional<unsigned> bytecodeOffset = codeBlock->bytecodeOffsetFromCallSiteIndex(m_shadowChickenFrame.callSiteIndex)) {
+        if (Optional<unsigned> bytecodeOffset = codeBlock->bytecodeOffsetFromCallSiteIndex(m_shadowChickenFrame.callSiteIndex)) {
             return TextPosition(OrdinalNumber::fromOneBasedInt(codeBlock->lineNumberForBytecodeOffset(*bytecodeOffset)),
                 OrdinalNumber::fromOneBasedInt(codeBlock->columnNumberForBytecodeOffset(*bytecodeOffset)));
         }
@@ -314,7 +316,7 @@ SourceID DebuggerCallFrame::sourceIDForCallFrame(CallFrame* callFrame)
     CodeBlock* codeBlock = callFrame->codeBlock();
     if (!codeBlock)
         return noSourceID;
-    return codeBlock->ownerScriptExecutable()->sourceID();
+    return codeBlock->ownerExecutable()->sourceID();
 }
 
 } // namespace JSC

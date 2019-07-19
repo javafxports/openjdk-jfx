@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2006 Samuel Weinig <sam.weinig@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -22,6 +22,12 @@
 #if defined(HAVE_CONFIG_H) && HAVE_CONFIG_H && defined(BUILDING_WITH_CMAKE)
 #include "cmakeconfig.h"
 #endif
+
+#define JSC_API_AVAILABLE(...)
+#define JSC_CLASS_AVAILABLE(...) JS_EXPORT
+// Use zero since it will be less than any possible version number.
+#define JSC_MAC_VERSION_TBA 0
+#define JSC_IOS_VERSION_TBA 0
 
 #include "JSExportMacros.h"
 

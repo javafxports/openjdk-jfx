@@ -28,18 +28,14 @@ namespace WebCore {
 
 Animation::Animation()
     : m_name(initialName())
-    , m_property(CSSPropertyInvalid)
-    , m_mode(AnimateAll)
     , m_iterationCount(initialIterationCount())
     , m_delay(initialDelay())
     , m_duration(initialDuration())
     , m_timingFunction(initialTimingFunction())
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    , m_trigger(initialTrigger())
-#endif
+    , m_mode(AnimateAll)
     , m_direction(initialDirection())
-    , m_fillMode(initialFillMode())
-    , m_playState(initialPlayState())
+    , m_fillMode(static_cast<unsigned>(initialFillMode()))
+    , m_playState(static_cast<unsigned>(initialPlayState()))
     , m_delaySet(false)
     , m_directionSet(false)
     , m_durationSet(false)
@@ -49,26 +45,20 @@ Animation::Animation()
     , m_playStateSet(false)
     , m_propertySet(false)
     , m_timingFunctionSet(false)
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    , m_triggerSet(false)
-#endif
     , m_isNone(false)
 {
 }
 
 Animation::Animation(const Animation& o)
     : RefCounted<Animation>()
-    , m_name(o.m_name)
-    , m_nameStyleScopeOrdinal(o.m_nameStyleScopeOrdinal)
     , m_property(o.m_property)
-    , m_mode(o.m_mode)
+    , m_name(o.m_name)
     , m_iterationCount(o.m_iterationCount)
     , m_delay(o.m_delay)
     , m_duration(o.m_duration)
     , m_timingFunction(o.m_timingFunction)
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    , m_trigger(o.m_trigger)
-#endif
+    , m_nameStyleScopeOrdinal(o.m_nameStyleScopeOrdinal)
+    , m_mode(o.m_mode)
     , m_direction(o.m_direction)
     , m_fillMode(o.m_fillMode)
     , m_playState(o.m_playState)
@@ -81,9 +71,6 @@ Animation::Animation(const Animation& o)
     , m_playStateSet(o.m_playStateSet)
     , m_propertySet(o.m_propertySet)
     , m_timingFunctionSet(o.m_timingFunctionSet)
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    , m_triggerSet(o.m_triggerSet)
-#endif
     , m_isNone(o.m_isNone)
 {
 }
@@ -91,22 +78,16 @@ Animation::Animation(const Animation& o)
 Animation& Animation::operator=(const Animation& o)
 {
     m_name = o.m_name;
-    m_nameStyleScopeOrdinal = o.m_nameStyleScopeOrdinal;
-    m_property = o.m_property;
-    m_mode = o.m_mode;
     m_iterationCount = o.m_iterationCount;
     m_delay = o.m_delay;
     m_duration = o.m_duration;
     m_timingFunction = o.m_timingFunction;
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    m_trigger = o.m_trigger;
-#endif
+    m_nameStyleScopeOrdinal = o.m_nameStyleScopeOrdinal;
+    m_property = o.m_property;
+    m_mode = o.m_mode;
     m_direction = o.m_direction;
     m_fillMode = o.m_fillMode;
     m_playState = o.m_playState;
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    m_trigger = o.m_trigger;
-#endif
 
     m_delaySet = o.m_delaySet;
     m_directionSet = o.m_directionSet;
@@ -117,9 +98,6 @@ Animation& Animation::operator=(const Animation& o)
     m_playStateSet = o.m_playStateSet;
     m_propertySet = o.m_propertySet;
     m_timingFunctionSet = o.m_timingFunctionSet;
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    m_triggerSet = o.m_triggerSet;
-#endif
     m_isNone = o.m_isNone;
 
     return *this;
@@ -127,19 +105,16 @@ Animation& Animation::operator=(const Animation& o)
 
 Animation::~Animation() = default;
 
-bool Animation::animationsMatch(const Animation& other, bool matchPlayStates) const
+bool Animation::animationsMatch(const Animation& other, bool matchProperties) const
 {
     bool result = m_name == other.m_name
-        && m_nameStyleScopeOrdinal == other.m_nameStyleScopeOrdinal
-        && m_property == other.m_property
-        && m_mode == other.m_mode
+        && m_playState == other.m_playState
+        && m_playStateSet == other.m_playStateSet
         && m_iterationCount == other.m_iterationCount
         && m_delay == other.m_delay
         && m_duration == other.m_duration
         && *(m_timingFunction.get()) == *(other.m_timingFunction.get())
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-        && *(m_trigger.get()) == *(other.m_trigger.get())
-#endif
+        && m_nameStyleScopeOrdinal == other.m_nameStyleScopeOrdinal
         && m_direction == other.m_direction
         && m_fillMode == other.m_fillMode
         && m_delaySet == other.m_delaySet
@@ -148,17 +123,13 @@ bool Animation::animationsMatch(const Animation& other, bool matchPlayStates) co
         && m_fillModeSet == other.m_fillModeSet
         && m_iterationCountSet == other.m_iterationCountSet
         && m_nameSet == other.m_nameSet
-        && m_propertySet == other.m_propertySet
         && m_timingFunctionSet == other.m_timingFunctionSet
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-        && m_triggerSet == other.m_triggerSet
-#endif
         && m_isNone == other.m_isNone;
 
     if (!result)
         return false;
 
-    return !matchPlayStates || (m_playState == other.m_playState && m_playStateSet == other.m_playStateSet);
+    return !matchProperties || (m_mode == other.m_mode && m_property == other.m_property && m_propertySet == other.m_propertySet);
 }
 
 const String& Animation::initialName()

@@ -40,6 +40,7 @@ set(ALL_PORTS
     GTK
     JSCOnly
     Mac
+    PlayStation
     WPE
     WinCairo
     Java
@@ -60,6 +61,12 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_CXX_COMPILER_ID} STREQU
     set(COMPILER_IS_CLANG ON)
 endif ()
 
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+    if (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS "6.0.0")
+        message(FATAL_ERROR "GCC 6.0.0 is required to build WebKitGTK+, use a newer GCC version or clang")
+    endif ()
+endif ()
+
 if (CMAKE_COMPILER_IS_GNUCXX OR COMPILER_IS_CLANG)
     set(COMPILER_IS_GCC_OR_CLANG ON)
 endif ()
@@ -78,10 +85,12 @@ if (MSVC_CXX_ARCHITECTURE_ID)
 else ()
     string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} LOWERCASE_CMAKE_SYSTEM_PROCESSOR)
 endif ()
-if (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
-    set(WTF_CPU_ARM 1)
-elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^aarch64")
+if (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "(^aarch64|^arm64)")
     set(WTF_CPU_ARM64 1)
+elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
+    set(WTF_CPU_ARM 1)
+elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^mips64")
+    set(WTF_CPU_MIPS64 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^mips")
     set(WTF_CPU_MIPS 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "(x64|x86_64|amd64)")
@@ -104,11 +113,15 @@ endif ()
 if (UNIX)
     if (APPLE)
         set(WTF_OS_MAC_OS_X 1)
+    elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
+        set(WTF_OS_LINUX 1)
     else ()
         set(WTF_OS_UNIX 1)
     endif ()
 elseif (CMAKE_SYSTEM_NAME MATCHES "Windows")
     set(WTF_OS_WINDOWS 1)
+elseif (CMAKE_SYSTEM_NAME MATCHES "Fuchsia")
+    set(WTF_OS_FUCHSIA 1)
 else ()
     message(FATAL_ERROR "Unknown OS '${CMAKE_SYSTEM_NAME}'")
 endif ()

@@ -24,28 +24,29 @@
 
 #include "WebResourceLoadScheduler.h"
 
+#include "PingHandle.h"
 #include <WebCore/Document.h>
 #include <WebCore/DocumentLoader.h>
 #include <WebCore/FetchOptions.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/NetscapePlugInStreamLoader.h>
-#include <WebCore/PingHandle.h>
+#include <WebCore/NetworkStateNotifier.h>
 #include <WebCore/PlatformStrategies.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/SubresourceLoader.h>
-#include <WebCore/URL.h>
 #include <wtf/MainThread.h>
 #include <wtf/SetForScope.h>
+#include <wtf/URL.h>
 #include <wtf/text/CString.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include <WebCore/RuntimeApplicationChecks.h>
 #endif
 
 // Match the parallel connection count used by the networking layer.
 static unsigned maxRequestsInFlightPerHost;
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 static const unsigned maxRequestsInFlightForNonHTTPProtocols = 20;
 #else
 // Limiting this seems to regress performance in some local cases so let's just make it large.
@@ -65,7 +66,7 @@ WebResourceLoadScheduler::HostInformation* WebResourceLoadScheduler::hostForURL(
         return m_nonHTTPProtocolHost;
 
     m_hosts.checkConsistency();
-    String hostName = url.host();
+    String hostName = url.host().toString();
     HostInformation* host = m_hosts.get(hostName);
     if (!host && createHostPolicy == CreateIfNotFound) {
         host = new HostInformation(hostName, maxRequestsInFlightPerHost);
@@ -90,9 +91,9 @@ WebResourceLoadScheduler::~WebResourceLoadScheduler()
 void WebResourceLoadScheduler::loadResource(DocumentLoader& documentLoader, CachedResource& resource, ResourceRequest&& request, const ResourceLoaderOptions& options, CompletionHandler<void(RefPtr<WebCore::SubresourceLoader>&&)>&& completionHandler)
 {
     SubresourceLoader::create(documentLoader, resource, WTFMove(request), options, [this, completionHandler = WTFMove(completionHandler)] (RefPtr<WebCore::SubresourceLoader>&& loader) mutable {
-    if (loader)
-        scheduleLoad(loader.get());
-#if PLATFORM(IOS)
+        if (loader)
+            scheduleLoad(loader.get());
+#if PLATFORM(IOS_FAMILY)
         // Since we defer loader initialization until scheduling on iOS, the frame
         // load delegate that would be called in SubresourceLoader::create() on
         // other ports might be called in scheduleLoad() instead. Our contract to
@@ -105,9 +106,13 @@ void WebResourceLoadScheduler::loadResource(DocumentLoader& documentLoader, Cach
     });
 }
 
-void WebResourceLoadScheduler::loadResourceSynchronously(NetworkingContext* context, unsigned long, const ResourceRequest& request, StoredCredentialsPolicy storedCredentialsPolicy, ClientCredentialPolicy, ResourceError& error, ResourceResponse& response, Vector<char>& data)
+void WebResourceLoadScheduler::loadResourceSynchronously(FrameLoader& frameLoader, unsigned long, const ResourceRequest& request, ClientCredentialPolicy, const FetchOptions& options, const HTTPHeaderMap&, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
-    ResourceHandle::loadResourceSynchronously(context, request, storedCredentialsPolicy, error, response, data);
+    ResourceHandle::loadResourceSynchronously(frameLoader.networkingContext(), request, options.credentials == FetchOptions::Credentials::Omit ? StoredCredentialsPolicy::DoNotUse : StoredCredentialsPolicy::Use, error, response, data);
+}
+
+void WebResourceLoadScheduler::pageLoadCompleted(uint64_t /*webPageID*/)
+{
 }
 
 void WebResourceLoadScheduler::schedulePluginStreamLoad(DocumentLoader& documentLoader, NetscapePlugInStreamLoaderClient& client, ResourceRequest&& request, CompletionHandler<void(RefPtr<WebCore::NetscapePlugInStreamLoader>&&)>&& completionHandler)
@@ -123,7 +128,7 @@ void WebResourceLoadScheduler::scheduleLoad(ResourceLoader* resourceLoader)
 {
     ASSERT(resourceLoader);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // If there's a web archive resource for this URL, we don't need to schedule the load since it will never touch the network.
     if (!isSuspendingPendingRequests() && resourceLoader->documentLoader()->archiveResourceForURL(resourceLoader->iOSOriginalRequest().url())) {
         resourceLoader->startLoading();
@@ -136,7 +141,7 @@ void WebResourceLoadScheduler::scheduleLoad(ResourceLoader* resourceLoader)
     }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     HostInformation* host = hostForURL(resourceLoader->iOSOriginalRequest().url(), CreateIfNotFound);
 #else
     HostInformation* host = hostForURL(resourceLoader->url(), CreateIfNotFound);
@@ -156,7 +161,7 @@ void WebResourceLoadScheduler::scheduleLoad(ResourceLoader* resourceLoader)
     }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if ((priority > ResourceLoadPriority::Low || !resourceLoader->iOSOriginalRequest().url().protocolIsInHTTPFamily() || (priority == ResourceLoadPriority::Low && !hadRequests)) && !isSuspendingPendingRequests()) {
         // Try to request important resources immediately.
         servePendingRequests(host, priority);
@@ -182,7 +187,7 @@ void WebResourceLoadScheduler::remove(ResourceLoader* resourceLoader)
     HostInformation* host = hostForURL(resourceLoader->url());
     if (host)
         host->remove(resourceLoader);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // ResourceLoader::url() doesn't start returning the correct value until the load starts. If we get canceled before that, we need to look for originalRequest url instead.
     // FIXME: ResourceLoader::url() should be made to return a sensible value at all times.
     if (!resourceLoader->iOSOriginalRequest().isNull()) {
@@ -194,8 +199,12 @@ void WebResourceLoadScheduler::remove(ResourceLoader* resourceLoader)
     scheduleServePendingRequests();
 }
 
-void WebResourceLoadScheduler::setDefersLoading(ResourceLoader*, bool)
+void WebResourceLoadScheduler::setDefersLoading(ResourceLoader& loader, bool defers)
 {
+    if (!defers && !loader.deferredRequest().isNull()) {
+        loader.setRequest(loader.takeDeferredRequest());
+        loader.start();
+    }
 }
 
 void WebResourceLoadScheduler::crossOriginRedirectReceived(ResourceLoader* resourceLoader, const URL& redirectURL)
@@ -249,7 +258,7 @@ void WebResourceLoadScheduler::servePendingRequests(HostInformation* host, Resou
 
             requestsPending.removeFirst();
             host->addLoadInProgress(resourceLoader.get());
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
             if (!IOSApplication::isWebProcess()) {
                 resourceLoader->startLoading();
                 return;
@@ -361,13 +370,23 @@ bool WebResourceLoadScheduler::HostInformation::limitRequests(ResourceLoadPriori
     return m_requestsLoading.size() >= (webResourceLoadScheduler().isSerialLoadingEnabled() ? 1 : m_maxRequestsInFlight);
 }
 
-void WebResourceLoadScheduler::startPingLoad(Frame& frame, ResourceRequest& request, const HTTPHeaderMap&, const FetchOptions& options, PingLoadCompletionHandler&& completionHandler)
+void WebResourceLoadScheduler::startPingLoad(Frame& frame, ResourceRequest& request, const HTTPHeaderMap&, const FetchOptions& options, ContentSecurityPolicyImposition, PingLoadCompletionHandler&& completionHandler)
 {
     // PingHandle manages its own lifetime, deleting itself when its purpose has been fulfilled.
     new PingHandle(frame.loader().networkingContext(), request, options.credentials != FetchOptions::Credentials::Omit, options.redirect == FetchOptions::Redirect::Follow, WTFMove(completionHandler));
 }
 
-void WebResourceLoadScheduler::preconnectTo(NetworkingContext&, const URL&, StoredCredentialsPolicy, PreconnectCompletionHandler&&)
+bool WebResourceLoadScheduler::isOnLine() const
+{
+    return NetworkStateNotifier::singleton().onLine();
+}
+
+void WebResourceLoadScheduler::addOnlineStateChangeListener(WTF::Function<void(bool)>&& listener)
+{
+    NetworkStateNotifier::singleton().addListener(WTFMove(listener));
+}
+
+void WebResourceLoadScheduler::preconnectTo(FrameLoader&, const URL&, StoredCredentialsPolicy, PreconnectCompletionHandler&&)
 {
 }
 

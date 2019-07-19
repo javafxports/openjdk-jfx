@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -528,7 +528,7 @@ public class TreeViewSkin<T> extends VirtualContainerBase<TreeView<T>, TreeCell<
      * Function used to scroll the container down by one 'page'.
      */
     private int onScrollPageDown(boolean isFocusDriven) {
-        TreeCell<T> lastVisibleCell = flow.getLastVisibleCellWithinViewPort();
+        TreeCell<T> lastVisibleCell = flow.getLastVisibleCellWithinViewport();
         if (lastVisibleCell == null) return -1;
 
         final SelectionModel<TreeItem<T>> sm = getSkinnable().getSelectionModel();
@@ -554,7 +554,7 @@ public class TreeViewSkin<T> extends VirtualContainerBase<TreeView<T>, TreeCell<
                 // to be the top-most cell, or at least as far to the top as we can go.
                 flow.scrollToTop(lastVisibleCell);
 
-                TreeCell<T> newLastVisibleCell = flow.getLastVisibleCellWithinViewPort();
+                TreeCell<T> newLastVisibleCell = flow.getLastVisibleCellWithinViewport();
                 lastVisibleCell = newLastVisibleCell == null ? lastVisibleCell : newLastVisibleCell;
             }
         } else {
@@ -572,7 +572,7 @@ public class TreeViewSkin<T> extends VirtualContainerBase<TreeView<T>, TreeCell<
      * Function used to scroll the container up by one 'page'.
      */
     private int onScrollPageUp(boolean isFocusDriven) {
-        TreeCell<T> firstVisibleCell = flow.getFirstVisibleCellWithinViewPort();
+        TreeCell<T> firstVisibleCell = flow.getFirstVisibleCellWithinViewport();
         if (firstVisibleCell == null) return -1;
 
         final SelectionModel<TreeItem<T>> sm = getSkinnable().getSelectionModel();
@@ -598,7 +598,7 @@ public class TreeViewSkin<T> extends VirtualContainerBase<TreeView<T>, TreeCell<
                 // to be the bottom-most cell, or at least as far to the bottom as we can go.
                 flow.scrollToBottom(firstVisibleCell);
 
-                TreeCell<T> newFirstVisibleCell = flow.getFirstVisibleCellWithinViewPort();
+                TreeCell<T> newFirstVisibleCell = flow.getFirstVisibleCellWithinViewport();
                 firstVisibleCell = newFirstVisibleCell == null ? firstVisibleCell : newFirstVisibleCell;
             }
         } else {

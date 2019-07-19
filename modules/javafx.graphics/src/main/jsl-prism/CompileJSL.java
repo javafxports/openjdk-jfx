@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import com.sun.scenario.effect.compiler.JSLParser;
 import com.sun.scenario.effect.compiler.model.BaseType;
 import com.sun.scenario.effect.compiler.model.Qualifier;
 import com.sun.scenario.effect.compiler.model.Variable;
+import com.sun.scenario.effect.compiler.tree.JSLVisitor;
 import com.sun.scenario.effect.compiler.tree.ProgramUnit;
 import com.sun.scenario.effect.compiler.tree.TreeScanner;
 import com.sun.scenario.effect.compiler.tree.VariableExpr;
@@ -40,9 +41,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.Map;
-import org.antlr.stringtemplate.StringTemplate;
-import org.antlr.stringtemplate.StringTemplateGroup;
-import org.antlr.stringtemplate.language.DefaultTemplateLexer;
+import org.stringtemplate.v4.ST;
+import org.stringtemplate.v4.STGroup;
+import org.stringtemplate.v4.STGroupFile;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * This class is only used at build time to generate EffectPeer
@@ -421,7 +424,7 @@ public class CompileJSL {
         File outFile = jslcinfo.getOutputFile("prism-ps/build/gensrc/{pkg}/shader/{name}_Loader.java");
         if (JSLC.outOfDate(outFile, sourcetime)) {
             if (pinfo == null) pinfo = JSLC.getParserInfo(source);
-            PrismLoaderBackend loaderBackend = new PrismLoaderBackend(pinfo.parser, pinfo.program);
+            PrismLoaderBackend loaderBackend = new PrismLoaderBackend(pinfo.visitor, pinfo.program);
             JSLC.write(loaderBackend.getGlueCode(name), outFile);
         }
     }
@@ -505,23 +508,22 @@ public class CompileJSL {
 }
 
 class PrismLoaderBackend extends TreeScanner {
-    private JSLParser parser;
+    private JSLVisitor visitor;
     private int maxTexCoordIndex = -1;
     private boolean isPixcoordReferenced = false;
 
-    public PrismLoaderBackend(JSLParser parser, ProgramUnit program) {
-        this.parser = parser;
+    public PrismLoaderBackend(JSLVisitor visitor, ProgramUnit program) {
+        this.visitor = visitor;
         scan(program);
     }
 
-    private StringTemplate getTemplate(String type) {
-        Reader template = new InputStreamReader(getClass().getResourceAsStream(type + "Glue.stg"));
-        StringTemplateGroup group = new StringTemplateGroup(template, DefaultTemplateLexer.class);
+    private ST getTemplate(String type) {
+        STGroup group = new STGroupFile(getClass().getResource(type + "Glue.stg"), UTF_8.displayName(), '$', '$');
         return group.getInstanceOf("glue");
     }
 
     public String getGlueCode(String shaderName) {
-        Map<String, Variable> vars = parser.getSymbolTable().getGlobalVariables();
+        Map<String, Variable> vars = visitor.getSymbolTable().getGlobalVariables();
         StringBuilder samplerInit = new StringBuilder();
         StringBuilder paramInit = new StringBuilder();
 
@@ -536,13 +538,13 @@ class PrismLoaderBackend extends TreeScanner {
             }
         }
 
-        StringTemplate glue = getTemplate("PrismLoader");
-        glue.setAttribute("shaderName", shaderName);
-        glue.setAttribute("samplerInit", samplerInit.toString());
-        glue.setAttribute("paramInit", paramInit.toString());
-        glue.setAttribute("maxTexCoordIndex", maxTexCoordIndex);
-        glue.setAttribute("isPixcoordUsed", isPixcoordReferenced);
-        return glue.toString();
+        ST glue = getTemplate("PrismLoader");
+        glue.add("shaderName", shaderName);
+        glue.add("samplerInit", samplerInit.toString());
+        glue.add("paramInit", paramInit.toString());
+        glue.add("maxTexCoordIndex", maxTexCoordIndex);
+        glue.add("isPixcoordUsed", isPixcoordReferenced);
+        return glue.render();
     }
 
     @Override

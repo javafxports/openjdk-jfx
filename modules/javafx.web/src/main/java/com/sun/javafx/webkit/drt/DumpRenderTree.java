@@ -43,6 +43,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.Date;
+import java.util.Map;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import javafx.scene.web.WebEngine;
@@ -66,7 +67,7 @@ public final class DumpRenderTree {
 
     private final WebPage webPage;
     private final UIClientImpl uiClient;
-    private final EventSender eventSender;
+    private EventSender eventSender;
 
     private CountDownLatch latch;
     private String testPath;
@@ -137,7 +138,6 @@ public final class DumpRenderTree {
         webPage = new WebPage(new WebPageClientImpl(), uiClient, null, null,
                               new ThemeClientImplStub(), false);
         uiClient.setWebPage(webPage);
-        eventSender = new EventSender(webPage);
 
         webPage.setBounds(0, 0, 800, 600);
         webPage.setDeveloperExtrasEnabled(true);
@@ -155,6 +155,10 @@ public final class DumpRenderTree {
         this.testPath = testString;
         init(testString, pixelsHash);
         return testString;
+    }
+
+    protected String getTestURL() {
+        return testPath;
     }
 
 /*
@@ -189,10 +193,25 @@ public final class DumpRenderTree {
 
     boolean complete() { return this.complete; }
 
-    private void reset() {
-        mlog("reset");
+    private void resetToConsistentStateBeforeTesting(final TestOptions options) {
+        // Assign default values for all supported TestOptions
+        webPage.overridePreference("experimental:CSSCustomPropertiesAndValuesEnabled", "false");
+        webPage.overridePreference("experimental:WebAnimationsCSSIntegrationEnabled", "true");
+        webPage.overridePreference("enableColorFilter", "false");
+        webPage.overridePreference("enableIntersectionObserver", "false");
+        // Enable features based on TestOption
+        for (Map.Entry<String, String> option : options.getOptions().entrySet()) {
+            webPage.overridePreference(option.getKey(), option.getValue());
+        }
         // Reset native objects associated with WebPage
         webPage.resetToConsistentStateBeforeTesting();
+    }
+
+    private void reset(final TestOptions options) {
+        mlog("reset");
+        // newly create EventSender for each test
+        eventSender = new EventSender(webPage);
+        resetToConsistentStateBeforeTesting(options);
         // Clear frame name
         webPage.reset(webPage.getMainFrame());
         // Reset zoom factors
@@ -215,7 +234,9 @@ public final class DumpRenderTree {
         } catch (MalformedURLException ex) {
             file = "file:///" + file;
         }
-        reset();
+        // parse test options from the html test header
+        final TestOptions options = new TestOptions(file);
+        reset(options);
         webPage.open(mainFrame, file);
         mlog("}runTest");
     }
@@ -323,6 +344,7 @@ public final class DumpRenderTree {
     private static native boolean dumpChildFramesAsText();
     private static native boolean dumpBackForwardList();
     protected static native boolean shouldStayOnPageAfterHandlingBeforeUnload();
+    protected static native String[] openPanelFiles();
 
     private final class DRTLoadListener implements LoadListenerClient {
         @Override
@@ -543,7 +565,7 @@ public final class DumpRenderTree {
 
         @Override
         public WCRectangle getScreenBounds(boolean available) {
-            return null;
+            return new WCRectangle(0, 0, 800, 600);
         }
 
         @Override
@@ -606,8 +628,10 @@ public final class DumpRenderTree {
         @Override
         public void didClearWindowObject(long context, long windowObject) {
             mlog("didClearWindowObject");
-            DumpRenderTree.didClearWindowObject(context, windowObject,
-                                                eventSender);
+            if (eventSender != null) {
+                DumpRenderTree.didClearWindowObject(context, windowObject,
+                                                    eventSender);
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,14 +30,14 @@ import java.util.Map;
 import com.sun.scenario.effect.compiler.JSLParser;
 import com.sun.scenario.effect.compiler.model.Qualifier;
 import com.sun.scenario.effect.compiler.model.Type;
-import com.sun.scenario.effect.compiler.tree.ProgramUnit;
+import com.sun.scenario.effect.compiler.tree.JSLVisitor;
 
 /**
  */
 public class GLSLBackend extends SLBackend {
 
-    public GLSLBackend(JSLParser parser, ProgramUnit program) {
-        super(parser, program);
+    public GLSLBackend(JSLParser parser, JSLVisitor visitor) {
+        super(parser, visitor);
     }
 
     private static final Map<String, String> qualMap = new HashMap<String, String>();
@@ -83,6 +83,14 @@ public class GLSLBackend extends SLBackend {
         funcMap.put("any", "any");
         funcMap.put("length", "length");
     }
+
+
+    static String PIXCOORD = "vec2 pixcoord = vec2(\n"+
+        "    gl_FragCoord.x-jsl_pixCoordOffset.x,\n" +
+        "    ((jsl_pixCoordOffset.z-gl_FragCoord.y)*jsl_pixCoordOffset.w)-jsl_pixCoordOffset.y);\n";
+
+    static String MAIN = "void main() {\n";
+
 
     @Override
     protected String getType(Type t) {
@@ -131,4 +139,15 @@ public class GLSLBackend extends SLBackend {
 
         return sb.toString();
     }
+
+
+    @Override
+    public String getShader() {
+        String answer = super.getShader();
+        if (isPixcoordReferenced) {
+            answer = answer.replace(MAIN, MAIN + PIXCOORD);
+        }
+        return answer;
+    }
+
 }

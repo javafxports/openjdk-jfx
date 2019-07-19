@@ -30,13 +30,13 @@
 namespace WebCore {
 
 class HTMLTableCaptionElement final : public HTMLElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLTableCaptionElement);
 public:
     static Ref<HTMLTableCaptionElement> create(const QualifiedName&, Document&);
 
 private:
     HTMLTableCaptionElement(const QualifiedName&, Document&);
 
-    bool isPresentationAttribute(const QualifiedName&) const final;
     void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
 };
 

@@ -2,6 +2,7 @@
  * Copyright (C) 2004, 2005, 2007 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005 Rob Buis <buis@kde.org>
  * Copyright (C) 2010 Dirk Schulze <krit@webkit.org>
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -31,27 +32,19 @@
 #include "RenderSVGResource.h"
 #include "SVGNames.h"
 #include "SVGPreserveAspectRatioValue.h"
-#include "XLinkNames.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
-// Animated property definitions
-DEFINE_ANIMATED_PRESERVEASPECTRATIO(SVGFEImageElement, SVGNames::preserveAspectRatioAttr, PreserveAspectRatio, preserveAspectRatio)
-DEFINE_ANIMATED_STRING(SVGFEImageElement, XLinkNames::hrefAttr, Href, href)
-DEFINE_ANIMATED_BOOLEAN(SVGFEImageElement, SVGNames::externalResourcesRequiredAttr, ExternalResourcesRequired, externalResourcesRequired)
-
-BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGFEImageElement)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(preserveAspectRatio)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(href)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(externalResourcesRequired)
-    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGFilterPrimitiveStandardAttributes)
-END_REGISTER_ANIMATED_PROPERTIES
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGFEImageElement);
 
 inline SVGFEImageElement::SVGFEImageElement(const QualifiedName& tagName, Document& document)
     : SVGFilterPrimitiveStandardAttributes(tagName, document)
+    , SVGExternalResourcesRequired(this)
+    , SVGURIReference(this)
 {
     ASSERT(hasTagName(SVGNames::feImageTag));
-    registerAnimatedPropertiesForSVGFEImageElement();
+    registerAttributes();
 }
 
 Ref<SVGFEImageElement> SVGFEImageElement::create(const QualifiedName& tagName, Document& document)
@@ -79,7 +72,7 @@ void SVGFEImageElement::clearResourceReferences()
         m_cachedImage = nullptr;
     }
 
-    document().accessSVGExtensions().removeAllTargetReferencesForElement(this);
+    document().accessSVGExtensions().removeAllTargetReferencesForElement(*this);
 }
 
 void SVGFEImageElement::requestImageResource()
@@ -101,22 +94,29 @@ void SVGFEImageElement::buildPendingResource()
     if (!isConnected())
         return;
 
-    String id;
-    auto target = makeRefPtr(SVGURIReference::targetElementFromIRIString(href(), document(), &id));
-    if (!target) {
-        if (id.isEmpty())
+    auto target = SVGURIReference::targetElementFromIRIString(href(), treeScope());
+    if (!target.element) {
+        if (target.identifier.isEmpty())
             requestImageResource();
         else {
-            document().accessSVGExtensions().addPendingResource(id, this);
+            document().accessSVGExtensions().addPendingResource(target.identifier, *this);
             ASSERT(hasPendingResources());
         }
-    } else if (target->isSVGElement()) {
+    } else if (is<SVGElement>(*target.element)) {
         // Register us with the target in the dependencies map. Any change of hrefElement
         // that leads to relayout/repainting now informs us, so we can react to it.
-        document().accessSVGExtensions().addElementReferencingTarget(this, downcast<SVGElement>(target.get()));
+        document().accessSVGExtensions().addElementReferencingTarget(*this, downcast<SVGElement>(*target.element));
     }
 
     invalidate();
+}
+
+void SVGFEImageElement::registerAttributes()
+{
+    auto& registry = attributeRegistry();
+    if (!registry.isEmpty())
+        return;
+    registry.registerAttribute<SVGNames::preserveAspectRatioAttr, &SVGFEImageElement::m_preserveAspectRatio>();
 }
 
 void SVGFEImageElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -124,7 +124,7 @@ void SVGFEImageElement::parseAttribute(const QualifiedName& name, const AtomicSt
     if (name == SVGNames::preserveAspectRatioAttr) {
         SVGPreserveAspectRatioValue preserveAspectRatio;
         preserveAspectRatio.parse(value);
-        setPreserveAspectRatioBaseValue(preserveAspectRatio);
+        m_preserveAspectRatio.setValue(preserveAspectRatio);
         return;
     }
 
@@ -189,7 +189,7 @@ RefPtr<FilterEffect> SVGFEImageElement::build(SVGFilterBuilder*, Filter& filter)
 {
     if (m_cachedImage)
         return FEImage::createWithImage(filter, m_cachedImage->imageForRenderer(renderer()), preserveAspectRatio());
-    return FEImage::createWithIRIReference(filter, document(), href(), preserveAspectRatio());
+    return FEImage::createWithIRIReference(filter, treeScope(), href(), preserveAspectRatio());
 }
 
 void SVGFEImageElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const

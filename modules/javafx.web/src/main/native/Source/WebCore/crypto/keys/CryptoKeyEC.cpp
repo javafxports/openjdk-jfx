@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
 #include "config.h"
 #include "CryptoKeyEC.h"
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "CryptoAlgorithmRegistry.h"
 #include "JsonWebKey.h"
@@ -34,11 +34,11 @@
 
 namespace WebCore {
 
-static const char* const P256 = "P-256";
-static const char* const P384 = "P-384";
-static const char* const P521 = "P-521";
+static const ASCIILiteral P256 { "P-256"_s };
+static const ASCIILiteral P384 { "P-384"_s };
+static const ASCIILiteral P521 { "P-521"_s };
 
-static std::optional<CryptoKeyEC::NamedCurve> toNamedCurve(const String& curve)
+static Optional<CryptoKeyEC::NamedCurve> toNamedCurve(const String& curve)
 {
     if (curve == P256)
         return CryptoKeyEC::NamedCurve::P256;
@@ -47,12 +47,12 @@ static std::optional<CryptoKeyEC::NamedCurve> toNamedCurve(const String& curve)
     if (curve == P521)
         return CryptoKeyEC::NamedCurve::P521;
 
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
-CryptoKeyEC::CryptoKeyEC(CryptoAlgorithmIdentifier identifier, NamedCurve curve, CryptoKeyType type, PlatformECKey platformKey, bool extractable, CryptoKeyUsageBitmap usages)
+CryptoKeyEC::CryptoKeyEC(CryptoAlgorithmIdentifier identifier, NamedCurve curve, CryptoKeyType type, PlatformECKeyContainer&& platformKey, bool extractable, CryptoKeyUsageBitmap usages)
     : CryptoKey(identifier, type, extractable, usages)
-    , m_platformKey(platformKey)
+    , m_platformKey(WTFMove(platformKey))
     , m_curve(curve)
 {
     // Only CryptoKeyEC objects for supported curves should be created.
@@ -216,13 +216,13 @@ auto CryptoKeyEC::algorithm() const -> KeyAlgorithm
 
     switch (m_curve) {
     case NamedCurve::P256:
-        result.namedCurve = ASCIILiteral(P256);
+        result.namedCurve = P256;
         break;
     case NamedCurve::P384:
-        result.namedCurve = ASCIILiteral(P384);
+        result.namedCurve = P384;
         break;
     case NamedCurve::P521:
-        result.namedCurve = ASCIILiteral(P521);
+        result.namedCurve = P521;
         break;
     }
 
@@ -231,4 +231,4 @@ auto CryptoKeyEC::algorithm() const -> KeyAlgorithm
 
 } // namespace WebCore
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 
 #if ENABLE(JIT)
 
+#include "MacroAssemblerCodeRef.h"
 #include "ProxyableAccessCase.h"
 
 namespace JSC {
@@ -40,27 +41,28 @@ public:
     // actually somewhat likely because of how we do buffering of new cases.
     CallLinkInfo* callLinkInfo() const { return m_callLinkInfo.get(); }
     JSObject* customSlotBase() const { return m_customSlotBase.get(); }
-    std::optional<DOMAttributeAnnotation> domAttribute() const { return m_domAttribute; }
+    Optional<DOMAttributeAnnotation> domAttribute() const { return m_domAttribute; }
 
+    bool hasAlternateBase() const override;
     JSObject* alternateBase() const override;
 
     void emitDOMJITGetter(AccessGenerationState&, const DOMJIT::GetterSetter*, GPRReg baseForGetGPR);
 
     static std::unique_ptr<AccessCase> create(
         VM&, JSCell* owner, AccessType, PropertyOffset, Structure*,
-        const ObjectPropertyConditionSet&, bool viaProxy, WatchpointSet* additionalSet, PropertySlot::GetValueFunc,
-        JSObject* customSlotBase, std::optional<DOMAttributeAnnotation>, std::unique_ptr<PolyProtoAccessChain>);
+        const ObjectPropertyConditionSet&, bool viaProxy, WatchpointSet* additionalSet, FunctionPtr<OperationPtrTag> customGetter,
+        JSObject* customSlotBase, Optional<DOMAttributeAnnotation>, std::unique_ptr<PolyProtoAccessChain>);
 
     static std::unique_ptr<AccessCase> create(VM&, JSCell* owner, AccessType, Structure*, PropertyOffset,
         const ObjectPropertyConditionSet&, std::unique_ptr<PolyProtoAccessChain>,
-        PutPropertySlot::PutValueFunc = nullptr, JSObject* customSlotBase = nullptr);
+        FunctionPtr<OperationPtrTag> customSetter = nullptr, JSObject* customSlotBase = nullptr);
 
     void dumpImpl(PrintStream&, CommaPrinter&) const override;
     std::unique_ptr<AccessCase> clone() const override;
 
     ~GetterSetterAccessCase();
 
-    void* customAccessor() const { return m_customAccessor.opaque; }
+    FunctionPtr<OperationPtrTag> customAccessor() const { return m_customAccessor; }
 
 private:
     GetterSetterAccessCase(VM&, JSCell*, AccessType, PropertyOffset, Structure*, const ObjectPropertyConditionSet&, bool viaProxy, WatchpointSet* additionalSet, JSObject* customSlotBase, std::unique_ptr<PolyProtoAccessChain>);
@@ -69,12 +71,8 @@ private:
 
     WriteBarrier<JSObject> m_customSlotBase;
     std::unique_ptr<CallLinkInfo> m_callLinkInfo;
-    union {
-        PutPropertySlot::PutValueFunc setter;
-        PropertySlot::GetValueFunc getter;
-        void* opaque;
-    } m_customAccessor;
-    std::optional<DOMAttributeAnnotation> m_domAttribute;
+    FunctionPtr<OperationPtrTag> m_customAccessor;
+    Optional<DOMAttributeAnnotation> m_domAttribute;
 };
 
 } // namespace JSC

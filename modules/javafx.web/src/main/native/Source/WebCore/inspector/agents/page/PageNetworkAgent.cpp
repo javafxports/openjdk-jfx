@@ -69,6 +69,9 @@ Vector<WebSocket*> PageNetworkAgent::activeWebSockets(const LockHolder& lock)
         if (!channel)
             continue;
 
+        if (!channel->hasCreatedHandshake())
+            continue;
+
         if (!is<Document>(webSocket->scriptExecutionContext()))
             continue;
 
@@ -96,7 +99,7 @@ ScriptExecutionContext* PageNetworkAgent::scriptExecutionContext(ErrorString& er
 
     auto* document = frame->document();
     if (!document) {
-        errorString = ASCIILiteral("No Document instance for the specified frame");
+        errorString = "No Document instance for the specified frame"_s;
         return nullptr;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,7 +25,9 @@
 
 #pragma once
 
-#include "StaticMutex.h"
+#include "Environment.h"
+#include "Mutex.h"
+#include "PerProcess.h"
 #include <mutex>
 #include <unordered_map>
 
@@ -37,15 +39,17 @@ namespace bmalloc {
 
 class DebugHeap {
 public:
-    DebugHeap(std::lock_guard<StaticMutex>&);
+    DebugHeap(std::lock_guard<Mutex>&);
 
-    void* malloc(size_t);
+    void* malloc(size_t, bool crashOnFailure);
     void* memalign(size_t alignment, size_t, bool crashOnFailure);
-    void* realloc(void*, size_t);
+    void* realloc(void*, size_t, bool crashOnFailure);
     void free(void*);
 
     void* memalignLarge(size_t alignment, size_t);
     void freeLarge(void* base);
+
+    static DebugHeap* tryGet();
 
 private:
 #if BOS(DARWIN)
@@ -53,9 +57,21 @@ private:
 #endif
 
     // This is the debug heap. We can use whatever data structures we like. It doesn't matter.
-    size_t m_pageSize;
+    size_t m_pageSize { 0 };
     std::mutex m_lock;
     std::unordered_map<void*, size_t> m_sizeMap;
 };
+
+extern BEXPORT DebugHeap* debugHeapCache;
+BINLINE DebugHeap* DebugHeap::tryGet()
+{
+    if (debugHeapCache)
+        return debugHeapCache;
+    if (PerProcess<Environment>::get()->isDebugHeapEnabled()) {
+        debugHeapCache = PerProcess<DebugHeap>::get();
+        return debugHeapCache;
+    }
+    return nullptr;
+}
 
 } // namespace bmalloc

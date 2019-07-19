@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,80 +10,77 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #pragma once
 
 #if ENABLE(WEBGPU)
 
-#include "PlatformLayer.h"
-#include <JavaScriptCore/ArrayBufferView.h>
-#include <wtf/Forward.h>
+#include "GPUQueue.h"
+#include <wtf/Optional.h>
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
+#include <wtf/RetainPtr.h>
 
-#if USE(CA)
-#include "PlatformCALayer.h"
-#endif
-
-#if PLATFORM(COCOA)
-typedef struct objc_object* id;
-OBJC_CLASS CALayer;
-OBJC_CLASS WebGPULayer;
-#else
-class WebGPULayer;
-#endif
+OBJC_PROTOCOL(MTLDevice);
 
 namespace WebCore {
 
+using PlatformDevice = MTLDevice;
+using PlatformDeviceSmartPtr = RetainPtr<MTLDevice>;
+
+class GPUBindGroupLayout;
 class GPUBuffer;
-class GPUCommandQueue;
-class GPUDrawable;
-class GPULibrary;
+class GPUCommandBuffer;
+class GPUPipelineLayout;
+class GPURenderPipeline;
+class GPUShaderModule;
 class GPUTexture;
-class GPUTextureDescriptor;
+
+struct GPUBindGroupLayoutDescriptor;
+struct GPUBufferDescriptor;
+struct GPUPipelineLayoutDescriptor;
+struct GPURenderPipelineDescriptor;
+struct GPURequestAdapterOptions;
+struct GPUShaderModuleDescriptor;
+struct GPUTextureDescriptor;
 
 class GPUDevice : public RefCounted<GPUDevice> {
 public:
-    WEBCORE_EXPORT static RefPtr<GPUDevice> create();
-    WEBCORE_EXPORT ~GPUDevice();
+    static RefPtr<GPUDevice> create(Optional<GPURequestAdapterOptions>&&);
 
-    void reshape(int width, int height);
+    RefPtr<GPUBuffer> createBuffer(GPUBufferDescriptor&&) const;
+    RefPtr<GPUTexture> tryCreateTexture(GPUTextureDescriptor&&) const;
 
-#if PLATFORM(COCOA)
-    WebGPULayer* layer() { return m_layer.get(); }
-    CALayer* platformLayer() const { return reinterpret_cast<CALayer*>(m_layer.get()); }
-    WEBCORE_EXPORT id platformDevice();
-#endif
+    RefPtr<GPUBindGroupLayout> tryCreateBindGroupLayout(GPUBindGroupLayoutDescriptor&&) const;
+    Ref<GPUPipelineLayout> createPipelineLayout(GPUPipelineLayoutDescriptor&&) const;
 
-    WEBCORE_EXPORT RefPtr<GPUCommandQueue> createCommandQueue();
-    WEBCORE_EXPORT RefPtr<GPULibrary> createLibrary(const String& sourceCode);
-    WEBCORE_EXPORT RefPtr<GPUBuffer> createBufferFromData(ArrayBufferView* data);
-    WEBCORE_EXPORT RefPtr<GPUTexture> createTexture(GPUTextureDescriptor*);
+    RefPtr<GPUShaderModule> createShaderModule(GPUShaderModuleDescriptor&&) const;
+    RefPtr<GPURenderPipeline> createRenderPipeline(GPURenderPipelineDescriptor&&) const;
 
-    RefPtr<GPUDrawable> getFramebuffer();
+    RefPtr<GPUCommandBuffer> createCommandBuffer();
 
-    void markLayerComposited() { }
+    RefPtr<GPUQueue> getQueue();
+    PlatformDevice* platformDevice() const { return m_platformDevice.get(); }
 
 private:
-    GPUDevice();
+    GPUDevice(PlatformDeviceSmartPtr&&);
 
-#if PLATFORM(COCOA)
-    RetainPtr<WebGPULayer> m_layer;
-    RetainPtr<id> m_device;
-#endif
+    PlatformDeviceSmartPtr m_platformDevice;
+    RefPtr<GPUQueue> m_queue;
 };
 
 } // namespace WebCore
 
-#endif
+#endif // ENABLE(WEBGPU)

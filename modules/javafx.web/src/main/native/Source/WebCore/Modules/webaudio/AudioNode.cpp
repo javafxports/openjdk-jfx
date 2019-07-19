@@ -205,11 +205,11 @@ String AudioNode::channelCountMode()
 {
     switch (m_channelCountMode) {
     case Max:
-        return ASCIILiteral("max");
+        return "max"_s;
     case ClampedMax:
-        return ASCIILiteral("clamped-max");
+        return "clamped-max"_s;
     case Explicit:
-        return ASCIILiteral("explicit");
+        return "explicit"_s;
     }
     ASSERT_NOT_REACHED();
     return emptyString();
@@ -241,9 +241,9 @@ String AudioNode::channelInterpretation()
 {
     switch (m_channelInterpretation) {
     case AudioBus::Speakers:
-        return ASCIILiteral("speakers");
+        return "speakers"_s;
     case AudioBus::Discrete:
-        return ASCIILiteral("discrete");
+        return "discrete"_s;
     }
     ASSERT_NOT_REACHED();
     return emptyString();
@@ -477,7 +477,7 @@ void AudioNode::finishDeref(RefType refType)
                     output->disconnectAll(); // This will deref() nodes we're connected to.
 
                 // Mark for deletion at end of each render quantum or when context shuts down.
-                context().markForDeletion(this);
+                context().markForDeletion(*this);
                 m_isMarkedForDeletion = true;
             }
         } else if (refType == RefTypeConnection)

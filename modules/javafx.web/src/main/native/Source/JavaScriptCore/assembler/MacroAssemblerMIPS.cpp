@@ -30,6 +30,7 @@
 
 #include "ProbeContext.h"
 #include <wtf/InlineASM.h>
+#include <wtf/MathExtras.h>
 
 namespace JSC {
 
@@ -39,7 +40,7 @@ extern "C" void ctiMasmProbeTrampoline();
 
 using namespace MIPSRegisters;
 
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
 
 // The following are offsets for Probe::State fields accessed
 // by the ctiMasmProbeTrampoline stub.
@@ -549,7 +550,7 @@ asm (
     "nop" "\n"
     ".set pop" "\n"
 );
-#endif // COMPILER(GCC_OR_CLANG)
+#endif // COMPILER(GCC_COMPATIBLE)
 
 void MacroAssembler::probe(Probe::Function function, void* arg)
 {

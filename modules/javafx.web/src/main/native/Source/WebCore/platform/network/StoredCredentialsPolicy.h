@@ -27,7 +27,7 @@
 
 namespace WebCore {
 
-enum class StoredCredentialsPolicy {
+enum class StoredCredentialsPolicy : bool {
     DoNotUse,
     Use,
 };

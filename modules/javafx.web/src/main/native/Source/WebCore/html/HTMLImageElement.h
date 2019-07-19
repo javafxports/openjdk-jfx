@@ -25,22 +25,27 @@
 
 #include "DecodingOptions.h"
 #include "FormNamedItem.h"
+#include "GraphicsLayer.h"
 #include "GraphicsTypes.h"
 #include "HTMLElement.h"
 #include "HTMLImageLoader.h"
 
 namespace WebCore {
 
+class EditableImageReference;
+class HTMLAttachmentElement;
 class HTMLFormElement;
+class HTMLMapElement;
 
 struct ImageCandidate;
 
 class HTMLImageElement : public HTMLElement, public FormNamedItem {
+    WTF_MAKE_ISO_ALLOCATED(HTMLImageElement);
     friend class HTMLFormElement;
 public:
     static Ref<HTMLImageElement> create(Document&);
     static Ref<HTMLImageElement> create(const QualifiedName&, Document&, HTMLFormElement*);
-    static Ref<HTMLImageElement> createForJSConstructor(Document&, std::optional<unsigned> width, std::optional<unsigned> height);
+    static Ref<HTMLImageElement> createForJSConstructor(Document&, Optional<unsigned> width, Optional<unsigned> height);
 
     virtual ~HTMLImageElement();
 
@@ -50,6 +55,9 @@ public:
     WEBCORE_EXPORT int naturalWidth() const;
     WEBCORE_EXPORT int naturalHeight() const;
     const AtomicString& currentSrc() const { return m_currentSrc; }
+
+    bool supportsFocus() const override;
+    bool isFocusable() const override;
 
     bool isServerMap() const;
 
@@ -62,6 +70,7 @@ public:
     void setLoadManually(bool loadManually) { m_imageLoader.setLoadManually(loadManually); }
 
     bool matchesUsemap(const AtomicStringImpl&) const;
+    HTMLMapElement* associatedMapElement() const;
 
     WEBCORE_EXPORT const AtomicString& alt() const;
 
@@ -84,8 +93,14 @@ public:
 
     WEBCORE_EXPORT void decode(Ref<DeferredPromise>&&);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool willRespondToMouseClickEvents() override;
+#endif
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+    void setAttachmentElement(Ref<HTMLAttachmentElement>&&);
+    RefPtr<HTMLAttachmentElement> attachmentElement() const;
+    const String& attachmentIdentifier() const;
 #endif
 
     bool hasPendingActivity() const { return m_imageLoader.hasPendingActivity(); }
@@ -98,6 +113,15 @@ public:
 
     HTMLPictureElement* pictureElement() const;
     void setPictureElement(HTMLPictureElement*);
+
+#if USE(SYSTEM_PREVIEW)
+    WEBCORE_EXPORT bool isSystemPreviewImage() const;
+#endif
+
+    WEBCORE_EXPORT GraphicsLayer::EmbeddedViewID editableImageViewID() const;
+    WEBCORE_EXPORT bool hasEditableImageAttribute() const;
+
+    void defaultEventHandler(Event&) final;
 
 protected:
     HTMLImageElement(const QualifiedName&, Document&, HTMLFormElement* = 0);
@@ -124,6 +148,7 @@ private:
     void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
 
     InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) override;
+    void didFinishInsertingNode() override;
     void removedFromAncestor(RemovalType, ContainerNode&) override;
 
     bool isFormAssociatedElement() const final { return false; }
@@ -134,6 +159,18 @@ private:
     void selectImageSource();
 
     ImageCandidate bestFitSourceFromPictureElement();
+
+    void updateEditableImage();
+
+    void copyNonAttributePropertiesFromElement(const Element&) final;
+
+#if ENABLE(SERVICE_CONTROLS)
+    void updateImageControls();
+    void tryCreateImageControls();
+    void destroyImageControls();
+    bool hasImageControls() const;
+    bool childShouldCreateRenderer(const Node&) const override;
+#endif
 
     HTMLImageLoader m_imageLoader;
     HTMLFormElement* m_form;
@@ -147,12 +184,9 @@ private:
     bool m_experimentalImageMenuEnabled;
     bool m_hadNameBeforeAttributeChanged { false }; // FIXME: We only need this because parseAttribute() can't see the old value.
 
-#if ENABLE(SERVICE_CONTROLS)
-    void updateImageControls();
-    void tryCreateImageControls();
-    void destroyImageControls();
-    bool hasImageControls() const;
-    bool childShouldCreateRenderer(const Node&) const override;
+    RefPtr<EditableImageReference> m_editableImage;
+#if ENABLE(ATTACHMENT_ELEMENT)
+    String m_pendingClonedAttachmentID;
 #endif
 
     friend class HTMLPictureElement;

@@ -75,6 +75,7 @@ static void removeHeadContents(ReplacementFragment&);
 // --- ReplacementFragment helper class
 
 class ReplacementFragment {
+    WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(ReplacementFragment);
 public:
     ReplacementFragment(Document&, DocumentFragment*, const VisibleSelection&);
@@ -166,10 +167,9 @@ ReplacementFragment::ReplacementFragment(Document& document, DocumentFragment* f
     if (!editableRoot)
         return;
 
-    Node* shadowAncestorNode = editableRoot->deprecatedShadowAncestorNode();
-
+    auto* shadowHost = editableRoot->shadowHost();
     if (!editableRoot->attributeEventListener(eventNames().webkitBeforeTextInsertedEvent, mainThreadNormalWorld())
-        && !(shadowAncestorNode && shadowAncestorNode->renderer() && shadowAncestorNode->renderer()->isTextControl())
+        && !(shadowHost && shadowHost->renderer() && shadowHost->renderer()->isTextControl())
         && editableRoot->hasRichlyEditableStyle()) {
         removeInterchangeNodes(m_fragment.get());
         return;
@@ -345,8 +345,17 @@ inline void ReplaceSelectionCommand::InsertedNodes::willRemoveNodePreservingChil
 {
     if (m_firstNodeInserted == node)
         m_firstNodeInserted = NodeTraversal::next(*node);
-    if (m_lastNodeInserted == node)
+    if (m_lastNodeInserted == node) {
         m_lastNodeInserted = node->lastChild() ? node->lastChild() : NodeTraversal::nextSkippingChildren(*node);
+        if (!m_lastNodeInserted) {
+            // If the last inserted node is at the end of the document and doesn't have any children, look backwards for the
+            // previous node as the last inserted node, clamping to the first inserted node if needed to ensure that the
+            // document position of the last inserted node is not behind the first inserted node.
+            auto* previousNode = NodeTraversal::previousSkippingChildren(*node);
+            ASSERT(previousNode);
+            m_lastNodeInserted = m_firstNodeInserted->compareDocumentPosition(*previousNode) & Node::DOCUMENT_POSITION_FOLLOWING ? previousNode : m_firstNodeInserted;
+        }
+    }
 }
 
 inline void ReplaceSelectionCommand::InsertedNodes::willRemoveNode(Node* node)
@@ -368,7 +377,7 @@ inline void ReplaceSelectionCommand::InsertedNodes::didReplaceNode(Node* node, N
         m_lastNodeInserted = newNode;
 }
 
-ReplaceSelectionCommand::ReplaceSelectionCommand(Document& document, RefPtr<DocumentFragment>&& fragment, CommandOptions options, EditAction editAction)
+ReplaceSelectionCommand::ReplaceSelectionCommand(Document& document, RefPtr<DocumentFragment>&& fragment, OptionSet<CommandOption> options, EditAction editAction)
     : CompositeEditCommand(document, editAction)
     , m_selectReplacement(options & SelectReplacement)
     , m_smartReplace(options & SmartReplace)
@@ -487,19 +496,18 @@ void ReplaceSelectionCommand::removeRedundantStylesAndKeepStyleSpanInline(Insert
         StyledElement* element = downcast<StyledElement>(node.get());
 
         const StyleProperties* inlineStyle = element->inlineStyle();
-        RefPtr<EditingStyle> newInlineStyle = EditingStyle::create(inlineStyle);
+        auto newInlineStyle = EditingStyle::create(inlineStyle);
         if (inlineStyle) {
             if (is<HTMLElement>(*element)) {
                 Vector<QualifiedName> attributes;
                 HTMLElement& htmlElement = downcast<HTMLElement>(*element);
 
-                if (newInlineStyle->conflictsWithImplicitStyleOfElement(&htmlElement)) {
+                if (newInlineStyle->conflictsWithImplicitStyleOfElement(htmlElement)) {
                     // e.g. <b style="font-weight: normal;"> is converted to <span style="font-weight: normal;">
                     node = replaceElementWithSpanPreservingChildrenAndAttributes(htmlElement);
                     element = downcast<StyledElement>(node.get());
                     insertedNodes.didReplaceNode(&htmlElement, node.get());
-                } else if (newInlineStyle->extractConflictingImplicitStyleOfAttributes(&htmlElement, EditingStyle::PreserveWritingDirection, 0, attributes,
-                    EditingStyle::DoNotExtractMatchingStyle)) {
+                } else if (newInlineStyle->extractConflictingImplicitStyleOfAttributes(htmlElement, EditingStyle::PreserveWritingDirection, nullptr, attributes, EditingStyle::DoNotExtractMatchingStyle)) {
                     // e.g. <font size="3" style="font-size: 20px;"> is converted to <font style="font-size: 20px;">
                     for (auto& attribute : attributes)
                         removeNodeAttribute(*element, attribute);
@@ -728,7 +736,8 @@ static void removeHeadContents(ReplacementFragment& fragment)
     auto it = descendantsOfType<Element>(*fragment.fragment()).begin();
     auto end = descendantsOfType<Element>(*fragment.fragment()).end();
     while (it != end) {
-        if (is<HTMLBaseElement>(*it) || is<HTMLLinkElement>(*it) || is<HTMLMetaElement>(*it) || is<HTMLStyleElement>(*it) || is<HTMLTitleElement>(*it)) {
+        if (is<HTMLBaseElement>(*it) || is<HTMLLinkElement>(*it) || is<HTMLMetaElement>(*it) || is<HTMLTitleElement>(*it)
+            || (is<HTMLStyleElement>(*it) && it->getAttribute(classAttr) != WebKitMSOListQuirksStyle)) {
             toRemove.append(&*it);
             it.traverseNextSkippingChildren();
             continue;
@@ -757,7 +766,7 @@ static bool handleStyleSpansBeforeInsertion(ReplacementFragment& fragment, const
         return false;
 
     Node* wrappingStyleSpan = topNode;
-    RefPtr<EditingStyle> styleAtInsertionPos = EditingStyle::create(insertionPos.parentAnchoredEquivalent());
+    auto styleAtInsertionPos = EditingStyle::create(insertionPos.parentAnchoredEquivalent());
     String styleText = styleAtInsertionPos->style()->asText();
 
     // FIXME: This string comparison is a naive way of comparing two styles.
@@ -795,7 +804,7 @@ void ReplaceSelectionCommand::handleStyleSpans(InsertedNodes& insertedNodes)
     if (!wrappingStyleSpan)
         return;
 
-    RefPtr<EditingStyle> style = EditingStyle::create(wrappingStyleSpan->inlineStyle());
+    auto style = EditingStyle::create(wrappingStyleSpan->inlineStyle());
     ContainerNode* context = wrappingStyleSpan->parentNode();
 
     // If Mail wraps the fragment with a Paste as Quotation blockquote, or if you're pasting into a quoted region,
@@ -899,7 +908,7 @@ static bool isInlineNodeWithStyle(const Node* node)
         || classAttributeValue == ApplePasteAsQuotation)
         return true;
 
-    return EditingStyle::elementIsStyledSpanOrHTMLEquivalent(element);
+    return EditingStyle::elementIsStyledSpanOrHTMLEquivalent(*element);
 }
 
 inline Node* nodeToSplitToAvoidPastingIntoInlineNodesWithStyle(const Position& insertionPos)
@@ -912,7 +921,7 @@ bool ReplaceSelectionCommand::willApplyCommand()
 {
     ensureReplacementFragment();
     m_documentFragmentPlainText = m_documentFragment->textContent();
-    m_documentFragmentHTMLMarkup = createMarkup(*m_documentFragment);
+    m_documentFragmentHTMLMarkup = serializeFragment(*m_documentFragment, SerializedNodes::SubtreeIncludingNode);
     return CompositeEditCommand::willApplyCommand();
 }
 
@@ -934,8 +943,8 @@ void ReplaceSelectionCommand::doApply()
         return;
 
     // We can skip matching the style if the selection is plain text.
-    if ((selection.start().deprecatedNode()->renderer() && selection.start().deprecatedNode()->renderer()->style().userModify() == READ_WRITE_PLAINTEXT_ONLY)
-        && (selection.end().deprecatedNode()->renderer() && selection.end().deprecatedNode()->renderer()->style().userModify() == READ_WRITE_PLAINTEXT_ONLY))
+    if ((selection.start().deprecatedNode()->renderer() && selection.start().deprecatedNode()->renderer()->style().userModify() == UserModify::ReadWritePlaintextOnly)
+        && (selection.end().deprecatedNode()->renderer() && selection.end().deprecatedNode()->renderer()->style().userModify() == UserModify::ReadWritePlaintextOnly))
         m_matchStyle = false;
 
     if (m_matchStyle) {
@@ -1335,7 +1344,7 @@ void ReplaceSelectionCommand::addSpacesForSmartReplace()
         endOffset = endUpstream.offsetInContainerNode();
     }
 
-    bool needsTrailingSpace = !isEndOfParagraph(endOfInsertedContent) && !isCharacterSmartReplaceExemptConsideringNonBreakingSpace(endOfInsertedContent.characterAfter(), false);
+    bool needsTrailingSpace = !isEndOfParagraph(endOfInsertedContent) && !isStartOfParagraph(endOfInsertedContent) && !isCharacterSmartReplaceExemptConsideringNonBreakingSpace(endOfInsertedContent.characterAfter(), false);
     if (needsTrailingSpace && endNode) {
         bool collapseWhiteSpace = !endNode->renderer() || endNode->renderer()->style().collapseWhiteSpace();
         if (is<Text>(*endNode)) {
@@ -1359,7 +1368,7 @@ void ReplaceSelectionCommand::addSpacesForSmartReplace()
         startOffset = startDownstream.offsetInContainerNode();
     }
 
-    bool needsLeadingSpace = !isStartOfParagraph(startOfInsertedContent) && !isCharacterSmartReplaceExemptConsideringNonBreakingSpace(startOfInsertedContent.previous().characterAfter(), true);
+    bool needsLeadingSpace = !isStartOfParagraph(startOfInsertedContent) && !isEndOfParagraph(startOfInsertedContent) && !isCharacterSmartReplaceExemptConsideringNonBreakingSpace(startOfInsertedContent.previous().characterAfter(), true);
     if (needsLeadingSpace && startNode) {
         bool collapseWhiteSpace = !startNode->renderer() || startNode->renderer()->style().collapseWhiteSpace();
         if (is<Text>(*startNode)) {
@@ -1403,7 +1412,7 @@ void ReplaceSelectionCommand::completeHTMLReplacement(const Position &lastPositi
     else
         return;
 
-    if (AXObjectCache::accessibilityEnabled() && editingAction() == EditActionPaste)
+    if (AXObjectCache::accessibilityEnabled() && editingAction() == EditAction::Paste)
         m_visibleSelectionForInsertedText = VisibleSelection(start, end);
 
     if (m_selectReplacement)
@@ -1575,7 +1584,7 @@ bool ReplaceSelectionCommand::performTrivialReplace(const ReplacementFragment& f
 
     VisibleSelection selectionAfterReplace(m_selectReplacement ? start : end, end);
 
-    if (AXObjectCache::accessibilityEnabled() && editingAction() == EditActionPaste)
+    if (AXObjectCache::accessibilityEnabled() && editingAction() == EditAction::Paste)
         m_visibleSelectionForInsertedText = VisibleSelection(start, end);
 
     setEndingSelection(selectionAfterReplace);

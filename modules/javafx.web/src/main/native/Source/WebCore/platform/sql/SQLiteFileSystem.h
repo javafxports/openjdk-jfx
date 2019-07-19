@@ -31,6 +31,7 @@
 #ifndef SQLiteFileSystem_h
 #define SQLiteFileSystem_h
 
+#include <wtf/WallTime.h>
 #include <wtf/text/WTFString.h>
 
 struct sqlite3;
@@ -57,13 +58,13 @@ public:
     //
     // path - The directory.
     // fileName - The file name.
-    static String appendDatabaseFileNameToPath(const String& path, const String& fileName);
+    WEBCORE_EXPORT static String appendDatabaseFileNameToPath(const String& path, const String& fileName);
 
     // Makes sure the given directory exists, by creating all missing directories
     // on the given path.
     //
     // path - The directory.
-    static bool ensureDatabaseDirectoryExists(const String& path);
+    WEBCORE_EXPORT static bool ensureDatabaseDirectoryExists(const String& path);
 
     // If 'checkPathOnly' is false, then this method only checks if the given file exists.
     // If 'checkPathOnly' is true, then this method makes sure all directories on the
@@ -89,7 +90,7 @@ public:
     // fileName - The file name.
     WEBCORE_EXPORT static bool deleteDatabaseFile(const String& fileName);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // Truncates a database file. Used when MobileSafariSettings deletes a database file,
     // since deleting the file nukes the POSIX file locks which would potentially cause Safari
     // to corrupt the new db if it's running in the background.
@@ -97,8 +98,8 @@ public:
 #endif
 
     static long long getDatabaseFileSize(const String& fileName);
-    static double databaseCreationTime(const String& fileName);
-    static double databaseModificationTime(const String& fileName);
+    WEBCORE_EXPORT static Optional<WallTime> databaseCreationTime(const String& fileName);
+    WEBCORE_EXPORT static Optional<WallTime> databaseModificationTime(const String& fileName);
 
 private:
     // do not instantiate this class

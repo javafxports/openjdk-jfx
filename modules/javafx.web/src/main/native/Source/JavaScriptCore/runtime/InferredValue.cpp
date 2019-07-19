@@ -35,6 +35,7 @@ const ClassInfo InferredValue::s_info = { "InferredValue", nullptr, nullptr, nul
 
 InferredValue* InferredValue::create(VM& vm)
 {
+    ASSERT(VM::canUseJIT());
     InferredValue* result = new (NotNull, allocateCell<InferredValue>(vm.heap)) InferredValue(vm);
     result->finishCreation(vm);
     return result;
@@ -54,6 +55,7 @@ Structure* InferredValue::createStructure(VM& vm, JSGlobalObject* globalObject, 
 void InferredValue::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     InferredValue* inferredValue = jsCast<InferredValue*>(cell);
+    Base::visitChildren(cell, visitor);
 
     JSValue value = inferredValue->m_value.get();
     if (!value)
@@ -61,7 +63,7 @@ void InferredValue::visitChildren(JSCell* cell, SlotVisitor& visitor)
     if (!value.isCell())
         return;
 
-    visitor.vm().inferredValuesWithFinalizers.add(inferredValue);
+    VM::SpaceAndSet::setFor(*inferredValue->subspace()).add(inferredValue);
 }
 
 InferredValue::InferredValue(VM& vm)

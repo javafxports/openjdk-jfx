@@ -42,7 +42,6 @@
 #include "HTMLParamElement.h"
 #include "HTMLPlugInElement.h"
 #include "HitTestResult.h"
-#include "LayoutState.h"
 #include "LocalizedStrings.h"
 #include "MouseEvent.h"
 #include "Page.h"
@@ -50,6 +49,7 @@
 #include "Path.h"
 #include "PlatformMouseEvent.h"
 #include "PluginViewBase.h"
+#include "RenderLayoutState.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "Settings.h"
@@ -136,7 +136,7 @@ bool RenderEmbeddedObject::requiresLayer() const
 
 bool RenderEmbeddedObject::allowsAcceleratedCompositing() const
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // The timing of layer creation is different on the phone, since the plugin can only be manipulated from the main thread.
     return is<PluginViewBase>(widget()) && downcast<PluginViewBase>(*widget()).willProvidePluginLayer();
 #else
@@ -144,7 +144,7 @@ bool RenderEmbeddedObject::allowsAcceleratedCompositing() const
 #endif
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 static String unavailablePluginReplacementText(RenderEmbeddedObject::PluginUnavailabilityReason pluginUnavailabilityReason)
 {
     switch (pluginUnavailabilityReason) {
@@ -156,6 +156,8 @@ static String unavailablePluginReplacementText(RenderEmbeddedObject::PluginUnava
         return blockedPluginByContentSecurityPolicyText();
     case RenderEmbeddedObject::InsecurePluginVersion:
         return insecurePluginVersionText();
+    case RenderEmbeddedObject::UnsupportedPlugin:
+        return unsupportedPluginText();
     }
 
     ASSERT_NOT_REACHED();
@@ -170,7 +172,7 @@ static bool shouldUnavailablePluginMessageBeButton(Page& page, RenderEmbeddedObj
 
 void RenderEmbeddedObject::setPluginUnavailabilityReason(PluginUnavailabilityReason pluginUnavailabilityReason)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     UNUSED_PARAM(pluginUnavailabilityReason);
 #else
     setPluginUnavailabilityReasonWithDescription(pluginUnavailabilityReason, unavailablePluginReplacementText(pluginUnavailabilityReason));
@@ -179,7 +181,7 @@ void RenderEmbeddedObject::setPluginUnavailabilityReason(PluginUnavailabilityRea
 
 void RenderEmbeddedObject::setPluginUnavailabilityReasonWithDescription(PluginUnavailabilityReason pluginUnavailabilityReason, const String& description)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     UNUSED_PARAM(pluginUnavailabilityReason);
     UNUSED_PARAM(description);
 #else
@@ -247,7 +249,7 @@ void RenderEmbeddedObject::paintContents(PaintInfo& paintInfo, const LayoutPoint
 void RenderEmbeddedObject::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
     // The relevant repainted object heuristic is not tuned for plugin documents.
-    bool countsTowardsRelevantObjects = !document().isPluginDocument() && paintInfo.phase == PaintPhaseForeground;
+    bool countsTowardsRelevantObjects = !document().isPluginDocument() && paintInfo.phase == PaintPhase::Foreground;
 
     if (isPluginUnavailable()) {
         if (countsTowardsRelevantObjects)
@@ -290,7 +292,7 @@ void RenderEmbeddedObject::paintReplaced(PaintInfo& paintInfo, const LayoutPoint
     if (!showsUnavailablePluginIndicator())
         return;
 
-    if (paintInfo.phase == PaintPhaseSelection)
+    if (paintInfo.phase == PaintPhase::Selection)
         return;
 
     GraphicsContext& context = paintInfo.context();
@@ -376,7 +378,7 @@ void RenderEmbeddedObject::getReplacementTextGeometry(const LayoutPoint& accumul
     fontDescription.setWeight(boldWeightValue());
     fontDescription.setRenderingMode(settings().fontRenderingMode());
     fontDescription.setComputedSize(12);
-    font = FontCascade(fontDescription, 0, 0);
+    font = FontCascade(WTFMove(fontDescription), 0, 0);
     font.update(0);
 
     run = TextRun(m_unavailablePluginReplacementText);

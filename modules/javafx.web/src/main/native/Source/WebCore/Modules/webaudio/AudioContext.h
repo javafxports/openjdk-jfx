@@ -71,7 +71,6 @@ class OscillatorNode;
 class PannerNode;
 class PeriodicWave;
 class ScriptProcessorNode;
-class URL;
 class WaveShaperNode;
 
 // AudioContext is the cornerstone of the web audio API and all AudioNodes are created from it.
@@ -86,11 +85,11 @@ public:
 
     bool isInitialized() const;
 
-    bool isOfflineContext() { return m_isOfflineContext; }
+    bool isOfflineContext() const { return m_isOfflineContext; }
 
     Document* document() const; // ASSERTs if document no longer exists.
 
-    const Document* hostingDocument() const override;
+    Document* hostingDocument() const final;
 
     AudioDestinationNode* destination() { return m_destinationNode.get(); }
     size_t currentSampleFrame() const { return m_destinationNode->currentSampleFrame(); }
@@ -157,13 +156,13 @@ public:
     void derefFinishedSourceNodes();
 
     // We schedule deletion of all marked nodes at the end of each realtime render quantum.
-    void markForDeletion(AudioNode*);
+    void markForDeletion(AudioNode&);
     void deleteMarkedNodes();
 
     // AudioContext can pull node(s) at the end of each render quantum even when they are not connected to any downstream nodes.
     // These two methods are called by the nodes who want to add/remove themselves into/from the automatic pull lists.
-    void addAutomaticPullNode(AudioNode*);
-    void removeAutomaticPullNode(AudioNode*);
+    void addAutomaticPullNode(AudioNode&);
+    void removeAutomaticPullNode(AudioNode&);
 
     // Called right before handlePostRenderTasks() to handle nodes which need to be pulled even when they are not connected to anything.
     void processAutomaticPullNodes(size_t framesToProcess);
@@ -279,8 +278,8 @@ private:
     bool willBeginPlayback();
     bool willPausePlayback();
 
-    bool userGestureRequiredForAudioStart() const { return m_restrictions & RequireUserGestureForAudioStartRestriction; }
-    bool pageConsentRequiredForAudioStart() const { return m_restrictions & RequirePageConsentForAudioStartRestriction; }
+    bool userGestureRequiredForAudioStart() const { return !isOfflineContext() && m_restrictions & RequireUserGestureForAudioStartRestriction; }
+    bool pageConsentRequiredForAudioStart() const { return !isOfflineContext() && m_restrictions & RequirePageConsentForAudioStartRestriction; }
 
     void setState(State);
 

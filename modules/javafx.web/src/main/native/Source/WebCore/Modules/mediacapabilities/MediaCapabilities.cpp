@@ -27,8 +27,10 @@
 #include "MediaCapabilities.h"
 
 #include "ContentType.h"
+#include "JSMediaCapabilitiesInfo.h"
 #include "MediaDecodingConfiguration.h"
 #include "MediaEncodingConfiguration.h"
+#include "MediaEngineConfigurationFactory.h"
 #include <wtf/HashSet.h>
 
 namespace WebCore {
@@ -118,31 +120,7 @@ static bool isValidVideoConfiguration(const VideoConfiguration& configuration)
     // 2. If none of the following is true, return false and abort these steps:
     //   o. Applying the rules for parsing floating-point number values to configuration’s framerate
     //      results in a number that is finite and greater than 0.
-    bool ok = false;
-    double framerate = configuration.framerate.toDouble(&ok);
-    if (ok && std::isfinite(framerate) && framerate > 0)
-        return true;
-
-    //   o. Configuration’s framerate contains one occurence of U+002F SLASH character (/) and the substrings
-    //      before and after this character, when applying the rules for parsing floating-point number values
-    //      results in a number that is finite and greater than 0.
-    auto frameratePieces = configuration.framerate.split('/');
-    if (frameratePieces.size() != 2)
-        return false;
-
-    double numerator = frameratePieces[0].toDouble(&ok);
-    if (!ok)
-        return false;
-
-    double denominator = frameratePieces[1].toDouble(&ok);
-    if (!ok)
-        return false;
-
-    if (!std::isfinite(numerator) || !std::isfinite(denominator))
-        return false;
-
-    framerate = numerator / denominator;
-    if (!std::isfinite(framerate) || framerate <= 0)
+    if (!std::isfinite(configuration.framerate) || configuration.framerate <= 0)
         return false;
 
     // 3. Return true.
@@ -195,8 +173,24 @@ void MediaCapabilities::decodingInfo(MediaDecodingConfiguration&& configuration,
     // 5. In parallel, run the create a MediaCapabilitiesInfo algorithm with configuration and resolve p with its result.
     // 6. Return p.
     m_taskQueue.enqueueTask([configuration = WTFMove(configuration), promise = WTFMove(promise)] () mutable {
-        UNUSED_PARAM(configuration);
-        UNUSED_PARAM(promise);
+
+        // 2.2.3 If configuration is of type MediaDecodingConfiguration, run the following substeps:
+        MediaEngineConfigurationFactory::DecodingConfigurationCallback callback = [promise = WTFMove(promise)] (auto info) mutable {
+            // 2.2.3.1. If the user agent is able to decode the media represented by
+            // configuration, set supported to true. Otherwise set it to false.
+            // 2.2.3.2. If the user agent is able to decode the media represented by
+            // configuration at a pace that allows a smooth playback, set smooth to
+            // true. Otherwise set it to false.
+            // 2.2.3.3. If the user agent is able to decode the media represented by
+            // configuration in a power efficient manner, set powerEfficient to
+            // true. Otherwise set it to false. The user agent SHOULD NOT take into
+            // consideration the current power source in order to determine the
+            // decoding power efficiency unless the device’s power source has side
+            // effects such as enabling different decoding modules.
+            promise->resolve<IDLDictionary<MediaCapabilitiesInfo>>(WTFMove(info));
+        };
+
+        MediaEngineConfigurationFactory::createDecodingConfiguration(WTFMove(configuration), WTFMove(callback));
     });
 }
 
@@ -217,8 +211,28 @@ void MediaCapabilities::encodingInfo(MediaEncodingConfiguration&& configuration,
     // 5. In parallel, run the create a MediaCapabilitiesInfo algorithm with configuration and resolve p with its result.
     // 6. Return p.
     m_taskQueue.enqueueTask([configuration = WTFMove(configuration), promise = WTFMove(promise)] () mutable {
-        UNUSED_PARAM(configuration);
-        UNUSED_PARAM(promise);
+
+        // 2.2.4. If configuration is of type MediaEncodingConfiguration, run the following substeps:
+        MediaEngineConfigurationFactory::EncodingConfigurationCallback callback = [promise = WTFMove(promise)] (auto info) mutable {
+            // 2.2.4.1. If the user agent is able to encode the media
+            // represented by configuration, set supported to true. Otherwise
+            // set it to false.
+            // 2.2.4.2. If the user agent is able to encode the media
+            // represented by configuration at a pace that allows encoding
+            // frames at the same pace as they are sent to the encoder, set
+            // smooth to true. Otherwise set it to false.
+            // 2.2.4.3. If the user agent is able to encode the media
+            // represented by configuration in a power efficient manner, set
+            // powerEfficient to true. Otherwise set it to false. The user agent
+            // SHOULD NOT take into consideration the current power source in
+            // order to determine the encoding power efficiency unless the
+            // device’s power source has side effects such as enabling different
+            // encoding modules.
+            promise->resolve<IDLDictionary<MediaCapabilitiesInfo>>(WTFMove(info));
+        };
+
+        MediaEngineConfigurationFactory::createEncodingConfiguration(WTFMove(configuration), WTFMove(callback));
+
     });
 }
 

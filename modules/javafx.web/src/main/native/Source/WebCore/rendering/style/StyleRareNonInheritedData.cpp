@@ -44,7 +44,6 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     , perspectiveOriginX(RenderStyle::initialPerspectiveOriginX())
     , perspectiveOriginY(RenderStyle::initialPerspectiveOriginY())
     , lineClamp(RenderStyle::initialLineClamp())
-    , linesClamp(RenderStyle::initialLinesClamp())
     , initialLetter(RenderStyle::initialInitialLetter())
     , deprecatedFlexibleBox(StyleDeprecatedFlexibleBoxData::create())
     , flexibleBox(StyleFlexibleBoxData::create())
@@ -62,7 +61,7 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     , scrollSnapArea(StyleScrollSnapArea::create())
 #endif
     , willChange(RenderStyle::initialWillChange())
-    , mask(FillLayer(MaskFillLayer))
+    , mask(FillLayerType::Mask)
     , objectPosition(RenderStyle::initialObjectPosition())
     , shapeOutside(RenderStyle::initialShapeOutside())
     , shapeMargin(RenderStyle::initialShapeMargin())
@@ -76,34 +75,35 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     , justifyContent(RenderStyle::initialContentAlignment())
     , justifyItems(RenderStyle::initialJustifyItems())
     , justifySelf(RenderStyle::initialSelfAlignment())
-#if ENABLE(TOUCH_EVENTS)
-    , touchAction(static_cast<unsigned>(RenderStyle::initialTouchAction()))
+    , customProperties(StyleCustomPropertyData::create())
+#if ENABLE(POINTER_EVENTS)
+    , touchActions(static_cast<unsigned>(RenderStyle::initialTouchActions()))
 #endif
     , pageSizeType(PAGE_SIZE_AUTO)
-    , transformStyle3D(RenderStyle::initialTransformStyle3D())
-    , backfaceVisibility(RenderStyle::initialBackfaceVisibility())
-    , userDrag(RenderStyle::initialUserDrag())
-    , textOverflow(RenderStyle::initialTextOverflow())
-    , marginBeforeCollapse(MCOLLAPSE)
-    , marginAfterCollapse(MCOLLAPSE)
-    , appearance(RenderStyle::initialAppearance())
-    , borderFit(RenderStyle::initialBorderFit())
-    , textCombine(RenderStyle::initialTextCombine())
-    , textDecorationStyle(RenderStyle::initialTextDecorationStyle())
-    , aspectRatioType(RenderStyle::initialAspectRatioType())
+    , transformStyle3D(static_cast<unsigned>(RenderStyle::initialTransformStyle3D()))
+    , backfaceVisibility(static_cast<unsigned>(RenderStyle::initialBackfaceVisibility()))
+    , userDrag(static_cast<unsigned>(RenderStyle::initialUserDrag()))
+    , textOverflow(static_cast<unsigned>(RenderStyle::initialTextOverflow()))
+    , marginBeforeCollapse(static_cast<unsigned>(MarginCollapse::Collapse))
+    , marginAfterCollapse(static_cast<unsigned>(MarginCollapse::Collapse))
+    , appearance(static_cast<unsigned>(RenderStyle::initialAppearance()))
+    , borderFit(static_cast<unsigned>(RenderStyle::initialBorderFit()))
+    , textCombine(static_cast<unsigned>(RenderStyle::initialTextCombine()))
+    , textDecorationStyle(static_cast<unsigned>(RenderStyle::initialTextDecorationStyle()))
+    , aspectRatioType(static_cast<unsigned>(RenderStyle::initialAspectRatioType()))
 #if ENABLE(CSS_COMPOSITING)
-    , effectiveBlendMode(RenderStyle::initialBlendMode())
-    , isolation(RenderStyle::initialIsolation())
+    , effectiveBlendMode(static_cast<unsigned>(RenderStyle::initialBlendMode()))
+    , isolation(static_cast<unsigned>(RenderStyle::initialIsolation()))
 #endif
 #if ENABLE(APPLE_PAY)
     , applePayButtonStyle(static_cast<unsigned>(RenderStyle::initialApplePayButtonStyle()))
     , applePayButtonType(static_cast<unsigned>(RenderStyle::initialApplePayButtonType()))
 #endif
-    , objectFit(RenderStyle::initialObjectFit())
-    , breakBefore(RenderStyle::initialBreakBetween())
-    , breakAfter(RenderStyle::initialBreakBetween())
-    , breakInside(RenderStyle::initialBreakInside())
-    , resize(RenderStyle::initialResize())
+    , objectFit(static_cast<unsigned>(RenderStyle::initialObjectFit()))
+    , breakBefore(static_cast<unsigned>(RenderStyle::initialBreakBetween()))
+    , breakAfter(static_cast<unsigned>(RenderStyle::initialBreakBetween()))
+    , breakInside(static_cast<unsigned>(RenderStyle::initialBreakInside()))
+    , resize(static_cast<unsigned>(RenderStyle::initialResize()))
     , hasAttrContent(false)
     , isNotFinal(false)
     , columnGap(RenderStyle::initialColumnGap())
@@ -121,7 +121,6 @@ inline StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonIn
     , perspectiveOriginX(o.perspectiveOriginX)
     , perspectiveOriginY(o.perspectiveOriginY)
     , lineClamp(o.lineClamp)
-    , linesClamp(o.linesClamp)
     , initialLetter(o.initialLetter)
     , deprecatedFlexibleBox(o.deprecatedFlexibleBox)
     , flexibleBox(o.flexibleBox)
@@ -169,8 +168,10 @@ inline StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonIn
     , justifyContent(o.justifyContent)
     , justifyItems(o.justifyItems)
     , justifySelf(o.justifySelf)
-#if ENABLE(TOUCH_EVENTS)
-    , touchAction(o.touchAction)
+    , customProperties(o.customProperties)
+    , customPaintWatchedProperties(o.customPaintWatchedProperties ? std::make_unique<HashSet<String>>(*o.customPaintWatchedProperties) : nullptr)
+#if ENABLE(POINTER_EVENTS)
+    , touchActions(o.touchActions)
 #endif
     , pageSizeType(o.pageSizeType)
     , transformStyle3D(o.transformStyle3D)
@@ -220,7 +221,6 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && perspectiveOriginX == o.perspectiveOriginX
         && perspectiveOriginY == o.perspectiveOriginY
         && lineClamp == o.lineClamp
-        && linesClamp == o.linesClamp
         && initialLetter == o.initialLetter
 #if ENABLE(DASHBOARD_SUPPORT)
         && dashboardRegions == o.dashboardRegions
@@ -271,6 +271,9 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && justifyContent == o.justifyContent
         && justifyItems == o.justifyItems
         && justifySelf == o.justifySelf
+        && customProperties == o.customProperties
+        && ((customPaintWatchedProperties && o.customPaintWatchedProperties && *customPaintWatchedProperties == *o.customPaintWatchedProperties)
+            || (!customPaintWatchedProperties && !o.customPaintWatchedProperties))
         && pageSizeType == o.pageSizeType
         && transformStyle3D == o.transformStyle3D
         && backfaceVisibility == o.backfaceVisibility
@@ -282,8 +285,8 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && borderFit == o.borderFit
         && textCombine == o.textCombine
         && textDecorationStyle == o.textDecorationStyle
-#if ENABLE(TOUCH_EVENTS)
-        && touchAction == o.touchAction
+#if ENABLE(POINTER_EVENTS)
+        && touchActions == o.touchActions
 #endif
 #if ENABLE(CSS_COMPOSITING)
         && effectiveBlendMode == o.effectiveBlendMode

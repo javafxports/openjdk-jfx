@@ -27,6 +27,7 @@
 #include "config.h"
 #include "ActiveDOMObject.h"
 
+#include "Document.h"
 #include "ScriptExecutionContext.h"
 
 namespace WebCore {
@@ -38,6 +39,7 @@ ActiveDOMObject::ActiveDOMObject(ScriptExecutionContext* scriptExecutionContext)
     , m_suspendIfNeededWasCalled(false)
 #endif
 {
+    ASSERT(!is<Document>(m_scriptExecutionContext) || &downcast<Document>(m_scriptExecutionContext)->contextDocument() == downcast<Document>(m_scriptExecutionContext));
     if (!m_scriptExecutionContext)
         return;
 
@@ -47,6 +49,8 @@ ActiveDOMObject::ActiveDOMObject(ScriptExecutionContext* scriptExecutionContext)
 
 ActiveDOMObject::~ActiveDOMObject()
 {
+    ASSERT(canAccessThreadLocalDataForThread(m_creationThread));
+
     // ActiveDOMObject may be inherited by a sub-class whose life-cycle
     // exceeds that of the associated ScriptExecutionContext. In those cases,
     // m_scriptExecutionContext would/should have been nullified by
@@ -102,6 +106,11 @@ void ActiveDOMObject::resume()
 
 void ActiveDOMObject::stop()
 {
+}
+
+bool ActiveDOMObject::isContextStopped() const
+{
+    return !scriptExecutionContext() || scriptExecutionContext()->activeDOMObjectsAreStopped();
 }
 
 } // namespace WebCore

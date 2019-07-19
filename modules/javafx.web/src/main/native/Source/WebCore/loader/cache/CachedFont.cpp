@@ -45,8 +45,8 @@
 
 namespace WebCore {
 
-CachedFont::CachedFont(CachedResourceRequest&& request, PAL::SessionID sessionID, Type type)
-    : CachedResource(WTFMove(request), type, sessionID)
+CachedFont::CachedFont(CachedResourceRequest&& request, const PAL::SessionID& sessionID, const CookieJar* cookieJar, Type type)
+    : CachedResource(WTFMove(request), type, sessionID, cookieJar)
     , m_loadInitiated(false)
     , m_hasCreatedFontDataWrappingResource(false)
 {
@@ -88,27 +88,19 @@ bool CachedFont::ensureCustomFontData(const AtomicString&)
     return ensureCustomFontData(m_data.get());
 }
 
-unsigned CachedFont::calculateIndex() const
+String CachedFont::calculateItemInCollection() const
 {
     auto& url = this->url();
     if (!url.hasFragmentIdentifier())
-        return 0;
-    const auto& fragment = url.fragmentIdentifier();
-    unsigned result = 0;
-    for (unsigned i = 0; i < fragment.length(); ++i) {
-        UChar c = fragment[i];
-        if (c < '0' || c > '9')
-            return 0;
-        result = result * 10 + (c - '0');
-    }
-    return result;
+        return String();
+    return url.fragmentIdentifier();
 }
 
 bool CachedFont::ensureCustomFontData(SharedBuffer* data)
 {
     if (!m_fontCustomPlatformData && !errorOccurred() && !isLoading() && data) {
         bool wrapping;
-        m_fontCustomPlatformData = createCustomFontData(*data, calculateIndex(), wrapping);
+        m_fontCustomPlatformData = createCustomFontData(*data, calculateItemInCollection(), wrapping);
         m_hasCreatedFontDataWrappingResource = m_fontCustomPlatformData && wrapping;
         if (!m_fontCustomPlatformData)
             setStatus(DecodeError);
@@ -117,7 +109,7 @@ bool CachedFont::ensureCustomFontData(SharedBuffer* data)
     return m_fontCustomPlatformData.get();
 }
 
-std::unique_ptr<FontCustomPlatformData> CachedFont::createCustomFontData(SharedBuffer& bytes, unsigned index, bool& wrapping)
+std::unique_ptr<FontCustomPlatformData> CachedFont::createCustomFontData(SharedBuffer& bytes, const String& itemInCollection, bool& wrapping)
 {
     wrapping = true;
 
@@ -129,11 +121,11 @@ std::unique_ptr<FontCustomPlatformData> CachedFont::createCustomFontData(SharedB
             return nullptr;
 
         auto buffer = SharedBuffer::create(WTFMove(convertedFont));
-        return createFontCustomPlatformData(buffer, index);
+        return createFontCustomPlatformData(buffer, itemInCollection);
     }
 #endif
 
-    return createFontCustomPlatformData(bytes, index);
+    return createFontCustomPlatformData(bytes, itemInCollection);
 }
 
 RefPtr<Font> CachedFont::createFont(const FontDescription& fontDescription, const AtomicString&, bool syntheticBold, bool syntheticItalic, const FontFeatureSettings& fontFaceFeatures, const FontVariantSettings& fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities)
@@ -149,14 +141,7 @@ FontPlatformData CachedFont::platformDataFromCustomData(const FontDescription& f
 
 FontPlatformData CachedFont::platformDataFromCustomData(FontCustomPlatformData& fontCustomPlatformData, const FontDescription& fontDescription, bool bold, bool italic, const FontFeatureSettings& fontFaceFeatures, const FontVariantSettings& fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities)
 {
-#if PLATFORM(COCOA)
     return fontCustomPlatformData.fontPlatformData(fontDescription, bold, italic, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities);
-#else
-    UNUSED_PARAM(fontFaceFeatures);
-    UNUSED_PARAM(fontFaceVariantSettings);
-    UNUSED_PARAM(fontFaceCapabilities);
-    return fontCustomPlatformData.fontPlatformData(fontDescription, bold, italic);
-#endif
 }
 
 void CachedFont::allClientsRemoved()

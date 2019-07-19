@@ -35,9 +35,12 @@
 #include "DebuggerEvalEnabler.h"
 #include "JSCInlines.h"
 #include "JSGlobalObject.h"
+#include "JSLock.h"
+#include "JSNativeStdFunction.h"
+#include "NativeStdFunctionCell.h"
 #include "ScriptFunctionCall.h"
 #include <wtf/JSONValues.h>
-#include <wtf/text/WTFString.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace Inspector {
 
@@ -88,16 +91,60 @@ Ref<JSON::Value> InjectedScriptBase::makeCall(Deprecated::ScriptFunctionCall& fu
 
     RefPtr<JSON::Value> resultJSONValue = toInspectorValue(*m_injectedScriptObject.scriptState(), resultJSValue);
     if (!resultJSONValue)
-        return JSON::Value::create(String::format("Object has too long reference chain (must not be longer than %d)", JSON::Value::maxDepth));
+        return JSON::Value::create(makeString("Object has too long reference chain (must not be longer than ", JSON::Value::maxDepth, ')'));
 
     return resultJSONValue.releaseNonNull();
 }
 
-void InjectedScriptBase::makeEvalCall(ErrorString& errorString, Deprecated::ScriptFunctionCall& function, RefPtr<Protocol::Runtime::RemoteObject>& out_resultObject, bool& out_wasThrown, std::optional<int>& out_savedResultIndex)
+void InjectedScriptBase::makeEvalCall(ErrorString& errorString, Deprecated::ScriptFunctionCall& function, RefPtr<Protocol::Runtime::RemoteObject>& out_resultObject, Optional<bool>& out_wasThrown, Optional<int>& out_savedResultIndex)
 {
-    RefPtr<JSON::Value> result = makeCall(function);
+    checkCallResult(errorString, makeCall(function), out_resultObject, out_wasThrown, out_savedResultIndex);
+}
+
+void InjectedScriptBase::makeAsyncCall(Deprecated::ScriptFunctionCall& function, AsyncCallCallback&& callback)
+{
+    if (hasNoValue() || !hasAccessToInspectedScriptState()) {
+        checkAsyncCallResult(JSON::Value::null(), callback);
+        return;
+    }
+
+    auto* scriptState = m_injectedScriptObject.scriptState();
+    JSC::VM& vm = scriptState->vm();
+
+    JSC::JSNativeStdFunction* jsFunction;
+
+    {
+        JSC::JSLockHolder locker(vm);
+
+        jsFunction = JSC::JSNativeStdFunction::create(vm, scriptState->lexicalGlobalObject(), 1, String(), [&, callback = WTFMove(callback)] (JSC::ExecState* exec) {
+            if (!exec)
+                checkAsyncCallResult(JSON::Value::create("Exception while making a call."), callback);
+            if (auto resultJSONValue = toInspectorValue(*exec, exec->argument(0)))
+                checkAsyncCallResult(resultJSONValue, callback);
+            else
+                checkAsyncCallResult(JSON::Value::create(makeString("Object has too long reference chain (must not be longer than ", JSON::Value::maxDepth, ')')), callback);
+            return JSC::JSValue::encode(JSC::jsUndefined());
+        });
+    }
+
+    function.appendArgument(JSC::JSValue(jsFunction));
+
+    bool hadException = false;
+    auto resultJSValue = callFunctionWithEvalEnabled(function, hadException);
+    ASSERT_UNUSED(resultJSValue, resultJSValue.isUndefined());
+
+    ASSERT(!hadException);
+    if (hadException) {
+        // Since `callback` is moved above, we can't call it if there's an exception while trying to
+        // execute the `JSNativeStdFunction` inside InjectedScriptSource.js.
+        jsFunction->nativeStdFunctionCell()->function()(nullptr);
+    }
+}
+
+void InjectedScriptBase::checkCallResult(ErrorString& errorString, RefPtr<JSON::Value> result, RefPtr<Protocol::Runtime::RemoteObject>& out_resultObject, Optional<bool>& out_wasThrown, Optional<int>& out_savedResultIndex)
+{
     if (!result) {
-        errorString = ASCIILiteral("Internal error: result value is empty");
+        errorString = "Internal error: result value is empty"_s;
         return;
     }
 
@@ -109,28 +156,42 @@ void InjectedScriptBase::makeEvalCall(ErrorString& errorString, Deprecated::Scri
 
     RefPtr<JSON::Object> resultTuple;
     if (!result->asObject(resultTuple)) {
-        errorString = ASCIILiteral("Internal error: result is not an Object");
+        errorString = "Internal error: result is not an Object"_s;
         return;
     }
 
     RefPtr<JSON::Object> resultObject;
-    if (!resultTuple->getObject(ASCIILiteral("result"), resultObject)) {
-        errorString = ASCIILiteral("Internal error: result is not a pair of value and wasThrown flag");
+    if (!resultTuple->getObject("result"_s, resultObject)) {
+        errorString = "Internal error: result is not a pair of value and wasThrown flag"_s;
         return;
     }
 
     bool wasThrown = false;
-    if (!resultTuple->getBoolean(ASCIILiteral("wasThrown"), wasThrown)) {
-        errorString = ASCIILiteral("Internal error: result is not a pair of value and wasThrown flag");
+    if (!resultTuple->getBoolean("wasThrown"_s, wasThrown)) {
+        errorString = "Internal error: result is not a pair of value and wasThrown flag"_s;
         return;
     }
 
     out_resultObject = BindingTraits<Protocol::Runtime::RemoteObject>::runtimeCast(resultObject);
-    out_wasThrown = wasThrown;
+
+    if (wasThrown)
+        out_wasThrown = wasThrown;
 
     int savedResultIndex;
-    if (resultTuple->getInteger(ASCIILiteral("savedResultIndex"), savedResultIndex))
+    if (resultTuple->getInteger("savedResultIndex"_s, savedResultIndex))
         out_savedResultIndex = savedResultIndex;
+}
+
+void InjectedScriptBase::checkAsyncCallResult(RefPtr<JSON::Value> result, const AsyncCallCallback& callback)
+{
+    ErrorString errorString;
+    RefPtr<Protocol::Runtime::RemoteObject> resultObject;
+    Optional<bool> wasThrown;
+    Optional<int> savedResultIndex;
+
+    checkCallResult(errorString, result, resultObject, wasThrown, savedResultIndex);
+
+    callback(errorString, WTFMove(resultObject), wasThrown, savedResultIndex);
 }
 
 } // namespace Inspector

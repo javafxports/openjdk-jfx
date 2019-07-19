@@ -24,7 +24,7 @@
  */
 
 #include "config.h"
-#include "Language.h"
+#include <wtf/Language.h>
 
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
@@ -37,7 +37,7 @@
 
 namespace WTF {
 
-static StaticLock userPreferredLanguagesMutex;
+static Lock userPreferredLanguagesMutex;
 
 typedef HashMap<void*, LanguageChangeObserverFunction> ObserverMap;
 static ObserverMap& observerMap()
@@ -102,7 +102,7 @@ static Vector<String> isolatedCopy(const Vector<String>& strings)
 Vector<String> userPreferredLanguages()
 {
     {
-        std::lock_guard<StaticLock> lock(userPreferredLanguagesMutex);
+        std::lock_guard<Lock> lock(userPreferredLanguagesMutex);
         Vector<String>& override = preferredLanguagesOverride();
         if (!override.isEmpty())
             return isolatedCopy(override);

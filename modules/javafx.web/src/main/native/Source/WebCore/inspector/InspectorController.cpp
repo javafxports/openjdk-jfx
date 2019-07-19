@@ -36,8 +36,10 @@
 #include "CommonVM.h"
 #include "DOMWindow.h"
 #include "DOMWrapperWorld.h"
+#include "Frame.h"
 #include "GraphicsContext.h"
 #include "InspectorApplicationCacheAgent.h"
+#include "InspectorCPUProfilerAgent.h"
 #include "InspectorCSSAgent.h"
 #include "InspectorCanvasAgent.h"
 #include "InspectorClient.h"
@@ -57,9 +59,9 @@
 #include "JSDOMBindingSecurity.h"
 #include "JSDOMWindow.h"
 #include "JSDOMWindowCustom.h"
-#include "JSMainThreadExecState.h"
-#include "MainFrame.h"
+#include "JSExecState.h"
 #include "Page.h"
+#include "PageAuditAgent.h"
 #include "PageConsoleAgent.h"
 #include "PageDebuggerAgent.h"
 #include "PageHeapAgent.h"
@@ -204,8 +206,10 @@ void InspectorController::createLazyAgents()
     m_agents.append(std::make_unique<InspectorIndexedDBAgent>(pageContext, m_pageAgent));
 #endif
 #if ENABLE(RESOURCE_USAGE)
+    m_agents.append(std::make_unique<InspectorCPUProfilerAgent>(pageContext));
     m_agents.append(std::make_unique<InspectorMemoryAgent>(pageContext));
 #endif
+    m_agents.append(std::make_unique<PageAuditAgent>(pageContext));
 }
 
 void InspectorController::inspectedPageDestroyed()
@@ -254,10 +258,12 @@ void InspectorController::didClearWindowObjectInWorld(Frame& frame, DOMWrapperWo
         m_inspectorFrontendClient->windowObjectCleared();
 }
 
-void InspectorController::connectFrontend(Inspector::FrontendChannel* frontendChannel, bool isAutomaticInspection, bool immediatelyPause)
+void InspectorController::connectFrontend(Inspector::FrontendChannel& frontendChannel, bool isAutomaticInspection, bool immediatelyPause)
 {
-    ASSERT_ARG(frontendChannel, frontendChannel);
     ASSERT(m_inspectorClient);
+
+    // If a frontend has connected enable the developer extras and keep them enabled.
+    m_page.settings().setDeveloperExtrasEnabled(true);
 
     createLazyAgents();
 
@@ -274,13 +280,15 @@ void InspectorController::connectFrontend(Inspector::FrontendChannel* frontendCh
         m_agents.didCreateFrontendAndBackend(&m_frontendRouter.get(), &m_backendDispatcher.get());
     }
 
+    m_inspectorClient->frontendCountChanged(m_frontendRouter->frontendCount());
+
 #if ENABLE(REMOTE_INSPECTOR)
-    if (!m_frontendRouter->hasRemoteFrontend())
+    if (hasLocalFrontend())
         m_page.remoteInspectorInformationDidChange();
 #endif
 }
 
-void InspectorController::disconnectFrontend(FrontendChannel* frontendChannel)
+void InspectorController::disconnectFrontend(FrontendChannel& frontendChannel)
 {
     m_frontendRouter->disconnectFrontend(frontendChannel);
 
@@ -302,8 +310,10 @@ void InspectorController::disconnectFrontend(FrontendChannel* frontendChannel)
         InspectorInstrumentation::unregisterInstrumentingAgents(m_instrumentingAgents.get());
     }
 
+    m_inspectorClient->frontendCountChanged(m_frontendRouter->frontendCount());
+
 #if ENABLE(REMOTE_INSPECTOR)
-    if (!m_frontendRouter->hasFrontends())
+    if (disconnectedLastFrontend)
         m_page.remoteInspectorInformationDidChange();
 #endif
 }
@@ -338,6 +348,8 @@ void InspectorController::disconnectAllFrontends()
     m_isAutomaticInspection = false;
     m_pauseAfterInitialization = false;
 
+    m_inspectorClient->frontendCountChanged(m_frontendRouter->frontendCount());
+
 #if ENABLE(REMOTE_INSPECTOR)
     m_page.remoteInspectorInformationDidChange();
 #endif
@@ -345,7 +357,7 @@ void InspectorController::disconnectAllFrontends()
 
 void InspectorController::show()
 {
-    ASSERT(!m_frontendRouter->hasRemoteFrontend());
+    ASSERT(!hasRemoteFrontend());
 
     if (!enabled())
         return;
@@ -353,12 +365,7 @@ void InspectorController::show()
     if (m_frontendRouter->hasLocalFrontend())
         m_inspectorClient->bringFrontendToFront();
     else if (Inspector::FrontendChannel* frontendChannel = m_inspectorClient->openLocalFrontend(this))
-        connectFrontend(frontendChannel);
-}
-
-void InspectorController::setProcessId(long processId)
-{
-    IdentifiersFactory::setProcessId(processId);
+        connectFrontend(*frontendChannel);
 }
 
 void InspectorController::setIsUnderTest(bool value)
@@ -431,7 +438,7 @@ Node* InspectorController::highlightedNode() const
 
 void InspectorController::setIndicating(bool indicating)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     m_overlay->setIndicating(indicating);
 #else
     if (indicating)

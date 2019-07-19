@@ -31,21 +31,21 @@ function setIteratorNext(bucket, kind)
     var value;
 
     bucket = @setBucketNext(bucket);
-    this.@setBucket = bucket;
+    @putByIdDirectPrivate(this, "setBucket", bucket);
     var done = bucket === @sentinelSetBucket;
     if (!done) {
         value = @setBucketKey(bucket);
         if (kind === @iterationKindKeyValue)
             value = [ value, value ]
     }
-    return { done, value };
+    return { value, done };
 }
 
 function next()
 {
     "use strict";
 
-    if (this == null)
+    if (@isUndefinedOrNull(this))
         @throwTypeError("%SetIteratorPrototype%.next requires that |this| not be null or undefined");
 
     var bucket = @getByIdDirectPrivate(this, "setBucket");

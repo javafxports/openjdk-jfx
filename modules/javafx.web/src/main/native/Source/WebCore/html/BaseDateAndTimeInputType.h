@@ -50,13 +50,14 @@ protected:
     String serializeWithComponents(const DateComponents&) const;
     virtual bool setMillisecondToDateComponents(double, DateComponents*) const = 0;
     String visibleValue() const override;
-#if PLATFORM(IOS)
-    bool isKeyboardFocusable(KeyboardEvent&) const override;
+    void attributeChanged(const QualifiedName&) override;
+#if PLATFORM(IOS_FAMILY)
+    bool isKeyboardFocusable(KeyboardEvent*) const override;
 #endif
 
 private:
     virtual bool parseToDateComponentsInternal(const UChar*, unsigned length, DateComponents*) const = 0;
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     virtual DateComponents::Type dateType() const = 0;
 #endif
     double valueAsDate() const override;
@@ -67,7 +68,6 @@ private:
     bool typeMismatch() const override;
     bool valueMissing(const String&) const override;
     Decimal defaultValueForStepUp() const override;
-    void minOrMaxAttributeChanged() override;
     bool isSteppable() const override;
     virtual String serializeWithMilliseconds(double) const;
     String localizeValue(const String&) const override;

@@ -72,7 +72,10 @@ MediaPlayer::SupportsType MockMediaPlayerMediaSource::supportsType(const MediaEn
     if (codecs.isEmpty())
         return MediaPlayer::MayBeSupported;
 
-    return codecs == "mock" ? MediaPlayer::IsSupported : MediaPlayer::MayBeSupported;
+    if (codecs == "mock" || codecs == "kcom")
+        return MediaPlayer::IsSupported;
+
+    return MediaPlayer::MayBeSupported;
 }
 
 MockMediaPlayerMediaSource::MockMediaPlayerMediaSource(MediaPlayer* player)
@@ -94,7 +97,7 @@ void MockMediaPlayerMediaSource::load(const String&)
 
 void MockMediaPlayerMediaSource::load(const String&, MediaSourcePrivateClient* source)
 {
-    m_mediaSourcePrivate = MockMediaSourcePrivate::create(this, source);
+    m_mediaSourcePrivate = MockMediaSourcePrivate::create(*this, *source);
 }
 
 void MockMediaPlayerMediaSource::cancelLoad()
@@ -268,9 +271,9 @@ void MockMediaPlayerMediaSource::seekCompleted()
         });
 }
 
-std::optional<PlatformVideoPlaybackQualityMetrics> MockMediaPlayerMediaSource::videoPlaybackQualityMetrics()
+Optional<VideoPlaybackQualityMetrics> MockMediaPlayerMediaSource::videoPlaybackQualityMetrics()
 {
-    return m_mediaSourcePrivate ? m_mediaSourcePrivate->videoPlaybackQualityMetrics() : std::nullopt;
+    return m_mediaSourcePrivate ? m_mediaSourcePrivate->videoPlaybackQualityMetrics() : WTF::nullopt;
 }
 
 }

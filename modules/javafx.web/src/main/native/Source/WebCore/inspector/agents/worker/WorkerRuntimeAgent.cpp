@@ -61,11 +61,11 @@ void WorkerRuntimeAgent::willDestroyFrontendAndBackend(DisconnectReason reason)
 InjectedScript WorkerRuntimeAgent::injectedScriptForEval(ErrorString& errorString, const int* executionContextId)
 {
     if (executionContextId) {
-        errorString = ASCIILiteral("Execution context id is not supported for workers as there is only one execution context.");
+        errorString = "Execution context id is not supported for workers as there is only one execution context."_s;
         return InjectedScript();
     }
 
-    JSC::ExecState* scriptState = execStateFromWorkerGlobalScope(&m_workerGlobalScope);
+    JSC::ExecState* scriptState = execStateFromWorkerGlobalScope(m_workerGlobalScope);
     return injectedScriptManager().injectedScriptFor(scriptState);
 }
 

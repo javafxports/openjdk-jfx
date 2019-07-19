@@ -31,12 +31,10 @@
 
 #pragma once
 
-#include "CSSParserMode.h"
+#include "CSSParserContext.h"
 #include <wtf/ASCIICType.h>
 
 namespace WebCore {
-
-class URL;
 
 // Space characters as defined by the CSS specification.
 // http://www.w3.org/TR/css3-syntax/#whitespace

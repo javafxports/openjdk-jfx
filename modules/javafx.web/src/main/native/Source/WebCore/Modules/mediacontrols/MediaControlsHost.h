@@ -56,7 +56,7 @@ public:
     Vector<RefPtr<AudioTrack>> sortedTrackListForMenu(AudioTrackList&);
 
     using TextOrAudioTrack = WTF::Variant<RefPtr<TextTrack>, RefPtr<AudioTrack>>;
-    String displayNameForTrack(const std::optional<TextOrAudioTrack>&);
+    String displayNameForTrack(const Optional<TextOrAudioTrack>&);
 
     TextTrack* captionMenuOffItem();
     TextTrack* captionMenuAutomaticItem();
@@ -81,6 +81,9 @@ public:
     enum class DeviceType { None, Airplay, Tvout };
     DeviceType externalDeviceType() const;
 
+    bool compactMode() const;
+    void setSimulateCompactMode(bool value) { m_simulateCompactMode = value; }
+
     bool controlsDependOnPageScaleFactor() const;
     void setControlsDependOnPageScaleFactor(bool v);
 
@@ -95,6 +98,7 @@ private:
 
     HTMLMediaElement* m_mediaElement;
     RefPtr<MediaControlTextTrackContainerElement> m_textTrackContainer;
+    bool m_simulateCompactMode { false };
 };
 
 }

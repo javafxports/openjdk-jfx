@@ -42,7 +42,7 @@ DeviceOrientation* toDeviceOrientation(JSContextRef context, JSValueRef value)
         DeviceOrientation::LandscapeRight
     };
 
-    JSRetainPtr<JSStringRef> option(Adopt, JSValueToStringCopy(context, value, nullptr));
+    auto option = adopt(JSValueToStringCopy(context, value, nullptr));
     if (option.get()->string() == "portrait")
         return &values[0];
 
@@ -63,7 +63,7 @@ UIScriptController::UIScriptController(UIScriptContext& context)
 {
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 void UIScriptController::checkForOutstandingCallbacks()
 {
 }
@@ -206,7 +206,20 @@ JSValueRef UIScriptController::didHideKeyboardCallback() const
 }
 
 #if !PLATFORM(COCOA)
+
 void UIScriptController::zoomToScale(double, JSValueRef)
+{
+}
+
+void UIScriptController::setViewScale(double)
+{
+}
+
+void UIScriptController::setMinimumEffectiveWidth(double)
+{
+}
+
+void UIScriptController::resignFirstResponder()
 {
 }
 
@@ -218,14 +231,28 @@ JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfac
 {
     return nullptr;
 }
-#endif
+
+void UIScriptController::setDefaultCalendarType(JSStringRef calendarIdentifier)
+{
+}
+
+JSObjectRef UIScriptController::calendarType() const
+{
+    return nullptr;
+}
+
+void UIScriptController::toggleCapsLock(JSValueRef)
+{
+}
+
+#endif // !PLATFORM(COCOA)
 
 void UIScriptController::playBackEventStream(JSStringRef stream, JSValueRef callback)
 {
     platformPlayBackEventStream(stream, callback);
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 void UIScriptController::touchDownAtPoint(long x, long y, long touchCount, JSValueRef)
 {
 }
@@ -235,6 +262,10 @@ void UIScriptController::liftUpAtPoint(long x, long y, long touchCount, JSValueR
 }
 
 void UIScriptController::singleTapAtPoint(long x, long y, JSValueRef)
+{
+}
+
+void UIScriptController::singleTapAtPointWithModifiers(long x, long y, JSValueRef modifierArray, JSValueRef callback)
 {
 }
 
@@ -266,7 +297,15 @@ void UIScriptController::stylusTapAtPoint(long x, long y, float azimuthAngle, fl
 {
 }
 
+void UIScriptController::stylusTapAtPointWithModifiers(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef modifierArray, JSValueRef callback)
+{
+}
+
 void UIScriptController::sendEventStream(JSStringRef eventsJSON, JSValueRef callback)
+{
+}
+
+void UIScriptController::enterText(JSStringRef)
 {
 }
 
@@ -274,19 +313,7 @@ void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef, JSValue
 {
 }
 
-void UIScriptController::keyUpUsingHardwareKeyboard(JSStringRef, JSValueRef)
-{
-}
-
-void UIScriptController::selectTextCandidateAtIndex(long, JSValueRef)
-{
-}
-
-void UIScriptController::waitForTextPredictionsViewAndSelectCandidateAtIndex(long, unsigned, float)
-{
-}
-
-void UIScriptController::keyDownUsingHardwareKeyboard(JSStringRef, JSValueRef)
+void UIScriptController::keyDown(JSStringRef, JSValueRef)
 {
 }
 
@@ -294,8 +321,42 @@ void UIScriptController::dismissFormAccessoryView()
 {
 }
 
+void UIScriptController::setTimePickerValue(long, long)
+{
+}
+
 void UIScriptController::selectFormAccessoryPickerRow(long)
 {
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::textContentType() const
+{
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::selectFormPopoverTitle() const
+{
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::formInputLabel() const
+{
+    return nullptr;
+}
+
+bool UIScriptController::isPresentingModally() const
+{
+    return false;
+}
+
+double UIScriptController::contentOffsetX() const
+{
+    return 0;
+}
+
+double UIScriptController::contentOffsetY() const
+{
+    return 0;
 }
 
 void UIScriptController::scrollToOffset(long x, long y)
@@ -322,6 +383,11 @@ void UIScriptController::applyAutocorrection(JSStringRef, JSStringRef, JSValueRe
 {
 }
 
+bool UIScriptController::isShowingKeyboard() const
+{
+    return false;
+}
+
 double UIScriptController::zoomScale() const
 {
     return 1;
@@ -337,16 +403,36 @@ double UIScriptController::maximumZoomScale() const
     return 1;
 }
 
-std::optional<bool> UIScriptController::stableStateOverride() const
+Optional<bool> UIScriptController::stableStateOverride() const
 {
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
-void UIScriptController::setStableStateOverride(std::optional<bool>)
+void UIScriptController::setStableStateOverride(Optional<bool>)
 {
 }
 
 JSObjectRef UIScriptController::contentVisibleRect() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::textSelectionRangeRects() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::textSelectionCaretRect() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::selectionStartGrabberViewRect() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::selectionCaretViewRect() const
 {
     return nullptr;
 }
@@ -356,7 +442,7 @@ JSObjectRef UIScriptController::selectionRangeViewRects() const
     return nullptr;
 }
 
-JSObjectRef UIScriptController::textSelectionCaretRect() const
+JSObjectRef UIScriptController::selectionEndGrabberViewRect() const
 {
     return nullptr;
 }
@@ -433,6 +519,24 @@ void UIScriptController::setSafeAreaInsets(double top, double right, double bott
 {
 }
 
+void UIScriptController::drawSquareInEditableImage()
+{
+}
+
+long UIScriptController::numberOfStrokesInEditableImage()
+{
+    return 0;
+}
+
+JSObjectRef UIScriptController::attachmentInfo(JSStringRef)
+{
+    return nullptr;
+}
+
+void UIScriptController::setKeyboardInputModeIdentifier(JSStringRef)
+{
+}
+
 #endif
 
 #if !PLATFORM(COCOA)
@@ -465,13 +569,32 @@ void UIScriptController::completeBackSwipe(JSValueRef callback)
 {
 }
 
-#endif // !PLATFORM(COCOA)
+void UIScriptController::setShareSheetCompletesImmediatelyWithResolution(bool)
+{
+}
 
-#if !PLATFORM(MAC)
+bool UIScriptController::isShowingDataListSuggestions() const
+{
+    return false;
+}
 
 void UIScriptController::overridePreference(JSStringRef, JSStringRef)
 {
 }
+
+JSRetainPtr<JSStringRef> UIScriptController::lastUndoLabel() const
+{
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::firstRedoLabel() const
+{
+    return nullptr;
+}
+
+#endif // !PLATFORM(COCOA)
+
+#if !PLATFORM(MAC)
 
 void UIScriptController::replaceTextAtRange(JSStringRef, int, int)
 {
@@ -479,6 +602,19 @@ void UIScriptController::replaceTextAtRange(JSStringRef, int, int)
 
 void UIScriptController::platformPlayBackEventStream(JSStringRef, JSValueRef)
 {
+}
+
+void UIScriptController::firstResponderSuppressionForWebView(bool)
+{
+}
+
+void UIScriptController::makeWindowContentViewFirstResponder()
+{
+}
+
+bool UIScriptController::isWindowContentViewFirstResponder() const
+{
+    return false;
 }
 
 #endif

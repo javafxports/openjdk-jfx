@@ -28,7 +28,9 @@
 
 #pragma once
 
+#include "DisabledAdaptations.h"
 #include <wtf/Function.h>
+#include <wtf/OptionSet.h>
 #include <wtf/Optional.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -38,10 +40,10 @@ namespace WebCore {
 class FloatRect;
 
 struct WindowFeatures {
-    std::optional<float> x;
-    std::optional<float> y;
-    std::optional<float> width;
-    std::optional<float> height;
+    Optional<float> x;
+    Optional<float> y;
+    Optional<float> width;
+    Optional<float> height;
 
     bool menuBarVisible { true };
     bool statusBarVisible { true };
@@ -59,6 +61,7 @@ struct WindowFeatures {
 
 WindowFeatures parseWindowFeatures(StringView windowFeaturesString);
 WindowFeatures parseDialogFeatures(const String& dialogFeaturesString, const FloatRect& screenAvailableRect);
+OptionSet<DisabledAdaptations> parseDisabledAdaptations(const String&);
 
 enum class FeatureMode { Window, Viewport };
 void processFeaturesString(StringView features, FeatureMode, const WTF::Function<void(StringView type, StringView value)>& callback);

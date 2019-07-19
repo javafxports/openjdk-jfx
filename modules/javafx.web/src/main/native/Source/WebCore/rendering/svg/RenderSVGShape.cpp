@@ -8,6 +8,7 @@
  * Copyright (C) 2009 Jeff Schiller <codedread@gmail.com>
  * Copyright (C) 2011 Renata Hodovan <reni@webkit.org>
  * Copyright (C) 2011 University of Szeged
+ * Copyright (C) 2018 Adobe Systems Incorporated. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -110,12 +111,12 @@ void RenderSVGShape::strokeShape(GraphicsContext& context) const
     context.strokePath(*usePath);
 }
 
-bool RenderSVGShape::shapeDependentStrokeContains(const FloatPoint& point)
+bool RenderSVGShape::shapeDependentStrokeContains(const FloatPoint& point, PointCoordinateSpace pointCoordinateSpace)
 {
     ASSERT(m_path);
     BoundingRectStrokeStyleApplier applier(*this);
 
-    if (hasNonScalingStroke()) {
+    if (hasNonScalingStroke() && pointCoordinateSpace != LocalCoordinateSpace) {
         AffineTransform nonScalingTransform = nonScalingStrokeTransform();
         Path* usePath = nonScalingStrokePath(m_path.get(), nonScalingTransform);
 
@@ -199,7 +200,7 @@ Path* RenderSVGShape::nonScalingStrokePath(const Path* path, const AffineTransfo
 
 bool RenderSVGShape::setupNonScalingStrokeContext(AffineTransform& strokeTransform, GraphicsContextStateSaver& stateSaver)
 {
-    std::optional<AffineTransform> inverse = strokeTransform.inverse();
+    Optional<AffineTransform> inverse = strokeTransform.inverse();
     if (!inverse)
         return false;
 
@@ -295,8 +296,8 @@ void RenderSVGShape::fillStrokeMarkers(PaintInfo& childPaintInfo)
 
 void RenderSVGShape::paint(PaintInfo& paintInfo, const LayoutPoint&)
 {
-    if (paintInfo.context().paintingDisabled() || paintInfo.phase != PaintPhaseForeground
-        || style().visibility() == HIDDEN || isEmpty())
+    if (paintInfo.context().paintingDisabled() || paintInfo.phase != PaintPhase::Foreground
+        || style().visibility() == Visibility::Hidden || isEmpty())
         return;
     FloatRect boundingBox = repaintRectInLocalCoordinates();
     if (!SVGRenderSupport::paintInfoIntersectsRepaintRect(boundingBox, m_localTransform, paintInfo))
@@ -306,12 +307,12 @@ void RenderSVGShape::paint(PaintInfo& paintInfo, const LayoutPoint&)
     GraphicsContextStateSaver stateSaver(childPaintInfo.context());
     childPaintInfo.applyTransform(m_localTransform);
 
-    if (childPaintInfo.phase == PaintPhaseForeground) {
+    if (childPaintInfo.phase == PaintPhase::Foreground) {
         SVGRenderingContext renderingContext(*this, childPaintInfo);
 
         if (renderingContext.isRenderingPrepared()) {
             const SVGRenderStyle& svgStyle = style().svgStyle();
-            if (svgStyle.shapeRendering() == SR_CRISPEDGES)
+            if (svgStyle.shapeRendering() == ShapeRendering::CrispEdges)
                 childPaintInfo.context().setShouldAntialias(false);
 
             fillStrokeMarkers(childPaintInfo);
@@ -331,19 +332,49 @@ void RenderSVGShape::addFocusRingRects(Vector<LayoutRect>& rects, const LayoutPo
         rects.append(rect);
 }
 
+bool RenderSVGShape::isPointInFill(const FloatPoint& point)
+{
+    return shapeDependentFillContains(point, style().svgStyle().fillRule());
+}
+
+bool RenderSVGShape::isPointInStroke(const FloatPoint& point)
+{
+    if (!style().svgStyle().hasStroke())
+        return false;
+
+    return shapeDependentStrokeContains(point, LocalCoordinateSpace);
+}
+
+float RenderSVGShape::getTotalLength() const
+{
+    if (m_path)
+        return m_path->length();
+
+    return 0;
+}
+
+void RenderSVGShape::getPointAtLength(FloatPoint& point, float distance) const
+{
+    if (!m_path)
+        return;
+
+    bool isValid;
+    point = m_path->pointAtLength(distance, isValid);
+}
+
 bool RenderSVGShape::nodeAtFloatPoint(const HitTestRequest& request, HitTestResult& result, const FloatPoint& pointInParent, HitTestAction hitTestAction)
 {
     // We only draw in the forground phase, so we only hit-test then.
     if (hitTestAction != HitTestForeground)
         return false;
 
-    FloatPoint localPoint = m_localTransform.inverse().value_or(AffineTransform()).mapPoint(pointInParent);
+    FloatPoint localPoint = m_localTransform.inverse().valueOr(AffineTransform()).mapPoint(pointInParent);
 
     if (!SVGRenderSupport::pointInClippingArea(*this, localPoint))
         return false;
 
     PointerEventsHitRules hitRules(PointerEventsHitRules::SVG_PATH_HITTESTING, request, style().pointerEvents());
-    bool isVisible = (style().visibility() == VISIBLE);
+    bool isVisible = (style().visibility() == Visibility::Visible);
     if (isVisible || !hitRules.requireVisible) {
         const SVGRenderStyle& svgStyle = style().svgStyle();
         WindRule fillRule = svgStyle.fillRule();
@@ -410,7 +441,7 @@ FloatRect RenderSVGShape::calculateStrokeBoundingBox() const
         BoundingRectStrokeStyleApplier strokeStyle(*this);
         if (hasNonScalingStroke()) {
             AffineTransform nonScalingTransform = nonScalingStrokeTransform();
-            if (std::optional<AffineTransform> inverse = nonScalingTransform.inverse()) {
+            if (Optional<AffineTransform> inverse = nonScalingTransform.inverse()) {
                 Path* usePath = nonScalingStrokePath(m_path.get(), nonScalingTransform);
                 FloatRect strokeBoundingRect = usePath->strokeBoundingRect(&strokeStyle);
                 strokeBoundingRect = inverse.value().mapRect(strokeBoundingRect);
@@ -432,7 +463,6 @@ void RenderSVGShape::updateRepaintBoundingBox()
     SVGRenderSupport::intersectRepaintRectWithResources(*this, m_repaintBoundingBoxExcludingShadow);
 
     m_repaintBoundingBox = m_repaintBoundingBoxExcludingShadow;
-    SVGRenderSupport::intersectRepaintRectWithShadows(*this, m_repaintBoundingBox);
 }
 
 float RenderSVGShape::strokeWidth() const

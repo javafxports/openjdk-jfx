@@ -26,7 +26,6 @@
 #pragma once
 
 #include "AllocationFailureMode.h"
-#include "Allocator.h"
 #include "CellAttributes.h"
 #include "FreeList.h"
 #include "LocalAllocator.h"
@@ -44,8 +43,6 @@ class Heap;
 class IsoCellSet;
 class MarkedSpace;
 class LLIntOffsetsExtractor;
-class ThreadLocalCache;
-class ThreadLocalCacheLayout;
 
 #define FOR_EACH_BLOCK_DIRECTORY_BIT(macro) \
     macro(live, Live) /* The set of block indices that have actual blocks. */\
@@ -110,7 +107,7 @@ public:
 
     RefPtr<SharedTask<MarkedBlock::Handle*()>> parallelNotEmptyBlockSource();
 
-    void addBlock(MarkedBlock::Handle*, SecurityOriginToken);
+    void addBlock(MarkedBlock::Handle*);
     void removeBlock(MarkedBlock::Handle*);
 
     bool isPagedOut(MonotonicTime deadline);
@@ -158,8 +155,6 @@ public:
     Subspace* subspace() const { return m_subspace; }
     MarkedSpace& markedSpace() const;
 
-    Allocator allocator() const { return Allocator(m_tlcOffset); }
-
     void dump(PrintStream&) const;
     void dumpBits(PrintStream& = WTF::dataFile());
 
@@ -168,7 +163,6 @@ private:
     friend class LocalAllocator;
     friend class LocalSideAllocator;
     friend class MarkedBlock;
-    friend class ThreadLocalCacheLayout;
 
     MarkedBlock::Handle* findBlockForAllocation(LocalAllocator&);
 
@@ -179,19 +173,21 @@ private:
 
     // Mutator uses this to guard resizing the bitvectors. Those things in the GC that may run
     // concurrently to the mutator must lock this when accessing the bitvectors.
-    Lock m_bitvectorLock;
 #define BLOCK_DIRECTORY_BIT_DECLARATION(lowerBitName, capitalBitName) \
     FastBitVector m_ ## lowerBitName;
     FOR_EACH_BLOCK_DIRECTORY_BIT(BLOCK_DIRECTORY_BIT_DECLARATION)
 #undef BLOCK_DIRECTORY_BIT_DECLARATION
+    Lock m_bitvectorLock;
+    Lock m_localAllocatorsLock;
+    CellAttributes m_attributes;
+
+    unsigned m_cellSize;
 
     // After you do something to a block based on one of these cursors, you clear the bit in the
     // corresponding bitvector and leave the cursor where it was.
     size_t m_emptyCursor { 0 };
     size_t m_unsweptCursor { 0 }; // Points to the next block that is a candidate for incremental sweeping.
 
-    unsigned m_cellSize;
-    CellAttributes m_attributes;
     // FIXME: All of these should probably be references.
     // https://bugs.webkit.org/show_bug.cgi?id=166988
     Heap* m_heap { nullptr };
@@ -200,8 +196,6 @@ private:
     BlockDirectory* m_nextDirectoryInSubspace { nullptr };
     BlockDirectory* m_nextDirectoryInAlignedMemoryAllocator { nullptr };
 
-    Lock m_localAllocatorsLock;
-    size_t m_tlcOffset;
     SentinelLinkedList<LocalAllocator, BasicRawSentinelNode<LocalAllocator>> m_localAllocators;
 };
 

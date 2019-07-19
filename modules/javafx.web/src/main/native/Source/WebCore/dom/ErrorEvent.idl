@@ -31,14 +31,14 @@
 
 [
     Constructor(DOMString type, optional ErrorEventInit eventInitDict),
-    ConstructorCallWith=ScriptState,
     Exposed=(Window,Worker),
+    JSCustomMarkFunction,
 ] interface ErrorEvent : Event {
     readonly attribute DOMString message;
     readonly attribute USVString filename;
     readonly attribute unsigned long lineno;
     readonly attribute unsigned long colno;
-    [CallWith=ScriptState&GlobalObject] readonly attribute any error;
+    [CallWith=ExecState&GlobalObject] readonly attribute any error;
 };
 
 dictionary ErrorEventInit : EventInit {

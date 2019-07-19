@@ -2,6 +2,7 @@
  * Copyright (C) 2004, 2005 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
  * Copyright (C) Research In Motion Limited 2011. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -35,17 +36,11 @@
 #include "ScriptDisallowedScope.h"
 #include "StyleInheritedData.h"
 #include "Text.h"
-#include "XLinkNames.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
-// Animated property definitions
-DEFINE_ANIMATED_STRING(SVGTRefElement, XLinkNames::hrefAttr, Href, href)
-
-BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGTRefElement)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(href)
-    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGTextPositioningElement)
-END_REGISTER_ANIMATED_PROPERTIES
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGTRefElement);
 
 Ref<SVGTRefElement> SVGTRefElement::create(const QualifiedName& tagName, Document& document)
 {
@@ -117,7 +112,8 @@ bool SVGTRefTargetEventListener::operator==(const EventListener& listener) const
 
 void SVGTRefTargetEventListener::handleEvent(ScriptExecutionContext&, Event& event)
 {
-    ASSERT(isAttached());
+    if (!isAttached())
+        return;
 
     if (event.type() == eventNames().DOMSubtreeModifiedEvent && &m_trefElement != event.target())
         m_trefElement.updateReferencedText(m_target.get());
@@ -127,10 +123,10 @@ void SVGTRefTargetEventListener::handleEvent(ScriptExecutionContext&, Event& eve
 
 inline SVGTRefElement::SVGTRefElement(const QualifiedName& tagName, Document& document)
     : SVGTextPositioningElement(tagName, document)
+    , SVGURIReference(this)
     , m_targetListener(SVGTRefTargetEventListener::create(*this))
 {
     ASSERT(hasTagName(SVGNames::trefTag));
-    registerAnimatedPropertiesForSVGTRefElement();
 }
 
 SVGTRefElement::~SVGTRefElement()
@@ -171,10 +167,9 @@ void SVGTRefElement::detachTarget()
         return;
 
     // Mark the referenced ID as pending.
-    String id;
-    SVGURIReference::targetElementFromIRIString(href(), document(), &id);
-    if (!id.isEmpty())
-        document().accessSVGExtensions().addPendingResource(id, this);
+    auto target = SVGURIReference::targetElementFromIRIString(href(), document());
+    if (!target.identifier.isEmpty())
+        document().accessSVGExtensions().addPendingResource(target.identifier, *this);
 }
 
 void SVGTRefElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -235,13 +230,12 @@ void SVGTRefElement::buildPendingResource()
     if (!isConnected())
         return;
 
-    String id;
-    RefPtr<Element> target = SVGURIReference::targetElementFromIRIString(href(), document(), &id);
-    if (!target.get()) {
-        if (id.isEmpty())
+    auto target = SVGURIReference::targetElementFromIRIString(href(), treeScope());
+    if (!target.element) {
+        if (target.identifier.isEmpty())
             return;
 
-        document().accessSVGExtensions().addPendingResource(id, this);
+        document().accessSVGExtensions().addPendingResource(target.identifier, *this);
         ASSERT(hasPendingResources());
         return;
     }
@@ -251,9 +245,9 @@ void SVGTRefElement::buildPendingResource()
     // expects every element instance to have an associated shadow tree element - which is not the
     // case when we land here from SVGUseElement::buildShadowTree().
     if (!isInShadowTree())
-        m_targetListener->attach(target.copyRef());
+        m_targetListener->attach(target.element.copyRef());
 
-    updateReferencedText(target.get());
+    updateReferencedText(target.element.get());
 }
 
 Node::InsertedIntoAncestorResult SVGTRefElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)

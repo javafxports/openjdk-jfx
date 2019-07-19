@@ -20,12 +20,12 @@
 
 #pragma once
 
-#include "CSSParserMode.h"
+#include "CSSParserContext.h"
 #include "CachePolicy.h"
-#include "URL.h"
 #include <wtf/Function.h>
 #include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
+#include <wtf/URL.h>
 #include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/text/AtomicStringHash.h>
@@ -43,7 +43,7 @@ class StyleRuleBase;
 class StyleRuleImport;
 class StyleRuleNamespace;
 
-class StyleSheetContents final : public RefCounted<StyleSheetContents> {
+class StyleSheetContents final : public RefCounted<StyleSheetContents>, public CanMakeWeakPtr<StyleSheetContents> {
 public:
     static Ref<StyleSheetContents> create(const CSSParserContext& context = CSSParserContext(HTMLStandardMode))
     {
@@ -144,7 +144,8 @@ public:
 
     void shrinkToFit();
 
-    WeakPtr<StyleSheetContents> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
+    void setAsOpaque() { m_parserContext.isContentOpaque = true; }
+    bool isContentOpaque() const { return m_parserContext.isContentOpaque; }
 
 private:
     WEBCORE_EXPORT StyleSheetContents(StyleRuleImport* ownerRule, const String& originalURL, const CSSParserContext&);
@@ -175,8 +176,6 @@ private:
     CSSParserContext m_parserContext;
 
     Vector<CSSStyleSheet*> m_clients;
-
-    WeakPtrFactory<StyleSheetContents> m_weakPtrFactory;
 };
 
 } // namespace WebCore

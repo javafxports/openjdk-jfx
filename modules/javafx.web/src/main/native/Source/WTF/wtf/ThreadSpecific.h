@@ -39,8 +39,7 @@
  * WebKit the repeated call bahavior is utilized.
  */
 
-#ifndef WTF_ThreadSpecific_h
-#define WTF_ThreadSpecific_h
+#pragma once
 
 #include <wtf/MainThread.h>
 #include <wtf/Noncopyable.h>
@@ -123,7 +122,7 @@ private:
     void static THREAD_SPECIFIC_CALL destroy(void* ptr);
 
 #if USE(PTHREADS)
-    pthread_key_t m_key;
+    pthread_key_t m_key { };
 #elif OS(WINDOWS)
     int m_index;
 #endif
@@ -312,5 +311,3 @@ inline T& ThreadSpecific<T, canBeGCThread>::operator*()
 } // namespace WTF
 
 using WTF::ThreadSpecific;
-
-#endif // WTF_ThreadSpecific_h

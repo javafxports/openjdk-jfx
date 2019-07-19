@@ -48,9 +48,9 @@
  */
 
 #include "config.h"
-#include "MD5.h"
+#include <wtf/MD5.h>
 
-#include "Assertions.h"
+#include <wtf/Assertions.h>
 #include <wtf/StdLibExtras.h>
 
 namespace WTF {
@@ -59,17 +59,23 @@ namespace WTF {
 
 MD5::MD5()
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     CC_MD5_Init(&m_context);
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 void MD5::addBytes(const uint8_t* input, size_t length)
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     CC_MD5_Update(&m_context, input, length);
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 void MD5::checksum(Digest& hash)
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     CC_MD5_Final(hash.data(), &m_context);
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 #else

@@ -49,6 +49,8 @@ public:
         return adoptRef(*new PerformanceObserver(context, WTFMove(callback)));
     }
 
+    static Vector<String> supportedEntryTypes();
+
     void disassociate();
 
     ExceptionOr<void> observe(Init&&);
@@ -58,6 +60,9 @@ public:
 
     void queueEntry(PerformanceEntry&);
     void deliver();
+
+    bool isRegistered() const { return m_registered; }
+    PerformanceObserverCallback& callback() { return m_callback.get(); }
 
 private:
     PerformanceObserver(ScriptExecutionContext&, Ref<PerformanceObserverCallback>&&);

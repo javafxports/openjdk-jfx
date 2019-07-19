@@ -41,17 +41,17 @@ public:
 
     Ref<Coordinates> isolatedCopy() const
     {
-        return Coordinates::create( GeolocationPosition { m_position });
+        return Coordinates::create(GeolocationPosition(m_position));
     }
 
     double latitude() const { return m_position.latitude; }
     double longitude() const { return m_position.longitude; }
-    std::optional<double> altitude() const { return m_position.altitude; }
+    Optional<double> altitude() const { return m_position.altitude; }
     double accuracy() const { return m_position.accuracy; }
-    std::optional<double> altitudeAccuracy() const { return m_position.altitudeAccuracy; }
-    std::optional<double> heading() const { return m_position.heading; }
-    std::optional<double> speed() const { return m_position.speed; }
-    std::optional<double> floorLevel() const { return m_position.floorLevel; }
+    Optional<double> altitudeAccuracy() const { return m_position.altitudeAccuracy; }
+    Optional<double> heading() const { return m_position.heading; }
+    Optional<double> speed() const { return m_position.speed; }
+    Optional<double> floorLevel() const { return m_position.floorLevel; }
 
 private:
     explicit Coordinates(GeolocationPosition&&);

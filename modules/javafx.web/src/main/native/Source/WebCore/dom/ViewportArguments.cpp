@@ -31,6 +31,7 @@
 #include "Document.h"
 #include "Frame.h"
 #include "IntSize.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScriptableDocumentParser.h"
 #include "Settings.h"
 #include <wtf/text/TextStream.h>
@@ -410,7 +411,7 @@ void setViewportFeature(ViewportArguments& arguments, Document& document, String
         arguments.maxZoom = findScaleValue(document, key, value);
     else if (equalLettersIgnoringASCIICase(key, "user-scalable"))
         arguments.userZoom = findBooleanValue(document, key, value);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     else if (equalLettersIgnoringASCIICase(key, "minimal-ui")) {
         // FIXME: Ignore silently for now. This code should eventually be removed
         // so we start giving the warning in the web inspector as for other unimplemented keys.

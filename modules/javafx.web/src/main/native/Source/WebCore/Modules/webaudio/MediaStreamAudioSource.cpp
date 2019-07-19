@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,23 +28,18 @@
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "AudioSourceProvider.h"
 #include "NotImplemented.h"
 #include <wtf/UUID.h>
 
 namespace WebCore {
 
-Ref<MediaStreamAudioSource> MediaStreamAudioSource::create()
+MediaStreamAudioSource::MediaStreamAudioSource(float sampleRate)
+    : RealtimeMediaSource(RealtimeMediaSource::Type::Audio, "MediaStreamAudioDestinationNode"_s)
 {
-    return adoptRef(*new MediaStreamAudioSource());
+    m_currentSettings.setSampleRate(sampleRate);
 }
 
-MediaStreamAudioSource::MediaStreamAudioSource()
-    : RealtimeMediaSource(ASCIILiteral("WebAudio-") + createCanonicalUUIDString(), RealtimeMediaSource::Type::Audio, "MediaStreamAudioDestinationNode")
-{
-}
-
-const RealtimeMediaSourceCapabilities& MediaStreamAudioSource::capabilities() const
+const RealtimeMediaSourceCapabilities& MediaStreamAudioSource::capabilities()
 {
     // FIXME: implement this.
     // https://bugs.webkit.org/show_bug.cgi?id=122430
@@ -52,7 +47,7 @@ const RealtimeMediaSourceCapabilities& MediaStreamAudioSource::capabilities() co
     return RealtimeMediaSourceCapabilities::emptyCapabilities();
 }
 
-const RealtimeMediaSourceSettings& MediaStreamAudioSource::settings() const
+const RealtimeMediaSourceSettings& MediaStreamAudioSource::settings()
 {
     // FIXME: implement this.
     // https://bugs.webkit.org/show_bug.cgi?id=122430
@@ -60,36 +55,11 @@ const RealtimeMediaSourceSettings& MediaStreamAudioSource::settings() const
     return m_currentSettings;
 }
 
-void MediaStreamAudioSource::addAudioConsumer(AudioDestinationConsumer* consumer)
+#if !PLATFORM(COCOA)
+void MediaStreamAudioSource::consumeAudio(AudioBus&, size_t)
 {
-    LockHolder locker(m_audioConsumersLock);
-    m_audioConsumers.append(consumer);
 }
-
-bool MediaStreamAudioSource::removeAudioConsumer(AudioDestinationConsumer* consumer)
-{
-    LockHolder locker(m_audioConsumersLock);
-    size_t pos = m_audioConsumers.find(consumer);
-    if (pos != notFound) {
-        m_audioConsumers.remove(pos);
-        return true;
-    }
-    return false;
-}
-
-void MediaStreamAudioSource::setAudioFormat(size_t numberOfChannels, float sampleRate)
-{
-    LockHolder locker(m_audioConsumersLock);
-    for (auto& consumer : m_audioConsumers)
-        consumer->setFormat(numberOfChannels, sampleRate);
-}
-
-void MediaStreamAudioSource::consumeAudio(AudioBus* bus, size_t numberOfFrames)
-{
-    LockHolder locker(m_audioConsumersLock);
-    for (auto& consumer : m_audioConsumers)
-        consumer->consumeAudio(bus, numberOfFrames);
-}
+#endif
 
 } // namespace WebCore
 

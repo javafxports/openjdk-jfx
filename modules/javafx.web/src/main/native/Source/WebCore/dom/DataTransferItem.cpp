@@ -36,11 +36,11 @@
 #include "DataTransferItemList.h"
 #include "Document.h"
 #include "File.h"
-#include "FileSystem.h"
 #include "FileSystemDirectoryEntry.h"
 #include "FileSystemFileEntry.h"
 #include "ScriptExecutionContext.h"
 #include "StringCallback.h"
+#include <wtf/FileSystem.h>
 
 namespace WebCore {
 
@@ -76,7 +76,7 @@ void DataTransferItem::clearListAndPutIntoDisabledMode()
 
 String DataTransferItem::kind() const
 {
-    return m_file ? ASCIILiteral("file") : ASCIILiteral("string");
+    return m_file ? "file"_s : "string"_s;
 }
 
 String DataTransferItem::type() const

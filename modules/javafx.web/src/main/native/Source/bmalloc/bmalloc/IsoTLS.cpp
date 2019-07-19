@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,8 +25,8 @@
 
 #include "IsoTLS.h"
 
-#include "DebugHeap.h"
 #include "Environment.h"
+#include "Gigacage.h"
 #include "IsoTLSEntryInlines.h"
 #include "IsoTLSInlines.h"
 #include "IsoTLSLayout.h"
@@ -34,6 +34,8 @@
 #include <stdio.h>
 
 namespace bmalloc {
+
+IsoTLS::MallocFallbackState IsoTLS::s_mallocFallbackState;
 
 #if !HAVE_PTHREAD_MACHDEP_H
 bool IsoTLS::s_didInitialize;
@@ -52,6 +54,7 @@ void IsoTLS::scavenge()
 
 IsoTLS::IsoTLS()
 {
+    BASSERT(!PerProcess<Environment>::get()->isDebugHeapEnabled());
 }
 
 IsoTLS* IsoTLS::ensureEntries(unsigned offset)
@@ -66,7 +69,9 @@ IsoTLS* IsoTLS::ensureEntries(unsigned offset)
 #if HAVE_PTHREAD_MACHDEP_H
             pthread_key_init_np(tlsKey, destructor);
 #else
-            pthread_key_create(&s_tlsKey, destructor);
+            int error = pthread_key_create(&s_tlsKey, destructor);
+            if (error)
+                BCRASH();
             s_didInitialize = true;
 #endif
         });
@@ -169,26 +174,29 @@ void IsoTLS::forEachEntry(const Func& func)
         });
 }
 
-bool IsoTLS::isUsingDebugHeap()
+void IsoTLS::determineMallocFallbackState()
 {
-    return PerProcess<Environment>::get()->isDebugHeapEnabled();
-}
+    static std::once_flag onceFlag;
+    std::call_once(
+        onceFlag,
+        [] {
+            if (s_mallocFallbackState != MallocFallbackState::Undecided)
+                return;
 
-auto IsoTLS::debugMalloc(size_t size) -> DebugMallocResult
-{
-    DebugMallocResult result;
-    if ((result.usingDebugHeap = isUsingDebugHeap()))
-        result.ptr = PerProcess<DebugHeap>::get()->malloc(size);
-    return result;
-}
-
-bool IsoTLS::debugFree(void* p)
-{
-    if (isUsingDebugHeap()) {
-        PerProcess<DebugHeap>::get()->free(p);
-        return true;
-    }
-    return false;
+#if GIGACAGE_ENABLED
+            if (!Gigacage::shouldBeEnabled()) {
+                s_mallocFallbackState = MallocFallbackState::FallBackToMalloc;
+                return;
+            }
+            const char* env = getenv("bmalloc_IsoHeap");
+            if (env && (!strcasecmp(env, "false") || !strcasecmp(env, "no") || !strcmp(env, "0")))
+                s_mallocFallbackState = MallocFallbackState::FallBackToMalloc;
+            else
+                s_mallocFallbackState = MallocFallbackState::DoNotFallBack;
+#else
+            s_mallocFallbackState = MallocFallbackState::FallBackToMalloc;
+#endif
+        });
 }
 
 } // namespace bmalloc

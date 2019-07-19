@@ -51,6 +51,7 @@ inline auto HTMLCollection::rootTypeFromCollectionType(CollectionType type) -> R
     case ByClass:
     case ByTag:
     case ByHTMLTag:
+    case FieldSetElements:
     case NodeChildren:
     case TableTBodies:
     case TSectionRows:
@@ -100,6 +101,7 @@ static NodeListInvalidationType invalidationTypeExcludingIdAndNameAttributes(Col
     case DocumentNamedItems:
     case DocumentAllNamedItems:
         return InvalidateOnIdNameAttrChange;
+    case FieldSetElements:
     case FormControls:
         return InvalidateForFormControls;
     }
@@ -108,10 +110,10 @@ static NodeListInvalidationType invalidationTypeExcludingIdAndNameAttributes(Col
 }
 
 HTMLCollection::HTMLCollection(ContainerNode& ownerNode, CollectionType type)
-    : m_ownerNode(ownerNode)
-    , m_collectionType(type)
+    : m_collectionType(type)
     , m_invalidationType(invalidationTypeExcludingIdAndNameAttributes(type))
     , m_rootType(rootTypeFromCollectionType(type))
+    , m_ownerNode(ownerNode)
 {
     ASSERT(m_rootType == static_cast<unsigned>(rootTypeFromCollectionType(type)));
     ASSERT(m_invalidationType == static_cast<unsigned>(invalidationTypeExcludingIdAndNameAttributes(type)));

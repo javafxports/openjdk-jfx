@@ -31,6 +31,7 @@
 #pragma once
 
 #include "CSSPrimitiveValue.h"
+#include "CSSPropertyNames.h"
 #include "CalculationValue.h"
 
 namespace WebCore {
@@ -39,16 +40,16 @@ class CSSParserTokenRange;
 class CSSToLengthConversionData;
 class RenderStyle;
 
-enum CalculationCategory {
-    CalcNumber = 0,
-    CalcLength,
-    CalcPercent,
-    CalcPercentNumber,
-    CalcPercentLength,
-    CalcAngle,
-    CalcTime,
-    CalcFrequency,
-    CalcOther
+enum class CalculationCategory : uint8_t {
+    Number = 0,
+    Length,
+    Percent,
+    PercentNumber,
+    PercentLength,
+    Angle,
+    Time,
+    Frequency,
+    Other
 };
 
 class CSSCalcExpressionNode : public RefCounted<CSSCalcExpressionNode> {
@@ -67,6 +68,9 @@ public:
     virtual bool equals(const CSSCalcExpressionNode& other) const { return m_category == other.m_category && m_isInteger == other.m_isInteger; }
     virtual Type type() const = 0;
     virtual CSSPrimitiveValue::UnitType primitiveType() const = 0;
+
+    virtual void collectDirectComputationalDependencies(HashSet<CSSPropertyID>&) const = 0;
+    virtual void collectDirectRootComputationalDependencies(HashSet<CSSPropertyID>&) const = 0;
 
     CalculationCategory category() const { return m_category; }
     bool isInteger() const { return m_isInteger; }
@@ -100,6 +104,9 @@ public:
     Ref<CalculationValue> createCalculationValue(const CSSToLengthConversionData&) const;
     void setPermittedValueRange(ValueRange);
 
+    void collectDirectComputationalDependencies(HashSet<CSSPropertyID>&) const;
+    void collectDirectRootComputationalDependencies(HashSet<CSSPropertyID>&) const;
+
     String customCSSText() const;
     bool equals(const CSSCalcValue&) const;
 
@@ -128,6 +135,16 @@ inline Ref<CalculationValue> CSSCalcValue::createCalculationValue(const CSSToLen
 inline void CSSCalcValue::setPermittedValueRange(ValueRange range)
 {
     m_shouldClampToNonNegative = range != ValueRangeAll;
+}
+
+inline void CSSCalcValue::collectDirectComputationalDependencies(HashSet<CSSPropertyID>& values) const
+{
+    m_expression->collectDirectComputationalDependencies(values);
+}
+
+inline void CSSCalcValue::collectDirectRootComputationalDependencies(HashSet<CSSPropertyID>& values) const
+{
+    m_expression->collectDirectRootComputationalDependencies(values);
 }
 
 } // namespace WebCore

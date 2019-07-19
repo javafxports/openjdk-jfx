@@ -27,6 +27,7 @@
 #include "JSDOMPromiseDeferred.h"
 
 #include "DOMWindow.h"
+#include "JSDOMPromise.h"
 #include "JSDOMWindow.h"
 #include <JavaScriptCore/BuiltinNames.h>
 #include <JavaScriptCore/Exception.h>
@@ -51,7 +52,7 @@ void DeferredPromise::callFunction(ExecState& exec, JSValue function, JSValue re
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     CallData callData;
-    CallType callType = getCallData(function, callData);
+    CallType callType = getCallData(vm, function, callData);
     ASSERT(callType != CallType::None);
 
     MarkedArgumentBuffer arguments;
@@ -66,6 +67,11 @@ void DeferredPromise::callFunction(ExecState& exec, JSValue function, JSValue re
 
     if (m_mode == Mode::ClearPromiseOnResolve)
         clear();
+}
+
+void DeferredPromise::whenSettled(std::function<void()>&& callback)
+{
+    DOMPromise::whenPromiseIsSettled(globalObject(), deferred()->promise(), WTFMove(callback));
 }
 
 void DeferredPromise::reject()
@@ -185,9 +191,9 @@ void rejectPromiseWithExceptionIfAny(JSC::ExecState& state, JSDOMGlobalObject& g
 
 Ref<DeferredPromise> createDeferredPromise(JSC::ExecState& state, JSDOMWindow& domWindow)
 {
-    JSC::JSPromiseDeferred* deferred = JSC::JSPromiseDeferred::create(&state, &domWindow);
+    JSC::JSPromiseDeferred* deferred = JSC::JSPromiseDeferred::tryCreate(&state, &domWindow);
     // deferred can only be null in workers.
-    ASSERT(deferred);
+    RELEASE_ASSERT(deferred);
     return DeferredPromise::create(domWindow, *deferred);
 }
 
@@ -201,7 +207,7 @@ JSC::EncodedJSValue createRejectedPromiseWithTypeError(JSC::ExecState& state, co
     auto rejectionValue = createTypeError(&state, errorMessage);
 
     CallData callData;
-    auto callType = getCallData(rejectFunction, callData);
+    auto callType = getCallData(state.vm(), rejectFunction, callData);
     ASSERT(callType != CallType::None);
 
     MarkedArgumentBuffer arguments;

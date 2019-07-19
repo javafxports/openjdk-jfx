@@ -29,10 +29,16 @@ import logging
 import string
 from string import Template
 
-from cpp_generator import CppGenerator
-from cpp_generator_templates import CppGeneratorTemplates as CppTemplates
-from generator import Generator, ucfirst
-from models import ObjectType, ArrayType
+try:
+    from .cpp_generator import CppGenerator
+    from .cpp_generator_templates import CppGeneratorTemplates as CppTemplates
+    from .generator import Generator, ucfirst
+    from .models import ObjectType, ArrayType
+except:
+    from cpp_generator import CppGenerator
+    from cpp_generator_templates import CppGeneratorTemplates as CppTemplates
+    from generator import Generator, ucfirst
+    from models import ObjectType, ArrayType
 
 log = logging.getLogger('global')
 
@@ -45,7 +51,7 @@ class CppFrontendDispatcherImplementationGenerator(CppGenerator):
         return "%sFrontendDispatchers.cpp" % self.protocol_name()
 
     def domains_to_generate(self):
-        return filter(lambda domain: len(self.events_for_domain(domain)) > 0, Generator.domains_to_generate(self))
+        return [domain for domain in Generator.domains_to_generate(self) if len(self.events_for_domain(domain)) > 0]
 
     def generate_output(self):
         header_args = {
@@ -56,7 +62,7 @@ class CppFrontendDispatcherImplementationGenerator(CppGenerator):
         sections = []
         sections.append(self.generate_license())
         sections.append(Template(CppTemplates.ImplementationPrelude).substitute(None, **header_args))
-        sections.extend(map(self._generate_dispatcher_implementations_for_domain, self.domains_to_generate()))
+        sections.extend(list(map(self._generate_dispatcher_implementations_for_domain, self.domains_to_generate())))
         sections.append(Template(CppTemplates.ImplementationPostlude).substitute(None, **header_args))
         return "\n\n".join(sections)
 
@@ -100,9 +106,9 @@ class CppFrontendDispatcherImplementationGenerator(CppGenerator):
 
             if parameter.is_optional:
                 parameter_assignments.append('    if (%(parameterName)s)' % parameter_args)
-                parameter_assignments.append('        paramsObject->%(keyedSetMethod)s(ASCIILiteral("%(parameterName)s"), %(parameterValue)s);' % parameter_args)
+                parameter_assignments.append('        paramsObject->%(keyedSetMethod)s("%(parameterName)s"_s, %(parameterValue)s);' % parameter_args)
             else:
-                parameter_assignments.append('    paramsObject->%(keyedSetMethod)s(ASCIILiteral("%(parameterName)s"), %(parameterValue)s);' % parameter_args)
+                parameter_assignments.append('    paramsObject->%(keyedSetMethod)s("%(parameterName)s"_s, %(parameterValue)s);' % parameter_args)
 
             formal_parameters.append('%s %s' % (CppGenerator.cpp_type_for_checked_formal_event_parameter(parameter), parameter.parameter_name))
 
@@ -115,12 +121,12 @@ class CppFrontendDispatcherImplementationGenerator(CppGenerator):
         lines.append('void %(domainName)sFrontendDispatcher::%(eventName)s(%(formalParameters)s)' % event_args)
         lines.append('{')
         lines.append('    Ref<JSON::Object> jsonMessage = JSON::Object::create();')
-        lines.append('    jsonMessage->setString(ASCIILiteral("method"), ASCIILiteral("%(domainName)s.%(eventName)s"));' % event_args)
+        lines.append('    jsonMessage->setString("method"_s, "%(domainName)s.%(eventName)s"_s);' % event_args)
 
         if len(parameter_assignments) > 0:
             lines.append('    Ref<JSON::Object> paramsObject = JSON::Object::create();')
             lines.extend(parameter_assignments)
-            lines.append('    jsonMessage->setObject(ASCIILiteral("params"), WTFMove(paramsObject));')
+            lines.append('    jsonMessage->setObject("params"_s, WTFMove(paramsObject));')
 
         lines.append('')
         lines.append('    m_frontendRouter.sendEvent(jsonMessage->toJSONString());')

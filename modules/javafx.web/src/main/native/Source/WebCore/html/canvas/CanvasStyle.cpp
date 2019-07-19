@@ -53,7 +53,7 @@ static Color parseColor(const String& colorString)
     Color color = CSSParser::parseColor(colorString);
     if (color.isValid())
         return color;
-    return CSSParser::parseSystemColor(colorString);
+    return CSSParser::parseSystemColor(colorString, nullptr);
 }
 
 Color currentColor(HTMLCanvasElement* canvas)
@@ -112,7 +112,7 @@ inline CanvasStyle::CanvasStyle(CurrentColor color)
 CanvasStyle CanvasStyle::createFromString(const String& colorString)
 {
     if (isCurrentColorString(colorString))
-        return CurrentColor { std::nullopt };
+        return CurrentColor { WTF::nullopt };
 
     Color color = parseColor(colorString);
     if (!color.isValid())

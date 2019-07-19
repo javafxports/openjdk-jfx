@@ -37,7 +37,6 @@
 #include "JSCInlines.h"
 #include "JSJavaScriptCallFrame.h"
 #include "JavaScriptCallFrame.h"
-#include "ScriptValue.h"
 #include "SourceProvider.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/SetForScope.h>
@@ -196,8 +195,8 @@ void ScriptDebugServer::dispatchDidParseSource(const ListenerSet& listeners, Sou
     script.startLine = sourceProvider->startPosition().m_line.zeroBasedInt();
     script.startColumn = sourceProvider->startPosition().m_column.zeroBasedInt();
     script.isContentScript = isContentScript;
-    script.sourceURL = sourceProvider->sourceURL();
-    script.sourceMappingURL = sourceProvider->sourceMappingURL();
+    script.sourceURL = sourceProvider->sourceURLDirective();
+    script.sourceMappingURL = sourceProvider->sourceMappingURLDirective();
 
     int sourceLength = script.source.length();
     int lineCount = 1;

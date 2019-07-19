@@ -44,6 +44,11 @@
 
 namespace WebCore {
 
+Ref<MediaStreamPrivate> MediaStreamPrivate::create(Ref<RealtimeMediaSource>&& source)
+{
+    return MediaStreamPrivate::create(MediaStreamTrackPrivateVector::from(MediaStreamTrackPrivate::create(WTFMove(source))));
+}
+
 Ref<MediaStreamPrivate> MediaStreamPrivate::create(const Vector<Ref<RealtimeMediaSource>>& audioSources, const Vector<Ref<RealtimeMediaSource>>& videoSources)
 {
     MediaStreamTrackPrivateVector tracks;
@@ -79,14 +84,21 @@ MediaStreamPrivate::~MediaStreamPrivate()
 
 void MediaStreamPrivate::addObserver(MediaStreamPrivate::Observer& observer)
 {
-    m_observers.append(&observer);
+    m_observers.add(&observer);
 }
 
 void MediaStreamPrivate::removeObserver(MediaStreamPrivate::Observer& observer)
 {
-    size_t pos = m_observers.find(&observer);
-    if (pos != notFound)
-        m_observers.remove(pos);
+    m_observers.remove(&observer);
+}
+
+void MediaStreamPrivate::forEachObserver(const WTF::Function<void(Observer&)>& apply) const
+{
+    for (auto* observer : copyToVector(m_observers)) {
+        if (!m_observers.contains(observer))
+            continue;
+        apply(*observer);
+    }
 }
 
 MediaStreamTrackPrivateVector MediaStreamPrivate::tracks() const
@@ -113,8 +125,9 @@ void MediaStreamPrivate::updateActiveState(NotifyClientOption notifyClientOption
     m_isActive = newActiveState;
 
     if (notifyClientOption == NotifyClientOption::Notify) {
-        for (auto& observer : m_observers)
-            observer->activeStatusChanged();
+        forEachObserver([](auto& observer) {
+            observer.activeStatusChanged();
+        });
     }
 }
 
@@ -127,8 +140,9 @@ void MediaStreamPrivate::addTrack(RefPtr<MediaStreamTrackPrivate>&& track, Notif
     m_trackSet.add(track->id(), track);
 
     if (notifyClientOption == NotifyClientOption::Notify) {
-        for (auto& observer : m_observers)
-            observer->didAddTrack(*track.get());
+        forEachObserver([&track](auto& observer) {
+            observer.didAddTrack(*track.get());
+        });
     }
 
     updateActiveState(notifyClientOption);
@@ -143,8 +157,9 @@ void MediaStreamPrivate::removeTrack(MediaStreamTrackPrivate& track, NotifyClien
     track.removeObserver(*this);
 
     if (notifyClientOption == NotifyClientOption::Notify) {
-        for (auto& observer : m_observers)
-            observer->didRemoveTrack(track);
+        forEachObserver([&track](auto& observer) {
+            observer.didRemoveTrack(track);
+        });
     }
 
     updateActiveState(NotifyClientOption::Notify);
@@ -251,8 +266,9 @@ void MediaStreamPrivate::updateActiveVideoTrack()
 
 void MediaStreamPrivate::characteristicsChanged()
 {
-    for (auto& observer : m_observers)
-        observer->characteristicsChanged();
+    forEachObserver([](auto& observer) {
+        observer.characteristicsChanged();
+    });
 }
 
 void MediaStreamPrivate::trackMutedChanged(MediaStreamTrackPrivate&)
@@ -294,7 +310,7 @@ void MediaStreamPrivate::trackEnded(MediaStreamTrackPrivate&)
 void MediaStreamPrivate::scheduleDeferredTask(Function<void ()>&& function)
 {
     ASSERT(function);
-    callOnMainThread([weakThis = createWeakPtr(), function = WTFMove(function)] {
+    callOnMainThread([weakThis = makeWeakPtr(*this), function = WTFMove(function)] {
         if (!weakThis)
             return;
 

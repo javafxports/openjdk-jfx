@@ -26,13 +26,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StringBuffer_h
-#define StringBuffer_h
+#pragma once
 
-#include <wtf/Assertions.h>
-#include <wtf/text/StringMalloc.h>
 #include <limits>
 #include <unicode/utypes.h>
+#include <wtf/Assertions.h>
+#include <wtf/MallocPtr.h>
 
 namespace WTF {
 
@@ -42,13 +41,13 @@ class StringBuffer {
 public:
     explicit StringBuffer(unsigned length)
         : m_length(length)
-        , m_data(m_length ? static_cast<CharType*>(stringMalloc((Checked<size_t>(m_length) * sizeof(CharType)).unsafeGet())) : nullptr)
+        , m_data(m_length ? static_cast<CharType*>(fastMalloc((Checked<size_t>(m_length) * sizeof(CharType)).unsafeGet())) : nullptr)
     {
     }
 
     ~StringBuffer()
     {
-        stringFree(m_data);
+        fastFree(m_data);
     }
 
     void shrink(unsigned newLength)
@@ -62,7 +61,7 @@ public:
         if (newLength > m_length) {
             if (newLength > std::numeric_limits<unsigned>::max() / sizeof(UChar))
                 CRASH();
-            m_data = static_cast<UChar*>(stringRealloc(m_data, newLength * sizeof(UChar)));
+            m_data = static_cast<UChar*>(fastRealloc(m_data, newLength * sizeof(UChar)));
         }
         m_length = newLength;
     }
@@ -87,5 +86,3 @@ private:
 } // namespace WTF
 
 using WTF::StringBuffer;
-
-#endif // StringBuffer_h

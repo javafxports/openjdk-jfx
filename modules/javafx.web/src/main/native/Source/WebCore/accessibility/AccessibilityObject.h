@@ -29,6 +29,7 @@
 
 #pragma once
 
+#include "AccessibilityObjectInterface.h"
 #include "FloatQuad.h"
 #include "HTMLTextFormControlElement.h"
 #include "LayoutRect.h"
@@ -49,6 +50,10 @@
 #include "COMPtr.h"
 #endif
 
+#if PLATFORM(GTK)
+#include <wtf/glib/GRefPtr.h>
+#endif
+
 #if PLATFORM(COCOA)
 
 typedef struct _NSRange NSRange;
@@ -65,8 +70,8 @@ OBJC_CLASS WebAccessibilityObjectWrapper;
 typedef WebAccessibilityObjectWrapper AccessibilityObjectWrapper;
 
 #elif PLATFORM(GTK)
-typedef struct _AtkObject AtkObject;
-typedef struct _AtkObject AccessibilityObjectWrapper;
+typedef struct _WebKitAccessible WebKitAccessible;
+typedef struct _WebKitAccessible AccessibilityObjectWrapper;
 #elif PLATFORM(WPE)
 class AccessibilityObjectWrapper : public RefCounted<AccessibilityObjectWrapper> { };
 #else
@@ -82,166 +87,12 @@ class Frame;
 class FrameView;
 class IntPoint;
 class IntSize;
-class MainFrame;
 class Node;
 class Page;
 class RenderObject;
 class ScrollableArea;
 class ScrollView;
 class Widget;
-
-enum class AXPropertyName;
-
-typedef unsigned AXID;
-
-enum class AccessibilityRole {
-    Annotation = 1,
-    Application,
-    ApplicationAlert,
-    ApplicationAlertDialog,
-    ApplicationDialog,
-    ApplicationGroup,
-    ApplicationLog,
-    ApplicationMarquee,
-    ApplicationStatus,
-    ApplicationTextGroup,
-    ApplicationTimer,
-    Audio,
-    Blockquote,
-    Browser,
-    BusyIndicator,
-    Button,
-    Canvas,
-    Caption,
-    Cell,
-    CheckBox,
-    ColorWell,
-    Column,
-    ColumnHeader,
-    ComboBox,
-    Definition,
-    DescriptionList,
-    DescriptionListTerm,
-    DescriptionListDetail,
-    Details,
-    Directory,
-    DisclosureTriangle,
-    Div,
-    Document,
-    DocumentArticle,
-    DocumentMath,
-    DocumentNote,
-    Drawer,
-    EditableText,
-    Feed,
-    Figure,
-    Footer,
-    Footnote,
-    Form,
-    GraphicsDocument,
-    GraphicsObject,
-    GraphicsSymbol,
-    Grid,
-    GridCell,
-    Group,
-    GrowArea,
-    Heading,
-    HelpTag,
-    HorizontalRule,
-    Ignored,
-    Inline,
-    Image,
-    ImageMap,
-    ImageMapLink,
-    Incrementor,
-    Label,
-    LandmarkBanner,
-    LandmarkComplementary,
-    LandmarkContentInfo,
-    LandmarkDocRegion,
-    LandmarkMain,
-    LandmarkNavigation,
-    LandmarkRegion,
-    LandmarkSearch,
-    Legend,
-    Link,
-    List,
-    ListBox,
-    ListBoxOption,
-    ListItem,
-    ListMarker,
-    Mark,
-    MathElement,
-    Matte,
-    Menu,
-    MenuBar,
-    MenuButton,
-    MenuItem,
-    MenuItemCheckbox,
-    MenuItemRadio,
-    MenuListPopup,
-    MenuListOption,
-    Outline,
-    Paragraph,
-    PopUpButton,
-    Pre,
-    Presentational,
-    ProgressIndicator,
-    RadioButton,
-    RadioGroup,
-    RowHeader,
-    Row,
-    RowGroup,
-    RubyBase,
-    RubyBlock,
-    RubyInline,
-    RubyRun,
-    RubyText,
-    Ruler,
-    RulerMarker,
-    ScrollArea,
-    ScrollBar,
-    SearchField,
-    Sheet,
-    Slider,
-    SliderThumb,
-    SpinButton,
-    SpinButtonPart,
-    SplitGroup,
-    Splitter,
-    StaticText,
-    Summary,
-    Switch,
-    SystemWide,
-    SVGRoot,
-    SVGText,
-    SVGTSpan,
-    SVGTextPath,
-    TabGroup,
-    TabList,
-    TabPanel,
-    Tab,
-    Table,
-    TableHeaderContainer,
-    TextArea,
-    TextGroup,
-    Term,
-    Time,
-    Tree,
-    TreeGrid,
-    TreeItem,
-    TextField,
-    ToggleButton,
-    Toolbar,
-    Unknown,
-    UserInterfaceTooltip,
-    ValueIndicator,
-    Video,
-    WebApplication,
-    WebArea,
-    WebCoreLink,
-    Window,
-};
 
 enum class AccessibilityTextSource {
     Alternative,
@@ -255,6 +106,17 @@ enum class AccessibilityTextSource {
     Title,
     Subtitle,
     Action,
+};
+
+enum class AccessibilityEventType {
+    ContextMenu,
+    Click,
+    Decrement,
+    Dismiss,
+    Focus,
+    Increment,
+    ScrollIntoView,
+    Select,
 };
 
 struct AccessibilityText {
@@ -483,7 +345,7 @@ enum class AccessibilityCurrentState { False, True, Page, Step, Location, Date, 
 
 bool nodeHasPresentationRole(Node*);
 
-class AccessibilityObject : public RefCounted<AccessibilityObject> {
+class AccessibilityObject : public RefCounted<AccessibilityObject>, public AccessibilityObjectInterface {
 protected:
     AccessibilityObject() = default;
 
@@ -700,6 +562,7 @@ public:
     virtual bool canvasHasFallbackContent() const { return false; }
     bool supportsRangeValue() const;
     const AtomicString& identifierAttribute() const;
+    const AtomicString& linkRelValue() const;
     void classList(Vector<String>&) const;
     virtual String roleDescription() const;
     AccessibilityCurrentState currentState() const;
@@ -722,7 +585,7 @@ public:
     virtual bool supportsARIADragging() const { return false; }
     virtual bool isARIAGrabbed() { return false; }
     virtual void setARIAGrabbed(bool) { }
-    virtual void determineARIADropEffects(Vector<String>&) { }
+    virtual Vector<String> determineARIADropEffects() { return { }; }
 
     // Called on the root AX object to return the deepest available element.
     virtual AccessibilityObject* accessibilityHitTest(const IntPoint&) const { return nullptr; }
@@ -833,7 +696,7 @@ public:
     virtual Document* document() const;
     virtual FrameView* documentFrameView() const;
     Frame* frame() const;
-    MainFrame* mainFrame() const;
+    Frame* mainFrame() const;
     Document* topDocument() const;
     ScrollView* scrollViewAncestor() const;
     String language() const;
@@ -897,13 +760,10 @@ public:
     const AtomicString& getAttribute(const QualifiedName&) const;
     bool hasTagName(const QualifiedName&) const;
 
-    bool hasProperty(AXPropertyName) const;
-    const String stringValueForProperty(AXPropertyName) const;
-    std::optional<bool> boolValueForProperty(AXPropertyName) const;
-    int intValueForProperty(AXPropertyName) const;
-    unsigned unsignedValueForProperty(AXPropertyName) const;
-    double doubleValueForProperty(AXPropertyName) const;
-    Element* elementValueForProperty(AXPropertyName) const;
+    bool shouldDispatchAccessibilityEvent() const;
+    bool dispatchAccessibilityEvent(Event&) const;
+    bool dispatchAccessibilityEventWithType(AccessibilityEventType) const;
+    bool dispatchAccessibleSetValueEvent(const String&) const;
 
     virtual VisiblePositionRange visiblePositionRange() const { return VisiblePositionRange(); }
     virtual VisiblePositionRange visiblePositionRangeForLine(unsigned) const { return VisiblePositionRange(); }
@@ -1008,7 +868,7 @@ public:
     bool supportsARIAAttributes() const;
 
     // CSS3 Speech properties.
-    virtual ESpeakAs speakAsProperty() const { return SpeakNormal; }
+    virtual OptionSet<SpeakAs> speakAsProperty() const { return OptionSet<SpeakAs> { }; }
 
     // Make this object visible by scrolling as many nested scrollable views as needed.
     virtual void scrollToMakeVisible() const;
@@ -1086,16 +946,8 @@ public:
     bool isHidden() const { return isAXHidden() || isDOMHidden(); }
 
 #if HAVE(ACCESSIBILITY)
-#if PLATFORM(GTK)
-    AccessibilityObjectWrapper* wrapper() const;
-    void setWrapper(AccessibilityObjectWrapper*);
-#else
     AccessibilityObjectWrapper* wrapper() const { return m_wrapper.get(); }
-    void setWrapper(AccessibilityObjectWrapper* wrapper)
-    {
-        m_wrapper = wrapper;
-    }
-#endif
+    void setWrapper(AccessibilityObjectWrapper* wrapper) { m_wrapper = wrapper; }
 #endif
 
 #if PLATFORM(COCOA)
@@ -1114,10 +966,11 @@ public:
     AccessibilityObjectInclusion accessibilityPlatformIncludesObject() const { return AccessibilityObjectInclusion::DefaultBehavior; }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     int accessibilityPasswordFieldLength();
     bool hasTouchEventListener() const;
     bool isInputTypePopupButton() const;
+    bool hasAccessibleDismissEventListener() const;
 #endif
 
     // allows for an AccessibilityObject to update its render tree or perform
@@ -1129,7 +982,7 @@ public:
     void setPreventKeyboardDOMEventDispatch(bool);
 #endif
 
-#if PLATFORM(COCOA) && !PLATFORM(IOS)
+#if PLATFORM(COCOA) && !PLATFORM(IOS_FAMILY)
     bool caretBrowsingEnabled() const;
     void setCaretBrowsingEnabled(bool);
 #endif
@@ -1152,6 +1005,9 @@ protected:
     AccessibilityIsIgnoredFromParentData m_isIgnoredFromParentData { };
     bool m_childrenDirty { false };
     bool m_subtreeDirty { false };
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    bool m_isolatedTreeNodeInitialized { false };
+#endif
 
     void setIsIgnoredFromParentData(AccessibilityIsIgnoredFromParentData& data) { m_isIgnoredFromParentData = data; }
 
@@ -1189,7 +1045,7 @@ protected:
 #elif PLATFORM(WIN)
     COMPtr<AccessibilityObjectWrapper> m_wrapper;
 #elif PLATFORM(GTK)
-    AtkObject* m_wrapper { nullptr };
+    GRefPtr<WebKitAccessible> m_wrapper;
 #elif PLATFORM(WPE)
     RefPtr<AccessibilityObjectWrapper> m_wrapper;
 #endif

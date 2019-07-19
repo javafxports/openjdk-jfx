@@ -30,24 +30,22 @@
 #include <wtf/Forward.h>
 #include <wtf/Optional.h>
 #include <wtf/SynchronizedFixedQueue.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/WorkQueue.h>
 #include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
+class BitmapImage;
 class GraphicsContext;
-class Image;
 class ImageDecoder;
-class URL;
 
-class ImageSource : public ThreadSafeRefCounted<ImageSource> {
+class ImageSource : public ThreadSafeRefCounted<ImageSource>, public CanMakeWeakPtr<ImageSource> {
     friend class BitmapImage;
 public:
-    ImageSource(Image*, AlphaOption = AlphaOption::Premultiplied, GammaAndColorProfileOption = GammaAndColorProfileOption::Applied);
-    ImageSource(NativeImagePtr&&);
     ~ImageSource();
 
-    static Ref<ImageSource> create(Image* image, AlphaOption alphaOption = AlphaOption::Premultiplied, GammaAndColorProfileOption gammaAndColorProfileOption = GammaAndColorProfileOption::Applied)
+    static Ref<ImageSource> create(BitmapImage* image, AlphaOption alphaOption = AlphaOption::Premultiplied, GammaAndColorProfileOption gammaAndColorProfileOption = GammaAndColorProfileOption::Applied)
     {
         return adoptRef(*new ImageSource(image, alphaOption, gammaAndColorProfileOption));
     }
@@ -79,10 +77,12 @@ public:
     // Asynchronous image decoding
     bool canUseAsyncDecoding();
     void startAsyncDecodingQueue();
-    void requestFrameAsyncDecodingAtIndex(size_t, SubsamplingLevel, const std::optional<IntSize>& = { });
+    void requestFrameAsyncDecodingAtIndex(size_t, SubsamplingLevel, const Optional<IntSize>& = { });
     void stopAsyncDecodingQueue();
     bool hasAsyncDecodingQueue() const { return m_decodingQueue; }
     bool isAsyncDecodingQueueIdle() const;
+    void setFrameDecodingDurationForTesting(Seconds duration) { m_frameDecodingDurationForTesting = duration; }
+    Seconds frameDecodingDurationForTesting() const { return m_frameDecodingDurationForTesting; }
 
     // Image metadata which is calculated either by the ImageDecoder or directly
     // from the NativeImage if this class was created for a memory image.
@@ -92,7 +92,7 @@ public:
     RepetitionCount repetitionCount();
     String uti();
     String filenameExtension();
-    std::optional<IntPoint> hotSpot();
+    Optional<IntPoint> hotSpot();
 
     // Image metadata which is calculated from the first ImageFrame.
     WEBCORE_EXPORT IntSize size();
@@ -105,8 +105,8 @@ public:
     DecodingStatus frameDecodingStatusAtIndex(size_t);
     bool frameHasAlphaAtIndex(size_t);
     bool frameHasImageAtIndex(size_t);
-    bool frameHasFullSizeNativeImageAtIndex(size_t, const std::optional<SubsamplingLevel>&);
-    bool frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(size_t, const std::optional<SubsamplingLevel>&, const DecodingOptions&);
+    bool frameHasFullSizeNativeImageAtIndex(size_t, const Optional<SubsamplingLevel>&);
+    bool frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(size_t, const Optional<SubsamplingLevel>&, const DecodingOptions&);
     SubsamplingLevel frameSubsamplingLevelAtIndex(size_t);
 
     // ImageFrame metadata which forces caching or re-caching the ImageFrame.
@@ -123,14 +123,17 @@ public:
     NativeImagePtr frameImageAtIndexCacheIfNeeded(size_t, SubsamplingLevel = SubsamplingLevel::Default);
 
 private:
+    ImageSource(BitmapImage*, AlphaOption = AlphaOption::Premultiplied, GammaAndColorProfileOption = GammaAndColorProfileOption::Applied);
+    ImageSource(NativeImagePtr&&);
+
     template<typename T, T (ImageDecoder::*functor)() const>
-    T metadata(const T& defaultValue, std::optional<T>* cachedValue = nullptr);
+    T metadata(const T& defaultValue, Optional<T>* cachedValue = nullptr);
 
     template<typename T, typename... Args>
     T frameMetadataAtIndex(size_t, T (ImageFrame::*functor)(Args...) const, Args&&...);
 
     template<typename T, typename... Args>
-    T frameMetadataAtIndexCacheIfNeeded(size_t, T (ImageFrame::*functor)() const,  std::optional<T>* cachedValue, Args&&...);
+    T frameMetadataAtIndexCacheIfNeeded(size_t, T (ImageFrame::*functor)() const,  Optional<T>* cachedValue, Args&&...);
 
     bool ensureDecoderAvailable(SharedBuffer* data);
     bool isDecoderAvailable() const { return m_decoder; }
@@ -140,6 +143,7 @@ private:
     void decodedSizeIncreased(unsigned decodedSize);
     void decodedSizeDecreased(unsigned decodedSize);
     void decodedSizeReset(unsigned decodedSize);
+    void encodedDataStatusChanged(EncodedDataStatus);
 
     void setNativeImage(NativeImagePtr&&);
     void cacheMetadataAtIndex(size_t, SubsamplingLevel, DecodingStatus = DecodingStatus::Invalid);
@@ -151,11 +155,11 @@ private:
     WorkQueue& decodingQueue();
     SynchronizedFixedQueue<ImageFrameRequest, BufferSize>& frameRequestQueue();
 
-    const ImageFrame& frameAtIndexCacheIfNeeded(size_t, ImageFrame::Caching, const std::optional<SubsamplingLevel>& = { });
+    const ImageFrame& frameAtIndexCacheIfNeeded(size_t, ImageFrame::Caching, const Optional<SubsamplingLevel>& = { });
 
     void dump(TextStream&);
 
-    Image* m_image { nullptr };
+    BitmapImage* m_image { nullptr };
     RefPtr<ImageDecoder> m_decoder;
     AlphaOption m_alphaOption { AlphaOption::Premultiplied };
     GammaAndColorProfileOption m_gammaAndColorProfileOption { GammaAndColorProfileOption::Applied };
@@ -180,20 +184,21 @@ private:
     RefPtr<FrameRequestQueue> m_frameRequestQueue;
     FrameCommitQueue m_frameCommitQueue;
     RefPtr<WorkQueue> m_decodingQueue;
+    Seconds m_frameDecodingDurationForTesting;
 
     // Image metadata.
-    std::optional<EncodedDataStatus> m_encodedDataStatus;
-    std::optional<size_t> m_frameCount;
-    std::optional<RepetitionCount> m_repetitionCount;
-    std::optional<String> m_uti;
-    std::optional<String> m_filenameExtension;
-    std::optional<std::optional<IntPoint>> m_hotSpot;
+    Optional<EncodedDataStatus> m_encodedDataStatus;
+    Optional<size_t> m_frameCount;
+    Optional<RepetitionCount> m_repetitionCount;
+    Optional<String> m_uti;
+    Optional<String> m_filenameExtension;
+    Optional<Optional<IntPoint>> m_hotSpot;
 
     // Image metadata which is calculated from the first ImageFrame.
-    std::optional<IntSize> m_size;
-    std::optional<IntSize> m_sizeRespectingOrientation;
-    std::optional<Color> m_singlePixelSolidColor;
-    std::optional<SubsamplingLevel> m_maximumSubsamplingLevel;
+    Optional<IntSize> m_size;
+    Optional<IntSize> m_sizeRespectingOrientation;
+    Optional<Color> m_singlePixelSolidColor;
+    Optional<SubsamplingLevel> m_maximumSubsamplingLevel;
 };
 
 }

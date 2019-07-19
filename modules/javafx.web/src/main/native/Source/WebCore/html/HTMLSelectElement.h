@@ -33,6 +33,7 @@ namespace WebCore {
 class HTMLOptionsCollection;
 
 class HTMLSelectElement : public HTMLFormControlElementWithState, private TypeAheadDataSource {
+    WTF_MAKE_ISO_ALLOCATED(HTMLSelectElement);
 public:
     static Ref<HTMLSelectElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
@@ -53,7 +54,7 @@ public:
 
     using OptionOrOptGroupElement = Variant<RefPtr<HTMLOptionElement>, RefPtr<HTMLOptGroupElement>>;
     using HTMLElementOrInt = Variant<RefPtr<HTMLElement>, int>;
-    WEBCORE_EXPORT ExceptionOr<void> add(const OptionOrOptGroupElement&, const std::optional<HTMLElementOrInt>& before);
+    WEBCORE_EXPORT ExceptionOr<void> add(const OptionOrOptGroupElement&, const Optional<HTMLElementOrInt>& before);
 
     using Node::remove;
     WEBCORE_EXPORT void remove(int);
@@ -111,7 +112,7 @@ protected:
 private:
     const AtomicString& formControlType() const final;
 
-    bool isKeyboardFocusable(KeyboardEvent&) const final;
+    bool isKeyboardFocusable(KeyboardEvent*) const final;
     bool isMouseFocusable() const final;
 
     void dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirection) final;

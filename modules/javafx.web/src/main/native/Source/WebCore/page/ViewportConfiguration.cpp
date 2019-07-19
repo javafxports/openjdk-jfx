@@ -32,7 +32,7 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/TextStream.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "PlatformScreen.h"
 #endif
 
@@ -45,8 +45,40 @@ static bool constraintsAreAllRelative(const ViewportConfiguration::Parameters& c
 }
 #endif
 
+static float platformDeviceWidthOverride()
+{
+#if PLATFORM(WATCHOS)
+    return 320;
+#else
+    return 0;
+#endif
+}
+
+static bool shouldOverrideShrinkToFitArgument()
+{
+#if PLATFORM(WATCHOS)
+    return true;
+#else
+    return false;
+#endif
+}
+
+static bool needsUpdateAfterChangingDisabledAdaptations(const OptionSet<DisabledAdaptations>& oldDisabledAdaptations, const OptionSet<DisabledAdaptations>& newDisabledAdaptations)
+{
+    if (oldDisabledAdaptations == newDisabledAdaptations)
+        return false;
+
+#if PLATFORM(WATCHOS)
+    if (oldDisabledAdaptations.contains(DisabledAdaptations::Watch) != newDisabledAdaptations.contains(DisabledAdaptations::Watch))
+        return true;
+#endif
+
+    return false;
+}
+
 ViewportConfiguration::ViewportConfiguration()
     : m_minimumLayoutSize(1024, 768)
+    , m_viewLayoutSize(1024, 768)
     , m_canIgnoreScalingConstraints(false)
     , m_forceAlwaysUserScalable(false)
 {
@@ -82,14 +114,54 @@ bool ViewportConfiguration::setContentsSize(const IntSize& contentSize)
     return true;
 }
 
-bool ViewportConfiguration::setMinimumLayoutSize(const FloatSize& minimumLayoutSize)
+bool ViewportConfiguration::setViewLayoutSize(const FloatSize& viewLayoutSize, Optional<double>&& scaleFactor, Optional<double>&& minimumEffectiveDeviceWidth)
 {
-    if (m_minimumLayoutSize == minimumLayoutSize)
+    double newScaleFactor = scaleFactor.valueOr(m_layoutSizeScaleFactor);
+    double newEffectiveWidth = minimumEffectiveDeviceWidth.valueOr(m_minimumEffectiveDeviceWidth);
+    if (m_viewLayoutSize == viewLayoutSize && m_layoutSizeScaleFactor == newScaleFactor && newEffectiveWidth == m_minimumEffectiveDeviceWidth)
         return false;
 
-    m_minimumLayoutSize = minimumLayoutSize;
+    m_layoutSizeScaleFactor = newScaleFactor;
+    m_viewLayoutSize = viewLayoutSize;
+    m_minimumEffectiveDeviceWidth = newEffectiveWidth;
+
+    updateMinimumLayoutSize();
     updateConfiguration();
     return true;
+}
+
+bool ViewportConfiguration::setDisabledAdaptations(const OptionSet<DisabledAdaptations>& disabledAdaptations)
+{
+    auto previousDisabledAdaptations = m_disabledAdaptations;
+    m_disabledAdaptations = disabledAdaptations;
+
+    if (!needsUpdateAfterChangingDisabledAdaptations(previousDisabledAdaptations, disabledAdaptations))
+        return false;
+
+    updateMinimumLayoutSize();
+    updateConfiguration();
+    return true;
+}
+
+bool ViewportConfiguration::canOverrideConfigurationParameters() const
+{
+    return m_defaultConfiguration == ViewportConfiguration::nativeWebpageParameters() || m_defaultConfiguration == ViewportConfiguration::scalableNativeWebpageParameters();
+}
+
+void ViewportConfiguration::updateDefaultConfiguration()
+{
+    if (!canOverrideConfigurationParameters())
+        return;
+
+    if (m_canIgnoreScalingConstraints) {
+        m_defaultConfiguration = ViewportConfiguration::scalableNativeWebpageParameters();
+        return;
+    }
+
+    if (shouldIgnoreMinimumEffectiveDeviceWidth())
+        m_defaultConfiguration = ViewportConfiguration::nativeWebpageParameters();
+    else
+        m_defaultConfiguration = ViewportConfiguration::scalableNativeWebpageParameters();
 }
 
 bool ViewportConfiguration::setViewportArguments(const ViewportArguments& viewportArguments)
@@ -99,6 +171,9 @@ bool ViewportConfiguration::setViewportArguments(const ViewportArguments& viewpo
 
     LOG_WITH_STREAM(Viewports, stream << "ViewportConfiguration::setViewportArguments " << viewportArguments);
     m_viewportArguments = viewportArguments;
+
+    updateDefaultConfiguration();
+    updateMinimumLayoutSize();
     updateConfiguration();
     return true;
 }
@@ -109,6 +184,7 @@ bool ViewportConfiguration::setCanIgnoreScalingConstraints(bool canIgnoreScaling
         return false;
 
     m_canIgnoreScalingConstraints = canIgnoreScalingConstraints;
+    updateDefaultConfiguration();
     updateConfiguration();
     return true;
 }
@@ -118,10 +194,22 @@ IntSize ViewportConfiguration::layoutSize() const
     return IntSize(layoutWidth(), layoutHeight());
 }
 
+bool ViewportConfiguration::shouldOverrideDeviceWidthAndShrinkToFit() const
+{
+    if (m_disabledAdaptations.contains(DisabledAdaptations::Watch))
+        return false;
+
+    auto viewWidth = m_viewLayoutSize.width();
+    return 0 < viewWidth && viewWidth < platformDeviceWidthOverride();
+}
+
 bool ViewportConfiguration::shouldIgnoreHorizontalScalingConstraints() const
 {
     if (!m_canIgnoreScalingConstraints)
         return false;
+
+    if (shouldOverrideDeviceWidthAndShrinkToFit())
+        return true;
 
     if (!m_configuration.allowsShrinkToFit)
         return false;
@@ -130,7 +218,7 @@ bool ViewportConfiguration::shouldIgnoreHorizontalScalingConstraints() const
     if (m_viewportArguments.width == ViewportArguments::ValueDeviceWidth)
         return laidOutWiderThanViewport;
 
-    if (m_configuration.initialScaleIsSet && m_configuration.initialScale == 1)
+    if (m_configuration.initialScaleIsSet && m_configuration.initialScaleIgnoringLayoutScaleFactor == 1)
         return laidOutWiderThanViewport;
 
     return false;
@@ -156,6 +244,11 @@ bool ViewportConfiguration::shouldIgnoreScalingConstraints() const
     return shouldIgnoreHorizontalScalingConstraints() || shouldIgnoreVerticalScalingConstraints();
 }
 
+bool ViewportConfiguration::shouldIgnoreScalingConstraintsRegardlessOfContentSize() const
+{
+    return m_canIgnoreScalingConstraints && shouldOverrideDeviceWidthAndShrinkToFit();
+}
+
 double ViewportConfiguration::initialScaleFromSize(double width, double height, bool shouldIgnoreScalingConstraints) const
 {
     ASSERT(!constraintsAreAllRelative(m_configuration));
@@ -167,14 +260,14 @@ double ViewportConfiguration::initialScaleFromSize(double width, double height, 
 
     // If not, it is up to us to determine the initial scale.
     // We want a scale small enough to fit the document width-wise.
-    const FloatSize& minimumLayoutSize = m_minimumLayoutSize;
     double initialScale = 0;
     if (width > 0 && !shouldIgnoreVerticalScalingConstraints())
-        initialScale = minimumLayoutSize.width() / width;
+        initialScale = m_viewLayoutSize.width() / width;
 
     // Prevent the initial scale from shrinking to a height smaller than our view's minimum height.
-    if (height > 0 && height * initialScale < minimumLayoutSize.height() && !shouldIgnoreHorizontalScalingConstraints())
-        initialScale = minimumLayoutSize.height() / height;
+    if (height > 0 && height * initialScale < m_viewLayoutSize.height() && !shouldIgnoreHorizontalScalingConstraints())
+        initialScale = m_viewLayoutSize.height() / height;
+
     return std::min(std::max(initialScale, shouldIgnoreScalingConstraints ? m_defaultConfiguration.minimumScale : m_configuration.minimumScale), m_configuration.maximumScale);
 }
 
@@ -185,7 +278,7 @@ double ViewportConfiguration::initialScale() const
 
 double ViewportConfiguration::initialScaleIgnoringContentSize() const
 {
-    return initialScaleFromSize(layoutWidth(), layoutHeight(), false);
+    return initialScaleFromSize(layoutWidth(), layoutHeight(), shouldIgnoreScalingConstraintsRegardlessOfContentSize());
 }
 
 double ViewportConfiguration::minimumScale() const
@@ -198,16 +291,32 @@ double ViewportConfiguration::minimumScale() const
     double minimumScale = m_configuration.minimumScale;
 
     if (m_forceAlwaysUserScalable)
-        minimumScale = std::min(minimumScale, forceAlwaysUserScalableMinimumScale);
+        minimumScale = std::min(minimumScale, forceAlwaysUserScalableMinimumScale());
 
-    const FloatSize& minimumLayoutSize = m_minimumLayoutSize;
+    auto scaleForFittingContentIsApproximatelyEqualToMinimumScale = [] (double viewLength, double contentLength, double minimumScale) {
+        if (contentLength <= 1 || viewLength <= 1)
+            return false;
+
+        if (minimumScale < (viewLength - 0.5) / (contentLength + 0.5))
+            return false;
+
+        if (minimumScale > (viewLength + 0.5) / (contentLength - 0.5))
+            return false;
+
+        return true;
+    };
+
     double contentWidth = m_contentSize.width();
-    if (contentWidth > 0 && contentWidth * minimumScale < minimumLayoutSize.width() && !shouldIgnoreVerticalScalingConstraints())
-        minimumScale = minimumLayoutSize.width() / contentWidth;
+    if (contentWidth > 0 && contentWidth * minimumScale < m_viewLayoutSize.width() && !shouldIgnoreVerticalScalingConstraints()) {
+        if (!scaleForFittingContentIsApproximatelyEqualToMinimumScale(m_viewLayoutSize.width(), contentWidth, minimumScale))
+            minimumScale = m_viewLayoutSize.width() / contentWidth;
+    }
 
     double contentHeight = m_contentSize.height();
-    if (contentHeight > 0 && contentHeight * minimumScale < minimumLayoutSize.height() && !shouldIgnoreHorizontalScalingConstraints())
-        minimumScale = minimumLayoutSize.height() / contentHeight;
+    if (contentHeight > 0 && contentHeight * minimumScale < m_viewLayoutSize.height() && !shouldIgnoreHorizontalScalingConstraints()) {
+        if (!scaleForFittingContentIsApproximatelyEqualToMinimumScale(m_viewLayoutSize.height(), contentHeight, minimumScale))
+            minimumScale = m_viewLayoutSize.height() / contentHeight;
+    }
 
     minimumScale = std::min(std::max(minimumScale, m_configuration.minimumScale), m_configuration.maximumScale);
 
@@ -222,6 +331,29 @@ bool ViewportConfiguration::allowsUserScaling() const
 bool ViewportConfiguration::allowsUserScalingIgnoringAlwaysScalable() const
 {
     return shouldIgnoreScalingConstraints() || m_configuration.allowsUserScaling;
+}
+
+ViewportConfiguration::Parameters ViewportConfiguration::nativeWebpageParameters()
+{
+    Parameters parameters;
+    parameters.width = ViewportArguments::ValueDeviceWidth;
+    parameters.widthIsSet = true;
+    parameters.allowsUserScaling = true;
+    parameters.allowsShrinkToFit = false;
+    parameters.minimumScale = 1;
+    parameters.maximumScale = 5;
+    parameters.initialScale = 1;
+    parameters.initialScaleIgnoringLayoutScaleFactor = 1;
+    parameters.initialScaleIsSet = true;
+    return parameters;
+}
+
+ViewportConfiguration::Parameters ViewportConfiguration::scalableNativeWebpageParameters()
+{
+    Parameters parameters = ViewportConfiguration::nativeWebpageParameters();
+    parameters.allowsShrinkToFit = true;
+    parameters.minimumScale = 0.25;
+    return parameters;
 }
 
 ViewportConfiguration::Parameters ViewportConfiguration::webpageParameters()
@@ -240,7 +372,7 @@ ViewportConfiguration::Parameters ViewportConfiguration::textDocumentParameters(
 {
     Parameters parameters;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     parameters.width = static_cast<int>(screenSize().width());
 #else
     // FIXME: this needs to be unified with ViewportArguments on all ports.
@@ -278,6 +410,7 @@ ViewportConfiguration::Parameters ViewportConfiguration::testingParameters()
 {
     Parameters parameters;
     parameters.initialScale = 1;
+    parameters.initialScaleIgnoringLayoutScaleFactor = 1;
     parameters.initialScaleIsSet = true;
     parameters.allowsShrinkToFit = true;
     parameters.minimumScale = 1;
@@ -341,12 +474,33 @@ void ViewportConfiguration::updateConfiguration()
     if (booleanViewportArgumentIsSet(m_viewportArguments.userZoom))
         m_configuration.allowsUserScaling = m_viewportArguments.userZoom != 0.;
 
-    if (booleanViewportArgumentIsSet(m_viewportArguments.shrinkToFit))
+    if (shouldOverrideShrinkToFitArgument())
+        m_configuration.allowsShrinkToFit = shouldOverrideDeviceWidthAndShrinkToFit();
+    else if (booleanViewportArgumentIsSet(m_viewportArguments.shrinkToFit))
         m_configuration.allowsShrinkToFit = m_viewportArguments.shrinkToFit != 0.;
 
+    if (canOverrideConfigurationParameters() && !viewportArgumentsOverridesWidth)
+        m_configuration.width = m_minimumLayoutSize.width();
+
     m_configuration.avoidsUnsafeArea = m_viewportArguments.viewportFit != ViewportFit::Cover;
+    m_configuration.initialScaleIgnoringLayoutScaleFactor = m_configuration.initialScale;
+    float effectiveLayoutScale = effectiveLayoutSizeScaleFactor();
+    m_configuration.initialScale *= effectiveLayoutScale;
+    m_configuration.minimumScale *= effectiveLayoutScale;
+    m_configuration.maximumScale *= effectiveLayoutScale;
 
     LOG_WITH_STREAM(Viewports, stream << "ViewportConfiguration " << this << " updateConfiguration " << *this << " gives initial scale " << initialScale() << " based on contentSize " << m_contentSize << " and layout size " << layoutWidth() << "x" << layoutHeight());
+}
+
+void ViewportConfiguration::updateMinimumLayoutSize()
+{
+    m_minimumLayoutSize = m_viewLayoutSize / effectiveLayoutSizeScaleFactor();
+
+    if (!shouldOverrideDeviceWidthAndShrinkToFit())
+        return;
+
+    float minDeviceWidth = platformDeviceWidthOverride();
+    m_minimumLayoutSize = FloatSize(minDeviceWidth, std::roundf(m_minimumLayoutSize.height() * (minDeviceWidth / m_minimumLayoutSize.width())));
 }
 
 double ViewportConfiguration::viewportArgumentsLength(double length) const
@@ -377,17 +531,17 @@ int ViewportConfiguration::layoutWidth() const
         }
 
         // If not, make sure the viewport width and initial scale can co-exist.
-        double initialContentWidthInViewportCoordinate = m_configuration.width * m_configuration.initialScale;
+        double initialContentWidthInViewportCoordinate = m_configuration.width * m_configuration.initialScaleIgnoringLayoutScaleFactor;
         if (initialContentWidthInViewportCoordinate < minimumLayoutSize.width()) {
             // The specified width does not fit in viewport. Return the minimum width that satisfy the initialScale constraint.
-            return std::round(minimumLayoutSize.width() / m_configuration.initialScale);
+            return std::round(minimumLayoutSize.width() / m_configuration.initialScaleIgnoringLayoutScaleFactor);
         }
         return std::round(m_configuration.width);
     }
 
     // If the page has a real scale, then just return the minimum size over the initial scale.
     if (m_configuration.initialScaleIsSet && !m_configuration.heightIsSet)
-        return std::round(minimumLayoutSize.width() / m_configuration.initialScale);
+        return std::round(minimumLayoutSize.width() / m_configuration.initialScaleIgnoringLayoutScaleFactor);
 
     if (minimumLayoutSize.height() > 0)
         return std::round(minimumLayoutSize.width() * layoutHeight() / minimumLayoutSize.height());
@@ -413,17 +567,17 @@ int ViewportConfiguration::layoutHeight() const
         }
 
         // If not, make sure the viewport width and initial scale can co-exist.
-        double initialContentHeightInViewportCoordinate = m_configuration.height * m_configuration.initialScale;
+        double initialContentHeightInViewportCoordinate = m_configuration.height * m_configuration.initialScaleIgnoringLayoutScaleFactor;
         if (initialContentHeightInViewportCoordinate < minimumLayoutSize.height()) {
             // The specified width does not fit in viewport. Return the minimum height that satisfy the initialScale constraint.
-            return std::round(minimumLayoutSize.height() / m_configuration.initialScale);
+            return std::round(minimumLayoutSize.height() / m_configuration.initialScaleIgnoringLayoutScaleFactor);
         }
         return std::round(m_configuration.height);
     }
 
     // If the page has a real scale, then just return the minimum size over the initial scale.
     if (m_configuration.initialScaleIsSet && !m_configuration.widthIsSet)
-        return std::round(minimumLayoutSize.height() / m_configuration.initialScale);
+        return std::round(minimumLayoutSize.height() / m_configuration.initialScaleIgnoringLayoutScaleFactor);
 
     if (minimumLayoutSize.width() > 0)
         return std::round(minimumLayoutSize.height() * layoutWidth() / minimumLayoutSize.width());
@@ -446,6 +600,7 @@ TextStream& operator<<(TextStream& ts, const ViewportConfiguration::Parameters& 
     ts << "initialScale " << parameters.initialScale << ", set: " << (parameters.initialScaleIsSet ? "true" : "false");
     ts.endGroup();
 
+    ts.dumpProperty("initialScaleIgnoringLayoutScaleFactor", parameters.initialScaleIgnoringLayoutScaleFactor);
     ts.dumpProperty("minimumScale", parameters.minimumScale);
     ts.dumpProperty("maximumScale", parameters.maximumScale);
     ts.dumpProperty("allowsUserScaling", parameters.allowsUserScaling);
@@ -484,12 +639,14 @@ String ViewportConfiguration::description() const
 
     ts.dumpProperty("contentSize", m_contentSize);
     ts.dumpProperty("minimumLayoutSize", m_minimumLayoutSize);
+    ts.dumpProperty("layoutSizeScaleFactor", m_layoutSizeScaleFactor);
     ts.dumpProperty("computed initial scale", initialScale());
     ts.dumpProperty("computed minimum scale", minimumScale());
     ts.dumpProperty("computed layout size", layoutSize());
     ts.dumpProperty("ignoring horizontal scaling constraints", shouldIgnoreHorizontalScalingConstraints() ? "true" : "false");
     ts.dumpProperty("ignoring vertical scaling constraints", shouldIgnoreVerticalScalingConstraints() ? "true" : "false");
     ts.dumpProperty("avoids unsafe area", avoidsUnsafeArea() ? "true" : "false");
+    ts.dumpProperty("minimum effective device width", m_minimumEffectiveDeviceWidth);
 
     ts.endGroup();
 

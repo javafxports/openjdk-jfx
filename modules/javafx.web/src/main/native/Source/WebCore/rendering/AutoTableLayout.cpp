@@ -146,7 +146,7 @@ void AutoTableLayout::fullRecalc()
     m_effectiveLogicalWidthDirty = true;
 
     unsigned nEffCols = m_table->numEffCols();
-    m_layoutStruct.resize(nEffCols);
+    m_layoutStruct.resizeToFit(nEffCols);
     m_layoutStruct.fill(Layout());
     m_spanCells.fill(0);
 
@@ -483,7 +483,7 @@ void AutoTableLayout::insertSpanCell(RenderTableCell *cell)
     if (!size || m_spanCells[size-1] != 0) {
         m_spanCells.grow(size + 10);
         for (unsigned i = 0; i < 10; i++)
-            m_spanCells[size+i] = 0;
+            m_spanCells[size + i] = 0;
         size += 10;
     }
 
@@ -773,7 +773,7 @@ void AutoTableLayout::layout()
         }
     }
 
-    LayoutUnit pos = 0;
+    LayoutUnit pos;
     for (size_t i = 0; i < nEffCols; ++i) {
         m_table->setColumnPosition(i, pos);
         pos += LayoutUnit::fromFloatCeil(m_layoutStruct[i].computedLogicalWidth) + m_table->hBorderSpacing();

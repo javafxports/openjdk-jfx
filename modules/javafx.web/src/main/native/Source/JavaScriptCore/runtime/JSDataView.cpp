@@ -52,11 +52,11 @@ JSDataView* JSDataView::create(
 
     ASSERT(buffer);
     if (!ArrayBufferView::verifySubRangeLength(*buffer, byteOffset, byteLength, sizeof(uint8_t))) {
-        throwVMError(exec, scope, createRangeError(exec, ASCIILiteral("Length out of range of buffer")));
+        throwVMError(exec, scope, createRangeError(exec, "Length out of range of buffer"_s));
         return nullptr;
     }
     if (!ArrayBufferView::verifyByteOffsetAlignment(byteOffset, sizeof(uint8_t))) {
-        throwException(exec, scope, createRangeError(exec, ASCIILiteral("Byte offset is not aligned")));
+        throwException(exec, scope, createRangeError(exec, "Byte offset is not aligned"_s));
         return nullptr;
     }
     ConstructionContext context(
@@ -127,17 +127,14 @@ bool JSDataView::put(
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSDataView* thisObject = jsCast<JSDataView*>(cell);
 
-    if (UNLIKELY(isThisValueAltered(slot, thisObject))) {
-        scope.release();
-        return ordinarySetSlow(exec, thisObject, propertyName, value, slot.thisValue(), slot.isStrictMode());
-    }
+    if (UNLIKELY(isThisValueAltered(slot, thisObject)))
+        RELEASE_AND_RETURN(scope, ordinarySetSlow(exec, thisObject, propertyName, value, slot.thisValue(), slot.isStrictMode()));
 
     if (propertyName == vm.propertyNames->byteLength
         || propertyName == vm.propertyNames->byteOffset)
-        return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral("Attempting to write to read-only typed array property."));
+        return typeError(exec, scope, slot.isStrictMode(), "Attempting to write to read-only typed array property."_s);
 
-    scope.release();
-    return Base::put(thisObject, exec, propertyName, value, slot);
+    RELEASE_AND_RETURN(scope, Base::put(thisObject, exec, propertyName, value, slot));
 }
 
 bool JSDataView::defineOwnProperty(
@@ -149,9 +146,9 @@ bool JSDataView::defineOwnProperty(
     JSDataView* thisObject = jsCast<JSDataView*>(object);
     if (propertyName == vm.propertyNames->byteLength
         || propertyName == vm.propertyNames->byteOffset)
-        return typeError(exec, scope, shouldThrow, ASCIILiteral("Attempting to define read-only typed array property."));
+        return typeError(exec, scope, shouldThrow, "Attempting to define read-only typed array property."_s);
 
-    return Base::defineOwnProperty(thisObject, exec, propertyName, descriptor, shouldThrow);
+    RELEASE_AND_RETURN(scope, Base::defineOwnProperty(thisObject, exec, propertyName, descriptor, shouldThrow));
 }
 
 bool JSDataView::deleteProperty(
@@ -178,18 +175,6 @@ void JSDataView::getOwnNonIndexPropertyNames(
     }
 
     Base::getOwnNonIndexPropertyNames(thisObject, exec, array, mode);
-}
-
-ArrayBuffer* JSDataView::slowDownAndWasteMemory(JSArrayBufferView*)
-{
-    UNREACHABLE_FOR_PLATFORM();
-    return 0;
-}
-
-RefPtr<ArrayBufferView> JSDataView::getTypedArrayImpl(JSArrayBufferView* object)
-{
-    JSDataView* thisObject = jsCast<JSDataView*>(object);
-    return thisObject->possiblySharedTypedImpl();
 }
 
 Structure* JSDataView::createStructure(

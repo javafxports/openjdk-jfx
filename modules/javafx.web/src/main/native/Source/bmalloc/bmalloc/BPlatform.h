@@ -52,23 +52,33 @@
 #define BOS_WINDOWS 1
 #endif
 
-#if BOS(DARWIN)
-#if TARGET_OS_IPHONE
+#if BOS(DARWIN) && !defined(BUILDING_WITH_CMAKE)
+#if TARGET_OS_IOS
 #define BPLATFORM_IOS 1
 #if TARGET_OS_SIMULATOR
 #define BPLATFORM_IOS_SIMULATOR 1
+#endif
+#endif
+#if TARGET_OS_IPHONE
+#define BPLATFORM_IOS_FAMILY 1
+#if TARGET_OS_SIMULATOR
+#define BPLATFORM_IOS_FAMILY_SIMULATOR 1
 #endif
 #elif TARGET_OS_MAC
 #define BPLATFORM_MAC 1
 #endif
 #endif
 
-#if BPLATFORM(MAC) || BPLATFORM(IOS)
+#if BPLATFORM(MAC) || BPLATFORM(IOS_FAMILY)
 #define BPLATFORM_COCOA 1
 #endif
 
 #if defined(TARGET_OS_WATCH) && TARGET_OS_WATCH
 #define BPLATFORM_WATCHOS 1
+#endif
+
+#if defined(TARGET_OS_TV) && TARGET_OS_TV
+#define BPLATFORM_APPLETV 1
 #endif
 
 /* ==== Policy decision macros: these define policy choices for a particular port. ==== */
@@ -80,11 +90,6 @@
 
 /* BCOMPILER_SUPPORTS() - check for a compiler feature */
 #define BCOMPILER_SUPPORTS(FEATURE) (defined BCOMPILER_SUPPORTS_##FEATURE && BCOMPILER_SUPPORTS_##FEATURE)
-
-/* BCOMPILER_SUPPORTS(NSDMI_FOR_AGGREGATES) - compiler supports non-static data member initializers for aggregates */
-#if defined(__cpp_aggregate_nsdmi) && __cpp_aggregate_nsdmi >= 201304
-#define BCOMPILER_SUPPORTS_NSDMI_FOR_AGGREGATES 1
-#endif
 
 /* ==== Platform adaptation macros: these describe properties of the target environment. ==== */
 
@@ -223,11 +228,11 @@
 
 #define BATTRIBUTE_PRINTF(formatStringArgument, extraArguments) __attribute__((__format__(printf, formatStringArgument, extraArguments)))
 
-#if (BPLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || BPLATFORM(IOS)
+#if BPLATFORM(MAC) || BPLATFORM(IOS_FAMILY)
 #define BUSE_OS_LOG 1
 #endif
 
-#if !defined(BUSE_EXPORT_MACROS) && (BPLATFORM(MAC) || BPLATFORM(IOS))
+#if !defined(BUSE_EXPORT_MACROS) && (BPLATFORM(MAC) || BPLATFORM(IOS_FAMILY))
 #define BUSE_EXPORT_MACROS 1
 #endif
 
@@ -235,3 +240,13 @@
 #if !defined(BUNUSED_PARAM)
 #define BUNUSED_PARAM(variable) (void)variable
 #endif
+
+/* This is used for debugging when hacking on how bmalloc calculates its physical footprint. */
+#define ENABLE_PHYSICAL_PAGE_MAP 0
+
+#if BPLATFORM(IOS_FAMILY) && (BCPU(ARM64) || BCPU(ARM))
+#define BUSE_CHECK_NANO_MALLOC 1
+#else
+#define BUSE_CHECK_NANO_MALLOC 0
+#endif
+

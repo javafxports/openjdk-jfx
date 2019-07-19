@@ -24,8 +24,9 @@
  */
 
 #include "config.h"
-#include "OSRandomSource.h"
+#include <wtf/OSRandomSource.h>
 
+#include <mutex>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/RandomDevice.h>
 
@@ -33,7 +34,13 @@ namespace WTF {
 
 void cryptographicallyRandomValuesFromOS(unsigned char* buffer, size_t length)
 {
-    static NeverDestroyed<RandomDevice> device;
+    static LazyNeverDestroyed<RandomDevice> device;
+    static std::once_flag onceFlag;
+    std::call_once(
+        onceFlag,
+        [] {
+            device.construct();
+        });
     device.get().cryptographicallyRandomValues(buffer, length);
 }
 

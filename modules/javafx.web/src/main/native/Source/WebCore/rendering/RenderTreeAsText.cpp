@@ -80,39 +80,39 @@ using namespace HTMLNames;
 
 static void writeLayers(TextStream&, const RenderLayer& rootLayer, RenderLayer&, const LayoutRect& paintDirtyRect, RenderAsTextBehavior = RenderAsTextBehaviorNormal);
 
-static void printBorderStyle(TextStream& ts, const EBorderStyle borderStyle)
+static void printBorderStyle(TextStream& ts, const BorderStyle borderStyle)
 {
     switch (borderStyle) {
-        case BNONE:
-            ts << "none";
-            break;
-        case BHIDDEN:
-            ts << "hidden";
-            break;
-        case INSET:
-            ts << "inset";
-            break;
-        case GROOVE:
-            ts << "groove";
-            break;
-        case RIDGE:
-            ts << "ridge";
-            break;
-        case OUTSET:
-            ts << "outset";
-            break;
-        case DOTTED:
-            ts << "dotted";
-            break;
-        case DASHED:
-            ts << "dashed";
-            break;
-        case SOLID:
-            ts << "solid";
-            break;
-        case DOUBLE:
-            ts << "double";
-            break;
+    case BorderStyle::None:
+        ts << "none";
+        break;
+    case BorderStyle::Hidden:
+        ts << "hidden";
+        break;
+    case BorderStyle::Inset:
+        ts << "inset";
+        break;
+    case BorderStyle::Groove:
+        ts << "groove";
+        break;
+    case BorderStyle::Ridge:
+        ts << "ridge";
+        break;
+    case BorderStyle::Outset:
+        ts << "outset";
+        break;
+    case BorderStyle::Dotted:
+        ts << "dotted";
+        break;
+    case BorderStyle::Dashed:
+        ts << "dashed";
+        break;
+    case BorderStyle::Solid:
+        ts << "solid";
+        break;
+    case BorderStyle::Double:
+        ts << "double";
+        break;
     }
 
     ts << " ";
@@ -150,20 +150,16 @@ String quoteAndEscapeNonPrintables(StringView s)
     for (unsigned i = 0; i != s.length(); ++i) {
         UChar c = s[i];
         if (c == '\\') {
-            result.append('\\');
-            result.append('\\');
+            result.appendLiteral("\\\\");
         } else if (c == '"') {
-            result.append('\\');
-            result.append('"');
+            result.appendLiteral("\\\"");
         } else if (c == '\n' || c == noBreakSpace)
             result.append(' ');
         else {
             if (c >= 0x20 && c < 0x7F)
                 result.append(c);
             else {
-                result.append('\\');
-                result.append('x');
-                result.append('{');
+                result.appendLiteral("\\x{");
                 appendUnsignedAsHex(c, result);
                 result.append('}');
             }
@@ -230,7 +226,7 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
 
     // FIXME: Temporary in order to ensure compatibility with existing layout test results.
     if (adjustForTableCells)
-        r.move(0, -downcast<RenderTableCell>(*o.containingBlock()).intrinsicPaddingBefore());
+        r.move(0_lu, -downcast<RenderTableCell>(*o.containingBlock()).intrinsicPaddingBefore());
 
     // FIXME: Convert layout test results to report sub-pixel values, in the meantime using enclosingIntRect
     // for consistency with old results.
@@ -242,23 +238,23 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
 
         if (o.parent()) {
             Color color = o.style().visitedDependentColor(CSSPropertyColor);
-            if (o.parent()->style().visitedDependentColor(CSSPropertyColor) != color)
+            if (o.parent()->style().visitedDependentColor(CSSPropertyColor).rgb() != color.rgb())
                 ts << " [color=" << color.nameForRenderTreeAsText() << "]";
 
             // Do not dump invalid or transparent backgrounds, since that is the default.
             Color backgroundColor = o.style().visitedDependentColor(CSSPropertyBackgroundColor);
-            if (o.parent()->style().visitedDependentColor(CSSPropertyBackgroundColor) != backgroundColor
+            if (o.parent()->style().visitedDependentColor(CSSPropertyBackgroundColor).rgb() != backgroundColor.rgb()
                 && backgroundColor.isValid() && backgroundColor.rgb())
                 ts << " [bgcolor=" << backgroundColor.nameForRenderTreeAsText() << "]";
 
             Color textFillColor = o.style().visitedDependentColor(CSSPropertyWebkitTextFillColor);
-            if (o.parent()->style().visitedDependentColor(CSSPropertyWebkitTextFillColor) != textFillColor
-                && textFillColor.isValid() && textFillColor != color && textFillColor.rgb())
+            if (o.parent()->style().visitedDependentColor(CSSPropertyWebkitTextFillColor).rgb() != textFillColor.rgb()
+                && textFillColor.isValid() && textFillColor.rgb() != color.rgb() && textFillColor.rgb())
                 ts << " [textFillColor=" << textFillColor.nameForRenderTreeAsText() << "]";
 
             Color textStrokeColor = o.style().visitedDependentColor(CSSPropertyWebkitTextStrokeColor);
-            if (o.parent()->style().visitedDependentColor(CSSPropertyWebkitTextStrokeColor) != textStrokeColor
-                && textStrokeColor.isValid() && textStrokeColor != color && textStrokeColor.rgb())
+            if (o.parent()->style().visitedDependentColor(CSSPropertyWebkitTextStrokeColor).rgb() != textStrokeColor.rgb()
+                && textStrokeColor.isValid() && textStrokeColor.rgb() != color.rgb() && textStrokeColor.rgb())
                 ts << " [textStrokeColor=" << textStrokeColor.nameForRenderTreeAsText() << "]";
 
             if (o.parent()->style().textStrokeWidth() != o.style().textStrokeWidth() && o.style().textStrokeWidth() > 0)
@@ -704,22 +700,23 @@ static void writeLayers(TextStream& ts, const RenderLayer& rootLayer, RenderLaye
 
     // Ensure our lists are up-to-date.
     layer.updateLayerListsIfNeeded();
+    layer.updateDescendantDependentFlags();
 
     bool shouldPaint = (behavior & RenderAsTextShowAllLayers) ? true : layer.intersectsDamageRect(layerBounds, damageRect.rect(), &rootLayer, layer.offsetFromAncestor(&rootLayer));
-    auto* negativeZOrderList = layer.negZOrderList();
-    bool paintsBackgroundSeparately = negativeZOrderList && negativeZOrderList->size() > 0;
+    auto negativeZOrderLayers = layer.negativeZOrderLayers();
+    bool paintsBackgroundSeparately = negativeZOrderLayers.size() > 0;
     if (shouldPaint && paintsBackgroundSeparately) {
         writeLayer(ts, layer, layerBounds, damageRect.rect(), clipRectToApply.rect(), LayerPaintPhaseBackground, behavior);
         writeLayerRenderers(ts, layer, LayerPaintPhaseBackground, behavior);
     }
 
-    if (negativeZOrderList) {
+    if (negativeZOrderLayers.size()) {
         if (behavior & RenderAsTextShowLayerNesting) {
-            ts << indent << " negative z-order list(" << negativeZOrderList->size() << ")\n";
+            ts << indent << " negative z-order list(" << negativeZOrderLayers.size() << ")\n";
             ts.increaseIndent();
         }
 
-        for (auto* currLayer : *negativeZOrderList)
+        for (auto* currLayer : negativeZOrderLayers)
             writeLayers(ts, rootLayer, *currLayer, paintDirtyRect, behavior);
 
         if (behavior & RenderAsTextShowLayerNesting)
@@ -745,29 +742,31 @@ static void writeLayers(TextStream& ts, const RenderLayer& rootLayer, RenderLaye
         writeLayerRenderers(ts, layer, paintsBackgroundSeparately ? LayerPaintPhaseForeground : LayerPaintPhaseAll, behavior);
     }
 
-    if (auto* normalFlowList = layer.normalFlowList()) {
+    auto normalFlowLayers = layer.normalFlowLayers();
+    if (normalFlowLayers.size()) {
         if (behavior & RenderAsTextShowLayerNesting) {
-            ts << indent << " normal flow list(" << normalFlowList->size() << ")\n";
+            ts << indent << " normal flow list(" << normalFlowLayers.size() << ")\n";
             ts.increaseIndent();
         }
 
-        for (auto* currLayer : *normalFlowList)
+        for (auto* currLayer : normalFlowLayers)
             writeLayers(ts, rootLayer, *currLayer, paintDirtyRect, behavior);
 
         if (behavior & RenderAsTextShowLayerNesting)
             ts.decreaseIndent();
     }
 
-    if (auto* positiveZOrderList = layer.posZOrderList()) {
-        size_t layerCount = positiveZOrderList->size();
+    auto positiveZOrderLayers = layer.positiveZOrderLayers();
+    if (positiveZOrderLayers.size()) {
+        size_t layerCount = positiveZOrderLayers.size();
 
         if (layerCount) {
             if (behavior & RenderAsTextShowLayerNesting) {
-                ts << indent << " positive z-order list(" << positiveZOrderList->size() << ")\n";
+                ts << indent << " positive z-order list(" << layerCount << ")\n";
                 ts.increaseIndent();
             }
 
-            for (auto* currLayer : *positiveZOrderList)
+            for (auto* currLayer : positiveZOrderLayers)
                 writeLayers(ts, rootLayer, *currLayer, paintDirtyRect, behavior);
 
             if (behavior & RenderAsTextShowLayerNesting)

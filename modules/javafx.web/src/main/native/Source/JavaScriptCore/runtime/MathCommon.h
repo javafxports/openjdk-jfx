@@ -35,54 +35,16 @@ double JIT_OPERATION operationMathPow(double x, double y) WTF_INTERNAL;
 int32_t JIT_OPERATION operationToInt32(double) WTF_INTERNAL;
 int32_t JIT_OPERATION operationToInt32SensibleSlow(double) WTF_INTERNAL;
 
-inline constexpr double maxSafeInteger()
+constexpr double maxSafeInteger()
 {
     // 2 ^ 53 - 1
     return 9007199254740991.0;
 }
 
-inline constexpr double minSafeInteger()
+constexpr double minSafeInteger()
 {
     // -(2 ^ 53 - 1)
     return -9007199254740991.0;
-}
-
-inline int clz32(uint32_t number)
-{
-#if COMPILER(GCC_OR_CLANG)
-    int zeroCount = 32;
-    if (number)
-        zeroCount = __builtin_clz(number);
-    return zeroCount;
-#else
-    int zeroCount = 0;
-    for (int i = 31; i >= 0; i--) {
-        if (!(number >> i))
-            zeroCount++;
-        else
-            break;
-    }
-    return zeroCount;
-#endif
-}
-
-inline int clz64(uint64_t number)
-{
-#if COMPILER(GCC_OR_CLANG)
-    int zeroCount = 64;
-    if (number)
-        zeroCount = __builtin_clzll(number);
-    return zeroCount;
-#else
-    int zeroCount = 0;
-    for (int i = 63; i >= 0; i--) {
-        if (!(number >> i))
-            zeroCount++;
-        else
-            break;
-    }
-    return zeroCount;
-#endif
 }
 
 // This in the ToInt32 operation is defined in section 9.5 of the ECMA-262 spec.
@@ -177,7 +139,13 @@ ALWAYS_INLINE int32_t toInt32Internal(double number)
 
 ALWAYS_INLINE int32_t toInt32(double number)
 {
+#if HAVE(FJCVTZS_INSTRUCTION)
+    int32_t result = 0;
+    __asm__ ("fjcvtzs %w0, %d1" : "=r" (result) : "w" (number) : "cc");
+    return result;
+#else
     return toInt32Internal<ToInt32Mode::Generic>(number);
+#endif
 }
 
 // This implements ToUInt32, defined in ECMA-262 9.6.
@@ -188,15 +156,15 @@ inline uint32_t toUInt32(double number)
     return toInt32(number);
 }
 
-inline std::optional<double> safeReciprocalForDivByConst(double constant)
+inline Optional<double> safeReciprocalForDivByConst(double constant)
 {
     // No "weird" numbers (NaN, Denormal, etc).
     if (!constant || !std::isnormal(constant))
-        return std::nullopt;
+        return WTF::nullopt;
 
     int exponent;
     if (std::frexp(constant, &exponent) != 0.5)
-        return std::nullopt;
+        return WTF::nullopt;
 
     // Note that frexp() returns the value divided by two
     // so we to offset this exponent by one.
@@ -205,7 +173,7 @@ inline std::optional<double> safeReciprocalForDivByConst(double constant)
     // A double exponent is between -1022 and 1023.
     // Nothing we can do to invert 1023.
     if (exponent == 1023)
-        return std::nullopt;
+        return WTF::nullopt;
 
     double reciprocal = std::ldexp(1, -exponent);
     ASSERT(std::isnormal(reciprocal));
@@ -214,6 +182,19 @@ inline std::optional<double> safeReciprocalForDivByConst(double constant)
     ASSERT(1. == constant * reciprocal);
 
     return reciprocal;
+}
+
+ALWAYS_INLINE bool canBeStrictInt32(double value)
+{
+    // Note: while this behavior is undefined for NaN and inf, the subsequent statement will catch these cases.
+    const int32_t asInt32 = static_cast<int32_t>(value);
+    return !(asInt32 != value || (!asInt32 && std::signbit(value))); // true for -0.0
+}
+
+ALWAYS_INLINE bool canBeInt32(double value)
+{
+    // Note: Strictly speaking this is an undefined behavior.
+    return static_cast<int32_t>(value) == value;
 }
 
 extern "C" {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,9 +30,9 @@
 #include "Gigacage.h"
 #include "Heap.h"
 #include "IsoTLS.h"
+#include "Mutex.h"
 #include "PerHeapKind.h"
 #include "Scavenger.h"
-#include "StaticMutex.h"
 
 namespace bmalloc {
 namespace api {
@@ -63,6 +63,12 @@ inline void* memalign(size_t alignment, size_t size, HeapKind kind = HeapKind::P
     return Cache::allocate(kind, alignment, size);
 }
 
+// Returns null on failure.
+inline void* tryRealloc(void* object, size_t newSize, HeapKind kind = HeapKind::Primary)
+{
+    return Cache::tryReallocate(kind, object, newSize);
+}
+
 // Crashes on failure.
 inline void* realloc(void* object, size_t newSize, HeapKind kind = HeapKind::Primary)
 {
@@ -82,7 +88,7 @@ inline void free(void* object, HeapKind kind = HeapKind::Primary)
 
 BEXPORT void freeOutOfLine(void* object, HeapKind kind = HeapKind::Primary);
 
-BEXPORT void freeLargeVirtual(void* object, HeapKind kind = HeapKind::Primary);
+BEXPORT void freeLargeVirtual(void* object, size_t, HeapKind kind = HeapKind::Primary);
 
 inline void scavengeThisThread()
 {
@@ -95,12 +101,17 @@ BEXPORT void scavenge();
 
 BEXPORT bool isEnabled(HeapKind kind = HeapKind::Primary);
 
+// ptr must be aligned to vmPageSizePhysical and size must be divisible
+// by vmPageSizePhysical.
+BEXPORT void decommitAlignedPhysical(void* object, size_t, HeapKind = HeapKind::Primary);
+BEXPORT void commitAlignedPhysical(void* object, size_t, HeapKind = HeapKind::Primary);
+
 inline size_t availableMemory()
 {
     return bmalloc::availableMemory();
 }
 
-#if BPLATFORM(IOS)
+#if BPLATFORM(IOS_FAMILY) || BOS(LINUX)
 inline size_t memoryFootprint()
 {
     return bmalloc::memoryFootprint();
@@ -115,6 +126,8 @@ inline double percentAvailableMemoryInUse()
 #if BOS(DARWIN)
 BEXPORT void setScavengerThreadQOSClass(qos_class_t overrideClass);
 #endif
+
+BEXPORT void enableMiniMode();
 
 } // namespace api
 } // namespace bmalloc

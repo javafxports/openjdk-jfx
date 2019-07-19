@@ -38,7 +38,7 @@ class SecurityOrigin;
 
 class FrameLoadRequest {
 public:
-    WEBCORE_EXPORT FrameLoadRequest(Document&, SecurityOrigin&, const ResourceRequest&, const String& frameName, LockHistory, LockBackForwardList, ShouldSendReferrer, AllowNavigationToInvalidURL, NewFrameOpenerPolicy, ShouldOpenExternalURLsPolicy, InitiatedByMainFrame, ShouldReplaceDocumentIfJavaScriptURL = ReplaceDocumentIfJavaScriptURL, const AtomicString& downloadAttribute = { });
+    WEBCORE_EXPORT FrameLoadRequest(Document&, SecurityOrigin&, const ResourceRequest&, const String& frameName, LockHistory, LockBackForwardList, ShouldSendReferrer, AllowNavigationToInvalidURL, NewFrameOpenerPolicy, ShouldOpenExternalURLsPolicy, InitiatedByMainFrame, ShouldReplaceDocumentIfJavaScriptURL = ReplaceDocumentIfJavaScriptURL, const AtomicString& downloadAttribute = { }, const SystemPreviewInfo& = { });
     WEBCORE_EXPORT FrameLoadRequest(Frame&, const ResourceRequest&, ShouldOpenExternalURLsPolicy, const SubstituteData& = SubstituteData());
 
     WEBCORE_EXPORT ~FrameLoadRequest();
@@ -60,12 +60,22 @@ public:
     void setShouldCheckNewWindowPolicy(bool checkPolicy) { m_shouldCheckNewWindowPolicy = checkPolicy; }
     bool shouldCheckNewWindowPolicy() const { return m_shouldCheckNewWindowPolicy; }
 
+    void setShouldTreatAsContinuingLoad(bool value) { m_shouldTreatAsContinuingLoad = value; }
+    bool shouldTreatAsContinuingLoad() const { return m_shouldTreatAsContinuingLoad; }
+
     const SubstituteData& substituteData() const { return m_substituteData; }
     void setSubstituteData(const SubstituteData& data) { m_substituteData = data; }
     bool hasSubstituteData() { return m_substituteData.isValid(); }
 
     LockHistory lockHistory() const { return m_lockHistory; }
+    void setLockHistory(LockHistory value) { m_lockHistory = value; }
+
     LockBackForwardList lockBackForwardList() const { return m_lockBackForwardList; }
+    void setlockBackForwardList(LockBackForwardList value) { m_lockBackForwardList = value; }
+
+    const String& clientRedirectSourceForHistory() const { return m_clientRedirectSourceForHistory; }
+    void setClientRedirectSourceForHistory(const String& clientRedirectSourceForHistory) { m_clientRedirectSourceForHistory = clientRedirectSourceForHistory; }
+
     ShouldSendReferrer shouldSendReferrer() const { return m_shouldSendReferrer; }
     AllowNavigationToInvalidURL allowNavigationToInvalidURL() const { return m_allowNavigationToInvalidURL; }
     NewFrameOpenerPolicy newFrameOpenerPolicy() const { return m_newFrameOpenerPolicy; }
@@ -81,14 +91,22 @@ public:
 
     InitiatedByMainFrame initiatedByMainFrame() const { return m_initiatedByMainFrame; }
 
+    bool isSystemPreview() const { return m_systemPreviewInfo.isSystemPreview; }
+    const IntRect& systemPreviewRect() const { return m_systemPreviewInfo.systemPreviewRect; }
+
+    void setIsRequestFromClientOrUserInput() { m_isRequestFromClientOrUserInput = true; }
+    bool isRequestFromClientOrUserInput() const { return m_isRequestFromClientOrUserInput; }
+
 private:
     Ref<Document> m_requester;
     Ref<SecurityOrigin> m_requesterSecurityOrigin;
     ResourceRequest m_resourceRequest;
     String m_frameName;
     SubstituteData m_substituteData;
+    String m_clientRedirectSourceForHistory;
 
     bool m_shouldCheckNewWindowPolicy { false };
+    bool m_shouldTreatAsContinuingLoad { false };
     LockHistory m_lockHistory;
     LockBackForwardList m_lockBackForwardList;
     ShouldSendReferrer m_shouldSendReferrer;
@@ -98,6 +116,8 @@ private:
     ShouldOpenExternalURLsPolicy m_shouldOpenExternalURLsPolicy { ShouldOpenExternalURLsPolicy::ShouldNotAllow };
     AtomicString m_downloadAttribute;
     InitiatedByMainFrame m_initiatedByMainFrame { InitiatedByMainFrame::Unknown };
+    SystemPreviewInfo m_systemPreviewInfo;
+    bool m_isRequestFromClientOrUserInput { false };
 };
 
 } // namespace WebCore

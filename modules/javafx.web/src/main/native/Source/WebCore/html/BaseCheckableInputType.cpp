@@ -46,7 +46,7 @@ using namespace HTMLNames;
 FormControlState BaseCheckableInputType::saveFormControlState() const
 {
     ASSERT(element());
-    return { element()->checked() ? ASCIILiteral("on") : ASCIILiteral("off") };
+    return { element()->checked() ? "on"_s : "off"_s };
 }
 
 void BaseCheckableInputType::restoreFormControlState(const FormControlState& state)
@@ -117,6 +117,21 @@ void BaseCheckableInputType::setValue(const String& sanitizedValue, bool, TextFi
 bool BaseCheckableInputType::isCheckable()
 {
     return true;
+}
+
+void BaseCheckableInputType::fireInputAndChangeEvents()
+{
+    if (!element()->isConnected())
+        return;
+
+    if (!shouldSendChangeEventAfterCheckedChanged())
+        return;
+
+    auto protectedThis = makeRef(*this);
+    element()->setTextAsOfLastFormControlChangeEvent(String());
+    element()->dispatchInputEvent();
+    if (auto* element = this->element())
+        element->dispatchFormControlChangeEvent();
 }
 
 } // namespace WebCore

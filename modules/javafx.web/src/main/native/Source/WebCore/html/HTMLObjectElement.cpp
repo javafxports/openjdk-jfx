@@ -49,14 +49,17 @@
 #include "SubframeLoader.h"
 #include "Text.h"
 #include "Widget.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/Ref.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "RuntimeApplicationChecks.h"
 #include <wtf/spi/darwin/dyldSPI.h>
 #endif
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLObjectElement);
 
 using namespace HTMLNames;
 
@@ -139,7 +142,7 @@ static void mapDataParamToSrc(Vector<String>& paramNames, Vector<String>& paramV
             dataParamValue = paramValues[i];
     }
     if (!foundSrcParam && !dataParamValue.isNull()) {
-        paramNames.append(ASCIILiteral("src"));
+        paramNames.append("src"_s);
         paramValues.append(WTFMove(dataParamValue));
     }
 }

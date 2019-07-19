@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2008 Apple Inc. All rights reserved.
+* Copyright (C) 2008-2019 Apple Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 
 #include "AXObjectCache.h"
 #include "AccessibilityImageMapLink.h"
+#include "AccessibilityLabel.h"
 #include "AccessibilityListBox.h"
 #include "AccessibilitySVGRoot.h"
 #include "AccessibilitySpinButton.h"
@@ -619,7 +620,7 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
 
     // Reflect when a content author has explicitly marked a line break.
     if (m_renderer->isBR())
-        return ASCIILiteral("\n");
+        return "\n"_s;
 
     if (shouldGetTextFromNode(mode))
         return AccessibilityNodeObject::textUnderElement(mode);
@@ -639,10 +640,7 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
             // defining one based in the two external positions defining the boundaries of the subtree.
             RenderObject* firstChildRenderer = m_renderer->firstChildSlow();
             RenderObject* lastChildRenderer = m_renderer->lastChildSlow();
-            if (firstChildRenderer && lastChildRenderer) {
-                ASSERT(firstChildRenderer->node());
-                ASSERT(lastChildRenderer->node());
-
+            if (firstChildRenderer && firstChildRenderer->node() && lastChildRenderer && lastChildRenderer->node()) {
                 // We define the start and end positions for the range as the ones right before and after
                 // the first and the last nodes in the DOM tree that is wrapped inside the anonymous block.
                 Node* firstNodeInBlock = firstChildRenderer->node();
@@ -765,7 +763,7 @@ String AccessibilityRenderObject::stringValue() const
     if (isTextControl())
         return text();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (isInputTypePopupButton())
         return textUnderElement();
 #endif
@@ -944,7 +942,7 @@ AccessibilityObject* AccessibilityRenderObject::internalLinkElement() const
     return firstAccessibleObjectFromNode(linkedNode);
 }
 
-ESpeakAs AccessibilityRenderObject::speakAsProperty() const
+OptionSet<SpeakAs> AccessibilityRenderObject::speakAsProperty() const
 {
     if (!m_renderer)
         return AccessibilityObject::speakAsProperty();
@@ -1028,17 +1026,16 @@ bool AccessibilityRenderObject::isARIAGrabbed()
     return elementAttributeValue(aria_grabbedAttr);
 }
 
-void AccessibilityRenderObject::determineARIADropEffects(Vector<String>& effects)
+Vector<String> AccessibilityRenderObject::determineARIADropEffects()
 {
     const AtomicString& dropEffects = getAttribute(aria_dropeffectAttr);
     if (dropEffects.isEmpty()) {
-        effects.clear();
-        return;
+        return { };
     }
 
     String dropEffectsString = dropEffects.string();
     dropEffectsString.replace('\n', ' ');
-    dropEffectsString.split(' ', effects);
+    return dropEffectsString.split(' ');
 }
 
 bool AccessibilityRenderObject::exposesTitleUIElement() const
@@ -1063,6 +1060,11 @@ bool AccessibilityRenderObject::exposesTitleUIElement() const
                 return false;
             if (AccessibilityObject* labelObject = axObjectCache()->getOrCreate(label)) {
                 if (!labelObject->ariaLabeledByAttribute().isEmpty())
+                    return false;
+                // To simplify instances where the labeling element includes widget descendants
+                // which it does not label.
+                if (is<AccessibilityLabel>(*labelObject)
+                    && downcast<AccessibilityLabel>(*labelObject).containsUnrelatedControls())
                     return false;
             }
         }
@@ -1138,7 +1140,7 @@ AccessibilityObjectInclusion AccessibilityRenderObject::defaultObjectInclusion()
     if (!m_renderer)
         return AccessibilityObjectInclusion::IgnoreObject;
 
-    if (m_renderer->style().visibility() != VISIBLE) {
+    if (m_renderer->style().visibility() != Visibility::Visible) {
         // aria-hidden is meant to override visibility as the determinant in AX hierarchy inclusion.
         if (equalLettersIgnoringASCIICase(getAttribute(aria_hiddenAttr), "false"))
             return AccessibilityObjectInclusion::DefaultBehavior;
@@ -1202,12 +1204,6 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
 
     // ignore popup menu items because AppKit does
     if (m_renderer && ancestorsOfType<RenderMenuList>(*m_renderer).first())
-        return true;
-
-    // find out if this element is inside of a label element.
-    // if so, it may be ignored because it's the label for a checkbox or radio button
-    AccessibilityObject* controlObject = correspondingControlForLabelElement();
-    if (controlObject && !controlObject->exposesTitleUIElement() && controlObject->isCheckboxOrRadio())
         return true;
 
     // https://webkit.org/b/161276 Getting the controlObject might cause the m_renderer to be nullptr.
@@ -1416,6 +1412,12 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     if (m_renderer->isRubyRun() || m_renderer->isRubyBlock() || m_renderer->isRubyInline())
         return false;
 
+    // Find out if this element is inside of a label element.
+    // If so, it may be ignored because it's the label for a checkbox or radio button.
+    AccessibilityObject* controlObject = correspondingControlForLabelElement();
+    if (controlObject && !controlObject->exposesTitleUIElement() && controlObject->isCheckboxOrRadio())
+        return true;
+
     // By default, objects should be ignored so that the AX hierarchy is not
     // filled with unnecessary items.
     return true;
@@ -1506,7 +1508,7 @@ const AtomicString& AccessibilityRenderObject::accessKey() const
     Node* node = m_renderer->node();
     if (!is<Element>(node))
         return nullAtom();
-    return downcast<Element>(*node).getAttribute(accesskeyAttr);
+    return downcast<Element>(*node).attributeWithoutSynchronization(accesskeyAttr);
 }
 
 VisibleSelection AccessibilityRenderObject::selection() const
@@ -1556,9 +1558,10 @@ void AccessibilityRenderObject::setSelectedTextRange(const PlainTextRange& range
         HTMLTextFormControlElement& textControl = downcast<RenderTextControl>(*m_renderer).textFormControlElement();
         textControl.setSelectionRange(range.start, range.start + range.length);
     } else {
-        ASSERT(node());
-        VisiblePosition start = visiblePositionForIndexUsingCharacterIterator(*node(), range.start);
-        VisiblePosition end = visiblePositionForIndexUsingCharacterIterator(*node(), range.start + range.length);
+        auto node = this->node();
+        ASSERT(node);
+        VisiblePosition start = visiblePositionForIndexUsingCharacterIterator(*node, range.start);
+        VisiblePosition end = visiblePositionForIndexUsingCharacterIterator(*node, range.start + range.length);
         m_renderer->frame().selection().setSelection(VisibleSelection(start, end), FrameSelection::defaultSetSelectionOptions(UserTriggered));
     }
 
@@ -1590,7 +1593,7 @@ bool AccessibilityRenderObject::isUnvisited() const
         return true;
 
     // FIXME: Is it a privacy violation to expose unvisited information to accessibility APIs?
-    return m_renderer->style().isLink() && m_renderer->style().insideLink() == InsideUnvisitedLink;
+    return m_renderer->style().isLink() && m_renderer->style().insideLink() == InsideLink::InsideUnvisited;
 }
 
 bool AccessibilityRenderObject::isVisited() const
@@ -1599,7 +1602,7 @@ bool AccessibilityRenderObject::isVisited() const
         return false;
 
     // FIXME: Is it a privacy violation to expose visited information to accessibility APIs?
-    return m_renderer->style().isLink() && m_renderer->style().insideLink() == InsideVisitedLink;
+    return m_renderer->style().isLink() && m_renderer->style().insideLink() == InsideLink::InsideVisited;
 }
 
 void AccessibilityRenderObject::setElementAttributeValue(const QualifiedName& attributeName, bool value)
@@ -1707,6 +1710,9 @@ bool AccessibilityRenderObject::isFocused() const
 
 void AccessibilityRenderObject::setFocused(bool on)
 {
+    if (on && dispatchAccessibilityEventWithType(AccessibilityEventType::Focus))
+        return;
+
     if (!canSetFocusAttribute())
         return;
 
@@ -1757,16 +1763,27 @@ void AccessibilityRenderObject::setValue(const String& string)
 {
     if (!m_renderer || !is<Element>(m_renderer->node()))
         return;
+    if (dispatchAccessibleSetValueEvent(string))
+        return;
+
     Element& element = downcast<Element>(*m_renderer->node());
     RenderObject& renderer = *m_renderer;
 
+    // We should use the editor's insertText to mimic typing into the field.
+    // Also only do this when the field is in editing mode.
+    if (Frame* frame = renderer.document().frame()) {
+        Editor& editor = frame->editor();
+        if (element.shouldUseInputMethod()) {
+            editor.clearText();
+            editor.insertText(string, nullptr);
+            return;
+        }
+    }
     // FIXME: Do we want to do anything here for ARIA textboxes?
     if (renderer.isTextField() && is<HTMLInputElement>(element))
         downcast<HTMLInputElement>(element).setValue(string);
     else if (renderer.isTextArea() && is<HTMLTextAreaElement>(element))
         downcast<HTMLTextAreaElement>(element).setValue(string);
-    else if (is<HTMLElement>(element) && contentEditableAttributeIsEnabled(&element))
-        downcast<HTMLElement>(element).setInnerText(string);
 }
 
 bool AccessibilityRenderObject::supportsARIAOwns() const
@@ -2141,7 +2158,7 @@ VisiblePosition AccessibilityRenderObject::visiblePositionForPoint(const IntPoin
         HitTestRequest request(HitTestRequest::ReadOnly |
                                HitTestRequest::Active);
         HitTestResult result(ourpoint);
-        renderView->hitTest(request, result);
+        renderView->document().hitTest(request, result);
         innerNode = result.innerNode();
         if (!innerNode)
             return VisiblePosition();
@@ -2347,6 +2364,9 @@ AccessibilityObject* AccessibilityRenderObject::accessibilityHitTest(const IntPo
 
     m_renderer->document().updateLayout();
 
+    if (!m_renderer || !m_renderer->hasLayer())
+        return nullptr;
+
     RenderLayer* layer = downcast<RenderBox>(*m_renderer).layer();
 
     HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AccessibilityHitTest);
@@ -2504,7 +2524,7 @@ RenderObject* AccessibilityRenderObject::targetElementForActiveDescendant(const 
 {
     AccessibilityObject::AccessibilityChildrenVector elements;
     ariaElementsFromAttribute(elements, attributeName);
-    for (auto element : elements) {
+    for (const auto& element : elements) {
         if (activeDescendant->isDescendantOfObject(element.get()))
             return element->renderer();
     }
@@ -2695,7 +2715,7 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
         if (input.isTextButton())
             return buttonRoleType();
         // On iOS, the date field and time field are popup buttons. On other platforms they are text fields.
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         if (input.isDateField() || input.isTimeField())
             return AccessibilityRole::PopUpButton;
 #endif
@@ -3471,7 +3491,7 @@ void AccessibilityRenderObject::tabChildren(AccessibilityChildrenVector& result)
 
 const String& AccessibilityRenderObject::actionVerb() const
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // FIXME: Need to add verbs for select elements.
     static NeverDestroyed<const String> buttonAction(AXButtonActionVerb());
     static NeverDestroyed<const String> textFieldAction(AXTextFieldActionVerb());
@@ -3578,8 +3598,8 @@ bool AccessibilityRenderObject::hasPlainText() const
 
     const RenderStyle& style = m_renderer->style();
     return style.fontDescription().weight() == normalWeightValue()
-        && style.fontDescription().italic() == normalItalicValue()
-        && style.textDecorationsInEffect() == TextDecorationNone;
+        && !isItalic(style.fontDescription().italic())
+        && style.textDecorationsInEffect().isEmpty();
 }
 
 bool AccessibilityRenderObject::hasSameFont(RenderObject* renderer) const
@@ -3611,7 +3631,7 @@ bool AccessibilityRenderObject::hasUnderline() const
     if (!m_renderer)
         return false;
 
-    return m_renderer->style().textDecorationsInEffect() & TextDecorationUnderline;
+    return m_renderer->style().textDecorationsInEffect().contains(TextDecoration::Underline);
 }
 
 String AccessibilityRenderObject::nameForMSAA() const
@@ -3657,7 +3677,7 @@ String AccessibilityRenderObject::positionalDescriptionForMSAA() const
     // See "positional descriptions",
     // https://wiki.mozilla.org/Accessibility/AT-Windows-API
     if (isHeading())
-        return "L" + String::number(headingLevel());
+        return makeString('L', headingLevel());
 
     // FIXME: Add positional descriptions for other elements.
     return String();

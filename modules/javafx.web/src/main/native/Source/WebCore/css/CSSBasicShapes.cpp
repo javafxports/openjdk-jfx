@@ -28,7 +28,6 @@
  */
 
 #include "config.h"
-
 #include "CSSBasicShapes.h"
 
 #include "CSSMarkup.h"
@@ -39,9 +38,7 @@
 #include "SVGPathUtilities.h"
 #include <wtf/text/StringBuilder.h>
 
-
 namespace WebCore {
-using namespace WTF;
 
 static String serializePositionOffset(const Pair& offset, const Pair& other)
 {
@@ -211,7 +208,7 @@ CSSBasicShapePath::CSSBasicShapePath(std::unique_ptr<SVGPathByteStream>&& pathDa
 static String buildPathString(const WindRule& windRule, const String& path, const String& box)
 {
     StringBuilder result;
-    if (windRule == RULE_EVENODD)
+    if (windRule == WindRule::EvenOdd)
         result.appendLiteral("path(evenodd, ");
     else
         result.appendLiteral("path(");
@@ -265,7 +262,7 @@ static String buildPolygonString(const WindRule& windRule, const Vector<String>&
 
     result.reserveCapacity(length);
 
-    if (windRule == RULE_EVENODD)
+    if (windRule == WindRule::EvenOdd)
         result.appendLiteral(evenOddOpening);
     else
         result.appendLiteral(nonZeroOpening);
@@ -365,7 +362,7 @@ static String buildInsetString(const String& top, const String& right, const Str
             }
 
             if (verticalRadii.size() != horizontalRadii.size()
-                || !VectorComparer<false, String>::compare(verticalRadii.data(), horizontalRadii.data(), verticalRadii.size())) {
+                || !WTF::VectorComparer<false, String>::compare(verticalRadii.data(), horizontalRadii.data(), verticalRadii.size())) {
                 result.appendLiteral(separator);
                 result.appendLiteral("/");
 
@@ -386,7 +383,7 @@ static inline void updateCornerRadiusWidthAndHeight(CSSPrimitiveValue* corner, S
         return;
 
     Pair* radius = corner->pairValue();
-    width = radius->first() ? radius->first()->cssText() : String("0");
+    width = radius->first() ? radius->first()->cssText() : "0"_str;
     if (radius->second())
         height = radius->second()->cssText();
 }

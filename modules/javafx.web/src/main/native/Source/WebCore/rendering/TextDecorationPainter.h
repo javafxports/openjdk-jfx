@@ -41,16 +41,14 @@ class TextRun;
 
 class TextDecorationPainter {
 public:
-    // FIXME: Make decorations an OptionSet<TextDecoration>. See <https://bugs.webkit.org/show_bug.cgi?id=176844>.
     struct Styles;
-    TextDecorationPainter(GraphicsContext&, unsigned decorations, const RenderText&, bool isFirstLine, std::optional<Styles> = std::nullopt);
+    TextDecorationPainter(GraphicsContext&, OptionSet<TextDecoration> decorations, const RenderText&, bool isFirstLine, const FontCascade&, Optional<Styles> = WTF::nullopt);
 
     void setInlineTextBox(const InlineTextBox* inlineTextBox) { m_inlineTextBox = inlineTextBox; }
-    void setFont(const FontCascade& font) { m_font = &font; }
     void setIsHorizontal(bool isHorizontal) { m_isHorizontal = isHorizontal; }
     void setWidth(float width) { m_width = width; }
-    void setBaseline(float baseline) { m_baseline = baseline; }
-    void addTextShadow(const ShadowData* textShadow) { m_shadow = textShadow; }
+    void setTextShadow(const ShadowData* textShadow) { m_shadow = textShadow; }
+    void setShadowColorFilter(const FilterOperations* colorFilter) { m_shadowColorFilter = colorFilter; }
 
     void paintTextDecoration(const TextRun&, const FloatPoint& textOrigin, const FloatPoint& boxOrigin);
 
@@ -65,21 +63,20 @@ public:
         TextDecorationStyle overlineStyle;
         TextDecorationStyle linethroughStyle;
     };
-    // FIXME: Make requestedDecorations an OptionSet<TextDecoration>. See <https://bugs.webkit.org/show_bug.cgi?id=176844>.
-    static Styles stylesForRenderer(const RenderObject&, unsigned requestedDecorations, bool firstLineStyle = false, PseudoId = NOPSEUDO);
+    static Styles stylesForRenderer(const RenderObject&, OptionSet<TextDecoration> requestedDecorations, bool firstLineStyle = false, PseudoId = PseudoId::None);
 
 private:
     GraphicsContext& m_context;
     OptionSet<TextDecoration> m_decorations;
     float m_wavyOffset;
     float m_width { 0 };
-    float m_baseline { 0 };
     FloatPoint m_boxOrigin;
     bool m_isPrinting;
     bool m_isHorizontal { true };
     const ShadowData* m_shadow { nullptr };
+    const FilterOperations* m_shadowColorFilter { nullptr };
     const InlineTextBox* m_inlineTextBox { nullptr };
-    const FontCascade* m_font { nullptr };
+    const FontCascade& m_font;
 
     Styles m_styles;
     const RenderStyle& m_lineStyle;

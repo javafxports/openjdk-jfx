@@ -29,13 +29,13 @@
 #include "CompositionEvent.h"
 #include "EventContext.h"
 #include "EventPath.h"
+#include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
 #include "HTMLInputElement.h"
 #include "InputEvent.h"
 #include "KeyboardEvent.h"
 #include "Logging.h"
-#include "MainFrame.h"
 #include "MouseEvent.h"
 #include "ScopedEventQueue.h"
 #include "ScriptDisallowedScope.h"
@@ -75,26 +75,21 @@ static void callDefaultEventHandlersInBubblingOrder(Event& event, const EventPat
 
 static void dispatchEventInDOM(Event& event, const EventPath& path)
 {
-    // Trigger capturing event handlers, starting at the top and working our way down.
-    event.setEventPhase(Event::CAPTURING_PHASE);
-
-    for (size_t i = path.size() - 1; i > 0; --i) {
-        const EventContext& eventContext = path.contextAt(i);
+    // Invoke capturing event listeners in the reverse order.
+    for (size_t i = path.size(); i > 0; --i) {
+        const EventContext& eventContext = path.contextAt(i - 1);
         if (eventContext.currentTarget() == eventContext.target())
-            continue;
-        eventContext.handleLocalEvents(event);
+            event.setEventPhase(Event::AT_TARGET);
+        else
+            event.setEventPhase(Event::CAPTURING_PHASE);
+        eventContext.handleLocalEvents(event, EventTarget::EventInvokePhase::Capturing);
         if (event.propagationStopped())
             return;
     }
 
-    event.setEventPhase(Event::AT_TARGET);
-    path.contextAt(0).handleLocalEvents(event);
-    if (event.propagationStopped())
-        return;
-
-    // Trigger bubbling event handlers, starting at the bottom and working our way up.
+    // Invoke bubbling event listeners.
     size_t size = path.size();
-    for (size_t i = 1; i < size; ++i) {
+    for (size_t i = 0; i < size; ++i) {
         const EventContext& eventContext = path.contextAt(i);
         if (eventContext.currentTarget() == eventContext.target())
             event.setEventPhase(Event::AT_TARGET);
@@ -102,7 +97,7 @@ static void dispatchEventInDOM(Event& event, const EventPath& path)
             event.setEventPhase(Event::BUBBLING_PHASE);
         else
             continue;
-        eventContext.handleLocalEvents(event);
+        eventContext.handleLocalEvents(event, EventTarget::EventInvokePhase::Bubbling);
         if (event.propagationStopped())
             return;
     }
@@ -141,6 +136,8 @@ void EventDispatcher::dispatchEvent(Node& node, Event& event)
 
     ChildNodesLazySnapshot::takeChildNodesLazySnapshot();
 
+    event.resetBeforeDispatch();
+
     event.setTarget(EventPath::eventTargetRespectingTargetRules(node));
     if (!event.target())
         return;
@@ -165,7 +162,7 @@ void EventDispatcher::dispatchEvent(Node& node, Event& event)
     // Call default event handlers. While the DOM does have a concept of preventing
     // default handling, the detail of which handlers are called is an internal
     // implementation detail and not part of the DOM.
-    if (!event.defaultPrevented() && !event.defaultHandled()) {
+    if (!event.defaultPrevented() && !event.defaultHandled() && !event.isDefaultEventHandlerIgnored()) {
         // FIXME: Not clear why we need to reset the target for the default event handlers.
         // We should research this, and remove this code if possible.
         auto* finalTarget = event.target();
@@ -175,7 +172,8 @@ void EventDispatcher::dispatchEvent(Node& node, Event& event)
     }
 }
 
-void EventDispatcher::dispatchEvent(const Vector<EventTarget*>& targets, Event& event)
+template<typename T>
+static void dispatchEventWithType(const Vector<T*>& targets, Event& event)
 {
     ASSERT(targets.size() >= 1);
     ASSERT(*targets.begin());
@@ -183,8 +181,19 @@ void EventDispatcher::dispatchEvent(const Vector<EventTarget*>& targets, Event& 
     EventPath eventPath { targets };
     event.setTarget(*targets.begin());
     event.setEventPath(eventPath);
+    event.resetBeforeDispatch();
     dispatchEventInDOM(event, eventPath);
     event.resetAfterDispatch();
+}
+
+void EventDispatcher::dispatchEvent(const Vector<EventTarget*>& targets, Event& event)
+{
+    dispatchEventWithType<EventTarget>(targets, event);
+}
+
+void EventDispatcher::dispatchEvent(const Vector<Element*>& targets, Event& event)
+{
+    dispatchEventWithType<Element>(targets, event);
 }
 
 }

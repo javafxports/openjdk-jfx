@@ -43,10 +43,7 @@
 
 namespace WebCore {
 
-// We can't use String::format for two reasons:
-//  1) It doesn't handle non-ASCII characters in the format string.
-//  2) It doesn't handle the %2$d syntax.
-// Note that because |format| is used as the second parameter to va_start, it cannot be a reference
+// Because |format| is used as the second parameter to va_start, it cannot be a reference
 // type according to section 18.7/3 of the C++ N1905 standard.
 String formatLocalizedString(String format, ...)
 {
@@ -54,14 +51,9 @@ String formatLocalizedString(String format, ...)
     va_list arguments;
     va_start(arguments, format);
 
-#if COMPILER(CLANG)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wformat-nonliteral"
-#endif
+    ALLOW_NONLITERAL_FORMAT_BEGIN
     auto result = adoptCF(CFStringCreateWithFormatAndArguments(0, 0, format.createCFString().get(), arguments));
-#if COMPILER(CLANG)
-#pragma clang diagnostic pop
-#endif
+    ALLOW_NONLITERAL_FORMAT_END
 
     va_end(arguments);
     return result.get();
@@ -76,6 +68,15 @@ String formatLocalizedString(String format, ...)
     return format;
 #endif
 }
+
+#if !USE(CF)
+
+String localizedString(const char* key)
+{
+    return String::fromUTF8(key, strlen(key));
+}
+
+#endif
 
 #if ENABLE(CONTEXT_MENUS)
 
@@ -382,12 +383,12 @@ String contextMenuItemTagToggleMediaLoop()
 
 String contextMenuItemTagEnterVideoFullscreen()
 {
-    return WEB_UI_STRING("Enter Full Screen", "Video Enter Fullscreen context menu item");
+    return WEB_UI_STRING("Enter Full Screen", "Video Enter Full Screen context menu item");
 }
 
 String contextMenuItemTagExitVideoFullscreen()
 {
-    return WEB_UI_STRING_KEY("Exit Full Screen", "Exit Full Screen (context menu)", "Video Exit Fullscreen context menu item");
+    return WEB_UI_STRING_KEY("Exit Full Screen", "Exit Full Screen (context menu)", "Video Exit Full Screen context menu item");
 }
 #endif
 
@@ -411,9 +412,16 @@ String contextMenuItemTagInspectElement()
     return WEB_UI_STRING_WITH_MNEMONIC("Inspect Element", "Inspect _Element", "Inspect Element context menu item");
 }
 
+#if !PLATFORM(COCOA)
+String contextMenuItemTagSearchWeb()
+{
+    return WEB_UI_STRING_WITH_MNEMONIC("Search the Web", "_Search the Web", "Search the Web context menu item");
+}
+#endif
+
 #endif // ENABLE(CONTEXT_MENUS)
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 String searchMenuNoRecentSearchesText()
 {
@@ -430,7 +438,7 @@ String searchMenuClearRecentSearchesText()
     return WEB_UI_STRING("Clear Recent Searches", "menu item in Recent Searches menu that empties menu's contents");
 }
 
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
 
 String AXWebAreaText()
 {
@@ -455,6 +463,11 @@ String AXImageMapText()
 String AXHeadingText()
 {
     return WEB_UI_STRING("heading", "accessibility role description for headings");
+}
+
+String AXColorWellText()
+{
+    return WEB_UI_STRING("color well", "accessibility role description for a color well");
 }
 
 String AXDefinitionText()
@@ -617,27 +630,27 @@ String AXListItemActionVerb()
 
 String AXAutoFillCredentialsLabel()
 {
-    return WEB_UI_STRING("password auto fill", "Label for the auto fill credentials button inside a text field.");
+    return WEB_UI_STRING("password AutoFill", "Label for the AutoFill credentials button inside a text field.");
 }
 
 String AXAutoFillContactsLabel()
 {
-    return WEB_UI_STRING("contact info auto fill", "Label for the auto fill contacts button inside a text field.");
+    return WEB_UI_STRING("contact info AutoFill", "Label for the AutoFill contacts button inside a text field.");
 }
 
 String AXAutoFillStrongPasswordLabel()
 {
-    return WEB_UI_STRING("strong password auto fill", "Label for the strong password auto fill button inside a text field.");
+    return WEB_UI_STRING("strong password AutoFill", "Label for the strong password AutoFill button inside a text field.");
 }
 
-String AXAutoFillStrongConfirmationPasswordLabel()
+String AXAutoFillCreditCardLabel()
 {
-    return WEB_UI_STRING("strong confirmation password auto fill", "Label for the strong confirmation password auto fill button inside a text field.");
+    return WEB_UI_STRING("credit card AutoFill", "Label for the credit card AutoFill button inside a text field.");
 }
 
 String autoFillStrongPasswordLabel()
 {
-    return WEB_UI_STRING("strong password", "Label for strong password.");
+    return WEB_UI_STRING("Strong Password", "Label for strong password.");
 }
 
 String missingPluginText()
@@ -658,6 +671,11 @@ String blockedPluginByContentSecurityPolicyText()
 String insecurePluginVersionText()
 {
     return WEB_UI_STRING_KEY("Blocked Plug-in", "Blocked Plug-In (Insecure plug-in)", "Label text to be used when an insecure plug-in version was blocked from loading");
+}
+
+String unsupportedPluginText()
+{
+    return WEB_UI_STRING_KEY("Unsupported Plug-in", "Unsupported Plug-In", "Label text to be used when an unsupported plug-in was blocked from loading");
 }
 
 String multipleFileUploadText(unsigned numberOfFiles)
@@ -784,7 +802,7 @@ String localizedMediaControlElementHelpText(const String& name)
     if (name == "SeekForwardButton")
         return WEB_UI_STRING("seek quickly forward", "accessibility help text for fast forward button");
     if (name == "FullscreenButton")
-        return WEB_UI_STRING("Play movie in fullscreen mode", "accessibility help text for enter fullscreen button");
+        return WEB_UI_STRING("Play movie in full screen mode", "accessibility help text for enter full screen button");
     if (name == "ShowClosedCaptionsButton")
         return WEB_UI_STRING("start displaying closed captions", "accessibility help text for show closed captions button");
     if (name == "HideClosedCaptionsButton")
@@ -1009,7 +1027,7 @@ String useBlockedPlugInContextMenuTitle()
     return formatLocalizedString(WEB_UI_STRING("Show in blocked plug-in", "Title of the context menu item to show when PDFPlugin was used instead of a blocked plugin"));
 }
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 String webCryptoMasterKeyKeychainLabel(const String& localizedApplicationName)
 {
@@ -1029,11 +1047,21 @@ String webCryptoMasterKeyKeychainComment()
 
 #endif
 
-#if ENABLE(EXTRA_ZOOM_MODE)
+#if PLATFORM(WATCHOS)
+
+String numberPadOKButtonTitle()
+{
+    return WEB_UI_STRING_KEY("OK", "OK (OK button title in extra zoomed number pad)", "Title of the OK button for the number pad in zoomed form controls.");
+}
+
+String formControlDoneButtonTitle()
+{
+    return WEB_UI_STRING("Done", "Title of the Done button for zoomed form controls.");
+}
 
 String formControlCancelButtonTitle()
 {
-    return WEB_UI_STRING("Cancel", "Title of the Cancel button for zoomed form controls.");
+    return WEB_UI_STRING("Cancel", "Cancel");
 }
 
 String formControlHideButtonTitle()
@@ -1051,16 +1079,33 @@ String formControlSearchButtonTitle()
     return WEB_UI_STRING("Search", "Title of the Search button for zoomed form controls.");
 }
 
-String textInputModeWriteButton()
+String datePickerSetButtonTitle()
 {
-    return WEB_UI_STRING("Write", "Title of the writing button for zoomed form controls.");
+    return WEB_UI_STRING_KEY("Set", "Set (Button below date picker for extra zoom mode)", "Set button below date picker");
 }
 
-String textInputModeSpeechButton()
+String datePickerDayLabelTitle()
 {
-    return WEB_UI_STRING("Speak", "Title of the dictation button for zoomed form controls.");
+    return WEB_UI_STRING_KEY("DAY", "DAY (Date picker for extra zoom mode)", "Day label in date picker");
 }
 
+String datePickerMonthLabelTitle()
+{
+    return WEB_UI_STRING_KEY("MONTH", "MONTH (Date picker for extra zoom mode)", "Month label in date picker");
+}
+
+String datePickerYearLabelTitle()
+{
+    return WEB_UI_STRING_KEY("YEAR", "YEAR (Date picker for extra zoom mode)", "Year label in date picker");
+}
+
+#endif
+
+#if USE(SOUP)
+String unacceptableTLSCertificate()
+{
+    return WEB_UI_STRING("Unacceptable TLS certificate", "Unacceptable TLS certificate error");
+}
 #endif
 
 } // namespace WebCore

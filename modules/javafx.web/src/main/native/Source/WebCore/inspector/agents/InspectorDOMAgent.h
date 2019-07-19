@@ -31,6 +31,7 @@
 
 #include "EventTarget.h"
 #include "InspectorWebAgentBase.h"
+#include "Timer.h"
 #include <JavaScriptCore/InspectorBackendDispatchers.h>
 #include <JavaScriptCore/InspectorFrontendDispatchers.h>
 #include <wtf/HashMap.h>
@@ -63,6 +64,9 @@ class Frame;
 class InspectorHistory;
 class InspectorOverlay;
 class InspectorPageAgent;
+#if ENABLE(VIDEO)
+class HTMLMediaElement;
+#endif
 class HitTestResult;
 class Node;
 class PseudoElement;
@@ -72,7 +76,6 @@ class ShadowRoot;
 struct HighlightConfig;
 
 typedef String ErrorString;
-typedef int BackendNodeId;
 
 struct EventListenerInfo {
     EventListenerInfo(Node* node, const AtomicString& eventType, EventListenerVector&& eventListenerVector)
@@ -123,8 +126,11 @@ public:
     void setOuterHTML(ErrorString&, int nodeId, const String& outerHTML) override;
     void insertAdjacentHTML(ErrorString&, int nodeId, const String& position, const String& html) override;
     void setNodeValue(ErrorString&, int nodeId, const String& value) override;
+    void getSupportedEventNames(ErrorString&, RefPtr<JSON::ArrayOf<String>>& eventNames) override;
     void getEventListenersForNode(ErrorString&, int nodeId, const WTF::String* objectGroup, RefPtr<JSON::ArrayOf<Inspector::Protocol::DOM::EventListener>>& listenersArray) override;
     void setEventListenerDisabled(ErrorString&, int eventListenerId, bool disabled) override;
+    void setBreakpointForEventListener(ErrorString&, int eventListenerId) override;
+    void removeBreakpointForEventListener(ErrorString&, int eventListenerId) override;
     void getAccessibilityPropertiesForNode(ErrorString&, int nodeId, RefPtr<Inspector::Protocol::DOM::AccessibilityProperties>& axProperties) override;
     void performSearch(ErrorString&, const String& whitespaceTrimmedQuery, const JSON::Array* nodeIds, String* searchId, int* resultCount) override;
     void getSearchResults(ErrorString&, const String& searchId, int fromIndex, int toIndex, RefPtr<JSON::ArrayOf<int>>&) override;
@@ -134,8 +140,6 @@ public:
     void setInspectModeEnabled(ErrorString&, bool enabled, const JSON::Object* highlightConfig) override;
     void requestNode(ErrorString&, const String& objectId, int* nodeId) override;
     void pushNodeByPathToFrontend(ErrorString&, const String& path, int* nodeId) override;
-    void pushNodeByBackendIdToFrontend(ErrorString&, BackendNodeId, int* nodeId) override;
-    void releaseBackendNodeIds(ErrorString&, const String& nodeGroup) override;
     void hideHighlight(ErrorString&) override;
     void highlightRect(ErrorString&, int x, int y, int width, int height, const JSON::Object* color, const JSON::Object* outlineColor, const bool* usePageCoordinates) override;
     void highlightQuad(ErrorString&, const JSON::Array& quad, const JSON::Object* color, const JSON::Object* outlineColor, const bool* usePageCoordinates) override;
@@ -154,6 +158,8 @@ public:
 
 
     // InspectorInstrumentation
+    int identifierForNode(Node&);
+    void addEventListenersToNode(Node&);
     void didInsertDOMNode(Node&);
     void didRemoveDOMNode(Node&);
     void willModifyDOMAttr(Element&, const AtomicString& oldValue, const AtomicString& newValue);
@@ -172,11 +178,11 @@ public:
     void didAddEventListener(EventTarget&);
     void willRemoveEventListener(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
     bool isEventListenerDisabled(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
+    void eventDidResetAfterDispatch(const Event&);
 
     // Callbacks that don't directly correspond to an instrumentation entry point.
     void setDocument(Document*);
     void releaseDanglingNodes();
-    void mainFrameDOMContentLoaded();
 
     void styleAttributeInvalidated(const Vector<Element*>& elements);
 
@@ -184,7 +190,6 @@ public:
     Node* nodeForId(int nodeId);
     int boundNodeId(const Node*);
     void setDOMListener(DOMListener*);
-    BackendNodeId backendNodeIdForNode(Node*, const String& nodeGroup);
 
     static String documentURLString(Document*);
 
@@ -214,7 +219,14 @@ public:
     // Methods called from other agents.
     InspectorPageAgent* pageAgent() { return m_pageAgent; }
 
+    bool hasBreakpointForEventListener(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
+    int idForEventListener(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
+
 private:
+#if ENABLE(VIDEO)
+    void mediaMetricsTimerFired();
+#endif
+
     void highlightMousedOverNode();
     void setSearchingForNode(ErrorString&, bool enabled, const JSON::Object* highlightConfig);
     std::unique_ptr<HighlightConfig> highlightConfigFromInspectorObject(ErrorString&, const JSON::Object* highlightInspectorObject);
@@ -234,9 +246,9 @@ private:
     Ref<JSON::ArrayOf<String>> buildArrayForElementAttributes(Element*);
     Ref<JSON::ArrayOf<Inspector::Protocol::DOM::Node>> buildArrayForContainerChildren(Node* container, int depth, NodeToIdMap* nodesMap);
     RefPtr<JSON::ArrayOf<Inspector::Protocol::DOM::Node>> buildArrayForPseudoElements(const Element&, NodeToIdMap* nodesMap);
-    Ref<Inspector::Protocol::DOM::EventListener> buildObjectForEventListener(const RegisteredEventListener&, int identifier, const AtomicString& eventType, Node*, const String* objectGroupId, bool disabled = false);
+    Ref<Inspector::Protocol::DOM::EventListener> buildObjectForEventListener(const RegisteredEventListener&, int identifier, const AtomicString& eventType, Node*, const String* objectGroupId, bool disabled, bool hasBreakpoint);
     RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> buildObjectForAccessibilityProperties(Node*);
-    void processAccessibilityChildren(RefPtr<AccessibilityObject>&&, RefPtr<JSON::ArrayOf<int>>&&);
+    void processAccessibilityChildren(AccessibilityObject&, JSON::ArrayOf<int>&);
 
     Node* nodeForPath(const String& path);
     Node* nodeForObjectId(const String& objectId);
@@ -253,16 +265,12 @@ private:
     InspectorOverlay* m_overlay { nullptr };
     DOMListener* m_domListener { nullptr };
     NodeToIdMap m_documentNodeToIdMap;
-    typedef HashMap<RefPtr<Node>, BackendNodeId> NodeToBackendIdMap;
-    HashMap<String, NodeToBackendIdMap> m_nodeGroupToBackendIdMap;
     // Owns node mappings for dangling nodes.
     Vector<std::unique_ptr<NodeToIdMap>> m_danglingNodeToIdMaps;
     HashMap<int, Node*> m_idToNode;
     HashMap<int, NodeToIdMap*> m_idToNodesMap;
     HashSet<int> m_childrenRequested;
-    HashMap<BackendNodeId, std::pair<Node*, String>> m_backendIdToNode;
     int m_lastNodeId { 1 };
-    BackendNodeId m_lastBackendNodeId { -1 };
     RefPtr<Document> m_document;
     typedef HashMap<String, Vector<RefPtr<Node>>> SearchResults;
     SearchResults m_searchResults;
@@ -276,25 +284,62 @@ private:
     bool m_suppressAttributeModifiedEvent { false };
     bool m_documentRequested { false };
 
-    struct InspectorEventListener {
-        int identifier { 1 };
-        RefPtr<EventTarget> eventTarget;
-        AtomicString eventType;
-        bool useCapture { false };
-        bool disabled { false };
+#if ENABLE(VIDEO)
+    Timer m_mediaMetricsTimer;
+    struct MediaMetrics {
+        unsigned displayCompositedFrames { 0 };
+        bool isLowPower { false };
 
-        InspectorEventListener() { }
+        MediaMetrics() { }
 
-        InspectorEventListener(int identifier, EventTarget& eventTarget, const AtomicString& eventType, bool useCapture)
-            : identifier(identifier)
-            , eventTarget(&eventTarget)
-            , eventType(eventType)
-            , useCapture(useCapture)
+        MediaMetrics(unsigned displayCompositedFrames)
+            : displayCompositedFrames(displayCompositedFrames)
         {
         }
     };
 
-    HashMap<EventListener*, InspectorEventListener> m_eventListenerEntries;
+    // The pointer key for this map should not be used for anything other than matching.
+    HashMap<HTMLMediaElement*, MediaMetrics> m_mediaMetrics;
+#endif
+
+    struct InspectorEventListener {
+        int identifier { 1 };
+        RefPtr<EventTarget> eventTarget;
+        RefPtr<EventListener> eventListener;
+        AtomicString eventType;
+        bool useCapture { false };
+        bool disabled { false };
+        bool hasBreakpoint { false };
+
+        InspectorEventListener() { }
+
+        InspectorEventListener(int identifier, EventTarget& target, const AtomicString& type, EventListener& listener, bool capture)
+            : identifier(identifier)
+            , eventTarget(&target)
+            , eventListener(&listener)
+            , eventType(type)
+            , useCapture(capture)
+        {
+        }
+
+        bool matches(EventTarget& target, const AtomicString& type, EventListener& listener, bool capture)
+        {
+            if (eventTarget.get() != &target)
+                return false;
+            if (eventListener.get() != &listener)
+                return false;
+            if (eventType != type)
+                return false;
+            if (useCapture != capture)
+                return false;
+            return true;
+        }
+    };
+
+    friend class EventFiredCallback;
+
+    HashSet<const Event*> m_dispatchedEvents;
+    HashMap<int, InspectorEventListener> m_eventListenerEntries;
     int m_lastEventListenerId { 1 };
 };
 

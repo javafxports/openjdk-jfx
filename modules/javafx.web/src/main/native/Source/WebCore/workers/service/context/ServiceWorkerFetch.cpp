@@ -43,20 +43,32 @@ namespace WebCore {
 
 namespace ServiceWorkerFetch {
 
-static void processResponse(Ref<Client>&& client, FetchResponse* response)
+static void processResponse(Ref<Client>&& client, Expected<Ref<FetchResponse>, ResourceError>&& result)
 {
-    if (!response) {
-        client->didFail();
+    if (!result.has_value()) {
+        client->didFail(result.error());
         return;
     }
-    auto protectedResponse = makeRef(*response);
+    auto response = WTFMove(result.value());
 
-    client->didReceiveResponse(response->resourceResponse());
+    auto loadingError = response->loadingError();
+    if (!loadingError.isNull()) {
+        client->didFail(loadingError);
+        return;
+    }
+
+    auto resourceResponse = response->resourceResponse();
+    if (resourceResponse.isRedirection() && resourceResponse.httpHeaderFields().contains(HTTPHeaderName::Location)) {
+        client->didReceiveRedirection(resourceResponse);
+        return;
+    }
+
+    client->didReceiveResponse(resourceResponse);
 
     if (response->isBodyReceivedByChunk()) {
         response->consumeBodyReceivedByChunk([client = WTFMove(client)] (auto&& result) mutable {
             if (result.hasException()) {
-                client->didFail();
+                client->didFail(FetchEvent::createResponseError(URL { }, result.exception().message()));
                 return;
             }
 
@@ -79,7 +91,7 @@ static void processResponse(Ref<Client>&& client, FetchResponse* response)
     });
 }
 
-void dispatchFetchEvent(Ref<Client>&& client, ServiceWorkerGlobalScope& globalScope, std::optional<ServiceWorkerClientIdentifier> clientId, ResourceRequest&& request, String&& referrer, FetchOptions&& options)
+void dispatchFetchEvent(Ref<Client>&& client, ServiceWorkerGlobalScope& globalScope, Optional<ServiceWorkerClientIdentifier> clientId, ResourceRequest&& request, String&& referrer, FetchOptions&& options)
 {
     auto requestHeaders = FetchHeaders::create(FetchHeaders::Guard::Immutable, HTTPHeaderMap { request.httpHeaderFields() });
 
@@ -91,7 +103,7 @@ void dispatchFetchEvent(Ref<Client>&& client, ServiceWorkerGlobalScope& globalSc
     ASSERT(globalScope.registration().active()->state() == ServiceWorkerState::Activated);
 
     auto* formData = request.httpBody();
-    std::optional<FetchBody> body;
+    Optional<FetchBody> body;
     if (formData && !formData->isEmpty()) {
         body = FetchBody::fromFormData(*formData);
         if (!body) {
@@ -103,6 +115,7 @@ void dispatchFetchEvent(Ref<Client>&& client, ServiceWorkerGlobalScope& globalSc
     if (isNavigation)
         options.redirect = FetchOptions::Redirect::Manual;
 
+    URL requestURL = request.url();
     auto fetchRequest = FetchRequest::create(globalScope, WTFMove(body), WTFMove(requestHeaders),  WTFMove(request), WTFMove(options), WTFMove(referrer));
 
     FetchEvent::Init init;
@@ -116,15 +129,15 @@ void dispatchFetchEvent(Ref<Client>&& client, ServiceWorkerGlobalScope& globalSc
     init.cancelable = true;
     auto event = FetchEvent::create(eventNames().fetchEvent, WTFMove(init), Event::IsTrusted::Yes);
 
-    event->onResponse([client = client.copyRef()] (FetchResponse* response) mutable {
-        processResponse(WTFMove(client), response);
+    event->onResponse([client = client.copyRef()] (auto&& result) mutable {
+        processResponse(WTFMove(client), WTFMove(result));
     });
 
     globalScope.dispatchEvent(event);
 
     if (!event->respondWithEntered()) {
         if (event->defaultPrevented()) {
-            client->didFail();
+            client->didFail(ResourceError { errorDomainWebKitInternal, 0, requestURL, "Fetch event was canceled"_s });
             return;
         }
         client->didNotHandle();
@@ -134,7 +147,7 @@ void dispatchFetchEvent(Ref<Client>&& client, ServiceWorkerGlobalScope& globalSc
 
     auto& registration = globalScope.registration();
     if (isNonSubresourceRequest || registration.needsUpdate())
-        registration.softUpdate();
+        registration.scheduleSoftUpdate();
 }
 
 } // namespace ServiceWorkerFetch

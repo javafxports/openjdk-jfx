@@ -30,8 +30,18 @@
 #include <wtf/Assertions.h>
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
+#include <wtf/Threading.h>
 
 namespace WebCore {
+
+class Document;
+
+enum class ReasonForSuspension {
+    JavaScriptDebuggerPaused,
+    WillDeferLoading,
+    PageCache,
+    PageWillBeSuspended,
+};
 
 class ActiveDOMObject : public ContextDestructionObserver {
 public:
@@ -50,13 +60,6 @@ public:
     // That happens in step-by-step JS debugging for example - in this case it would be incorrect
     // to stop the object. Exact semantics of suspend is up to the object in cases like that.
 
-    enum ReasonForSuspension {
-        JavaScriptDebuggerPaused,
-        WillDeferLoading,
-        PageCache,
-        PageWillBeSuspended,
-    };
-
     virtual const char* activeDOMObjectName() const = 0;
 
     // These three functions must not have a side effect of creating or destroying
@@ -70,18 +73,18 @@ public:
     // It can, however, have a side effect of deleting an ActiveDOMObject.
     virtual void stop();
 
-    template<class T> void setPendingActivity(T* thisObject)
+    template<typename T> void setPendingActivity(T& thisObject)
     {
-        ASSERT(thisObject == this);
-        thisObject->ref();
+        ASSERT(&thisObject == this);
+        thisObject.ref();
         ++m_pendingActivityCount;
     }
 
-    template<class T> void unsetPendingActivity(T* thisObject)
+    template<typename T> void unsetPendingActivity(T& thisObject)
     {
         ASSERT(m_pendingActivityCount > 0);
         --m_pendingActivityCount;
-        thisObject->deref();
+        thisObject.deref();
     }
 
     template<class T>
@@ -109,14 +112,19 @@ public:
         return adoptRef(*new PendingActivity<T>(thisObject));
     }
 
+    bool isContextStopped() const;
+
 protected:
     explicit ActiveDOMObject(ScriptExecutionContext*);
+    explicit ActiveDOMObject(Document*) = delete;
+    explicit ActiveDOMObject(Document&); // Implemented in Document.h
     virtual ~ActiveDOMObject();
 
 private:
     unsigned m_pendingActivityCount;
 #if !ASSERT_DISABLED
     bool m_suspendIfNeededWasCalled;
+    Ref<Thread> m_creationThread { Thread::current() };
 #endif
 };
 

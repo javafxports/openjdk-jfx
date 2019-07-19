@@ -64,7 +64,7 @@ ServiceWorker::ServiceWorker(ScriptExecutionContext& context, ServiceWorkerData&
     relaxAdoptionRequirement();
     updatePendingActivityForEventDispatch();
 
-    WORKER_RELEASE_LOG_IF_ALLOWED("ServiceWorker: ID: %llu, state: %u", identifier().toUInt64(), m_data.state);
+    WORKER_RELEASE_LOG_IF_ALLOWED("ServiceWorker: ID: %llu, state: %hhu", identifier().toUInt64(), m_data.state);
 }
 
 ServiceWorker::~ServiceWorker()
@@ -82,11 +82,11 @@ void ServiceWorker::scheduleTaskToUpdateState(State state)
     context->postTask([this, protectedThis = makeRef(*this), state](ScriptExecutionContext&) {
         ASSERT(this->state() != state);
 
-        WORKER_RELEASE_LOG_IF_ALLOWED("scheduleTaskToUpdateState: Updating service worker %llu state from %u to %u. Registration ID: %llu", identifier().toUInt64(), m_data.state, state, registrationIdentifier().toUInt64());
+        WORKER_RELEASE_LOG_IF_ALLOWED("scheduleTaskToUpdateState: Updating service worker %llu state from %hhu to %hhu. Registration ID: %llu", identifier().toUInt64(), m_data.state, state, registrationIdentifier().toUInt64());
         m_data.state = state;
         if (state != State::Installing && !m_isStopped) {
             ASSERT(m_pendingActivityForEventDispatch);
-            dispatchEvent(Event::create(eventNames().statechangeEvent, false, false));
+            dispatchEvent(Event::create(eventNames().statechangeEvent, Event::CanBubble::No, Event::IsCancelable::No));
         }
 
         updatePendingActivityForEventDispatch();
@@ -99,7 +99,7 @@ ExceptionOr<void> ServiceWorker::postMessage(ScriptExecutionContext& context, JS
         return Exception { InvalidStateError };
 
     if (state() == State::Redundant)
-        return Exception { InvalidStateError, ASCIILiteral("Service Worker state is redundant") };
+        return Exception { InvalidStateError, "Service Worker state is redundant"_s };
 
     // FIXME: Invoke Run Service Worker algorithm with serviceWorker as the argument.
 

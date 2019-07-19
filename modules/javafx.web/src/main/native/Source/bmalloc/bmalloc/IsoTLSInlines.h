@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,8 +25,10 @@
 
 #pragma once
 
+#include "Environment.h"
 #include "IsoHeapImpl.h"
 #include "IsoTLS.h"
+#include "bmalloc.h"
 
 namespace bmalloc {
 
@@ -80,9 +82,21 @@ void* IsoTLS::allocateFast(unsigned offset, bool abortOnFailure)
 template<typename Config, typename Type>
 BNO_INLINE void* IsoTLS::allocateSlow(api::IsoHeap<Type>& handle, bool abortOnFailure)
 {
-    auto debugMallocResult = debugMalloc(Config::objectSize);
-    if (debugMallocResult.usingDebugHeap)
-        return debugMallocResult.ptr;
+    for (;;) {
+        switch (s_mallocFallbackState) {
+        case MallocFallbackState::Undecided:
+            determineMallocFallbackState();
+            continue;
+        case MallocFallbackState::FallBackToMalloc:
+            return api::tryMalloc(Config::objectSize);
+        case MallocFallbackState::DoNotFallBack:
+            break;
+        }
+        break;
+    }
+
+    // If debug heap is enabled, s_mallocFallbackState becomes MallocFallbackState::FallBackToMalloc.
+    BASSERT(!PerProcess<Environment>::get()->isDebugHeapEnabled());
 
     IsoTLS* tls = ensureHeapAndEntries(handle);
 
@@ -111,8 +125,21 @@ void IsoTLS::deallocateFast(unsigned offset, void* p)
 template<typename Config, typename Type>
 BNO_INLINE void IsoTLS::deallocateSlow(api::IsoHeap<Type>& handle, void* p)
 {
-    if (debugFree(p))
-        return;
+    for (;;) {
+        switch (s_mallocFallbackState) {
+        case MallocFallbackState::Undecided:
+            determineMallocFallbackState();
+            continue;
+        case MallocFallbackState::FallBackToMalloc:
+            return api::free(p);
+        case MallocFallbackState::DoNotFallBack:
+            break;
+        }
+        break;
+    }
+
+    // If debug heap is enabled, s_mallocFallbackState becomes MallocFallbackState::FallBackToMalloc.
+    BASSERT(!PerProcess<Environment>::get()->isDebugHeapEnabled());
 
     RELEASE_BASSERT(handle.isInitialized());
 
@@ -145,7 +172,7 @@ template<typename Type>
 void IsoTLS::ensureHeap(api::IsoHeap<Type>& handle)
 {
     if (!handle.isInitialized()) {
-        std::lock_guard<StaticMutex> locker(handle.m_initializationLock);
+        std::lock_guard<Mutex> locker(handle.m_initializationLock);
         if (!handle.isInitialized()) {
             auto* heap = new IsoHeapImpl<typename api::IsoHeap<Type>::Config>();
             std::atomic_thread_fence(std::memory_order_seq_cst);

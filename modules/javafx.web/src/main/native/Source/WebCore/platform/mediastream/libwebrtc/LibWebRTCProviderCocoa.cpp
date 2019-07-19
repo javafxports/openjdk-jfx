@@ -28,37 +28,49 @@
 
 #if USE(LIBWEBRTC)
 
-#include "VideoToolBoxDecoderFactory.h"
-#include "VideoToolBoxEncoderFactory.h"
+#include <webrtc/media/engine/webrtcvideodecoderfactory.h>
+#include <webrtc/media/engine/webrtcvideoencoderfactory.h>
+#include <webrtc/sdk/WebKit/WebKitUtilities.h>
+#include <wtf/darwin/WeakLinking.h>
 
 namespace WebCore {
 
-std::unique_ptr<cricket::WebRtcVideoDecoderFactory> LibWebRTCProviderCocoa::createDecoderFactory()
+UniqueRef<LibWebRTCProvider> LibWebRTCProvider::create()
 {
-    ASSERT(!m_decoderFactory);
-    auto decoderFactory = std::make_unique<VideoToolboxVideoDecoderFactory>();
-    m_decoderFactory = decoderFactory.get();
-
-    return WTFMove(decoderFactory);
+    return makeUniqueRef<LibWebRTCProviderCocoa>();
 }
 
-std::unique_ptr<cricket::WebRtcVideoEncoderFactory> LibWebRTCProviderCocoa::createEncoderFactory()
+LibWebRTCProviderCocoa::~LibWebRTCProviderCocoa()
 {
-    ASSERT(!m_encoderFactory);
-    auto encoderFactory = std::make_unique<VideoToolboxVideoEncoderFactory>();
-    m_encoderFactory = encoderFactory.get();
+}
 
-    return WTFMove(encoderFactory);
+void LibWebRTCProviderCocoa::setH264HardwareEncoderAllowed(bool allowed)
+{
+    webrtc::setH264HardwareEncoderAllowed(allowed);
+}
+
+std::unique_ptr<webrtc::VideoDecoderFactory> LibWebRTCProviderCocoa::createDecoderFactory()
+{
+    auto codecSupport = m_supportsVP8 ? webrtc::WebKitCodecSupport::H264AndVP8 : webrtc::WebKitCodecSupport::H264;
+    return webrtc::createWebKitDecoderFactory(codecSupport);
+}
+
+std::unique_ptr<webrtc::VideoEncoderFactory> LibWebRTCProviderCocoa::createEncoderFactory()
+{
+    auto codecSupport = m_supportsVP8 ? webrtc::WebKitCodecSupport::H264AndVP8 : webrtc::WebKitCodecSupport::H264;
+    return webrtc::createWebKitEncoderFactory(codecSupport);
 }
 
 void LibWebRTCProviderCocoa::setActive(bool value)
 {
-    if (m_decoderFactory)
-        m_decoderFactory->setActive(value);
-    if (m_encoderFactory)
-        m_encoderFactory->setActive(value);
+    webrtc::setApplicationStatus(value);
+}
+
+bool LibWebRTCProvider::webRTCAvailable()
+{
+    return !isNullFunctionPointer(rtc::LogMessage::LogToDebug);
 }
 
 } // namespace WebCore
 
-#endif
+#endif // USE(LIBWEBRTC)

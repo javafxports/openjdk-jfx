@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 Igalia S.L.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,8 +59,14 @@ static float cpuPeriod()
     unsigned long long userTime, niceTime, systemTime, idleTime;
     unsigned long long ioWait, irq, softIrq, steal, guest, guestnice;
     ioWait = irq = softIrq = steal = guest = guestnice = 0;
-    sscanf(buffer, "cpu  %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu",
+    int retVal = sscanf(buffer, "cpu  %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu",
         &userTime, &niceTime, &systemTime, &idleTime, &ioWait, &irq, &softIrq, &steal, &guest, &guestnice);
+    // We expect 10 values to be matched by sscanf
+    if (retVal != 10) {
+        fclose(file);
+        return 0;
+    }
+
 
     // Keep parsing if we still don't know cpuCount.
     static unsigned cpuCount = 0;
@@ -143,10 +150,21 @@ static float cpuUsage()
     return clampTo<float>(usage, 0, 100);
 }
 
-void ResourceUsageThread::platformThreadBody(JSC::VM* vm, ResourceUsageData& data)
+void ResourceUsageThread::platformSaveStateBeforeStarting()
+{
+}
+
+void ResourceUsageThread::platformCollectCPUData(JSC::VM*, ResourceUsageData& data)
 {
     data.cpu = cpuUsage();
 
+    // FIXME: Exclude the ResourceUsage thread.
+    // FIXME: Exclude the SamplingProfiler thread.
+    data.cpuExcludingDebuggerThreads = data.cpu;
+}
+
+void ResourceUsageThread::platformCollectMemoryData(JSC::VM* vm, ResourceUsageData& data)
+{
     ProcessMemoryStatus memoryStatus;
     currentProcessMemoryStatus(memoryStatus);
     data.totalDirtySize = memoryStatus.resident - memoryStatus.shared;
@@ -162,8 +180,8 @@ void ResourceUsageThread::platformThreadBody(JSC::VM* vm, ResourceUsageData& dat
 
     data.totalExternalSize = currentGCOwnedExternal;
 
-    data.timeOfNextEdenCollection = vm->heap.edenActivityCallback()->nextFireTime();
-    data.timeOfNextFullCollection = vm->heap.fullActivityCallback()->nextFireTime();
+    data.timeOfNextEdenCollection = data.timestamp + vm->heap.edenActivityCallback()->timeUntilFire().valueOr(Seconds(std::numeric_limits<double>::infinity()));
+    data.timeOfNextFullCollection = data.timestamp + vm->heap.fullActivityCallback()->timeUntilFire().valueOr(Seconds(std::numeric_limits<double>::infinity()));
 }
 
 } // namespace WebCore

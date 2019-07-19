@@ -33,6 +33,8 @@
 
 namespace WebCore {
 
+class JSDOMWindow;
+
 class DeferredPromise : public DOMGuarded<JSC::JSPromiseDeferred> {
 public:
     enum class Mode {
@@ -42,7 +44,7 @@ public:
 
     static RefPtr<DeferredPromise> create(JSC::ExecState& state, JSDOMGlobalObject& globalObject, Mode mode = Mode::ClearPromiseOnResolve)
     {
-        auto* promiseDeferred = JSC::JSPromiseDeferred::create(&state, &globalObject);
+        auto* promiseDeferred = JSC::JSPromiseDeferred::tryCreate(&state, &globalObject);
         if (!promiseDeferred)
             return nullptr;
         return adoptRef(new DeferredPromise(globalObject, *promiseDeferred, mode));
@@ -132,6 +134,8 @@ public:
 
     JSC::JSValue promise() const;
 
+    void whenSettled(std::function<void()>&&);
+
 private:
     DeferredPromise(JSDOMGlobalObject& globalObject, JSC::JSPromiseDeferred& deferred, Mode mode)
         : DOMGuarded<JSC::JSPromiseDeferred>(globalObject, deferred)
@@ -142,6 +146,7 @@ private:
     JSC::JSPromiseDeferred* deferred() const { return guarded(); }
 
     WEBCORE_EXPORT void callFunction(JSC::ExecState&, JSC::JSValue function, JSC::JSValue resolution);
+
     void resolve(JSC::ExecState& state, JSC::JSValue resolution) { callFunction(state, deferred()->resolve(), resolution); }
     void reject(JSC::ExecState& state, JSC::JSValue resolution) { callFunction(state, deferred()->reject(), resolution); }
 
@@ -265,7 +270,7 @@ inline JSC::JSValue callPromiseFunction(JSC::ExecState& state)
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
     auto& globalObject = callerGlobalObject(state);
-    JSC::JSPromiseDeferred* promiseDeferred = JSC::JSPromiseDeferred::create(&state, &globalObject);
+    JSC::JSPromiseDeferred* promiseDeferred = JSC::JSPromiseDeferred::tryCreate(&state, &globalObject);
 
     // promiseDeferred can be null when terminating a Worker abruptly.
     if (executionScope == PromiseExecutionScope::WindowOrWorker && !promiseDeferred)
@@ -285,7 +290,7 @@ inline JSC::JSValue callPromiseFunction(JSC::ExecState& state, PromiseFunctor fu
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
     auto& globalObject = callerGlobalObject(state);
-    JSC::JSPromiseDeferred* promiseDeferred = JSC::JSPromiseDeferred::create(&state, &globalObject);
+    JSC::JSPromiseDeferred* promiseDeferred = JSC::JSPromiseDeferred::tryCreate(&state, &globalObject);
 
     // promiseDeferred can be null when terminating a Worker abruptly.
     if (executionScope == PromiseExecutionScope::WindowOrWorker && !promiseDeferred)

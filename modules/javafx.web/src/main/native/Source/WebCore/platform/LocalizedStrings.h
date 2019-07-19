@@ -153,7 +153,7 @@ namespace WebCore {
     WEBCORE_EXPORT String contextMenuItemTagInspectElement();
 #endif // ENABLE(CONTEXT_MENUS)
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     String searchMenuNoRecentSearchesText();
     String searchMenuRecentSearchesText();
     String searchMenuClearRecentSearchesText();
@@ -164,6 +164,7 @@ namespace WebCore {
     String AXListMarkerText();
     String AXImageMapText();
     String AXHeadingText();
+    String AXColorWellText();
     String AXDefinitionText();
     String AXDescriptionListText();
     String AXDescriptionListTermText();
@@ -216,13 +217,14 @@ namespace WebCore {
     String AXAutoFillCredentialsLabel();
     String AXAutoFillContactsLabel();
     String AXAutoFillStrongPasswordLabel();
-    String AXAutoFillStrongConfirmationPasswordLabel();
+    String AXAutoFillCreditCardLabel();
     String autoFillStrongPasswordLabel();
 
     String missingPluginText();
     String crashedPluginText();
     String blockedPluginByContentSecurityPolicyText();
     String insecurePluginVersionText();
+    String unsupportedPluginText();
 
     String multipleFileUploadText(unsigned numberOfFiles);
     String unknownFileSizeText();
@@ -237,10 +239,10 @@ namespace WebCore {
     WEBCORE_EXPORT String pdfDocumentTypeDescription();
     WEBCORE_EXPORT String postScriptDocumentTypeDescription();
     String keygenMenuItem2048();
-    String keygenKeychainItemName(const String& host);
+    WEBCORE_EXPORT String keygenKeychainItemName(const String& host);
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     String htmlSelectMultipleItems(size_t num);
     String fileButtonChooseMediaFileLabel();
     String fileButtonChooseMultipleMediaFilesLabel();
@@ -301,7 +303,7 @@ namespace WebCore {
 
     WEBCORE_EXPORT String useBlockedPlugInContextMenuTitle();
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
     String webCryptoMasterKeyKeychainLabel(const String& localizedApplicationName);
     String webCryptoMasterKeyKeychainComment();
 #endif
@@ -315,14 +317,17 @@ namespace WebCore {
     WEBCORE_EXPORT String exitFullScreenButtonAccessibilityTitle();
 #endif
 
-#if ENABLE(EXTRA_ZOOM_MODE)
+#if PLATFORM(WATCHOS)
+    WEBCORE_EXPORT String numberPadOKButtonTitle();
     WEBCORE_EXPORT String formControlCancelButtonTitle();
-    WEBCORE_EXPORT String formControlSubmitButtonTitle();
+    WEBCORE_EXPORT String formControlDoneButtonTitle();
     WEBCORE_EXPORT String formControlHideButtonTitle();
     WEBCORE_EXPORT String formControlGoButtonTitle();
     WEBCORE_EXPORT String formControlSearchButtonTitle();
-    WEBCORE_EXPORT String textInputModeWriteButton();
-    WEBCORE_EXPORT String textInputModeSpeechButton();
+    WEBCORE_EXPORT String datePickerSetButtonTitle();
+    WEBCORE_EXPORT String datePickerDayLabelTitle();
+    WEBCORE_EXPORT String datePickerMonthLabelTitle();
+    WEBCORE_EXPORT String datePickerYearLabelTitle();
 #endif
 
 #if USE(GLIB) && defined(GETTEXT_PACKAGE)

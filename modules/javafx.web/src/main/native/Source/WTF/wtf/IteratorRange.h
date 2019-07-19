@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WTF_IteratorRange_h
-#define WTF_IteratorRange_h
+#pragma once
 
 namespace WTF {
 
@@ -62,6 +61,7 @@ public:
     }
 
     auto size() const -> decltype(std::declval<Container>().size()) { return m_container.size(); }
+    bool isEmpty() const { return m_container.isEmpty(); }
     Iterator begin() const { return m_begin; }
     Iterator end() const { return m_end; }
 
@@ -78,5 +78,3 @@ SizedIteratorRange<Container, Iterator> makeSizedIteratorRange(const Container& 
 }
 
 } // namespace WTF
-
-#endif // WTF_IteratorRange_h

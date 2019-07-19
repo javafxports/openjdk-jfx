@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +32,6 @@ namespace JSC {
 
 class CodeBlock;
 class JITCode;
-class MacroAssemblerCodePtr;
 class VM;
 
 namespace DFG {
@@ -43,7 +42,7 @@ JS_EXPORT_PRIVATE unsigned getNumCompilations();
 // compile. Even if we do a synchronous compile, we call the callback with the result.
 CompilationResult compile(
     VM&, CodeBlock*, CodeBlock* profiledDFGCodeBlock, CompilationMode,
-    unsigned osrEntryBytecodeIndex, const Operands<JSValue>& mustHandleValues,
+    unsigned osrEntryBytecodeIndex, const Operands<Optional<JSValue>>& mustHandleValues,
     Ref<DeferredCompilationCallback>&&);
 
 } } // namespace JSC::DFG

@@ -104,7 +104,7 @@ static InputTypeFactoryMap createInputTypeFactoryMap()
         { nullptr, &InputTypeNames::button, &createInputType<ButtonInputType> },
         { nullptr, &InputTypeNames::checkbox, &createInputType<CheckboxInputType> },
 #if ENABLE(INPUT_TYPE_COLOR)
-        { nullptr, &InputTypeNames::color, &createInputType<ColorInputType> },
+        { &RuntimeEnabledFeatures::inputTypeColorEnabled, &InputTypeNames::color, &createInputType<ColorInputType> },
 #endif
 #if ENABLE(INPUT_TYPE_DATE)
         { &RuntimeEnabledFeatures::inputTypeDateEnabled, &InputTypeNames::date, &createInputType<DateInputType> },
@@ -533,7 +533,7 @@ String InputType::serialize(const Decimal&) const
     return String();
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 DateComponents::Type InputType::dateType() const
 {
     return DateComponents::Invalid;
@@ -566,7 +566,7 @@ bool InputType::hasCustomFocusLogic() const
     return true;
 }
 
-bool InputType::isKeyboardFocusable(KeyboardEvent& event) const
+bool InputType::isKeyboardFocusable(KeyboardEvent* event) const
 {
     ASSERT(element());
     return !element()->isReadOnly() && element()->isTextFormControlKeyboardFocusable(event);
@@ -609,29 +609,9 @@ void InputType::detach()
 {
 }
 
-void InputType::altAttributeChanged()
-{
-}
-
-void InputType::srcAttributeChanged()
-{
-}
-
-void InputType::maxResultsAttributeChanged()
-{
-}
-
 bool InputType::shouldRespectAlignAttribute()
 {
     return false;
-}
-
-void InputType::minOrMaxAttributeChanged()
-{
-}
-
-void InputType::stepAttributeChanged()
-{
 }
 
 bool InputType::canBeSuccessfulSubmitButton()
@@ -914,26 +894,6 @@ void InputType::updatePlaceholderText()
 {
 }
 
-void InputType::attributeChanged(const QualifiedName&)
-{
-}
-
-void InputType::multipleAttributeChanged()
-{
-}
-
-void InputType::disabledAttributeChanged()
-{
-}
-
-void InputType::readonlyAttributeChanged()
-{
-}
-
-void InputType::requiredAttributeChanged()
-{
-}
-
 void InputType::capsLockStateMayHaveChanged()
 {
 }
@@ -964,10 +924,10 @@ void InputType::listAttributeTargetChanged()
 {
 }
 
-std::optional<Decimal> InputType::findClosestTickMarkValue(const Decimal&)
+Optional<Decimal> InputType::findClosestTickMarkValue(const Decimal&)
 {
     ASSERT_NOT_REACHED();
-    return std::nullopt;
+    return WTF::nullopt;
 }
 #endif
 
@@ -977,6 +937,11 @@ bool InputType::matchesIndeterminatePseudoClass() const
 }
 
 bool InputType::shouldAppearIndeterminate() const
+{
+    return false;
+}
+
+bool InputType::isPresentingAttachedView() const
 {
     return false;
 }
@@ -1164,6 +1129,11 @@ Color InputType::valueAsColor() const
 
 void InputType::selectColor(StringView)
 {
+}
+
+Vector<Color> InputType::suggestedColors() const
+{
+    return { };
 }
 
 RefPtr<TextControlInnerTextElement> InputType::innerTextElement() const

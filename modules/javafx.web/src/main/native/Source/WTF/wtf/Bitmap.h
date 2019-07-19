@@ -16,8 +16,8 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
-#ifndef Bitmap_h
-#define Bitmap_h
+
+#pragma once
 
 #include <array>
 #include <wtf/Atomics.h>
@@ -34,7 +34,7 @@ class Bitmap {
 
     static_assert(sizeof(WordType) <= sizeof(unsigned), "WordType must not be bigger than unsigned");
 public:
-    Bitmap();
+    constexpr Bitmap();
 
     static constexpr size_t size()
     {
@@ -133,7 +133,7 @@ private:
 };
 
 template<size_t bitmapSize, typename WordType>
-inline Bitmap<bitmapSize, WordType>::Bitmap()
+constexpr Bitmap<bitmapSize, WordType>::Bitmap()
 {
     clearAll();
 }
@@ -420,5 +420,3 @@ inline unsigned Bitmap<bitmapSize, WordType>::hash() const
 } // namespace WTF
 
 using WTF::Bitmap;
-
-#endif

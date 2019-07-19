@@ -35,12 +35,13 @@ namespace WebCore {
 class Page;
 
 class PerformanceMonitor {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit PerformanceMonitor(Page&);
 
     void didStartProvisionalLoad();
     void didFinishLoad();
-    void activityStateChanged(ActivityState::Flags oldState, ActivityState::Flags newState);
+    void activityStateChanged(OptionSet<ActivityState::Flag> oldState, OptionSet<ActivityState::Flag> newState);
 
 private:
     void measurePostLoadCPUUsage();
@@ -55,11 +56,11 @@ private:
     Page& m_page;
 
     Timer m_postPageLoadCPUUsageTimer;
-    std::optional<CPUTime> m_postLoadCPUTime;
+    Optional<CPUTime> m_postLoadCPUTime;
     Timer m_postBackgroundingCPUUsageTimer;
-    std::optional<CPUTime> m_postBackgroundingCPUTime;
+    Optional<CPUTime> m_postBackgroundingCPUTime;
     Timer m_perActivityStateCPUUsageTimer;
-    std::optional<CPUTime> m_perActivityStateCPUTime;
+    Optional<CPUTime> m_perActivityStateCPUTime;
 
     Timer m_postPageLoadMemoryUsageTimer;
     Timer m_postBackgroundingMemoryUsageTimer;

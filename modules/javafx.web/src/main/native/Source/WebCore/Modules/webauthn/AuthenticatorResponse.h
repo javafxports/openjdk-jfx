@@ -28,27 +28,30 @@
 #if ENABLE(WEB_AUTHN)
 
 #include <JavaScriptCore/ArrayBuffer.h>
-#include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/RefCounted.h>
 #include <wtf/TypeCasts.h>
 
 namespace WebCore {
 
-class AuthenticatorResponse : public ThreadSafeRefCounted<AuthenticatorResponse> {
+class AuthenticatorResponse : public RefCounted<AuthenticatorResponse> {
 public:
     enum class Type {
         Assertion,
         Attestation
     };
 
-    explicit AuthenticatorResponse(RefPtr<ArrayBuffer>&&);
+    explicit AuthenticatorResponse(Ref<ArrayBuffer>&& clientDataJSON)
+        : m_clientDataJSON(WTFMove(clientDataJSON))
+    {
+    }
     virtual ~AuthenticatorResponse() = default;
 
     virtual Type type() const = 0;
 
-    ArrayBuffer* clientDataJSON() const;
+    ArrayBuffer* clientDataJSON() const { return m_clientDataJSON.ptr(); }
 
 private:
-    RefPtr<ArrayBuffer> m_clientDataJSON;
+    Ref<ArrayBuffer> m_clientDataJSON;
 };
 
 } // namespace WebCore

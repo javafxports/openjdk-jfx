@@ -29,16 +29,20 @@ require "x86"
 require "mips"
 require "cloop"
 
+begin
+    require "arm64e"
+rescue LoadError
+end
+
 BACKENDS =
     [
      "X86",
      "X86_WIN",
      "X86_64",
      "X86_64_WIN",
-     "ARM",
      "ARMv7",
-     "ARMv7_TRADITIONAL",
      "ARM64",
+     "ARM64E",
      "MIPS",
      "C_LOOP"
     ]
@@ -54,10 +58,9 @@ WORKING_BACKENDS =
      "X86_WIN",
      "X86_64",
      "X86_64_WIN",
-     "ARM",
      "ARMv7",
-     "ARMv7_TRADITIONAL",
      "ARM64",
+     "ARM64E",
      "MIPS",
      "C_LOOP"
     ]
@@ -79,6 +82,7 @@ def canonicalizeBackendNames(backendNames)
         backendName = backendName.upcase
         if backendName =~ /ARM.*/
             backendName.sub!(/ARMV7(S?)(.*)/) { | _ | 'ARMv7' + $1.downcase + $2 }
+            backendName = "ARM64" if backendName == "ARM64_32"
         end
         backendName = "X86" if backendName == "I386"
         newBackendNames << backendName

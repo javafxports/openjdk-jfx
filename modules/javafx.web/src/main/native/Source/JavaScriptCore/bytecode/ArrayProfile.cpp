@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,23 @@
 
 namespace JSC {
 
+#if !ASSERT_DISABLED
+const char* const ArrayProfile::s_typeName = "ArrayProfile";
+#endif
+
+// Keep in sync with the order of TypedArrayType.
+const ArrayModes typedArrayModes[NumberOfTypedArrayTypesExcludingDataView] = {
+    Int8ArrayMode,
+    Uint8ArrayMode,
+    Uint8ClampedArrayMode,
+    Int16ArrayMode,
+    Uint16ArrayMode,
+    Int32ArrayMode,
+    Uint32ArrayMode,
+    Float32ArrayMode,
+    Float64ArrayMode,
+};
+
 void dumpArrayModes(PrintStream& out, ArrayModes arrayModes)
 {
     if (!arrayModes) {
@@ -46,32 +63,38 @@ void dumpArrayModes(PrintStream& out, ArrayModes arrayModes)
     }
 
     CommaPrinter comma("|");
-    if (arrayModes & asArrayModes(NonArray))
+    if (arrayModes & asArrayModesIgnoringTypedArrays(NonArray))
         out.print(comma, "NonArray");
-    if (arrayModes & asArrayModes(NonArrayWithInt32))
+    if (arrayModes & asArrayModesIgnoringTypedArrays(NonArrayWithInt32))
         out.print(comma, "NonArrayWithInt32");
-    if (arrayModes & asArrayModes(NonArrayWithDouble))
+    if (arrayModes & asArrayModesIgnoringTypedArrays(NonArrayWithDouble))
         out.print(comma, "NonArrayWithDouble");
-    if (arrayModes & asArrayModes(NonArrayWithContiguous))
+    if (arrayModes & asArrayModesIgnoringTypedArrays(NonArrayWithContiguous))
         out.print(comma, "NonArrayWithContiguous");
-    if (arrayModes & asArrayModes(NonArrayWithArrayStorage))
+    if (arrayModes & asArrayModesIgnoringTypedArrays(NonArrayWithArrayStorage))
         out.print(comma, "NonArrayWithArrayStorage");
-    if (arrayModes & asArrayModes(NonArrayWithSlowPutArrayStorage))
+    if (arrayModes & asArrayModesIgnoringTypedArrays(NonArrayWithSlowPutArrayStorage))
         out.print(comma, "NonArrayWithSlowPutArrayStorage");
-    if (arrayModes & asArrayModes(ArrayClass))
+    if (arrayModes & asArrayModesIgnoringTypedArrays(ArrayClass))
         out.print(comma, "ArrayClass");
-    if (arrayModes & asArrayModes(ArrayWithUndecided))
+    if (arrayModes & asArrayModesIgnoringTypedArrays(ArrayWithUndecided))
         out.print(comma, "ArrayWithUndecided");
-    if (arrayModes & asArrayModes(ArrayWithInt32))
+    if (arrayModes & asArrayModesIgnoringTypedArrays(ArrayWithInt32))
         out.print(comma, "ArrayWithInt32");
-    if (arrayModes & asArrayModes(ArrayWithDouble))
+    if (arrayModes & asArrayModesIgnoringTypedArrays(ArrayWithDouble))
         out.print(comma, "ArrayWithDouble");
-    if (arrayModes & asArrayModes(ArrayWithContiguous))
+    if (arrayModes & asArrayModesIgnoringTypedArrays(ArrayWithContiguous))
         out.print(comma, "ArrayWithContiguous");
-    if (arrayModes & asArrayModes(ArrayWithArrayStorage))
+    if (arrayModes & asArrayModesIgnoringTypedArrays(ArrayWithArrayStorage))
         out.print(comma, "ArrayWithArrayStorage");
-    if (arrayModes & asArrayModes(ArrayWithSlowPutArrayStorage))
+    if (arrayModes & asArrayModesIgnoringTypedArrays(ArrayWithSlowPutArrayStorage))
         out.print(comma, "ArrayWithSlowPutArrayStorage");
+    if (arrayModes & asArrayModesIgnoringTypedArrays(CopyOnWriteArrayWithInt32))
+        out.print(comma, "CopyOnWriteArrayWithInt32");
+    if (arrayModes & asArrayModesIgnoringTypedArrays(CopyOnWriteArrayWithDouble))
+        out.print(comma, "CopyOnWriteArrayWithDouble");
+    if (arrayModes & asArrayModesIgnoringTypedArrays(CopyOnWriteArrayWithContiguous))
+        out.print(comma, "CopyOnWriteArrayWithContiguous");
 
     if (arrayModes & Int8ArrayMode)
         out.print(comma, "Int8ArrayMode");
@@ -105,11 +128,11 @@ void ArrayProfile::computeUpdatedPrediction(const ConcurrentJSLocker& locker, Co
 
 void ArrayProfile::computeUpdatedPrediction(const ConcurrentJSLocker&, CodeBlock* codeBlock, Structure* lastSeenStructure)
 {
-    m_observedArrayModes |= arrayModeFromStructure(lastSeenStructure);
+    m_observedArrayModes |= arrayModesFromStructure(lastSeenStructure);
 
     if (!m_didPerformFirstRunPruning
         && hasTwoOrMoreBitsSet(m_observedArrayModes)) {
-        m_observedArrayModes = arrayModeFromStructure(lastSeenStructure);
+        m_observedArrayModes = arrayModesFromStructure(lastSeenStructure);
         m_didPerformFirstRunPruning = true;
     }
 
@@ -121,6 +144,23 @@ void ArrayProfile::computeUpdatedPrediction(const ConcurrentJSLocker&, CodeBlock
         m_usesOriginalArrayStructures = false;
 }
 
+void ArrayProfile::observeIndexedRead(VM& vm, JSCell* cell, unsigned index)
+{
+    m_lastSeenStructureID = cell->structureID();
+
+    if (JSObject* object = jsDynamicCast<JSObject*>(vm, cell)) {
+        if (hasAnyArrayStorage(object->indexingType()) && index >= object->getVectorLength())
+            setOutOfBounds();
+        else if (index >= object->getArrayLength())
+            setOutOfBounds();
+    }
+
+    if (JSString* string = jsDynamicCast<JSString*>(vm, cell)) {
+        if (index >= string->length())
+            setOutOfBounds();
+    }
+}
+
 CString ArrayProfile::briefDescription(const ConcurrentJSLocker& locker, CodeBlock* codeBlock)
 {
     computeUpdatedPrediction(locker, codeBlock);
@@ -130,45 +170,18 @@ CString ArrayProfile::briefDescription(const ConcurrentJSLocker& locker, CodeBlo
 CString ArrayProfile::briefDescriptionWithoutUpdating(const ConcurrentJSLocker&)
 {
     StringPrintStream out;
+    CommaPrinter comma;
 
-    bool hasPrinted = false;
-
-    if (m_observedArrayModes) {
-        if (hasPrinted)
-            out.print(", ");
-        out.print(ArrayModesDump(m_observedArrayModes));
-        hasPrinted = true;
-    }
-
-    if (m_mayStoreToHole) {
-        if (hasPrinted)
-            out.print(", ");
-        out.print("Hole");
-        hasPrinted = true;
-    }
-
-    if (m_outOfBounds) {
-        if (hasPrinted)
-            out.print(", ");
-        out.print("OutOfBounds");
-        hasPrinted = true;
-    }
-
-    if (m_mayInterceptIndexedAccesses) {
-        if (hasPrinted)
-            out.print(", ");
-        out.print("Intercept");
-        hasPrinted = true;
-    }
-
-    if (m_usesOriginalArrayStructures) {
-        if (hasPrinted)
-            out.print(", ");
-        out.print("Original");
-        hasPrinted = true;
-    }
-
-    UNUSED_PARAM(hasPrinted);
+    if (m_observedArrayModes)
+        out.print(comma, ArrayModesDump(m_observedArrayModes));
+    if (m_mayStoreToHole)
+        out.print(comma, "Hole");
+    if (m_outOfBounds)
+        out.print(comma, "OutOfBounds");
+    if (m_mayInterceptIndexedAccesses)
+        out.print(comma, "Intercept");
+    if (m_usesOriginalArrayStructures)
+        out.print(comma, "Original");
 
     return out.toCString();
 }

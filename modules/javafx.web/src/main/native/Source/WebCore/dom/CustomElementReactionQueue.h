@@ -25,9 +25,16 @@
 
 #pragma once
 
+#include "GCReachableRef.h"
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
+
+namespace JSC {
+
+class ExecState;
+
+}
 
 namespace WebCore {
 
@@ -38,12 +45,13 @@ class JSCustomElementInterface;
 class QualifiedName;
 
 class CustomElementReactionQueue {
+    WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(CustomElementReactionQueue);
 public:
     CustomElementReactionQueue(JSCustomElementInterface&);
     ~CustomElementReactionQueue();
 
-    static void enqueueElementUpgrade(Element&);
+    static void enqueueElementUpgrade(Element&, bool alreadyScheduledToUpgrade);
     static void enqueueElementUpgradeIfDefined(Element&);
     static void enqueueConnectedCallbackIfNeeded(Element&);
     static void enqueueDisconnectedCallbackIfNeeded(Element&);
@@ -55,52 +63,107 @@ public:
     void invokeAll(Element&);
     void clear();
 
+    static void processBackupQueue();
+
+    class ElementQueue {
+    public:
+        void add(Element&);
+        void processQueue(JSC::ExecState*);
+
+    private:
+        void invokeAll();
+
+        Vector<GCReachableRef<Element>> m_elements;
+        bool m_invoking { false };
+    };
+
 private:
+    static void enqueueElementOnAppropriateElementQueue(Element&);
+    static ElementQueue& ensureBackupQueue();
+    static ElementQueue& backupElementQueue();
+
     Ref<JSCustomElementInterface> m_interface;
     Vector<CustomElementReactionQueueItem> m_items;
 };
 
-class CustomElementReactionStack {
+class CustomElementReactionDisallowedScope {
 public:
-    CustomElementReactionStack()
+    CustomElementReactionDisallowedScope()
+    {
+#if !ASSERT_DISABLED
+        s_customElementReactionDisallowedCount++;
+#endif
+    }
+
+    ~CustomElementReactionDisallowedScope()
+    {
+#if !ASSERT_DISABLED
+        ASSERT(s_customElementReactionDisallowedCount);
+        s_customElementReactionDisallowedCount--;
+#endif
+    }
+
+#if !ASSERT_DISABLED
+    static bool isReactionAllowed() { return !s_customElementReactionDisallowedCount; }
+#endif
+
+    class AllowedScope {
+#if !ASSERT_DISABLED
+    public:
+        AllowedScope()
+            : m_originalCount(s_customElementReactionDisallowedCount)
+        {
+            s_customElementReactionDisallowedCount = 0;
+        }
+
+        ~AllowedScope()
+        {
+            s_customElementReactionDisallowedCount = m_originalCount;
+        }
+
+    private:
+        unsigned m_originalCount;
+#endif
+    };
+
+private:
+#if !ASSERT_DISABLED
+    WEBCORE_EXPORT static unsigned s_customElementReactionDisallowedCount;
+
+    friend class AllowedScope;
+#endif
+};
+
+class CustomElementReactionStack : public CustomElementReactionDisallowedScope::AllowedScope {
+public:
+    ALWAYS_INLINE CustomElementReactionStack(JSC::ExecState* state)
         : m_previousProcessingStack(s_currentProcessingStack)
+        , m_state(state)
     {
         s_currentProcessingStack = this;
     }
 
-    ~CustomElementReactionStack()
+    ALWAYS_INLINE CustomElementReactionStack(JSC::ExecState& state)
+        : CustomElementReactionStack(&state)
+    { }
+
+    ALWAYS_INLINE ~CustomElementReactionStack()
     {
         if (UNLIKELY(m_queue))
-            processQueue();
+            processQueue(m_state);
         s_currentProcessingStack = m_previousProcessingStack;
     }
 
-    static CustomElementReactionQueue& ensureCurrentQueue(Element&);
-
-    static bool hasCurrentProcessingStack() { return s_currentProcessingStack; }
-
-    static void processBackupQueue();
-
 private:
-    class ElementQueue {
-    public:
-        void add(Element&);
-        void invokeAll();
+    WEBCORE_EXPORT void processQueue(JSC::ExecState*);
 
-    private:
-        Vector<Ref<Element>> m_elements;
-        bool m_invoking { false };
-    };
-
-    WEBCORE_EXPORT void processQueue();
-
-    static ElementQueue& ensureBackupQueue();
-    static ElementQueue& backupElementQueue();
-
-    ElementQueue* m_queue { nullptr };
+    CustomElementReactionQueue::ElementQueue* m_queue { nullptr }; // Use raw pointer to avoid generating delete in the destructor.
     CustomElementReactionStack* m_previousProcessingStack;
+    JSC::ExecState* m_state;
 
     WEBCORE_EXPORT static CustomElementReactionStack* s_currentProcessingStack;
+
+    friend CustomElementReactionQueue;
 };
 
 }

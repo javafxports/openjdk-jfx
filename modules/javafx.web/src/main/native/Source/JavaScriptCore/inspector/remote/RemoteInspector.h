@@ -27,6 +27,7 @@
 
 #if ENABLE(REMOTE_INSPECTOR)
 
+#include <utility>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
@@ -72,14 +73,22 @@ public:
             String browserVersion;
         };
 
-        virtual ~Client() { }
+        struct SessionCapabilities {
+            bool acceptInsecureCertificates { false };
+#if USE(GLIB)
+            Vector<std::pair<String, String>> certificates;
+#endif
+#if PLATFORM(COCOA)
+            Optional<bool> allowInsecureMediaCapture;
+            Optional<bool> suppressICECandidateFiltering;
+#endif
+        };
+
+        virtual ~Client();
         virtual bool remoteAutomationAllowed() const = 0;
         virtual String browserName() const { return { }; }
         virtual String browserVersion() const { return { }; }
-        virtual void requestAutomationSession(const String& sessionIdentifier) = 0;
-#if PLATFORM(COCOA)
-        virtual void requestAutomationSessionWithCapabilities(NSString *sessionIdentifier, NSDictionary *forwardedCapabilities) = 0;
-#endif
+        virtual void requestAutomationSession(const String& sessionIdentifier, const SessionCapabilities&) = 0;
     };
 
     static void startDisabled();
@@ -94,7 +103,7 @@ public:
     RemoteInspector::Client* client() const { return m_client; }
     void setClient(RemoteInspector::Client*);
     void clientCapabilitiesDidChange();
-    std::optional<RemoteInspector::Client::Capabilities> clientCapabilities() const { return m_clientCapabilities; }
+    Optional<RemoteInspector::Client::Capabilities> clientCapabilities() const { return m_clientCapabilities; }
 
     void setupFailed(unsigned targetIdentifier);
     void setupCompleted(unsigned targetIdentifier);
@@ -118,7 +127,7 @@ public:
     void updateTargetListing(unsigned targetIdentifier);
 
 #if USE(GLIB)
-    void requestAutomationSession(const char* sessionID);
+    void requestAutomationSession(const char* sessionID, const Client::SessionCapabilities&);
     void setup(unsigned targetIdentifier);
     void sendMessageToTarget(unsigned targetIdentifier, const char* message);
 #endif
@@ -197,7 +206,7 @@ private:
 #endif
 
     RemoteInspector::Client* m_client { nullptr };
-    std::optional<RemoteInspector::Client::Capabilities> m_clientCapabilities;
+    Optional<RemoteInspector::Client::Capabilities> m_clientCapabilities;
 
 #if PLATFORM(COCOA)
     dispatch_queue_t m_xpcQueue;

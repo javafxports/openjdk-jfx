@@ -32,6 +32,7 @@
 namespace WebCore {
 
 class MathMLUnderOverElement final : public MathMLScriptsElement {
+    WTF_MAKE_ISO_ALLOCATED(MathMLUnderOverElement);
 public:
     static Ref<MathMLUnderOverElement> create(const QualifiedName& tagName, Document&);
     const BooleanValue& accent();
@@ -42,8 +43,8 @@ private:
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
-    std::optional<BooleanValue> m_accent;
-    std::optional<BooleanValue> m_accentUnder;
+    Optional<BooleanValue> m_accent;
+    Optional<BooleanValue> m_accentUnder;
 };
 
 }

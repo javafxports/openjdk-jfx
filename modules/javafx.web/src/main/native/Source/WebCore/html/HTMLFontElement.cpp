@@ -31,11 +31,12 @@
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "StyleProperties.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/text/StringBuilder.h>
 
-
 namespace WebCore {
-using namespace WTF;
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLFontElement);
 
 using namespace HTMLNames;
 

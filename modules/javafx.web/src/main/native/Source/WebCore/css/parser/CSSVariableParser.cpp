@@ -31,7 +31,7 @@
 #include "CSSVariableParser.h"
 
 #include "CSSCustomPropertyValue.h"
-#include "CSSParserMode.h"
+#include "CSSParserContext.h"
 #include "CSSParserTokenRange.h"
 
 namespace WebCore {
@@ -189,8 +189,8 @@ RefPtr<CSSCustomPropertyValue> CSSVariableParser::parseDeclarationValue(const At
     if (type == CSSValueInvalid)
         return nullptr;
     if (type == CSSValueInternalVariableValue)
-        return CSSCustomPropertyValue::createWithVariableData(variableName, CSSVariableData::create(range, hasReferences || hasAtApplyRule));
-    return CSSCustomPropertyValue::createWithID(variableName, type);
+        return CSSCustomPropertyValue::createUnresolved(variableName, CSSVariableReferenceValue::create(range));
+    return CSSCustomPropertyValue::createUnresolved(variableName, type);
 }
 
 } // namespace WebCore

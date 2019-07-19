@@ -57,7 +57,7 @@ void ServiceWorkerJob::failedWithException(const Exception& exception)
     ASSERT(!m_completed);
 
     m_completed = true;
-    m_client->jobFailedWithException(*this, exception);
+    m_client.jobFailedWithException(*this, exception);
 }
 
 void ServiceWorkerJob::resolvedWithRegistration(ServiceWorkerRegistrationData&& data, ShouldNotifyWhenResolved shouldNotifyWhenResolved)
@@ -66,7 +66,7 @@ void ServiceWorkerJob::resolvedWithRegistration(ServiceWorkerRegistrationData&& 
     ASSERT(!m_completed);
 
     m_completed = true;
-    m_client->jobResolvedWithRegistration(*this, WTFMove(data), shouldNotifyWhenResolved);
+    m_client.jobResolvedWithRegistration(*this, WTFMove(data), shouldNotifyWhenResolved);
 }
 
 void ServiceWorkerJob::resolvedWithUnregistrationResult(bool unregistrationResult)
@@ -75,7 +75,7 @@ void ServiceWorkerJob::resolvedWithUnregistrationResult(bool unregistrationResul
     ASSERT(!m_completed);
 
     m_completed = true;
-    m_client->jobResolvedWithUnregistrationResult(*this, unregistrationResult);
+    m_client.jobResolvedWithUnregistrationResult(*this, unregistrationResult);
 }
 
 void ServiceWorkerJob::startScriptFetch(FetchOptions::Cache cachePolicy)
@@ -83,7 +83,7 @@ void ServiceWorkerJob::startScriptFetch(FetchOptions::Cache cachePolicy)
     ASSERT(m_creationThread.ptr() == &Thread::current());
     ASSERT(!m_completed);
 
-    m_client->startScriptFetchForJob(*this, cachePolicy);
+    m_client.startScriptFetchForJob(*this, cachePolicy);
 }
 
 void ServiceWorkerJob::fetchScriptWithContext(ScriptExecutionContext& context, FetchOptions::Cache cachePolicy)
@@ -95,10 +95,15 @@ void ServiceWorkerJob::fetchScriptWithContext(ScriptExecutionContext& context, F
     m_scriptLoader = WorkerScriptLoader::create();
 
     ResourceRequest request { m_jobData.scriptURL };
-    request.setInitiatorIdentifier("serviceWorkerScriptLoad:");
-    request.addHTTPHeaderField(ASCIILiteral("Service-Worker"), ASCIILiteral("script"));
+    request.setInitiatorIdentifier(context.resourceRequestIdentifier());
+    request.addHTTPHeaderField("Service-Worker"_s, "script"_s);
 
-    m_scriptLoader->loadAsynchronously(context, WTFMove(request), FetchOptions::Mode::SameOrigin, cachePolicy, FetchOptions::Redirect::Error, ContentSecurityPolicyEnforcement::DoNotEnforce, *this);
+    FetchOptions options;
+    options.mode = FetchOptions::Mode::SameOrigin;
+    options.cache = cachePolicy;
+    options.redirect = FetchOptions::Redirect::Error;
+    options.destination = FetchOptions::Destination::Serviceworker;
+    m_scriptLoader->loadAsynchronously(context, WTFMove(request), WTFMove(options), ContentSecurityPolicyEnforcement::DoNotEnforce, ServiceWorkersMode::None, *this);
 }
 
 void ServiceWorkerJob::didReceiveResponse(unsigned long, const ResourceResponse& response)
@@ -107,16 +112,19 @@ void ServiceWorkerJob::didReceiveResponse(unsigned long, const ResourceResponse&
     ASSERT(!m_completed);
     ASSERT(m_scriptLoader);
 
-    m_lastResponse = response;
     // Extract a MIME type from the response's header list. If this MIME type (ignoring parameters) is not a JavaScript MIME type, then:
     if (!MIMETypeRegistry::isSupportedJavaScriptMIMEType(response.mimeType())) {
-        // Invoke Reject Job Promise with job and "SecurityError" DOMException.
-        Exception exception { SecurityError, ASCIILiteral("MIME Type is not a JavaScript MIME type") };
-        // Asynchronously complete these steps with a network error.
-        ResourceError error { errorDomainWebKitInternal, 0, response.url(), ASCIILiteral("Unexpected MIME type") };
-        m_client->jobFailedLoadingScript(*this, WTFMove(error), WTFMove(exception));
+        m_scriptLoader->cancel();
         m_scriptLoader = nullptr;
+
+        // Invoke Reject Job Promise with job and "SecurityError" DOMException.
+        Exception exception { SecurityError, "MIME Type is not a JavaScript MIME type"_s };
+        // Asynchronously complete these steps with a network error.
+        ResourceError error { errorDomainWebKitInternal, 0, response.url(), "Unexpected MIME type"_s };
+        m_client.jobFailedLoadingScript(*this, WTFMove(error), WTFMove(exception));
+        return;
     }
+
     String serviceWorkerAllowed = response.httpHeaderField(HTTPHeaderName::ServiceWorkerAllowed);
     String maxScopeString;
     if (serviceWorkerAllowed.isNull()) {
@@ -127,13 +135,17 @@ void ServiceWorkerJob::didReceiveResponse(unsigned long, const ResourceResponse&
         auto maxScope = URL(m_jobData.scriptURL, serviceWorkerAllowed);
         maxScopeString = maxScope.path();
     }
+
     String scopeString = m_jobData.scopeURL.path();
-    if (!scopeString.startsWith(maxScopeString)) {
-        Exception exception { SecurityError, ASCIILiteral("Scope URL should start with the given script URL") };
-        ResourceError error { errorDomainWebKitInternal, 0, response.url(), ASCIILiteral("Scope URL should start with the given script URL") };
-        m_client->jobFailedLoadingScript(*this, WTFMove(error), WTFMove(exception));
-        m_scriptLoader = nullptr;
-    }
+    if (scopeString.startsWith(maxScopeString))
+        return;
+
+    m_scriptLoader->cancel();
+    m_scriptLoader = nullptr;
+
+    Exception exception { SecurityError, "Scope URL should start with the given script URL"_s };
+    ResourceError error { errorDomainWebKitInternal, 0, response.url(), "Scope URL should start with the given script URL"_s };
+    m_client.jobFailedLoadingScript(*this, WTFMove(error), WTFMove(exception));
 }
 
 void ServiceWorkerJob::notifyFinished()
@@ -141,15 +153,17 @@ void ServiceWorkerJob::notifyFinished()
     ASSERT(m_creationThread.ptr() == &Thread::current());
     ASSERT(m_scriptLoader);
 
-    if (!m_scriptLoader->failed())
-        m_client->jobFinishedLoadingScript(*this, m_scriptLoader->script(), m_scriptLoader->contentSecurityPolicy());
-    else {
-        auto& error =  m_scriptLoader->error();
-        ASSERT(!error.isNull());
-        m_client->jobFailedLoadingScript(*this, error, std::nullopt);
+    auto scriptLoader = WTFMove(m_scriptLoader);
+
+    if (!scriptLoader->failed()) {
+        m_client.jobFinishedLoadingScript(*this, scriptLoader->script(), scriptLoader->contentSecurityPolicy(), scriptLoader->referrerPolicy());
+        return;
     }
 
-    m_scriptLoader = nullptr;
+    auto& error = scriptLoader->error();
+    ASSERT(!error.isNull());
+
+    m_client.jobFailedLoadingScript(*this, error, Exception { error.isAccessControl() ? SecurityError : TypeError, "Script load failed"_s });
 }
 
 void ServiceWorkerJob::cancelPendingLoad()

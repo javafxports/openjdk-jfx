@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Peter Kelly (pmk@post.com)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -35,8 +35,10 @@ class Attribute;
 class MutableStyleProperties;
 class PropertySetCSSStyleDeclaration;
 class StyleProperties;
+class StylePropertyMap;
 
 class StyledElement : public Element {
+    WTF_MAKE_ISO_ALLOCATED(StyledElement);
 public:
     virtual ~StyledElement();
 
@@ -56,6 +58,9 @@ public:
     void synchronizeStyleAttributeInternal() const { StyledElement::synchronizeStyleAttributeInternal(const_cast<StyledElement*>(this)); }
 
     WEBCORE_EXPORT CSSStyleDeclaration& cssomStyle();
+#if ENABLE(CSS_TYPED_OM)
+    StylePropertyMap& ensureAttributeStyleMap();
+#endif
 
     const StyleProperties* presentationAttributeStyle() const;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) { }

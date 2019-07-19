@@ -49,9 +49,9 @@ public:
             ASSERT(m_cache);
             if (m_hasFloatsOrFragmentedFlows || !m_cachedLogicalLeftSelectionOffset) {
                 m_cachedLogicalLeftSelectionOffset = true;
-                m_logicalLeftSelectionOffset = m_block ? m_block->logicalLeftSelectionOffset(rootBlock, position, *m_cache) : LayoutUnit::fromPixel(0);
+                m_logicalLeftSelectionOffset = m_block ? m_block->logicalLeftSelectionOffset(rootBlock, position, *m_cache) : 0_lu;
             } else
-                ASSERT(m_logicalLeftSelectionOffset == (m_block ? m_block->logicalLeftSelectionOffset(rootBlock, position, *m_cache) : LayoutUnit::fromPixel(0)));
+                ASSERT(m_logicalLeftSelectionOffset == (m_block ? m_block->logicalLeftSelectionOffset(rootBlock, position, *m_cache) : 0_lu));
             return m_logicalLeftSelectionOffset;
         }
 
@@ -60,9 +60,9 @@ public:
             ASSERT(m_cache);
             if (m_hasFloatsOrFragmentedFlows || !m_cachedLogicalRightSelectionOffset) {
                 m_cachedLogicalRightSelectionOffset = true;
-                m_logicalRightSelectionOffset = m_block ? m_block->logicalRightSelectionOffset(rootBlock, position, *m_cache) : LayoutUnit::fromPixel(0);
+                m_logicalRightSelectionOffset = m_block ? m_block->logicalRightSelectionOffset(rootBlock, position, *m_cache) : 0_lu;
             } else
-                ASSERT(m_logicalRightSelectionOffset == (m_block ? m_block->logicalRightSelectionOffset(rootBlock, position, *m_cache) : LayoutUnit::fromPixel(0)));
+                ASSERT(m_logicalRightSelectionOffset == (m_block ? m_block->logicalRightSelectionOffset(rootBlock, position, *m_cache) : 0_lu));
             return m_logicalRightSelectionOffset;
         }
 
@@ -109,12 +109,12 @@ public:
 
     const ContainingBlockInfo& containingBlockInfo(RenderBlock& block) const
     {
-        EPosition position = block.style().position();
-        if (position == FixedPosition) {
+        auto position = block.style().position();
+        if (position == PositionType::Fixed) {
             ASSERT(block.containingBlock() == m_containingBlockForFixedPosition.block());
             return m_containingBlockForFixedPosition;
         }
-        if (position == AbsolutePosition) {
+        if (position == PositionType::Absolute) {
             ASSERT(block.containingBlock() == m_containingBlockForAbsolutePosition.block());
             return m_containingBlockForAbsolutePosition;
         }

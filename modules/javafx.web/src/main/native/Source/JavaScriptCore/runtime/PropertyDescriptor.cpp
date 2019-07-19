@@ -75,17 +75,10 @@ void PropertyDescriptor::setUndefined()
 GetterSetter* PropertyDescriptor::slowGetterSetter(ExecState* exec)
 {
     VM& vm = exec->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
-    GetterSetter* getterSetter = GetterSetter::create(vm, globalObject);
-    RETURN_IF_EXCEPTION(scope, nullptr);
-    if (m_getter && !m_getter.isUndefined())
-        getterSetter->setGetter(vm, globalObject, jsCast<JSObject*>(m_getter));
-    if (m_setter && !m_setter.isUndefined())
-        getterSetter->setSetter(vm, globalObject, jsCast<JSObject*>(m_setter));
-
-    return getterSetter;
+    JSValue getter = m_getter && !m_getter.isUndefined() ? jsCast<JSObject*>(m_getter) : jsUndefined();
+    JSValue setter = m_setter && !m_setter.isUndefined() ? jsCast<JSObject*>(m_setter) : jsUndefined();
+    return GetterSetter::create(vm, globalObject, getter, setter);
 }
 
 JSValue PropertyDescriptor::getter() const
@@ -116,11 +109,17 @@ void PropertyDescriptor::setDescriptor(JSValue value, unsigned attributes)
 {
     ASSERT(value);
 
-    m_attributes = attributes;
+    // We need to mask off the PropertyAttribute::CustomValue bit because
+    // PropertyDescriptor::attributesEqual() does an equivalent test on
+    // m_attributes, and a property that has a CustomValue should be indistinguishable
+    // from a property that has a normal value as far as JS code is concerned.
+    // PropertyAttribute does not need knowledge of the underlying implementation
+    // actually being a CustomValue. So, we'll just mask it off up front here.
+    m_attributes = attributes & ~PropertyAttribute::CustomValue;
     if (value.isGetterSetter()) {
         m_attributes &= ~PropertyAttribute::ReadOnly; // FIXME: we should be able to ASSERT this!
 
-        GetterSetter* accessor = asGetterSetter(value);
+        GetterSetter* accessor = jsCast<GetterSetter*>(value);
         m_getter = !accessor->isGetterNull() ? accessor->getter() : jsUndefined();
         m_setter = !accessor->isSetterNull() ? accessor->setter() : jsUndefined();
         m_seenAttributes = EnumerablePresent | ConfigurablePresent;
@@ -132,6 +131,7 @@ void PropertyDescriptor::setDescriptor(JSValue value, unsigned attributes)
 
 void PropertyDescriptor::setCustomDescriptor(unsigned attributes)
 {
+    ASSERT(!(attributes & PropertyAttribute::CustomValue));
     m_attributes = attributes | PropertyAttribute::Accessor | PropertyAttribute::CustomAccessor;
     m_attributes &= ~PropertyAttribute::ReadOnly;
     m_seenAttributes = EnumerablePresent | ConfigurablePresent;
@@ -143,6 +143,7 @@ void PropertyDescriptor::setCustomDescriptor(unsigned attributes)
 void PropertyDescriptor::setAccessorDescriptor(GetterSetter* accessor, unsigned attributes)
 {
     ASSERT(attributes & PropertyAttribute::Accessor);
+    ASSERT(!(attributes & PropertyAttribute::CustomValue));
     attributes &= ~PropertyAttribute::ReadOnly; // FIXME: we should be able to ASSERT this!
 
     m_attributes = attributes;

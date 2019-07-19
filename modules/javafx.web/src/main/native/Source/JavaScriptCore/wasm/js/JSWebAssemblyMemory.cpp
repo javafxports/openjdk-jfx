@@ -69,7 +69,7 @@ Structure* JSWebAssemblyMemory::createStructure(VM& vm, JSGlobalObject* globalOb
 
 JSWebAssemblyMemory::JSWebAssemblyMemory(VM& vm, Structure* structure)
     : Base(vm, structure)
-    , m_memory(Wasm::Memory::create().releaseNonNull())
+    , m_memory(Wasm::Memory::create())
 {
 }
 
@@ -96,13 +96,13 @@ Wasm::PageCount JSWebAssemblyMemory::grow(VM& vm, ExecState* exec, uint32_t delt
     if (!grown) {
         switch (grown.error()) {
         case Wasm::Memory::GrowFailReason::InvalidDelta:
-            throwException(exec, throwScope, createRangeError(exec, ASCIILiteral("WebAssembly.Memory.grow expects the delta to be a valid page count")));
+            throwException(exec, throwScope, createRangeError(exec, "WebAssembly.Memory.grow expects the delta to be a valid page count"_s));
             break;
         case Wasm::Memory::GrowFailReason::InvalidGrowSize:
-            throwException(exec, throwScope, createRangeError(exec, ASCIILiteral("WebAssembly.Memory.grow expects the grown size to be a valid page count")));
+            throwException(exec, throwScope, createRangeError(exec, "WebAssembly.Memory.grow expects the grown size to be a valid page count"_s));
             break;
         case Wasm::Memory::GrowFailReason::WouldExceedMaximum:
-            throwException(exec, throwScope, createRangeError(exec, ASCIILiteral("WebAssembly.Memory.grow would exceed the memory's declared maximum size")));
+            throwException(exec, throwScope, createRangeError(exec, "WebAssembly.Memory.grow would exceed the memory's declared maximum size"_s));
             break;
         case Wasm::Memory::GrowFailReason::OutOfMemory:
             throwException(exec, throwScope, createOutOfMemoryError(exec));
@@ -133,7 +133,7 @@ void JSWebAssemblyMemory::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
-    heap()->reportExtraMemoryAllocated(memory().size());
+    vm.heap.reportExtraMemoryAllocated(memory().size());
 }
 
 void JSWebAssemblyMemory::destroy(JSCell* cell)

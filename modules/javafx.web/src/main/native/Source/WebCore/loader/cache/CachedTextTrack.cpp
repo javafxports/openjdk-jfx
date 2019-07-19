@@ -37,14 +37,14 @@
 
 namespace WebCore {
 
-CachedTextTrack::CachedTextTrack(CachedResourceRequest&& request, PAL::SessionID sessionID)
-    : CachedResource(WTFMove(request), TextTrackResource, sessionID)
+CachedTextTrack::CachedTextTrack(CachedResourceRequest&& request, const PAL::SessionID& sessionID, const CookieJar* cookieJar)
+    : CachedResource(WTFMove(request), Type::TextTrackResource, sessionID, cookieJar)
 {
 }
 
 void CachedTextTrack::doUpdateBuffer(SharedBuffer* data)
 {
-    ASSERT(dataBufferingPolicy() == BufferData);
+    ASSERT(dataBufferingPolicy() == DataBufferingPolicy::BufferData);
     m_data = data;
     setEncodedSize(data ? data->size() : 0);
 

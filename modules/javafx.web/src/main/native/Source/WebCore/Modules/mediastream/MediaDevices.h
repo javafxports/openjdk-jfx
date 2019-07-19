@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015 Ericsson AB. All rights reserved.
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,12 +33,15 @@
 
 #if ENABLE(MEDIA_STREAM)
 
+#include "ActiveDOMObject.h"
+#include "EventNames.h"
 #include "EventTarget.h"
 #include "ExceptionOr.h"
 #include "JSDOMPromiseDeferred.h"
 #include "MediaTrackConstraints.h"
 #include "RealtimeMediaSourceCenter.h"
 #include "Timer.h"
+#include "UserMediaClient.h"
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
@@ -49,7 +52,7 @@ class MediaStream;
 
 struct MediaTrackSupportedConstraints;
 
-class MediaDevices : public RefCounted<MediaDevices>, public ContextDestructionObserver, public EventTargetWithInlineData {
+class MediaDevices : public RefCounted<MediaDevices>, public ActiveDOMObject, public EventTargetWithInlineData, public CanMakeWeakPtr<MediaDevices> {
 public:
     static Ref<MediaDevices> create(Document&);
 
@@ -71,7 +74,7 @@ public:
         Variant<bool, MediaTrackConstraints> video;
         Variant<bool, MediaTrackConstraints> audio;
     };
-    ExceptionOr<void> getUserMedia(const StreamConstraints&, Promise&&) const;
+    void getUserMedia(const StreamConstraints&, Promise&&) const;
     ExceptionOr<void> getDisplayMedia(const StreamConstraints&, Promise&&) const;
     void enumerateDevices(EnumerateDevicesPromise&&) const;
     MediaTrackSupportedConstraints getSupportedConstraints();
@@ -83,18 +86,26 @@ private:
     explicit MediaDevices(Document&);
 
     void scheduledEventTimerFired();
+    bool addEventListener(const AtomicString& eventType, Ref<EventListener>&&, const AddEventListenerOptions&) override;
+
+    friend class JSMediaDevicesOwner;
+
+    // ActiveDOMObject
+    const char* activeDOMObjectName() const final;
+    bool canSuspendForDocumentSuspension() const final;
+    void stop() final;
+    bool hasPendingActivity() const final;
 
     // EventTargetWithInlineData.
-    EventTargetInterface eventTargetInterface() const override { return MediaDevicesEventTargetInterfaceType; }
-    ScriptExecutionContext* scriptExecutionContext() const final { return m_scriptExecutionContext; }
-    void refEventTarget() override { ref(); }
-    void derefEventTarget() override { deref(); }
-
-    WeakPtr<MediaDevices> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
+    EventTargetInterface eventTargetInterface() const final { return MediaDevicesEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
+    void refEventTarget() final { ref(); }
+    void derefEventTarget() final { deref(); }
 
     Timer m_scheduledEventTimer;
-    std::optional<RealtimeMediaSourceCenter::DevicesChangedObserverToken> m_deviceChangedToken;
-    WeakPtrFactory<MediaDevices> m_weakPtrFactory;
+    UserMediaClient::DeviceChangeObserverToken m_deviceChangeToken;
+    const EventNames& m_eventNames; // Need to cache this so we can use it from GC threads.
+    bool m_listeningForDeviceChanges { false };
 };
 
 } // namespace WebCore

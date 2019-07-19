@@ -459,7 +459,7 @@ Value* Value::invertedCompare(Procedure& proc) const
 {
     if (!numChildren())
         return nullptr;
-    if (std::optional<Opcode> invertedOpcode = B3::invertedCompare(opcode(), child(0)->type())) {
+    if (Optional<Opcode> invertedOpcode = B3::invertedCompare(opcode(), child(0)->type())) {
         ASSERT(!kind().hasExtraBits());
         return proc.add<Value>(*invertedOpcode, type(), origin(), children());
     }
@@ -499,8 +499,14 @@ bool Value::returnsBool() const
     case Const32:
         return asInt32() == 0 || asInt32() == 1;
     case BitAnd:
-        return child(1)->isInt32(1)
-            || (child(0)->returnsBool() && child(1)->hasInt() && child(1)->asInt() & 1);
+        return child(0)->returnsBool() || child(1)->returnsBool();
+    case BitOr:
+    case BitXor:
+        return child(0)->returnsBool() && child(1)->returnsBool();
+    case Select:
+        return child(1)->returnsBool() && child(2)->returnsBool();
+    case Identity:
+        return child(0)->returnsBool();
     case Equal:
     case NotEqual:
     case LessThan:
@@ -778,13 +784,21 @@ ValueKey Value::key() const
     }
 }
 
+Value* Value::foldIdentity() const
+{
+    Value* current = const_cast<Value*>(this);
+    while (current->opcode() == Identity)
+        current = current->child(0);
+    return current;
+}
+
 bool Value::performSubstitution()
 {
     bool result = false;
     for (Value*& child : children()) {
-        while (child->opcode() == Identity) {
+        if (child->opcode() == Identity) {
             result = true;
-            child = child->child(0);
+            child = child->foldIdentity();
         }
     }
     return result;

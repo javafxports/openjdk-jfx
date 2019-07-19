@@ -1,15 +1,36 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 
 #include "config.h"
 #include "SocketStreamHandleImpl.h"
 
-#include <wtf/java/JavaEnv.h>
+#include "PageSupplementJava.h"
 #include "SocketStreamError.h"
 #include "SocketStreamHandleClient.h"
-#include "WebPage.h"
 #include "com_sun_webkit_network_SocketStreamHandle.h"
+#include <wtf/java/JavaEnv.h>
 
 namespace WebCore {
 
@@ -22,14 +43,15 @@ static jclass GetSocketStreamHandleClass(JNIEnv* env)
 }
 
 SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, Page* page,
-                                       SocketStreamHandleClient& client)
+                                       SocketStreamHandleClient& client, const StorageSessionProvider* provider)
     : SocketStreamHandle(url, client)
+    , m_storageSessionProvider(provider)
 {
-    String host = url.host();
+    String host = url.host().toString();
     bool ssl = url.protocolIs("wss");
-    int port = url.port().value_or(ssl ? 443 : 80);
+    int port = url.port().valueOr(ssl ? 443 : 80);
 
-    JNIEnv* env = WebCore_GetJavaEnv();
+    JNIEnv* env = WTF::GetJavaEnv();
 
     static jmethodID mid = env->GetStaticMethodID(
             GetSocketStreamHandleClass(env),
@@ -44,9 +66,9 @@ SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, Page* page,
             (jstring) host.toJavaString(env),
             port,
             bool_to_jbool(ssl),
-            (jobject) WebPage::jobjectFromPage(page),
+            (jobject) PageSupplementJava::from(page)->jWebPage(),
             ptr_to_jlong(this)));
-    CheckAndClearException(env);
+    WTF::CheckAndClearException(env);
 }
 
 SocketStreamHandleImpl::~SocketStreamHandleImpl()
@@ -60,12 +82,12 @@ SocketStreamHandleImpl::~SocketStreamHandleImpl()
     ASSERT(mid);
 
     env->CallVoidMethod(m_ref, mid);
-    CheckAndClearException(env);
+    WTF::CheckAndClearException(env);
 }
 
-void SocketStreamHandleImpl::platformSend(const char* data, size_t len, Function<void(bool)>&& completionHandler)
+Optional<size_t> SocketStreamHandleImpl::platformSendInternal(const uint8_t* data, size_t len)
 {
-    JNIEnv* env = WebCore_GetJavaEnv();
+    JNIEnv* env = WTF::GetJavaEnv();
 
     JLByteArray byteArray = env->NewByteArray(len);
     env->SetByteArrayRegion(
@@ -81,16 +103,15 @@ void SocketStreamHandleImpl::platformSend(const char* data, size_t len, Function
     ASSERT(mid);
 
     jint res = env->CallIntMethod(m_ref, mid, (jbyteArray) byteArray);
-    if (CheckAndClearException(env)) {
-        completionHandler(false);
-    } else {
-        completionHandler(res == (int)len);
+    if (WTF::CheckAndClearException(env)) {
+        return { };
     }
+    return { static_cast<size_t>(res) };
 }
 
 void SocketStreamHandleImpl::platformClose()
 {
-    JNIEnv* env = WebCore_GetJavaEnv();
+    JNIEnv* env = WTF::GetJavaEnv();
 
     static jmethodID mid = env->GetMethodID(
             GetSocketStreamHandleClass(env),
@@ -99,13 +120,15 @@ void SocketStreamHandleImpl::platformClose()
     ASSERT(mid);
 
     env->CallVoidMethod(m_ref, mid);
-    CheckAndClearException(env);
+    WTF::CheckAndClearException(env);
 }
 
 void SocketStreamHandleImpl::didOpen()
 {
-    m_state = Open;
-    m_client.didOpenSocketStream(*this);
+    if (m_state == Connecting) {
+        m_state = Open;
+        m_client.didOpenSocketStream(*this);
+    }
 }
 
 void SocketStreamHandleImpl::didReceiveData(const char* data, int length)
@@ -115,27 +138,31 @@ void SocketStreamHandleImpl::didReceiveData(const char* data, int length)
 
 void SocketStreamHandleImpl::didFail(int errorCode, const String& errorDescription)
 {
-    m_client.didFailSocketStream(
-            *this,
-            SocketStreamError(errorCode, m_url.string(), errorDescription));
+    if (m_state == Open) {
+        m_client.didFailSocketStream(
+                *this,
+                SocketStreamError(errorCode, m_url.string(), errorDescription));
+    }
 }
 
 void SocketStreamHandleImpl::didClose()
 {
+    if (m_state == Closed)
+        return;
+    m_state = Closed;
+
     m_client.didCloseSocketStream(*this);
 }
 
 } // namespace WebCore
 
-using namespace WebCore;
 
-#ifdef __cplusplus
 extern "C" {
-#endif
 
 JNIEXPORT void JNICALL Java_com_sun_webkit_network_SocketStreamHandle_twkDidOpen
   (JNIEnv*, jclass, jlong data)
 {
+    using namespace WebCore;
     SocketStreamHandleImpl* handle =
             static_cast<SocketStreamHandleImpl*>(jlong_to_ptr(data));
     ASSERT(handle);
@@ -145,6 +172,7 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_SocketStreamHandle_twkDidOpen
 JNIEXPORT void JNICALL Java_com_sun_webkit_network_SocketStreamHandle_twkDidReceiveData
   (JNIEnv* env, jclass, jbyteArray buffer, jint len, jlong data)
 {
+    using namespace WebCore;
     SocketStreamHandleImpl* handle =
             static_cast<SocketStreamHandleImpl*>(jlong_to_ptr(data));
     ASSERT(handle);
@@ -156,6 +184,7 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_SocketStreamHandle_twkDidRece
 JNIEXPORT void JNICALL Java_com_sun_webkit_network_SocketStreamHandle_twkDidFail
   (JNIEnv* env, jclass, jint errorCode, jstring errorDescription, jlong data)
 {
+    using namespace WebCore;
     SocketStreamHandleImpl* handle =
             static_cast<SocketStreamHandleImpl*>(jlong_to_ptr(data));
     ASSERT(handle);
@@ -165,12 +194,11 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_network_SocketStreamHandle_twkDidFail
 JNIEXPORT void JNICALL Java_com_sun_webkit_network_SocketStreamHandle_twkDidClose
   (JNIEnv*, jclass, jlong data)
 {
+    using namespace WebCore;
     SocketStreamHandleImpl* handle =
             static_cast<SocketStreamHandleImpl*>(jlong_to_ptr(data));
     ASSERT(handle);
     handle->didClose();
 }
 
-#ifdef __cplusplus
 }
-#endif

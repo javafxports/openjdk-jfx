@@ -3,7 +3,7 @@
 #   This file is part of the WebKit project
 #
 #   Copyright (C) 1999 Waldo Bastian (bastian@kde.org)
-#   Copyright (C) 2007-2017 Apple Inc. All rights reserved.
+#   Copyright (C) 2007-2018 Apple Inc. All rights reserved.
 #   Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
 #   Copyright (C) 2010 Andras Becsi (abecsi@inf.u-szeged.hu), University of Szeged
 #   Copyright (C) 2013 Google Inc. All rights reserved.
@@ -60,6 +60,7 @@ my %defines = map { $_ => 1 } split(/ /, $defines);
 
 my @names;
 my @internalProprerties;
+my %runtimeFlags;
 my $numPredefinedProperties = 2;
 my %nameIsInherited;
 my %nameIsHighPriority;
@@ -199,6 +200,8 @@ sub addProperty($$)
                 } elsif ($codegenOptionName eq "internal-only") {
                     # internal-only properties exist to make it easier to parse compound properties (e.g. background-repeat) as if they were shorthands.
                     push @internalProprerties, $name
+                } elsif ($codegenOptionName eq "runtime-flag") {
+                    $runtimeFlags{$name} = $codegenProperties->{"runtime-flag"};
                 } else {
                     die "Unrecognized codegen property \"$codegenOptionName\" for $name property.";
                 }
@@ -243,18 +246,16 @@ print GPERF << "EOF";
 #include \"CSSProperty.h\"
 #include \"CSSPropertyNames.h\"
 #include \"HashTools.h\"
-#include <string.h>
-
+#include "RuntimeEnabledFeatures.h"
 #include <wtf/ASCIICType.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/WTFString.h>
+#include <string.h>
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored \"-Wunknown-pragmas\"
-#pragma clang diagnostic ignored \"-Wdeprecated-register\"
-#pragma clang diagnostic ignored \"-Wimplicit-fallthrough\"
-#endif
+IGNORE_WARNINGS_BEGIN(\"implicit-fallthrough\")
+
+// Older versions of gperf like to use the `register` keyword.
+#define register
 
 namespace WebCore {
 
@@ -320,6 +321,22 @@ print GPERF << "EOF";
         return true;
     default:
         return false;
+    }
+}
+
+bool isEnabledCSSProperty(const CSSPropertyID id)
+{
+    switch (id) {
+EOF
+
+foreach my $name (keys %runtimeFlags) {
+  print GPERF "    case CSSPropertyID::CSSProperty" . $nameToId{$name} . ":\n";
+  print GPERF "        return RuntimeEnabledFeatures::sharedFeatures()." . $runtimeFlags{$name} . "Enabled();\n";
+}
+
+print GPERF << "EOF";
+    default:
+        return true;
     }
 }
 
@@ -399,11 +416,28 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID id)
     return isInheritedPropertyTable[id];
 }
 
+Vector<String> CSSProperty::aliasesForProperty(CSSPropertyID id)
+{
+    switch (id) {
+EOF
+
+for my $name (@names) {
+    if (!$nameToAliases{$name}) {
+        next;
+    }
+    print GPERF "    case CSSPropertyID::CSSProperty" . $nameToId{$name} . ":\n";
+    print GPERF "        return { \"" . join("\"_s, \"", @{$nameToAliases{$name}}) . "\"_s };\n";
+}
+
+print GPERF << "EOF";
+    default:
+        return { };
+    }
+}
+
 } // namespace WebCore
 
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
+IGNORE_WARNINGS_END
 EOF
 
 close GPERF;
@@ -415,13 +449,9 @@ print HEADER << "EOF";
 #pragma once
 
 #include <string.h>
+#include <wtf/Forward.h>
 #include <wtf/HashFunctions.h>
 #include <wtf/HashTraits.h>
-
-namespace WTF {
-class AtomicString;
-class String;
-}
 
 namespace WebCore {
 
@@ -455,6 +485,7 @@ print HEADER "const CSSPropertyID lastHighPriorityProperty = CSSProperty" . $nam
 print HEADER << "EOF";
 
 bool isInternalCSSProperty(const CSSPropertyID);
+bool isEnabledCSSProperty(const CSSPropertyID);
 const char* getPropertyName(CSSPropertyID);
 const WTF::AtomicString& getPropertyNameAtomicString(CSSPropertyID id);
 WTF::String getPropertyNameString(CSSPropertyID id);
@@ -472,7 +503,6 @@ namespace WTF {
 template<> struct DefaultHash<WebCore::CSSPropertyID> { typedef IntHash<unsigned> Hash; };
 template<> struct HashTraits<WebCore::CSSPropertyID> : GenericHashTraits<WebCore::CSSPropertyID> {
     static const bool emptyValueIsZero = true;
-    static const bool needsDestruction = false;
     static void constructDeletedValue(WebCore::CSSPropertyID& slot) { slot = static_cast<WebCore::CSSPropertyID>(WebCore::lastCSSProperty + 1); }
     static bool isDeletedValue(WebCore::CSSPropertyID value) { return value == (WebCore::lastCSSProperty + 1); }
 };
@@ -578,8 +608,8 @@ sub getLayersAccessorFunction {
 sub getFillLayerType {
 my $name = shift;
 
-  return "BackgroundFillLayer" if $name =~ /background-/;
-  return "MaskFillLayer" if $name =~ /mask-/;
+  return "FillLayerType::Background" if $name =~ /background-/;
+  return "FillLayerType::Mask" if $name =~ /mask-/;
 }
 
 sub getFillLayerMapfunction {
@@ -855,7 +885,7 @@ sub generateInitialValueSetter {
   } elsif (exists $propertiesWithStyleBuilderOptions{$name}{"font-property"}) {
     $setterContent .= $indent . "    auto fontDescription = styleResolver.fontDescription();\n";
     $setterContent .= $indent . "    fontDescription." . $setter . "(FontCascadeDescription::" . $initial . "());\n";
-    $setterContent .= $indent . "    styleResolver.setFontDescription(fontDescription);\n";
+    $setterContent .= $indent . "    styleResolver.setFontDescription(WTFMove(fontDescription));\n";
   } elsif (exists $propertiesWithStyleBuilderOptions{$name}{"fill-layer-property"}) {
     $setterContent .= generateFillLayerPropertyInitialValueSetter($name, $indent . "    ");
   } else {
@@ -899,7 +929,7 @@ sub generateInheritValueSetter {
   } elsif (exists $propertiesWithStyleBuilderOptions{$name}{"font-property"}) {
     $setterContent .= $indent . "    auto fontDescription = styleResolver.fontDescription();\n";
     $setterContent .= $indent . "    fontDescription." . $setter . "(styleResolver.parentFontDescription()." . $getter . "());\n";
-    $setterContent .= $indent . "    styleResolver.setFontDescription(fontDescription);\n";
+    $setterContent .= $indent . "    styleResolver.setFontDescription(WTFMove(fontDescription));\n";
     $didCallSetValue = 1;
   } elsif (exists $propertiesWithStyleBuilderOptions{$name}{"fill-layer-property"}) {
     $setterContent .= generateFillLayerPropertyInheritValueSetter($name, $indent . "    ");
@@ -953,7 +983,7 @@ sub generateValueSetter {
   } elsif (exists $propertiesWithStyleBuilderOptions{$name}{"font-property"}) {
     $setterContent .= $indent . "    auto fontDescription = styleResolver.fontDescription();\n";
     $setterContent .= $indent . "    fontDescription." . $setter . "(" . $convertedValue . ");\n";
-    $setterContent .= $indent . "    styleResolver.setFontDescription(fontDescription);\n";
+    $setterContent .= $indent . "    styleResolver.setFontDescription(WTFMove(fontDescription));\n";
     $didCallSetValue = 1;
   } elsif (exists $propertiesWithStyleBuilderOptions{$name}{"fill-layer-property"}) {
     $setterContent .= generateFillLayerPropertyValueSetter($name, $indent . "    ");
@@ -1012,12 +1042,21 @@ foreach my $name (@names) {
 print STYLEBUILDER << "EOF";
 };
 
-void StyleBuilder::applyProperty(CSSPropertyID property, StyleResolver& styleResolver, CSSValue& value, bool isInitial, bool isInherit)
+void StyleBuilder::applyProperty(CSSPropertyID property, StyleResolver& styleResolver, CSSValue& value, bool isInitial, bool isInherit, const CSSRegisteredCustomProperty* registered)
 {
     switch (property) {
     case CSSPropertyInvalid:
-    case CSSPropertyCustom:
         break;
+    case CSSPropertyCustom: {
+        auto& customProperty = downcast<CSSCustomPropertyValue>(value);
+        if (isInitial)
+            StyleBuilderCustom::applyInitialCustomProperty(styleResolver, registered, customProperty.name());
+        else if (isInherit)
+            StyleBuilderCustom::applyInheritCustomProperty(styleResolver, registered, customProperty.name());
+        else
+            StyleBuilderCustom::applyValueCustomProperty(styleResolver, registered, customProperty);
+        break;
+    }
 EOF
 
 foreach my $name (@names) {

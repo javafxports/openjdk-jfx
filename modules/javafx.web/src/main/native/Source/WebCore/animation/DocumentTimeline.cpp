@@ -26,157 +26,529 @@
 #include "config.h"
 #include "DocumentTimeline.h"
 
-#include "Chrome.h"
-#include "ChromeClient.h"
+#include "AnimationPlaybackEvent.h"
+#include "CSSAnimation.h"
+#include "CSSPropertyAnimation.h"
+#include "CSSTransition.h"
 #include "DOMWindow.h"
-#include "DisplayRefreshMonitor.h"
-#include "DisplayRefreshMonitorManager.h"
+#include "DeclarativeAnimation.h"
 #include "Document.h"
+#include "DocumentAnimationScheduler.h"
+#include "GraphicsLayer.h"
 #include "KeyframeEffect.h"
+#include "Microtasks.h"
+#include "Node.h"
 #include "Page.h"
+#include "PseudoElement.h"
 #include "RenderElement.h"
+#include "RenderLayer.h"
+#include "RenderLayerBacking.h"
 
-static const Seconds animationInterval { 15_ms };
+static const Seconds defaultAnimationInterval { 15_ms };
+static const Seconds throttledAnimationInterval { 30_ms };
 
 namespace WebCore {
 
-Ref<DocumentTimeline> DocumentTimeline::create(Document& document, PlatformDisplayID displayID)
+Ref<DocumentTimeline> DocumentTimeline::create(Document& document)
 {
-    return adoptRef(*new DocumentTimeline(document, displayID));
+    return adoptRef(*new DocumentTimeline(document, 0_s));
 }
 
-DocumentTimeline::DocumentTimeline(Document& document, PlatformDisplayID displayID)
-    : AnimationTimeline(DocumentTimelineClass)
-    , m_document(&document)
-    , m_animationScheduleTimer(*this, &DocumentTimeline::animationScheduleTimerFired)
+Ref<DocumentTimeline> DocumentTimeline::create(Document& document, DocumentTimelineOptions&& options)
+{
+    return adoptRef(*new DocumentTimeline(document, Seconds::fromMilliseconds(options.originTime)));
+}
+
+DocumentTimeline::DocumentTimeline(Document& document, Seconds originTime)
+    : AnimationTimeline()
 #if !USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     , m_animationResolutionTimer(*this, &DocumentTimeline::animationResolutionTimerFired)
 #endif
+    , m_tickScheduleTimer(*this, &DocumentTimeline::scheduleAnimationResolutionIfNeeded)
+    , m_document(&document)
+    , m_originTime(originTime)
 {
-    windowScreenDidChange(displayID);
+    if (m_document && m_document->page() && !m_document->page()->isVisible())
+        suspendAnimations();
 }
 
-DocumentTimeline::~DocumentTimeline()
-{
-    m_invalidationTaskQueue.close();
-    m_eventDispatchTaskQueue.close();
-}
+DocumentTimeline::~DocumentTimeline() = default;
 
 void DocumentTimeline::detachFromDocument()
 {
+    m_currentTimeClearingTaskQueue.close();
+    m_elementsWithRunningAcceleratedAnimations.clear();
+
+    auto& animationsToRemove = m_animations;
+    while (!animationsToRemove.isEmpty())
+        animationsToRemove.first()->remove();
+
+    unscheduleAnimationResolution();
     m_document = nullptr;
 }
 
-std::optional<Seconds> DocumentTimeline::currentTime()
+static inline bool compareDeclarativeAnimationOwningElementPositionsInDocumentTreeOrder(Element* lhsOwningElement, Element* rhsOwningElement)
 {
-    if (m_paused || !m_document || !m_document->domWindow())
+    // With regard to pseudo-elements, the sort order is as follows:
+    //     - element
+    //     - ::before
+    //     - ::after
+    //     - element children
+
+    // We could be comparing two pseudo-elements that are hosted on the same element.
+    if (is<PseudoElement>(lhsOwningElement) && is<PseudoElement>(rhsOwningElement)) {
+        auto* lhsPseudoElement = downcast<PseudoElement>(lhsOwningElement);
+        auto* rhsPseudoElement = downcast<PseudoElement>(rhsOwningElement);
+        if (lhsPseudoElement->hostElement() == rhsPseudoElement->hostElement())
+            return lhsPseudoElement->isBeforePseudoElement();
+    }
+
+    // Or comparing a pseudo-element that is compared to another non-pseudo element, in which case
+    // we want to see if it's hosted on that other element, and if not use its host element to compare.
+    if (is<PseudoElement>(lhsOwningElement)) {
+        auto* lhsHostElement = downcast<PseudoElement>(lhsOwningElement)->hostElement();
+        if (rhsOwningElement == lhsHostElement)
+            return false;
+        lhsOwningElement = lhsHostElement;
+    }
+
+    if (is<PseudoElement>(rhsOwningElement)) {
+        auto* rhsHostElement = downcast<PseudoElement>(rhsOwningElement)->hostElement();
+        if (lhsOwningElement == rhsHostElement)
+            return true;
+        rhsOwningElement = rhsHostElement;
+    }
+
+    return lhsOwningElement->compareDocumentPosition(*rhsOwningElement) & Node::DOCUMENT_POSITION_FOLLOWING;
+}
+
+Vector<RefPtr<WebAnimation>> DocumentTimeline::getAnimations() const
+{
+    ASSERT(m_document);
+
+    Vector<RefPtr<WebAnimation>> cssTransitions;
+    Vector<RefPtr<WebAnimation>> cssAnimations;
+    Vector<RefPtr<WebAnimation>> webAnimations;
+
+    // First, let's get all qualifying animations in their right group.
+    for (const auto& animation : m_allAnimations) {
+        if (!animation->isRelevant() || animation->timeline() != this || !is<KeyframeEffect>(animation->effect()))
+            continue;
+
+        auto* target = downcast<KeyframeEffect>(animation->effect())->target();
+        if (!target || !target->isDescendantOf(*m_document))
+            continue;
+
+        if (is<CSSTransition>(animation) && downcast<CSSTransition>(animation)->owningElement())
+            cssTransitions.append(animation);
+        else if (is<CSSAnimation>(animation) && downcast<CSSAnimation>(animation)->owningElement())
+            cssAnimations.append(animation);
+        else
+            webAnimations.append(animation);
+    }
+
+    // Now sort CSS Transitions by their composite order.
+    std::sort(cssTransitions.begin(), cssTransitions.end(), [](auto& lhs, auto& rhs) {
+        // https://drafts.csswg.org/css-transitions-2/#animation-composite-order
+        auto* lhsTransition = downcast<CSSTransition>(lhs.get());
+        auto* rhsTransition = downcast<CSSTransition>(rhs.get());
+
+        auto* lhsOwningElement = lhsTransition->owningElement();
+        auto* rhsOwningElement = rhsTransition->owningElement();
+
+        // If the owning element of A and B differs, sort A and B by tree order of their corresponding owning elements.
+        if (lhsOwningElement != rhsOwningElement)
+            return compareDeclarativeAnimationOwningElementPositionsInDocumentTreeOrder(lhsOwningElement, rhsOwningElement);
+
+        // Otherwise, if A and B have different transition generation values, sort by their corresponding transition generation in ascending order.
+        if (lhsTransition->generationTime() != rhsTransition->generationTime())
+            return lhsTransition->generationTime() < rhsTransition->generationTime();
+
+        // Otherwise, sort A and B in ascending order by the Unicode codepoints that make up the expanded transition property name of each transition
+        // (i.e. without attempting case conversion and such that ‘-moz-column-width’ sorts before ‘column-width’).
+        return lhsTransition->transitionProperty().utf8() < rhsTransition->transitionProperty().utf8();
+    });
+
+    // Now sort CSS Animations by their composite order.
+    std::sort(cssAnimations.begin(), cssAnimations.end(), [](auto& lhs, auto& rhs) {
+        // https://drafts.csswg.org/css-animations-2/#animation-composite-order
+        auto* lhsOwningElement = downcast<CSSAnimation>(lhs.get())->owningElement();
+        auto* rhsOwningElement = downcast<CSSAnimation>(rhs.get())->owningElement();
+
+        // If the owning element of A and B differs, sort A and B by tree order of their corresponding owning elements.
+        if (lhsOwningElement != rhsOwningElement)
+            return compareDeclarativeAnimationOwningElementPositionsInDocumentTreeOrder(lhsOwningElement, rhsOwningElement);
+
+        // Otherwise, sort A and B based on their position in the computed value of the animation-name property of the (common) owning element.
+        // In our case, this matches the time at which the animations were created and thus their relative position in m_allAnimations.
+        return false;
+    });
+
+    // Finally, we can concatenate the sorted CSS Transitions, CSS Animations and Web Animations in their relative composite order.
+    Vector<RefPtr<WebAnimation>> animations;
+    animations.appendRange(cssTransitions.begin(), cssTransitions.end());
+    animations.appendRange(cssAnimations.begin(), cssAnimations.end());
+    animations.appendRange(webAnimations.begin(), webAnimations.end());
+    return animations;
+}
+
+void DocumentTimeline::updateThrottlingState()
+{
+    scheduleAnimationResolutionIfNeeded();
+}
+
+Seconds DocumentTimeline::animationInterval() const
+{
+    if (!m_document || !m_document->page())
+        return Seconds::infinity();
+    return m_document->page()->isLowPowerModeEnabled() ? throttledAnimationInterval : defaultAnimationInterval;
+}
+
+void DocumentTimeline::suspendAnimations()
+{
+    if (animationsAreSuspended())
+        return;
+
+    if (!m_cachedCurrentTime)
+        m_cachedCurrentTime = liveCurrentTime();
+
+    for (const auto& animation : m_animations)
+        animation->setSuspended(true);
+
+    m_isSuspended = true;
+
+    applyPendingAcceleratedAnimations();
+
+    unscheduleAnimationResolution();
+}
+
+void DocumentTimeline::resumeAnimations()
+{
+    if (!animationsAreSuspended())
+        return;
+
+    m_cachedCurrentTime = WTF::nullopt;
+
+    m_isSuspended = false;
+
+    for (const auto& animation : m_animations)
+        animation->setSuspended(false);
+
+    scheduleAnimationResolutionIfNeeded();
+}
+
+bool DocumentTimeline::animationsAreSuspended()
+{
+    return m_isSuspended;
+}
+
+unsigned DocumentTimeline::numberOfActiveAnimationsForTesting() const
+{
+    unsigned count = 0;
+    for (const auto& animation : m_animations) {
+        if (!animation->isSuspended())
+            ++count;
+    }
+    return count;
+}
+
+Seconds DocumentTimeline::liveCurrentTime() const
+{
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    return m_document->animationScheduler().lastTimestamp();
+#else
+    return Seconds(m_document->domWindow()->nowTimestamp());
+#endif
+}
+
+Optional<Seconds> DocumentTimeline::currentTime()
+{
+    if (!m_document || !m_document->domWindow())
         return AnimationTimeline::currentTime();
 
-    if (!m_cachedCurrentTime) {
-        m_cachedCurrentTime = Seconds(m_document->domWindow()->nowTimestamp());
-        scheduleInvalidationTaskIfNeeded();
+    if (auto* mainDocumentTimeline = m_document->existingTimeline()) {
+        if (mainDocumentTimeline != this) {
+            if (auto mainDocumentTimelineCurrentTime = mainDocumentTimeline->currentTime())
+                return mainDocumentTimelineCurrentTime.value() - m_originTime;
+            return WTF::nullopt;
+        }
     }
-    return m_cachedCurrentTime;
+
+    auto currentTime = liveCurrentTime();
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    // If we're in the middle of firing a frame, either due to a requestAnimationFrame callback
+    // or scheduling an animation update, we want to ensure we use the same time we're using as
+    // the timestamp for requestAnimationFrame() callbacks.
+    if (m_document->animationScheduler().isFiring())
+        cacheCurrentTime(currentTime);
+#endif
+
+    if (!m_cachedCurrentTime) {
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+        // If we're not in the middle of firing a frame, let's make our best guess at what the currentTime should
+        // be since the last time a frame fired by increment of our update interval. This way code using something
+        // like setTimeout() or handling events will get a time that's only updating at around 60fps, or less if
+        // we're throttled.
+        auto lastAnimationSchedulerTimestamp = currentTime;
+        auto delta = Seconds(m_document->domWindow()->nowTimestamp()) - lastAnimationSchedulerTimestamp;
+        int frames = std::floor(delta.seconds() / animationInterval().seconds());
+        cacheCurrentTime(lastAnimationSchedulerTimestamp + Seconds(frames * animationInterval().seconds()));
+#else
+        cacheCurrentTime(currentTime);
+#endif
+    }
+    return m_cachedCurrentTime.value() - m_originTime;
 }
 
-void DocumentTimeline::pause()
+void DocumentTimeline::cacheCurrentTime(Seconds newCurrentTime)
 {
-    m_paused = true;
+    m_cachedCurrentTime = newCurrentTime;
+    // We want to be sure to keep this time cached until we've both finished running JS and finished updating
+    // animations, so we schedule the invalidation task and register a whenIdle callback on the VM, which will
+    // fire syncronously if no JS is running.
+    m_waitingOnVMIdle = true;
+    if (!m_currentTimeClearingTaskQueue.hasPendingTasks())
+        m_currentTimeClearingTaskQueue.enqueueTask(std::bind(&DocumentTimeline::maybeClearCachedCurrentTime, this));
+    m_document->vm().whenIdle([this, protectedThis = makeRefPtr(this)]() {
+        m_waitingOnVMIdle = false;
+        maybeClearCachedCurrentTime();
+    });
 }
 
-void DocumentTimeline::animationTimingModelDidChange()
+void DocumentTimeline::maybeClearCachedCurrentTime()
 {
-    if (m_needsUpdateAnimationSchedule)
+    // We want to make sure we only clear the cached current time if we're not currently running
+    // JS or waiting on all current animation updating code to have completed. This is so that
+    // we're guaranteed to have a consistent current time reported for all work happening in a given
+    // JS frame or throughout updating animations in WebCore.
+    if (!m_isSuspended && !m_waitingOnVMIdle && !m_currentTimeClearingTaskQueue.hasPendingTasks())
+        m_cachedCurrentTime = WTF::nullopt;
+}
+
+void DocumentTimeline::scheduleAnimationResolutionIfNeeded()
+{
+    if (!m_isUpdatingAnimations && !m_isSuspended && !m_animations.isEmpty())
+        scheduleAnimationResolution();
+}
+
+void DocumentTimeline::animationTimingDidChange(WebAnimation& animation)
+{
+    AnimationTimeline::animationTimingDidChange(animation);
+    scheduleAnimationResolutionIfNeeded();
+}
+
+void DocumentTimeline::removeAnimation(WebAnimation& animation)
+{
+    AnimationTimeline::removeAnimation(animation);
+
+    if (m_animations.isEmpty())
+        unscheduleAnimationResolution();
+}
+
+void DocumentTimeline::scheduleAnimationResolution()
+{
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    m_document->animationScheduler().scheduleWebAnimationsResolution();
+#else
+    // FIXME: We need to use the same logic as ScriptedAnimationController here,
+    // which will be addressed by the refactor tracked by webkit.org/b/179293.
+    m_animationResolutionTimer.startOneShot(animationInterval());
+#endif
+}
+
+void DocumentTimeline::unscheduleAnimationResolution()
+{
+    m_tickScheduleTimer.stop();
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    m_document->animationScheduler().unscheduleWebAnimationsResolution();
+#else
+    // FIXME: We need to use the same logic as ScriptedAnimationController here,
+    // which will be addressed by the refactor tracked by webkit.org/b/179293.
+    m_animationResolutionTimer.stop();
+#endif
+}
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+void DocumentTimeline::documentAnimationSchedulerDidFire()
+#else
+void DocumentTimeline::animationResolutionTimerFired()
+#endif
+{
+    updateAnimationsAndSendEvents();
+    applyPendingAcceleratedAnimations();
+    scheduleNextTick();
+}
+
+void DocumentTimeline::updateAnimationsAndSendEvents()
+{
+    m_numberOfAnimationTimelineInvalidationsForTesting++;
+
+    m_isUpdatingAnimations = true;
+
+    // https://drafts.csswg.org/web-animations/#update-animations-and-send-events
+
+    // 1. Update the current time of all timelines associated with doc passing now as the timestamp.
+
+    Vector<RefPtr<WebAnimation>> animationsToRemove;
+    Vector<RefPtr<CSSTransition>> completedTransitions;
+
+    for (auto& animation : m_animations) {
+        if (animation->timeline() != this) {
+            ASSERT(!animation->timeline());
+            animationsToRemove.append(animation);
+            continue;
+        }
+
+        // This will notify the animation that timing has changed and will call automatically
+        // schedule invalidation if required for this animation.
+        animation->tick();
+
+        if (!animation->isRelevant() && !animation->needsTick())
+            animationsToRemove.append(animation);
+
+        if (!animation->needsTick() && is<CSSTransition>(animation) && animation->playState() == WebAnimation::PlayState::Finished) {
+            auto* transition = downcast<CSSTransition>(animation.get());
+            if (transition->owningElement())
+                completedTransitions.append(transition);
+        }
+    }
+
+    // 2. Perform a microtask checkpoint.
+    MicrotaskQueue::mainThreadQueue().performMicrotaskCheckpoint();
+
+    // 3. Let events to dispatch be a copy of doc's pending animation event queue.
+    // 4. Clear doc's pending animation event queue.
+    auto pendingAnimationEvents = WTFMove(m_pendingAnimationEvents);
+
+    // 5. Perform a stable sort of the animation events in events to dispatch as follows.
+    std::stable_sort(pendingAnimationEvents.begin(), pendingAnimationEvents.end(), [] (const Ref<AnimationPlaybackEvent>& lhs, const Ref<AnimationPlaybackEvent>& rhs) {
+        // 1. Sort the events by their scheduled event time such that events that were scheduled to occur earlier, sort before events scheduled to occur later
+        // and events whose scheduled event time is unresolved sort before events with a resolved scheduled event time.
+        // 2. Within events with equal scheduled event times, sort by their composite order. FIXME: We don't do this.
+        if (lhs->timelineTime() && !rhs->timelineTime())
+            return false;
+        if (!lhs->timelineTime() && rhs->timelineTime())
+            return true;
+        if (!lhs->timelineTime() && !rhs->timelineTime())
+            return true;
+        return lhs->timelineTime().value() < rhs->timelineTime().value();
+    });
+
+    // 6. Dispatch each of the events in events to dispatch at their corresponding target using the order established in the previous step.
+    for (auto& pendingEvent : pendingAnimationEvents)
+        pendingEvent->target()->dispatchEvent(pendingEvent);
+
+    // This will cancel any scheduled invalidation if we end up removing all animations.
+    for (auto& animation : animationsToRemove)
+        removeAnimation(*animation);
+
+    // Now that animations that needed removal have been removed, let's update the list of completed transitions.
+    // This needs to happen after dealing with the list of animations to remove as the animation may have been
+    // removed from the list of completed transitions otherwise.
+    for (auto& completedTransition : completedTransitions)
+        transitionDidComplete(completedTransition);
+
+    m_isUpdatingAnimations = false;
+}
+
+void DocumentTimeline::transitionDidComplete(RefPtr<CSSTransition> transition)
+{
+    ASSERT(transition);
+    removeAnimation(*transition);
+    if (is<KeyframeEffect>(transition->effect())) {
+        if (auto* target = downcast<KeyframeEffect>(transition->effect())->target()) {
+            m_elementToCompletedCSSTransitionByCSSPropertyID.ensure(target, [] {
+                return HashMap<CSSPropertyID, RefPtr<CSSTransition>> { };
+            }).iterator->value.set(transition->property(), transition);
+        }
+    }
+}
+
+void DocumentTimeline::scheduleNextTick()
+{
+    // There is no tick to schedule if we don't have any relevant animations.
+    if (m_animations.isEmpty())
         return;
 
-    m_needsUpdateAnimationSchedule = true;
+    for (const auto& animation : m_animations) {
+        if (!animation->isRunningAccelerated()) {
+            scheduleAnimationResolutionIfNeeded();
+            return;
+        }
+    }
 
-    // We know that we will resolve animations again, so we can cancel the timer right away.
-    if (m_animationScheduleTimer.isActive())
-        m_animationScheduleTimer.stop();
-
-    scheduleInvalidationTaskIfNeeded();
-}
-
-void DocumentTimeline::scheduleInvalidationTaskIfNeeded()
-{
-    if (m_invalidationTaskQueue.hasPendingTasks())
-        return;
-
-    m_invalidationTaskQueue.enqueueTask(std::bind(&DocumentTimeline::performInvalidationTask, this));
-}
-
-void DocumentTimeline::performInvalidationTask()
-{
-    updateAnimationSchedule();
-    m_cachedCurrentTime = std::nullopt;
-}
-
-void DocumentTimeline::updateAnimationSchedule()
-{
-    if (!m_needsUpdateAnimationSchedule)
-        return;
-
-    m_needsUpdateAnimationSchedule = false;
-
-    Seconds now = currentTime().value();
     Seconds scheduleDelay = Seconds::infinity();
 
-    for (const auto& animation : animations()) {
-        auto animationTimeToNextRequiredTick = animation->timeToNextRequiredTick(now);
-        if (animationTimeToNextRequiredTick < animationInterval) {
-            scheduleAnimationResolution();
+    for (const auto& animation : m_animations) {
+        auto animationTimeToNextRequiredTick = animation->timeToNextTick();
+        if (animationTimeToNextRequiredTick < animationInterval()) {
+            scheduleAnimationResolutionIfNeeded();
             return;
         }
         scheduleDelay = std::min(scheduleDelay, animationTimeToNextRequiredTick);
     }
 
     if (scheduleDelay < Seconds::infinity())
-        m_animationScheduleTimer.startOneShot(scheduleDelay);
+        m_tickScheduleTimer.startOneShot(scheduleDelay);
 }
 
-void DocumentTimeline::animationScheduleTimerFired()
+bool DocumentTimeline::computeExtentOfAnimation(RenderElement& renderer, LayoutRect& bounds) const
 {
-    scheduleAnimationResolution();
-}
+    if (!renderer.element())
+        return true;
 
-void DocumentTimeline::scheduleAnimationResolution()
-{
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    DisplayRefreshMonitorManager::sharedManager().scheduleAnimation(*this);
-#else
-    // FIXME: We need to use the same logic as ScriptedAnimationController here,
-    // which will be addressed by the refactor tracked by webkit.org/b/179293.
-    m_animationResolutionTimer.startOneShot(animationInterval);
-#endif
-}
-
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-void DocumentTimeline::displayRefreshFired()
-#else
-void DocumentTimeline::animationResolutionTimerFired()
-#endif
-{
-    updateAnimations();
-}
-
-void DocumentTimeline::updateAnimations()
-{
-    if (m_document && !elementToAnimationsMap().isEmpty()) {
-        for (const auto& elementToAnimationsMapItem : elementToAnimationsMap())
-            elementToAnimationsMapItem.key->invalidateStyleAndLayerComposition();
-        m_document->updateStyleIfNeeded();
+    KeyframeEffect* matchingEffect = nullptr;
+    for (const auto& animation : animationsForElement(*renderer.element())) {
+        auto* effect = animation->effect();
+        if (is<KeyframeEffect>(effect)) {
+            auto* keyframeEffect = downcast<KeyframeEffect>(effect);
+            if (keyframeEffect->animatedProperties().contains(CSSPropertyTransform))
+                matchingEffect = downcast<KeyframeEffect>(effect);
+        }
     }
 
-    for (auto animation : m_acceleratedAnimationsPendingRunningStateChange)
-        animation->startOrStopAccelerated();
-    m_acceleratedAnimationsPendingRunningStateChange.clear();
+    if (matchingEffect)
+        return matchingEffect->computeExtentOfTransformAnimation(bounds);
 
-    for (const auto& animation : animations())
-        animation->updateFinishedState(WebAnimation::DidSeek::No, WebAnimation::SynchronouslyNotify::No);
+    return true;
+}
 
-    // Time has advanced, the timing model requires invalidation now.
-    animationTimingModelDidChange();
+bool DocumentTimeline::isRunningAnimationOnRenderer(RenderElement& renderer, CSSPropertyID property) const
+{
+    if (!renderer.element())
+        return false;
+
+    for (const auto& animation : animationsForElement(*renderer.element())) {
+        auto playState = animation->playState();
+        if (playState != WebAnimation::PlayState::Running && playState != WebAnimation::PlayState::Paused)
+            continue;
+        auto* effect = animation->effect();
+        if (is<KeyframeEffect>(effect) && downcast<KeyframeEffect>(effect)->animatedProperties().contains(property))
+            return true;
+    }
+
+    return false;
+}
+
+bool DocumentTimeline::isRunningAcceleratedAnimationOnRenderer(RenderElement& renderer, CSSPropertyID property) const
+{
+    if (!renderer.element())
+        return false;
+
+    for (const auto& animation : animationsForElement(*renderer.element())) {
+        auto playState = animation->playState();
+        if (playState != WebAnimation::PlayState::Running && playState != WebAnimation::PlayState::Paused)
+            continue;
+        auto* effect = animation->effect();
+        if (is<KeyframeEffect>(effect)) {
+            auto* keyframeEffect = downcast<KeyframeEffect>(effect);
+            if (keyframeEffect->isRunningAccelerated() && keyframeEffect->animatedProperties().contains(property))
+                return true;
+        }
+    }
+
+    return false;
 }
 
 std::unique_ptr<RenderStyle> DocumentTimeline::animatedStyleForRenderer(RenderElement& renderer)
@@ -184,8 +556,8 @@ std::unique_ptr<RenderStyle> DocumentTimeline::animatedStyleForRenderer(RenderEl
     std::unique_ptr<RenderStyle> result;
 
     if (auto* element = renderer.element()) {
-        for (auto animation : animationsForElement(*element)) {
-            if (animation->effect() && animation->effect()->isKeyframeEffect())
+        for (const auto& animation : animationsForElement(*element)) {
+            if (is<KeyframeEffect>(animation->effect()))
                 downcast<KeyframeEffect>(animation->effect())->getAnimatedStyle(result);
         }
     }
@@ -196,77 +568,113 @@ std::unique_ptr<RenderStyle> DocumentTimeline::animatedStyleForRenderer(RenderEl
     return result;
 }
 
+void DocumentTimeline::animationWasAddedToElement(WebAnimation& animation, Element& element)
+{
+    AnimationTimeline::animationWasAddedToElement(animation, element);
+    updateListOfElementsWithRunningAcceleratedAnimationsForElement(element);
+}
+
+void DocumentTimeline::animationWasRemovedFromElement(WebAnimation& animation, Element& element)
+{
+    AnimationTimeline::animationWasRemovedFromElement(animation, element);
+    updateListOfElementsWithRunningAcceleratedAnimationsForElement(element);
+}
+
 void DocumentTimeline::animationAcceleratedRunningStateDidChange(WebAnimation& animation)
 {
     m_acceleratedAnimationsPendingRunningStateChange.add(&animation);
+
+    if (is<KeyframeEffect>(animation.effect())) {
+        if (auto* target = downcast<KeyframeEffect>(animation.effect())->target())
+            updateListOfElementsWithRunningAcceleratedAnimationsForElement(*target);
+    }
 }
 
-bool DocumentTimeline::runningAnimationsForElementAreAllAccelerated(Element& element)
+void DocumentTimeline::updateListOfElementsWithRunningAcceleratedAnimationsForElement(Element& element)
 {
-    // FIXME: This will let animations run using hardware compositing even if later in the active
-    // span of the current animations a new animation should require hardware compositing to be
-    // disabled (webkit.org/b/179974).
     auto animations = animationsForElement(element);
+    bool runningAnimationsForElementAreAllAccelerated = !animations.isEmpty();
     for (const auto& animation : animations) {
-        if (animation->effect() && animation->effect()->isKeyframeEffect() && !downcast<KeyframeEffect>(animation->effect())->isRunningAccelerated())
-            return false;
+        if (!animation->isRunningAccelerated()) {
+            runningAnimationsForElementAreAllAccelerated = false;
+            break;
+        }
     }
-    return !animations.isEmpty();
+
+    if (runningAnimationsForElementAreAllAccelerated)
+        m_elementsWithRunningAcceleratedAnimations.add(&element);
+    else
+        m_elementsWithRunningAcceleratedAnimations.remove(&element);
+}
+
+void DocumentTimeline::applyPendingAcceleratedAnimations()
+{
+    auto acceleratedAnimationsPendingRunningStateChange = m_acceleratedAnimationsPendingRunningStateChange;
+    m_acceleratedAnimationsPendingRunningStateChange.clear();
+
+    bool hasForcedLayout = false;
+    for (auto& animation : acceleratedAnimationsPendingRunningStateChange) {
+        if (!hasForcedLayout) {
+            auto* effect = animation->effect();
+            if (is<KeyframeEffect>(effect))
+                hasForcedLayout |= downcast<KeyframeEffect>(effect)->forceLayoutIfNeeded();
+        }
+        animation->applyPendingAcceleratedActions();
+    }
+}
+
+bool DocumentTimeline::resolveAnimationsForElement(Element& element, RenderStyle& targetStyle)
+{
+    bool hasNonAcceleratedAnimations = false;
+    bool hasPendingAcceleratedAnimations = true;
+    for (const auto& animation : animationsForElement(element)) {
+        animation->resolve(targetStyle);
+        if (!hasNonAcceleratedAnimations) {
+            if (auto* effect = animation->effect()) {
+                if (is<KeyframeEffect>(effect)) {
+                    auto* keyframeEffect = downcast<KeyframeEffect>(effect);
+                    for (auto cssPropertyId : keyframeEffect->animatedProperties()) {
+                        if (!CSSPropertyAnimation::animationOfPropertyIsAccelerated(cssPropertyId)) {
+                            hasNonAcceleratedAnimations = true;
+                            continue;
+                        }
+                        if (!hasPendingAcceleratedAnimations)
+                            hasPendingAcceleratedAnimations = keyframeEffect->hasPendingAcceleratedAction();
+                    }
+                }
+            }
+        }
+    }
+
+    // If there are no non-accelerated animations and we've encountered at least one pending
+    // accelerated animation, we should recomposite this element's layer for animation purposes.
+    return !hasNonAcceleratedAnimations && hasPendingAcceleratedAnimations;
+}
+
+bool DocumentTimeline::runningAnimationsForElementAreAllAccelerated(Element& element) const
+{
+    return m_elementsWithRunningAcceleratedAnimations.contains(&element);
 }
 
 void DocumentTimeline::enqueueAnimationPlaybackEvent(AnimationPlaybackEvent& event)
 {
     m_pendingAnimationEvents.append(event);
-
-    if (!m_eventDispatchTaskQueue.hasPendingTasks())
-        m_eventDispatchTaskQueue.enqueueTask(std::bind(&DocumentTimeline::performEventDispatchTask, this));
 }
 
-static inline bool compareAnimationPlaybackEvents(const Ref<WebCore::AnimationPlaybackEvent>& lhs, const Ref<WebCore::AnimationPlaybackEvent>& rhs)
+Vector<std::pair<String, double>> DocumentTimeline::acceleratedAnimationsForElement(Element& element) const
 {
-    // Sort the events by their scheduled event time such that events that were scheduled to occur earlier, sort before events scheduled to occur later
-    // and events whose scheduled event time is unresolved sort before events with a resolved scheduled event time.
-    if (lhs->timelineTime() && !rhs->timelineTime())
-        return false;
-    if (!lhs->timelineTime() && rhs->timelineTime())
-        return true;
-    if (!lhs->timelineTime() && !rhs->timelineTime())
-        return true;
-    return lhs->timelineTime().value() < rhs->timelineTime().value();
+    auto* renderer = element.renderer();
+    if (renderer && renderer->isComposited()) {
+        auto* compositedRenderer = downcast<RenderBoxModelObject>(renderer);
+        if (auto* graphicsLayer = compositedRenderer->layer()->backing()->graphicsLayer())
+            return graphicsLayer->acceleratedAnimationsForTesting();
+    }
+    return { };
 }
 
-void DocumentTimeline::performEventDispatchTask()
+unsigned DocumentTimeline::numberOfAnimationTimelineInvalidationsForTesting() const
 {
-    if (m_pendingAnimationEvents.isEmpty())
-        return;
-
-    auto pendingAnimationEvents = WTFMove(m_pendingAnimationEvents);
-
-    std::stable_sort(pendingAnimationEvents.begin(), pendingAnimationEvents.end(), compareAnimationPlaybackEvents);
-    for (auto& pendingEvent : pendingAnimationEvents)
-        pendingEvent->target()->dispatchEvent(pendingEvent);
+    return m_numberOfAnimationTimelineInvalidationsForTesting;
 }
-
-void DocumentTimeline::windowScreenDidChange(PlatformDisplayID displayID)
-{
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    DisplayRefreshMonitorManager::sharedManager().windowScreenDidChange(displayID, *this);
-#else
-    UNUSED_PARAM(displayID);
-#endif
-}
-
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-RefPtr<DisplayRefreshMonitor> DocumentTimeline::createDisplayRefreshMonitor(PlatformDisplayID displayID) const
-{
-    if (!m_document || !m_document->page())
-        return nullptr;
-
-    if (auto monitor = m_document->page()->chrome().client().createDisplayRefreshMonitor(displayID))
-        return monitor;
-
-    return DisplayRefreshMonitor::createDefaultDisplayRefreshMonitor(displayID);
-}
-#endif
 
 } // namespace WebCore

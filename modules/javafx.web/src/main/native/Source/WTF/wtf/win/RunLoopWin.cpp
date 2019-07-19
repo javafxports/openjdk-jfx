@@ -24,15 +24,14 @@
  */
 
 #include "config.h"
-#include "RunLoop.h"
+#include <wtf/RunLoop.h>
 
-#include <wtf/CurrentTime.h>
 #include <wtf/WindowsExtras.h>
 
 namespace WTF {
 
 static const UINT PerformWorkMessage = WM_USER + 1;
-static const LPWSTR kRunLoopMessageWindowClassName = L"RunLoopMessageWindow";
+static const LPCWSTR kRunLoopMessageWindowClassName = L"RunLoopMessageWindow";
 
 LRESULT CALLBACK RunLoop::RunLoopWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -84,7 +83,7 @@ bool RunLoop::registerRunLoopMessageWindowClass()
 {
     // FIXME: This really only needs to be called once.
 
-    WNDCLASS windowClass = { 0 };
+    WNDCLASS windowClass { };
     windowClass.lpfnWndProc     = RunLoop::RunLoopWndProc;
     windowClass.cbWndExtra      = sizeof(RunLoop*);
     windowClass.lpszClassName   = kRunLoopMessageWindowClassName;
@@ -156,14 +155,14 @@ RunLoop::TimerBase::~TimerBase()
     stop();
 }
 
-void RunLoop::TimerBase::start(double nextFireInterval, bool repeat)
+void RunLoop::TimerBase::start(Seconds nextFireInterval, bool repeat)
 {
     LockHolder locker(m_runLoop->m_activeTimersLock);
     m_isRepeating = repeat;
     m_runLoop->m_activeTimers.set(m_ID, this);
-    m_interval = Seconds(nextFireInterval);
+    m_interval = nextFireInterval;
     m_nextFireDate = MonotonicTime::now() + m_interval;
-    ::SetTimer(m_runLoop->m_runLoopMessageWindow, m_ID, nextFireInterval * 1000, 0);
+    ::SetTimer(m_runLoop->m_runLoopMessageWindow, m_ID, nextFireInterval.millisecondsAs<unsigned>(), 0);
 }
 
 void RunLoop::TimerBase::stop()

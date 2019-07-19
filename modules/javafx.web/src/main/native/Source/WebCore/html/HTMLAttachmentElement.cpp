@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,18 +32,16 @@
 #include "Document.h"
 #include "Editor.h"
 #include "File.h"
-#include "FileReaderLoader.h"
-#include "FileReaderLoaderClient.h"
 #include "Frame.h"
 #include "HTMLImageElement.h"
 #include "HTMLNames.h"
-#include "HTMLVideoElement.h"
 #include "MIMETypeRegistry.h"
 #include "RenderAttachment.h"
-#include "RenderBlockFlow.h"
-#include "ShadowRoot.h"
 #include "SharedBuffer.h"
 #include <pal/FileSizeFormatter.h>
+#include <wtf/IsoMallocInlines.h>
+#include <wtf/UUID.h>
+#include <wtf/URLParser.h>
 
 #if PLATFORM(COCOA)
 #include "UTIUtilities.h"
@@ -51,37 +49,9 @@
 
 namespace WebCore {
 
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLAttachmentElement);
+
 using namespace HTMLNames;
-
-class AttachmentDataReader : public FileReaderLoaderClient {
-public:
-    static std::unique_ptr<AttachmentDataReader> create(HTMLAttachmentElement& attachment, Function<void(RefPtr<SharedBuffer>&&)>&& callback)
-    {
-        return std::make_unique<AttachmentDataReader>(attachment, WTFMove(callback));
-    }
-
-    AttachmentDataReader(HTMLAttachmentElement& attachment, Function<void(RefPtr<SharedBuffer>&&)>&& callback)
-        : m_attachment(attachment)
-        , m_callback(std::make_unique<Function<void(RefPtr<SharedBuffer>&&)>>(WTFMove(callback)))
-        , m_loader(std::make_unique<FileReaderLoader>(FileReaderLoader::ReadType::ReadAsArrayBuffer, this))
-    {
-        m_loader->start(&attachment.document(), *attachment.file());
-    }
-
-    ~AttachmentDataReader();
-
-private:
-    void didStartLoading() final { }
-    void didReceiveData() final { }
-    void didFinishLoading() final;
-    void didFail(int error) final;
-
-    void invokeCallbackAndFinishReading(RefPtr<SharedBuffer>&&);
-
-    HTMLAttachmentElement& m_attachment;
-    std::unique_ptr<Function<void(RefPtr<SharedBuffer>&&)>> m_callback;
-    std::unique_ptr<FileReaderLoader> m_loader;
-};
 
 HTMLAttachmentElement::HTMLAttachmentElement(const QualifiedName& tagName, Document& document)
     : HTMLElement(tagName, document)
@@ -98,12 +68,35 @@ Ref<HTMLAttachmentElement> HTMLAttachmentElement::create(const QualifiedName& ta
 
 RenderPtr<RenderElement> HTMLAttachmentElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
-    if (!style.hasAppearance()) {
-        // If this attachment element doesn't have an appearance, defer rendering to child elements.
-        return createRenderer<RenderBlockFlow>(*this, WTFMove(style));
-    }
-
     return createRenderer<RenderAttachment>(*this, WTFMove(style));
+}
+
+const String& HTMLAttachmentElement::getAttachmentIdentifier(HTMLImageElement& image)
+{
+    if (auto attachment = image.attachmentElement())
+        return attachment->uniqueIdentifier();
+
+    auto& document = image.document();
+    auto attachment = create(HTMLNames::attachmentTag, document);
+    auto& identifier = attachment->ensureUniqueIdentifier();
+
+    document.registerAttachmentIdentifier(identifier);
+    image.setAttachmentElement(WTFMove(attachment));
+
+    return identifier;
+}
+
+void HTMLAttachmentElement::copyNonAttributePropertiesFromElement(const Element& source)
+{
+    m_uniqueIdentifier = downcast<HTMLAttachmentElement>(source).uniqueIdentifier();
+    HTMLElement::copyNonAttributePropertiesFromElement(source);
+}
+
+URL HTMLAttachmentElement::archiveResourceURL(const String& identifier)
+{
+    auto resourceURL = URL({ }, "applewebdata://attachment/"_s);
+    resourceURL.setPath(identifier);
+    return resourceURL;
 }
 
 File* HTMLAttachmentElement::file() const
@@ -132,29 +125,8 @@ void HTMLAttachmentElement::setFile(RefPtr<File>&& file, UpdateDisplayAttributes
         }
     }
 
-    if (auto* renderAttachment = attachmentRenderer())
-        renderAttachment->invalidate();
-
-    invalidateShadowRootChildrenIfNecessary();
-    populateShadowRootIfNecessary();
-}
-
-void HTMLAttachmentElement::invalidateShadowRootChildrenIfNecessary()
-{
-    if (auto image = innerImage()) {
-        image->setAttributeWithoutSynchronization(srcAttr, emptyString());
-        image->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone, true);
-    }
-    if (auto video = innerVideo()) {
-        video->setAttributeWithoutSynchronization(srcAttr, emptyString());
-        video->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone, true);
-    }
-}
-
-RenderAttachment* HTMLAttachmentElement::attachmentRenderer() const
-{
-    auto* renderer = this->renderer();
-    return is<RenderAttachment>(renderer) ? downcast<RenderAttachment>(renderer) : nullptr;
+    if (auto* renderer = this->renderer())
+        renderer->invalidate();
 }
 
 Node::InsertedIntoAncestorResult HTMLAttachmentElement::insertedIntoAncestor(InsertionType type, ContainerNode& ancestor)
@@ -172,11 +144,23 @@ void HTMLAttachmentElement::removedFromAncestor(RemovalType type, ContainerNode&
         document().didRemoveAttachmentElement(*this);
 }
 
+const String& HTMLAttachmentElement::ensureUniqueIdentifier()
+{
+    if (m_uniqueIdentifier.isEmpty())
+        m_uniqueIdentifier = createCanonicalUUIDString();
+    return m_uniqueIdentifier;
+}
+
+bool HTMLAttachmentElement::hasEnclosingImage() const
+{
+    return is<HTMLImageElement>(shadowHost());
+}
+
 void HTMLAttachmentElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == progressAttr || name == subtitleAttr || name == titleAttr || name == typeAttr) {
-        if (auto* renderAttachment = attachmentRenderer())
-            renderAttachment->invalidate();
+        if (auto* renderer = this->renderer())
+            renderer->invalidate();
     }
 
     HTMLElement::parseAttribute(name, value);
@@ -190,6 +174,27 @@ String HTMLAttachmentElement::attachmentTitle() const
     return m_file ? m_file->name() : String();
 }
 
+String HTMLAttachmentElement::attachmentTitleForDisplay() const
+{
+    auto title = attachmentTitle();
+
+    auto indexOfLastDot = title.reverseFind('.');
+    if (indexOfLastDot == notFound)
+        return title;
+
+    String name = title.left(indexOfLastDot);
+    String extension = title.substring(indexOfLastDot);
+
+    StringBuilder builder;
+    builder.append(leftToRightMark);
+    builder.append(firstStrongIsolate);
+    builder.append(name);
+    builder.append(popDirectionalIsolate);
+    builder.append(extension);
+
+    return builder.toString();
+}
+
 String HTMLAttachmentElement::attachmentType() const
 {
     return attributeWithoutSynchronization(typeAttr);
@@ -200,159 +205,48 @@ String HTMLAttachmentElement::attachmentPath() const
     return attributeWithoutSynchronization(webkitattachmentpathAttr);
 }
 
-void HTMLAttachmentElement::updateDisplayMode(AttachmentDisplayMode mode)
+void HTMLAttachmentElement::updateAttributes(Optional<uint64_t>&& newFileSize, const String& newContentType, const String& newFilename)
 {
-    mode = mode == AttachmentDisplayMode::Auto ? defaultDisplayMode() : mode;
+    if (!newFilename.isNull())
+        setAttributeWithoutSynchronization(HTMLNames::titleAttr, newFilename);
+    else
+        removeAttribute(HTMLNames::titleAttr);
 
-    switch (mode) {
-    case AttachmentDisplayMode::InPlace:
-        populateShadowRootIfNecessary();
-        setInlineStyleProperty(CSSPropertyWebkitAppearance, CSSValueNone, true);
-        setInlineStyleProperty(CSSPropertyDisplay, CSSValueInlineBlock, true);
-        break;
-    case AttachmentDisplayMode::AsIcon:
-        removeInlineStyleProperty(CSSPropertyWebkitAppearance);
-        removeInlineStyleProperty(CSSPropertyDisplay);
-        break;
-    default:
-        ASSERT_NOT_REACHED();
-        break;
-    }
+    if (!newContentType.isNull())
+        setAttributeWithoutSynchronization(HTMLNames::typeAttr, newContentType);
+    else
+        removeAttribute(HTMLNames::typeAttr);
 
-    invalidateStyleAndRenderersForSubtree();
+    if (newFileSize)
+        setAttributeWithoutSynchronization(HTMLNames::subtitleAttr, fileSizeDescription(*newFileSize));
+    else
+        removeAttribute(HTMLNames::subtitleAttr);
+
+    if (auto* renderer = this->renderer())
+        renderer->invalidate();
 }
 
-void HTMLAttachmentElement::updateFileWithData(Ref<SharedBuffer>&& data, std::optional<String>&& newContentType, std::optional<String>&& newFilename)
+static bool mimeTypeIsSuitableForInlineImageAttachment(const String& mimeType)
 {
-    auto filename = newFilename ? *newFilename : attachmentTitle();
-    auto contentType = newContentType ? *newContentType : File::contentTypeForFile(filename);
-    auto file = File::create(Blob::create(WTFMove(data), contentType), filename);
-    setFile(WTFMove(file), UpdateDisplayAttributes::Yes);
+    return MIMETypeRegistry::isSupportedImageMIMEType(mimeType) || MIMETypeRegistry::isPDFMIMEType(mimeType);
 }
 
-Ref<HTMLImageElement> HTMLAttachmentElement::ensureInnerImage()
+void HTMLAttachmentElement::updateEnclosingImageWithData(const String& contentType, Ref<SharedBuffer>&& data)
 {
-    if (auto image = innerImage())
-        return *image;
-
-    auto image = HTMLImageElement::create(document());
-    ensureUserAgentShadowRoot().appendChild(image);
-    return image;
-}
-
-Ref<HTMLVideoElement> HTMLAttachmentElement::ensureInnerVideo()
-{
-    if (auto video = innerVideo())
-        return *video;
-
-    auto video = HTMLVideoElement::create(document());
-    ensureUserAgentShadowRoot().appendChild(video);
-    return video;
-}
-
-RefPtr<HTMLImageElement> HTMLAttachmentElement::innerImage() const
-{
-    if (auto root = userAgentShadowRoot())
-        return childrenOfType<HTMLImageElement>(*root).first();
-    return nullptr;
-}
-
-RefPtr<HTMLVideoElement> HTMLAttachmentElement::innerVideo() const
-{
-    if (auto root = userAgentShadowRoot())
-        return childrenOfType<HTMLVideoElement>(*root).first();
-    return nullptr;
-}
-
-void HTMLAttachmentElement::populateShadowRootIfNecessary()
-{
-    if (!m_file)
+    auto* hostElement = shadowHost();
+    if (!is<HTMLImageElement>(hostElement) || !data->size())
         return;
 
-    auto mimeType = attachmentType();
-
+    String mimeType = contentType;
 #if PLATFORM(COCOA)
-    if (isDeclaredUTI(mimeType))
-        mimeType = MIMETypeFromUTI(mimeType);
+    if (isDeclaredUTI(contentType))
+        mimeType = MIMETypeFromUTI(contentType);
 #endif
 
-    if (mimeType.isEmpty())
+    if (!mimeTypeIsSuitableForInlineImageAttachment(mimeType))
         return;
 
-    if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType) || MIMETypeRegistry::isPDFMIMEType(mimeType)) {
-        auto image = ensureInnerImage();
-        if (image->attributeWithoutSynchronization(srcAttr).isEmpty()) {
-            image->setAttributeWithoutSynchronization(srcAttr, DOMURL::createObjectURL(document(), *m_file));
-            image->setAttributeWithoutSynchronization(draggableAttr, AtomicString("false"));
-            image->setInlineStyleProperty(CSSPropertyDisplay, CSSValueInline, true);
-            image->setInlineStyleProperty(CSSPropertyMaxWidth, 100, CSSPrimitiveValue::UnitType::CSS_PERCENTAGE, true);
-        }
-
-    } else if (MIMETypeRegistry::isSupportedMediaMIMEType(mimeType)) {
-        auto video = ensureInnerVideo();
-        if (video->attributeWithoutSynchronization(srcAttr).isEmpty()) {
-            video->setAttributeWithoutSynchronization(srcAttr, DOMURL::createObjectURL(document(), *m_file));
-            video->setAttributeWithoutSynchronization(controlsAttr, emptyString());
-            video->setInlineStyleProperty(CSSPropertyDisplay, CSSValueInline, true);
-            video->setInlineStyleProperty(CSSPropertyMaxWidth, 100, CSSPrimitiveValue::UnitType::CSS_PERCENTAGE, true);
-        }
-    }
-}
-
-void HTMLAttachmentElement::requestInfo(Function<void(const AttachmentInfo&)>&& callback)
-{
-    if (!m_file) {
-        callback({ });
-        return;
-    }
-
-    AttachmentInfo infoWithoutData { m_file->type(), m_file->name(), m_file->path(), nullptr };
-    if (!m_file->path().isEmpty()) {
-        callback(infoWithoutData);
-        return;
-    }
-
-    m_attachmentReaders.append(AttachmentDataReader::create(*this, [infoWithoutData = WTFMove(infoWithoutData), protectedFile = makeRef(*m_file), callback = WTFMove(callback)] (RefPtr<SharedBuffer>&& data) {
-        callback({ infoWithoutData.contentType, infoWithoutData.name, infoWithoutData.filePath, WTFMove(data) });
-    }));
-}
-
-void HTMLAttachmentElement::destroyReader(AttachmentDataReader& finishedReader)
-{
-    m_attachmentReaders.removeFirstMatching([&] (const std::unique_ptr<AttachmentDataReader>& reader) -> bool {
-        return reader.get() == &finishedReader;
-    });
-}
-
-AttachmentDataReader::~AttachmentDataReader()
-{
-    invokeCallbackAndFinishReading(nullptr);
-}
-
-void AttachmentDataReader::didFinishLoading()
-{
-    if (auto arrayBuffer = m_loader->arrayBufferResult())
-        invokeCallbackAndFinishReading(SharedBuffer::create(reinterpret_cast<uint8_t*>(arrayBuffer->data()), arrayBuffer->byteLength()));
-    else
-        invokeCallbackAndFinishReading(nullptr);
-    m_attachment.destroyReader(*this);
-}
-
-void AttachmentDataReader::didFail(int)
-{
-    invokeCallbackAndFinishReading(nullptr);
-    m_attachment.destroyReader(*this);
-}
-
-void AttachmentDataReader::invokeCallbackAndFinishReading(RefPtr<SharedBuffer>&& data)
-{
-    auto callback = WTFMove(m_callback);
-    if (!callback)
-        return;
-
-    m_loader->cancel();
-    m_loader = nullptr;
-    (*callback)(WTFMove(data));
+    hostElement->setAttributeWithoutSynchronization(HTMLNames::srcAttr, DOMURL::createObjectURL(document(), Blob::create(WTFMove(data), mimeType)));
 }
 
 } // namespace WebCore

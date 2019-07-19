@@ -28,12 +28,15 @@
 [
     Constructor(PerformanceObserverCallback callback),
     ConstructorCallWith=ScriptExecutionContext,
+    CustomIsReachable,
     EnabledAtRuntime=PerformanceTimeline,
     Exposed=(Window,Worker),
     ImplementationLacksVTable,
+    JSCustomMarkFunction,
 ] interface PerformanceObserver {
     [MayThrowException] void observe(PerformanceObserverInit options);
     void disconnect();
+    static readonly attribute FrozenArray<DOMString> supportedEntryTypes;
 };
 
 dictionary PerformanceObserverInit {

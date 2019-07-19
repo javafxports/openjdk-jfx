@@ -88,8 +88,8 @@ void FileReaderLoader::start(ScriptExecutionContext* scriptExecutionContext, Blo
     request.setHTTPMethod("GET");
 
     ThreadableLoaderOptions options;
-    options.sendLoadCallbacks = SendCallbacks;
-    options.dataBufferingPolicy = DoNotBufferData;
+    options.sendLoadCallbacks = SendCallbackPolicy::SendCallbacks;
+    options.dataBufferingPolicy = DataBufferingPolicy::DoNotBufferData;
     options.credentials = FetchOptions::Credentials::Include;
     options.mode = FetchOptions::Mode::SameOrigin;
     options.contentSecurityPolicyEnforcement = ContentSecurityPolicyEnforcement::DoNotEnforce;
@@ -217,9 +217,7 @@ void FileReaderLoader::didReceiveData(const char* data, int dataLength)
 void FileReaderLoader::didFinishLoading(unsigned long)
 {
     if (m_variableLength && m_totalBytes > m_bytesLoaded) {
-        RefPtr<ArrayBuffer> newData = m_rawData->slice(0, m_bytesLoaded);
-
-        m_rawData = newData;
+        m_rawData = m_rawData->slice(0, m_bytesLoaded);
         m_totalBytes = m_bytesLoaded;
     }
     cleanup();

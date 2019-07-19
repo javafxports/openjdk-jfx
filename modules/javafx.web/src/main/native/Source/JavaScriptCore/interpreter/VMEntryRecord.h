@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@ namespace JSC {
 
 struct EntryFrame;
 class ExecState;
+class JSObject;
 class VM;
 
 struct VMEntryRecord {
@@ -41,9 +42,14 @@ struct VMEntryRecord {
     VM* m_vm;
     ExecState* m_prevTopCallFrame;
     EntryFrame* m_prevTopEntryFrame;
+    JSObject* m_callee;
 
-#if ENABLE(JIT) && NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
-    intptr_t calleeSaveRegistersBuffer[NUMBER_OF_CALLEE_SAVES_REGISTERS];
+    JSObject* callee() const { return m_callee; }
+
+#if !ENABLE(C_LOOP) && NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
+    CPURegister calleeSaveRegistersBuffer[NUMBER_OF_CALLEE_SAVES_REGISTERS];
+#elif ENABLE(C_LOOP)
+    CPURegister calleeSaveRegistersBuffer[1];
 #endif
 
     ExecState* prevTopCallFrame() { return m_prevTopCallFrame; }
@@ -54,22 +60,5 @@ struct VMEntryRecord {
 };
 
 extern "C" VMEntryRecord* vmEntryRecord(EntryFrame*);
-
-struct EntryFrame {
-#if ENABLE(JIT) && NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
-    static ptrdiff_t vmEntryRecordOffset()
-    {
-        EntryFrame* fakeEntryFrame = reinterpret_cast<EntryFrame*>(0x1000);
-        VMEntryRecord* record = vmEntryRecord(fakeEntryFrame);
-        return static_cast<ptrdiff_t>(
-            reinterpret_cast<char*>(record) - reinterpret_cast<char*>(fakeEntryFrame));
-    }
-
-    static ptrdiff_t calleeSaveRegistersBufferOffset()
-    {
-        return vmEntryRecordOffset() + OBJECT_OFFSETOF(VMEntryRecord, calleeSaveRegistersBuffer);
-    }
-#endif
-};
 
 } // namespace JSC

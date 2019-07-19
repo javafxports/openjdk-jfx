@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,13 +53,13 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyMemory(ExecState* exec
     VM& vm = exec->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     if (exec->argumentCount() != 1)
-        return JSValue::encode(throwException(exec, throwScope, createTypeError(exec, ASCIILiteral("WebAssembly.Memory expects exactly one argument"))));
+        return JSValue::encode(throwException(exec, throwScope, createTypeError(exec, "WebAssembly.Memory expects exactly one argument"_s)));
 
     JSObject* memoryDescriptor;
     {
         JSValue argument = exec->argument(0);
         if (!argument.isObject())
-            return JSValue::encode(throwException(exec, throwScope, createTypeError(exec, ASCIILiteral("WebAssembly.Memory expects its first argument to be an object"))));
+            return JSValue::encode(throwException(exec, throwScope, createTypeError(exec, "WebAssembly.Memory expects its first argument to be an object"_s)));
         memoryDescriptor = jsCast<JSObject*>(argument);
     }
 
@@ -71,7 +71,9 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyMemory(ExecState* exec
         uint32_t size = toNonWrappingUint32(exec, minSizeValue);
         RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
         if (!Wasm::PageCount::isValid(size))
-            return JSValue::encode(throwException(exec, throwScope, createRangeError(exec, ASCIILiteral("WebAssembly.Memory 'initial' page count is too large"))));
+            return JSValue::encode(throwException(exec, throwScope, createRangeError(exec, "WebAssembly.Memory 'initial' page count is too large"_s)));
+        if (Wasm::PageCount(size).bytes() > MAX_ARRAY_BUFFER_SIZE)
+            return JSValue::encode(throwException(exec, throwScope, createOutOfMemoryError(exec)));
         initialPageCount = Wasm::PageCount(size);
     }
 
@@ -86,12 +88,12 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyMemory(ExecState* exec
             uint32_t size = toNonWrappingUint32(exec, maxSizeValue);
             RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
             if (!Wasm::PageCount::isValid(size))
-                return JSValue::encode(throwException(exec, throwScope, createRangeError(exec, ASCIILiteral("WebAssembly.Memory 'maximum' page count is too large"))));
+                return JSValue::encode(throwException(exec, throwScope, createRangeError(exec, "WebAssembly.Memory 'maximum' page count is too large"_s)));
             maximumPageCount = Wasm::PageCount(size);
 
             if (initialPageCount > maximumPageCount) {
                 return JSValue::encode(throwException(exec, throwScope,
-                    createRangeError(exec, ASCIILiteral("'maximum' page count must be than greater than or equal to the 'initial' page count"))));
+                    createRangeError(exec, "'maximum' page count must be than greater than or equal to the 'initial' page count"_s)));
             }
         }
     }
@@ -99,7 +101,7 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyMemory(ExecState* exec
     auto* jsMemory = JSWebAssemblyMemory::create(exec, vm, exec->lexicalGlobalObject()->WebAssemblyMemoryStructure());
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
 
-    RefPtr<Wasm::Memory> memory = Wasm::Memory::create(initialPageCount, maximumPageCount,
+    RefPtr<Wasm::Memory> memory = Wasm::Memory::tryCreate(initialPageCount, maximumPageCount,
         [&vm] (Wasm::Memory::NotifyPressure) { vm.heap.collectAsync(CollectionScope::Full); },
         [&vm] (Wasm::Memory::SyncTryToReclaim) { vm.heap.collectSync(CollectionScope::Full); },
         [&vm, jsMemory] (Wasm::Memory::GrowSuccess, Wasm::PageCount oldPageCount, Wasm::PageCount newPageCount) { jsMemory->growSuccessCallback(vm, oldPageCount, newPageCount); });
@@ -132,7 +134,7 @@ Structure* WebAssemblyMemoryConstructor::createStructure(VM& vm, JSGlobalObject*
 
 void WebAssemblyMemoryConstructor::finishCreation(VM& vm, WebAssemblyMemoryPrototype* prototype)
 {
-    Base::finishCreation(vm, ASCIILiteral("Memory"));
+    Base::finishCreation(vm, "Memory"_s);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum | PropertyAttribute::DontDelete);
 }

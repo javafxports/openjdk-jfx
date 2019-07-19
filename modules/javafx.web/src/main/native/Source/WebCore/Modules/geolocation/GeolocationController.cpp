@@ -99,7 +99,7 @@ void GeolocationController::cancelPermissionRequest(Geolocation& geolocation)
     m_client.cancelPermissionRequest(geolocation);
 }
 
-void GeolocationController::positionChanged(const std::optional<GeolocationPosition>& position)
+void GeolocationController::positionChanged(const Optional<GeolocationPosition>& position)
 {
     m_lastPosition = position;
     Vector<Ref<Geolocation>> observersVector;
@@ -120,7 +120,7 @@ void GeolocationController::errorOccurred(GeolocationError& error)
         observer->setError(error);
 }
 
-std::optional<GeolocationPosition> GeolocationController::lastPosition()
+Optional<GeolocationPosition> GeolocationController::lastPosition()
 {
     if (m_lastPosition)
         return m_lastPosition.value();
@@ -128,10 +128,10 @@ std::optional<GeolocationPosition> GeolocationController::lastPosition()
     return m_client.lastPosition();
 }
 
-void GeolocationController::activityStateDidChange(ActivityState::Flags oldActivityState, ActivityState::Flags newActivityState)
+void GeolocationController::activityStateDidChange(OptionSet<ActivityState::Flag> oldActivityState, OptionSet<ActivityState::Flag> newActivityState)
 {
     // Toggle GPS based on page visibility to save battery.
-    ActivityState::Flags changed = oldActivityState ^ newActivityState;
+    auto changed = oldActivityState ^ newActivityState;
     if (changed & ActivityState::IsVisible && !m_observers.isEmpty()) {
         if (newActivityState & ActivityState::IsVisible)
             m_client.startUpdating();

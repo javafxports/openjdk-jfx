@@ -34,7 +34,6 @@
 #include "JSLock.h"
 #include "JSObjectRef.h"
 #include "JSString.h"
-#include "JSStringRef.h"
 #include "OpaqueJSString.h"
 #include "PropertyNameArray.h"
 #include <wtf/Vector.h>
@@ -130,14 +129,23 @@ void JSCallbackObject<Parent>::init(ExecState* exec)
 }
 
 template <class Parent>
-String JSCallbackObject<Parent>::className(const JSObject* object)
+String JSCallbackObject<Parent>::className(const JSObject* object, VM& vm)
 {
     const JSCallbackObject* thisObject = jsCast<const JSCallbackObject*>(object);
     String thisClassName = thisObject->classRef()->className();
     if (!thisClassName.isEmpty())
         return thisClassName;
 
-    return Parent::className(object);
+    return Parent::className(object, vm);
+}
+
+template <class Parent>
+String JSCallbackObject<Parent>::toStringName(const JSObject* object, ExecState* exec)
+{
+    VM& vm = exec->vm();
+    const ClassInfo* info = object->classInfo(vm);
+    ASSERT(info);
+    return info->methodTable.className(object, vm);
 }
 
 template <class Parent>
@@ -156,7 +164,7 @@ bool JSCallbackObject<Parent>::getOwnPropertySlot(JSObject* object, ExecState* e
             // optional optimization to bypass getProperty in cases when we only need to know if the property exists
             if (JSObjectHasPropertyCallback hasProperty = jsClass->hasProperty) {
                 if (!propertyNameRef)
-                    propertyNameRef = OpaqueJSString::create(name);
+                    propertyNameRef = OpaqueJSString::tryCreate(name);
                 JSLock::DropAllLocks dropAllLocks(exec);
                 if (hasProperty(ctx, thisRef, propertyNameRef.get())) {
                     slot.setCustom(thisObject, PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum, callbackGetter);
@@ -164,7 +172,7 @@ bool JSCallbackObject<Parent>::getOwnPropertySlot(JSObject* object, ExecState* e
                 }
             } else if (JSObjectGetPropertyCallback getProperty = jsClass->getProperty) {
                 if (!propertyNameRef)
-                    propertyNameRef = OpaqueJSString::create(name);
+                    propertyNameRef = OpaqueJSString::tryCreate(name);
                 JSValueRef exception = 0;
                 JSValueRef value;
                 {
@@ -207,7 +215,7 @@ bool JSCallbackObject<Parent>::getOwnPropertySlot(JSObject* object, ExecState* e
 template <class Parent>
 bool JSCallbackObject<Parent>::getOwnPropertySlotByIndex(JSObject* object, ExecState* exec, unsigned propertyName, PropertySlot& slot)
 {
-    return object->methodTable()->getOwnPropertySlot(object, exec, Identifier::from(exec, propertyName), slot);
+    return object->methodTable(exec->vm())->getOwnPropertySlot(object, exec, Identifier::from(exec, propertyName), slot);
 }
 
 template <class Parent>
@@ -253,7 +261,7 @@ bool JSCallbackObject<Parent>::put(JSCell* cell, ExecState* exec, PropertyName p
         for (JSClassRef jsClass = thisObject->classRef(); jsClass; jsClass = jsClass->parentClass) {
             if (JSObjectSetPropertyCallback setProperty = jsClass->setProperty) {
                 if (!propertyNameRef)
-                    propertyNameRef = OpaqueJSString::create(name);
+                    propertyNameRef = OpaqueJSString::tryCreate(name);
                 JSValueRef exception = 0;
                 bool result;
                 {
@@ -317,7 +325,7 @@ bool JSCallbackObject<Parent>::putByIndex(JSCell* cell, ExecState* exec, unsigne
     for (JSClassRef jsClass = thisObject->classRef(); jsClass; jsClass = jsClass->parentClass) {
         if (JSObjectSetPropertyCallback setProperty = jsClass->setProperty) {
             if (!propertyNameRef)
-                propertyNameRef = OpaqueJSString::create(propertyName.impl());
+                propertyNameRef = OpaqueJSString::tryCreate(propertyName.impl());
             JSValueRef exception = 0;
             bool result;
             {
@@ -376,7 +384,7 @@ bool JSCallbackObject<Parent>::deleteProperty(JSCell* cell, ExecState* exec, Pro
         for (JSClassRef jsClass = thisObject->classRef(); jsClass; jsClass = jsClass->parentClass) {
             if (JSObjectDeletePropertyCallback deleteProperty = jsClass->deleteProperty) {
                 if (!propertyNameRef)
-                    propertyNameRef = OpaqueJSString::create(name);
+                    propertyNameRef = OpaqueJSString::tryCreate(name);
                 JSValueRef exception = 0;
                 bool result;
                 {
@@ -414,7 +422,7 @@ template <class Parent>
 bool JSCallbackObject<Parent>::deletePropertyByIndex(JSCell* cell, ExecState* exec, unsigned propertyName)
 {
     JSCallbackObject* thisObject = jsCast<JSCallbackObject*>(cell);
-    return thisObject->methodTable()->deleteProperty(thisObject, exec, Identifier::from(exec, propertyName));
+    return thisObject->methodTable(exec->vm())->deleteProperty(thisObject, exec, Identifier::from(exec, propertyName));
 }
 
 template <class Parent>
@@ -653,7 +661,7 @@ EncodedJSValue JSCallbackObject<Parent>::staticFunctionGetter(ExecState* exec, E
             if (OpaqueJSClassStaticFunctionsTable* staticFunctions = jsClass->staticFunctions(exec)) {
                 if (StaticFunctionEntry* entry = staticFunctions->get(name)) {
                     if (JSObjectCallAsFunctionCallback callAsFunction = entry->callAsFunction) {
-                        JSObject* o = JSCallbackFunction::create(vm, thisObj->globalObject(), callAsFunction, name);
+                        JSObject* o = JSCallbackFunction::create(vm, thisObj->globalObject(vm), callAsFunction, name);
                         thisObj->putDirect(vm, propertyName, o, entry->attributes);
                         return JSValue::encode(o);
                     }
@@ -662,7 +670,7 @@ EncodedJSValue JSCallbackObject<Parent>::staticFunctionGetter(ExecState* exec, E
         }
     }
 
-    return JSValue::encode(throwException(exec, scope, createReferenceError(exec, ASCIILiteral("Static function property defined with NULL callAsFunction callback."))));
+    return JSValue::encode(throwException(exec, scope, createReferenceError(exec, "Static function property defined with NULL callAsFunction callback."_s)));
 }
 
 template <class Parent>
@@ -680,7 +688,7 @@ EncodedJSValue JSCallbackObject<Parent>::callbackGetter(ExecState* exec, Encoded
         for (JSClassRef jsClass = thisObj->classRef(); jsClass; jsClass = jsClass->parentClass) {
             if (JSObjectGetPropertyCallback getProperty = jsClass->getProperty) {
                 if (!propertyNameRef)
-                    propertyNameRef = OpaqueJSString::create(name);
+                    propertyNameRef = OpaqueJSString::tryCreate(name);
                 JSValueRef exception = 0;
                 JSValueRef value;
                 {
@@ -697,7 +705,7 @@ EncodedJSValue JSCallbackObject<Parent>::callbackGetter(ExecState* exec, Encoded
         }
     }
 
-    return JSValue::encode(throwException(exec, scope, createReferenceError(exec, ASCIILiteral("hasProperty callback returned true for a property that doesn't exist."))));
+    return JSValue::encode(throwException(exec, scope, createReferenceError(exec, "hasProperty callback returned true for a property that doesn't exist."_s)));
 }
 
 } // namespace JSC

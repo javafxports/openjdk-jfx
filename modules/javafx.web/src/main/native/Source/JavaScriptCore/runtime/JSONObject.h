@@ -29,7 +29,7 @@
 
 namespace JSC {
 
-class JSONObject : public JSNonFinalObject {
+class JSONObject final : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
     static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
@@ -56,6 +56,7 @@ private:
 };
 
 JS_EXPORT_PRIVATE JSValue JSONParse(ExecState*, const String&);
+JS_EXPORT_PRIVATE String JSONStringify(ExecState*, JSValue, JSValue space);
 JS_EXPORT_PRIVATE String JSONStringify(ExecState*, JSValue, unsigned indent);
 
 } // namespace JSC

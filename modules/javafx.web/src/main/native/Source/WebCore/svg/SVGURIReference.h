@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2008, 2009 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005 Rob Buis <buis@kde.org>
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -22,19 +23,32 @@
 
 #include "Document.h"
 #include "QualifiedName.h"
+#include "SVGAnimatedString.h"
 
 namespace WebCore {
 
+class SVGElement;
+
+template<typename OwnerType, typename... BaseTypes>
+class SVGAttributeRegistry;
+
+template<typename OwnerType, typename... BaseTypes>
+class SVGAttributeOwnerProxyImpl;
+
 class SVGURIReference {
+    WTF_MAKE_NONCOPYABLE(SVGURIReference);
 public:
     virtual ~SVGURIReference() = default;
 
     void parseAttribute(const QualifiedName&, const AtomicString&);
-    static bool isKnownAttribute(const QualifiedName&);
-    static void addSupportedAttributes(HashSet<QualifiedName>&);
 
     static String fragmentIdentifierFromIRIString(const String&, const Document&);
-    static Element* targetElementFromIRIString(const String&, const Document&, String* fragmentIdentifier = nullptr, const Document* externalDocument = nullptr);
+
+    struct TargetElementResult {
+        RefPtr<Element> element;
+        String identifier;
+    };
+    static TargetElementResult targetElementFromIRIString(const String&, const TreeScope&, RefPtr<Document> externalDocument = nullptr);
 
     static bool isExternalURIReference(const String& uri, const Document& document)
     {
@@ -48,9 +62,23 @@ public:
         return !equalIgnoringFragmentIdentifier(url, document.url());
     }
 
+    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGURIReference>;
+    using AttributeRegistry = SVGAttributeRegistry<SVGURIReference>;
+    static AttributeRegistry& attributeRegistry();
+
+    const String& href() const;
+    RefPtr<SVGAnimatedString> hrefAnimated();
+
 protected:
-    virtual String& hrefBaseValue() const = 0;
-    virtual void setHrefBaseValue(const String&, const bool validValue = true) = 0;
+    SVGURIReference(SVGElement* contextElement);
+
+    static bool isKnownAttribute(const QualifiedName& attributeName);
+
+private:
+    static void registerAttributes();
+
+    std::unique_ptr<AttributeOwnerProxy> m_attributeOwnerProxy;
+    SVGAnimatedStringAttribute m_href;
 };
 
 } // namespace WebCore

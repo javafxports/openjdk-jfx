@@ -41,6 +41,8 @@ enum {
     // P = binary operator precedence
     // K = keyword flag
     // U = unary operator flag
+    //
+    // We must keep the upper 8bit (1byte) region empty. JSTokenType must be 24bits.
     UnaryOpTokenFlag = 128,
     KeywordTokenFlag = 256,
     BinaryOpTokenPrecedenceShift = 9,
@@ -189,11 +191,11 @@ enum JSTokenType {
     INVALID_TEMPLATE_LITERAL_ERRORTOK = 15 | ErrorTokenFlag,
     UNEXPECTED_ESCAPE_ERRORTOK = 16 | ErrorTokenFlag,
 };
+static_assert(static_cast<unsigned>(POW) <= 0x00ffffffU, "JSTokenType must be 24bits.");
 
 struct JSTextPosition {
-    JSTextPosition() : line(0), offset(0), lineStartOffset(0) { }
+    JSTextPosition() = default;
     JSTextPosition(int _line, int _offset, int _lineStartOffset) : line(_line), offset(_offset), lineStartOffset(_lineStartOffset) { }
-    JSTextPosition(const JSTextPosition& other) : line(other.line), offset(other.offset), lineStartOffset(other.lineStartOffset) { }
 
     JSTextPosition operator+(int adjustment) const { return JSTextPosition(line, offset + adjustment, lineStartOffset); }
     JSTextPosition operator+(unsigned adjustment) const { return *this + static_cast<int>(adjustment); }
@@ -202,12 +204,28 @@ struct JSTextPosition {
 
     operator int() const { return offset; }
 
-    int line;
-    int offset;
-    int lineStartOffset;
+    bool operator==(const JSTextPosition& other) const
+    {
+        return line == other.line
+            && offset == other.offset
+            && lineStartOffset == other.lineStartOffset;
+    }
+    bool operator!=(const JSTextPosition& other) const
+    {
+        return !(*this == other);
+    }
+
+    int line { 0 };
+    int offset { 0 };
+    int lineStartOffset { 0 };
 };
 
 union JSTokenData {
+    struct {
+        const Identifier* cooked;
+        const Identifier* raw;
+        bool isTail;
+    };
     struct {
         uint32_t line;
         uint32_t offset;
@@ -223,35 +241,23 @@ union JSTokenData {
         uint8_t radix;
     };
     struct {
-        const Identifier* cooked;
-        const Identifier* raw;
-        bool isTail;
-    };
-    struct {
         const Identifier* pattern;
         const Identifier* flags;
     };
 };
 
 struct JSTokenLocation {
-    JSTokenLocation() : line(0), lineStartOffset(0), startOffset(0) { }
-    JSTokenLocation(const JSTokenLocation& location)
-    {
-        line = location.line;
-        lineStartOffset = location.lineStartOffset;
-        startOffset = location.startOffset;
-        endOffset = location.endOffset;
-    }
+    JSTokenLocation() = default;
 
-    int line;
-    unsigned lineStartOffset;
-    unsigned startOffset;
-    unsigned endOffset;
+    int line { 0 };
+    unsigned lineStartOffset { 0 };
+    unsigned startOffset { 0 };
+    unsigned endOffset { 0 };
 };
 
 struct JSToken {
-    JSTokenType m_type;
-    JSTokenData m_data;
+    JSTokenType m_type { ERRORTOK };
+    JSTokenData m_data { { nullptr, nullptr, false } };
     JSTokenLocation m_location;
     JSTextPosition m_startPosition;
     JSTextPosition m_endPosition;

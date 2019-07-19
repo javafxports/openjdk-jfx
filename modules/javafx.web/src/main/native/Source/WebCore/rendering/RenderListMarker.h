@@ -28,7 +28,7 @@ namespace WebCore {
 
 class RenderListItem;
 
-String listMarkerText(EListStyleType, int value);
+String listMarkerText(ListStyleType, int value);
 
 // Used to render the list item's marker.
 // The RenderListMarker always has to be a child of a RenderListItem.
@@ -46,10 +46,6 @@ public:
     LayoutUnit lineOffsetForListItem() const { return m_lineOffsetForListItem; }
 
     void updateMarginsAndContent();
-
-#if !ASSERT_DISABLED
-    RenderListItem& listItem() const { return m_listItem; }
-#endif
 
 private:
     void willBeDestroyed() override;
@@ -90,7 +86,7 @@ private:
 
     String m_text;
     RefPtr<StyleImage> m_image;
-    RenderListItem& m_listItem;
+    WeakPtr<RenderListItem> m_listItem;
     LayoutUnit m_lineOffsetForListItem;
 };
 

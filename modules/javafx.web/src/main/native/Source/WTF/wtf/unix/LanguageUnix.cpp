@@ -19,7 +19,7 @@
  */
 
 #include "config.h"
-#include "Language.h"
+#include <wtf/Language.h>
 
 #include <locale.h>
 #include <wtf/Vector.h>
@@ -34,7 +34,7 @@ static String platformLanguage()
 {
     String localeDefault(setlocale(LC_CTYPE, nullptr));
     if (localeDefault.isEmpty() || equalIgnoringASCIICase(localeDefault, "C") || equalIgnoringASCIICase(localeDefault, "POSIX"))
-        return ASCIILiteral("en-US");
+        return "en-US"_s;
 
     String normalizedDefault = localeDefault;
     normalizedDefault.replace('_', '-');

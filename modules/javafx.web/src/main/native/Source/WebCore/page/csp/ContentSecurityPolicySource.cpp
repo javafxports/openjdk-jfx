@@ -28,16 +28,18 @@
 #include "ContentSecurityPolicySource.h"
 
 #include "ContentSecurityPolicy.h"
-#include "URL.h"
+#include "SecurityOriginData.h"
+#include "TextEncoding.h"
+#include <wtf/URL.h>
 
 namespace WebCore {
 
-ContentSecurityPolicySource::ContentSecurityPolicySource(const ContentSecurityPolicy& policy, const String& scheme, const String& host, std::optional<uint16_t> port, const String& path, bool hostHasWildcard, bool portHasWildcard)
+ContentSecurityPolicySource::ContentSecurityPolicySource(const ContentSecurityPolicy& policy, const String& scheme, const String& host, Optional<uint16_t> port, const String& path, bool hostHasWildcard, bool portHasWildcard)
     : m_policy(policy)
     , m_scheme(scheme)
     , m_host(host)
-    , m_port(port)
     , m_path(path)
+    , m_port(port)
     , m_hostHasWildcard(hostHasWildcard)
     , m_portHasWildcard(portHasWildcard)
 {
@@ -61,11 +63,19 @@ bool ContentSecurityPolicySource::schemeMatches(const URL& url) const
     return equalIgnoringASCIICase(url.protocol(), m_scheme);
 }
 
+static bool wildcardMatches(StringView host, const String& hostWithWildcard)
+{
+    auto hostLength = host.length();
+    auto hostWithWildcardLength = hostWithWildcard.length();
+    return host.endsWithIgnoringASCIICase(hostWithWildcard)
+        && hostLength > hostWithWildcardLength
+        && host[hostLength - hostWithWildcardLength - 1] == '.';
+}
+
 bool ContentSecurityPolicySource::hostMatches(const URL& url) const
 {
-    const String& host = url.host();
-    return equalIgnoringASCIICase(host, m_host) || (m_hostHasWildcard && host.endsWithIgnoringASCIICase("." + m_host));
-
+    auto host = url.host();
+    return equalIgnoringASCIICase(host, m_host) || (m_hostHasWildcard && wildcardMatches(host, m_host));
 }
 
 bool ContentSecurityPolicySource::pathMatches(const URL& url) const
@@ -86,19 +96,19 @@ bool ContentSecurityPolicySource::portMatches(const URL& url) const
     if (m_portHasWildcard)
         return true;
 
-    std::optional<uint16_t> port = url.port();
+    Optional<uint16_t> port = url.port();
 
     if (port == m_port)
         return true;
 
-    if (isDefaultPortForProtocol(m_port.value(), "http") && ((!port && url.protocolIs("https")) || isDefaultPortForProtocol(port.value(), "https")))
+    if ((m_port && WTF::isDefaultPortForProtocol(m_port.value(), "http")) && ((!port && url.protocolIs("https")) || (port && WTF::isDefaultPortForProtocol(port.value(), "https"))))
         return true;
 
     if (!port)
-        return isDefaultPortForProtocol(m_port.value(), url.protocol());
+        return WTF::isDefaultPortForProtocol(m_port.value(), url.protocol());
 
     if (!m_port)
-        return isDefaultPortForProtocol(port.value(), url.protocol());
+        return WTF::isDefaultPortForProtocol(port.value(), url.protocol());
 
     return false;
 }
@@ -106,6 +116,11 @@ bool ContentSecurityPolicySource::portMatches(const URL& url) const
 bool ContentSecurityPolicySource::isSchemeOnly() const
 {
     return m_host.isEmpty();
+}
+
+ContentSecurityPolicySource::operator SecurityOriginData() const
+{
+    return { m_scheme, m_host, m_port };
 }
 
 } // namespace WebCore

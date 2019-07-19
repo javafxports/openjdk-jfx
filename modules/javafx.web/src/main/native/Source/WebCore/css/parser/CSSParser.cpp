@@ -28,6 +28,7 @@
 #include "config.h"
 #include "CSSParser.h"
 
+#include "CSSCustomPropertyValue.h"
 #include "CSSKeyframeRule.h"
 #include "CSSParserFastPaths.h"
 #include "CSSParserImpl.h"
@@ -40,83 +41,19 @@
 #include "CSSVariableReferenceValue.h"
 #include "Document.h"
 #include "Element.h"
+#include "Page.h"
+#include "RenderStyle.h"
 #include "RenderTheme.h"
 #include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "StyleColor.h"
+#include "StyleResolver.h"
 #include "StyleRule.h"
 #include "StyleSheetContents.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringBuilder.h>
 
-
 namespace WebCore {
-using namespace WTF;
-
-const CSSParserContext& strictCSSParserContext()
-{
-    static NeverDestroyed<CSSParserContext> strictContext(HTMLStandardMode);
-    return strictContext;
-}
-
-CSSParserContext::CSSParserContext(CSSParserMode mode, const URL& baseURL)
-    : baseURL(baseURL)
-    , mode(mode)
-    , cssGridLayoutEnabled(RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled())
-{
-#if PLATFORM(IOS)
-    // FIXME: Force the site specific quirk below to work on iOS. Investigating other site specific quirks
-    // to see if we can enable the preference all together is to be handled by:
-    // <rdar://problem/8493309> Investigate Enabling Site Specific Quirks in MobileSafari and UIWebView
-    needsSiteSpecificQuirks = true;
-#endif
-}
-
-CSSParserContext::CSSParserContext(Document& document, const URL& sheetBaseURL, const String& charset)
-    : baseURL(sheetBaseURL.isNull() ? document.baseURL() : sheetBaseURL)
-    , charset(charset)
-    , mode(document.inQuirksMode() ? HTMLQuirksMode : HTMLStandardMode)
-    , isHTMLDocument(document.isHTMLDocument())
-    , cssGridLayoutEnabled(document.isCSSGridLayoutEnabled())
-    , hasDocumentSecurityOrigin(sheetBaseURL.isNull() || document.securityOrigin().canRequest(baseURL))
-{
-
-    needsSiteSpecificQuirks = document.settings().needsSiteSpecificQuirks();
-    enforcesCSSMIMETypeInNoQuirksMode = document.settings().enforceCSSMIMETypeInNoQuirksMode();
-    useLegacyBackgroundSizeShorthandBehavior = document.settings().useLegacyBackgroundSizeShorthandBehavior();
-#if ENABLE(TEXT_AUTOSIZING)
-    textAutosizingEnabled = document.settings().textAutosizingEnabled();
-#endif
-    springTimingFunctionEnabled = document.settings().springTimingFunctionEnabled();
-    constantPropertiesEnabled = document.settings().constantPropertiesEnabled();
-    conicGradientsEnabled = document.settings().conicGradientsEnabled();
-    deferredCSSParserEnabled = document.settings().deferredCSSParserEnabled();
-    allowNewLinesClamp = document.settings().appleMailLinesClampEnabled();
-
-#if PLATFORM(IOS)
-    // FIXME: Force the site specific quirk below to work on iOS. Investigating other site specific quirks
-    // to see if we can enable the preference all together is to be handled by:
-    // <rdar://problem/8493309> Investigate Enabling Site Specific Quirks in MobileSafari and UIWebView
-    needsSiteSpecificQuirks = true;
-#endif
-}
-
-bool operator==(const CSSParserContext& a, const CSSParserContext& b)
-{
-    return a.baseURL == b.baseURL
-        && a.charset == b.charset
-        && a.mode == b.mode
-        && a.isHTMLDocument == b.isHTMLDocument
-        && a.cssGridLayoutEnabled == b.cssGridLayoutEnabled
-        && a.needsSiteSpecificQuirks == b.needsSiteSpecificQuirks
-        && a.enforcesCSSMIMETypeInNoQuirksMode == b.enforcesCSSMIMETypeInNoQuirksMode
-        && a.useLegacyBackgroundSizeShorthandBehavior == b.useLegacyBackgroundSizeShorthandBehavior
-        && a.springTimingFunctionEnabled == b.springTimingFunctionEnabled
-        && a.constantPropertiesEnabled == b.constantPropertiesEnabled
-        && a.conicGradientsEnabled == b.conicGradientsEnabled
-        && a.deferredCSSParserEnabled == b.deferredCSSParserEnabled
-        && a.hasDocumentSecurityOrigin == b.hasDocumentSecurityOrigin;
-}
 
 CSSParser::CSSParser(const CSSParserContext& context)
     : m_context(context)
@@ -176,13 +113,16 @@ Color CSSParser::parseColor(const String& string, bool strict)
     return primitiveValue.color();
 }
 
-Color CSSParser::parseSystemColor(const String& string)
+Color CSSParser::parseSystemColor(const String& string, const CSSParserContext* context)
 {
     CSSValueID id = cssValueKeywordID(string);
     if (!StyleColor::isSystemColor(id))
         return Color();
 
-    return RenderTheme::singleton().systemColor(id);
+    OptionSet<StyleColor::Options> options;
+    if (context && context->useSystemAppearance)
+        options.add(StyleColor::Options::UseSystemAppearance);
+    return RenderTheme::singleton().systemColor(id, options);
 }
 
 RefPtr<CSSValue> CSSParser::parseSingleValue(CSSPropertyID propertyID, const String& string, const CSSParserContext& context)
@@ -237,8 +177,13 @@ void CSSParser::parseDeclarationForInspector(const CSSParserContext& context, co
     CSSParserImpl::parseDeclarationListForInspector(string, context, observer);
 }
 
-RefPtr<CSSValue> CSSParser::parseValueWithVariableReferences(CSSPropertyID propID, const CSSValue& value, const CustomPropertyValueMap& customProperties, TextDirection direction, WritingMode writingMode)
+RefPtr<CSSValue> CSSParser::parseValueWithVariableReferences(CSSPropertyID propID, const CSSValue& value, ApplyCascadedPropertyState& state)
 {
+    ASSERT((propID == CSSPropertyCustom && value.isCustomPropertyValue()) || (propID != CSSPropertyCustom && !value.isCustomPropertyValue()));
+    auto& style = *state.styleResolver->style();
+    auto direction = style.direction();
+    auto writingMode = style.writingMode();
+
     if (value.isPendingSubstitutionValue()) {
         // FIXME: Should have a resolvedShorthands cache to stop this from being done
         // over and over for each longhand value.
@@ -247,12 +192,11 @@ RefPtr<CSSValue> CSSParser::parseValueWithVariableReferences(CSSPropertyID propI
         if (CSSProperty::isDirectionAwareProperty(shorthandID))
             shorthandID = CSSProperty::resolveDirectionAwareProperty(shorthandID, direction, writingMode);
         CSSVariableReferenceValue* shorthandValue = pendingSubstitution.shorthandValue();
-        const CSSVariableData* variableData = shorthandValue->variableDataValue();
-        ASSERT(variableData);
 
-        Vector<CSSParserToken> resolvedTokens;
-        if (!variableData->resolveTokenRange(customProperties, variableData->tokens(), resolvedTokens))
+        auto resolvedData = shorthandValue->resolveVariableReferences(state);
+        if (!resolvedData)
             return nullptr;
+        Vector<CSSParserToken> resolvedTokens = resolvedData->tokens();
 
         ParsedPropertyVector parsedProperties;
         if (!CSSPropertyParser::parseValue(shorthandID, false, resolvedTokens, m_context, parsedProperties, StyleRule::Style))
@@ -268,17 +212,31 @@ RefPtr<CSSValue> CSSParser::parseValueWithVariableReferences(CSSPropertyID propI
 
     if (value.isVariableReferenceValue()) {
         const CSSVariableReferenceValue& valueWithReferences = downcast<CSSVariableReferenceValue>(value);
-        const CSSVariableData* variableData = valueWithReferences.variableDataValue();
-        ASSERT(variableData);
-
-        Vector<CSSParserToken> resolvedTokens;
-        if (!variableData->resolveTokenRange(customProperties, variableData->tokens(), resolvedTokens))
+        auto resolvedData = valueWithReferences.resolveVariableReferences(state);
+        if (!resolvedData)
             return nullptr;
-
-        return CSSPropertyParser::parseSingleValue(propID, resolvedTokens, m_context);
+        return CSSPropertyParser::parseSingleValue(propID, resolvedData->tokens(), m_context);
     }
 
-    return nullptr;
+    const auto& customPropValue = downcast<CSSCustomPropertyValue>(value);
+    const auto& valueWithReferences = WTF::get<Ref<CSSVariableReferenceValue>>(customPropValue.value()).get();
+
+    auto& name = downcast<CSSCustomPropertyValue>(value).name();
+    auto* registered = state.styleResolver->document().getCSSRegisteredCustomPropertySet().get(name);
+    auto& syntax = registered ? registered->syntax : "*";
+    auto resolvedData = valueWithReferences.resolveVariableReferences(state);
+
+    if (!resolvedData)
+        return nullptr;
+
+    // FIXME handle REM cycles.
+    HashSet<CSSPropertyID> dependencies;
+    CSSPropertyParser::collectParsedCustomPropertyValueDependencies(syntax, false, dependencies, resolvedData->tokens(), m_context);
+
+    for (auto id : dependencies)
+        state.styleResolver->applyCascadedProperties(id, id, state);
+
+    return CSSPropertyParser::parseTypedCustomPropertyValue(name, syntax, resolvedData->tokens(), *state.styleResolver, m_context);
 }
 
 std::unique_ptr<Vector<double>> CSSParser::parseKeyframeKeyList(const String& selector)

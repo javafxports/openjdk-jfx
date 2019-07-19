@@ -35,21 +35,21 @@
 namespace WebCore {
 namespace SimpleLineLayout {
 
-TextFragmentIterator::Style::Style(const RenderStyle& style, bool useSimplifiedTextMeasuring)
+TextFragmentIterator::Style::Style(const RenderStyle& style)
     : font(style.fontCascade())
     , textAlign(style.textAlign())
     , hasKerningOrLigatures(font.enableKerning() || font.requiresShaping())
     , collapseWhitespace(style.collapseWhiteSpace())
     , preserveNewline(style.preserveNewline())
     , wrapLines(style.autoWrap())
-    , breakAnyWordOnOverflow(style.wordBreak() == BreakAllWordBreak && wrapLines)
+    , breakAnyWordOnOverflow(style.wordBreak() == WordBreak::BreakAll && wrapLines)
     , breakFirstWordOnOverflow(breakAnyWordOnOverflow || (style.breakWords() && (wrapLines || preserveNewline)))
-    , breakNBSP(wrapLines && style.nbspMode() == SPACE)
-    , keepAllWordsForCJK(style.wordBreak() == KeepAllWordBreak)
+    , breakNBSP(wrapLines && style.nbspMode() == NBSPMode::Space)
+    , keepAllWordsForCJK(style.wordBreak() == WordBreak::KeepAll)
     , wordSpacing(font.wordSpacing())
     , tabWidth(collapseWhitespace ? 0 : style.tabSize())
-    , shouldHyphenate(style.hyphens() == HyphensAuto && canHyphenate(style.locale()))
-    , hyphenStringWidth(shouldHyphenate ? (useSimplifiedTextMeasuring ? font.widthForSimpleText(style.hyphenString()) : font.width(TextRun(style.hyphenString()))) : 0)
+    , shouldHyphenate(style.hyphens() == Hyphens::Auto && canHyphenate(style.locale()))
+    , hyphenStringWidth(shouldHyphenate ? font.width(TextRun(String(style.hyphenString()))) : 0)
     , hyphenLimitBefore(style.hyphenationLimitBefore() < 0 ? 2 : style.hyphenationLimitBefore())
     , hyphenLimitAfter(style.hyphenationLimitAfter() < 0 ? 2 : style.hyphenationLimitAfter())
     , locale(style.locale())
@@ -62,7 +62,7 @@ TextFragmentIterator::TextFragmentIterator(const RenderBlockFlow& flow)
     : m_flowContents(flow)
     , m_currentSegment(m_flowContents.begin())
     , m_lineBreakIterator(m_currentSegment->text, flow.style().locale())
-    , m_style(flow.style(), m_currentSegment->canUseSimplifiedTextMeasuring)
+    , m_style(flow.style())
 {
 }
 
@@ -167,22 +167,22 @@ unsigned TextFragmentIterator::nextNonWhitespacePosition(const FlowContents::Seg
     return position;
 }
 
-std::optional<unsigned> TextFragmentIterator::lastHyphenPosition(const TextFragmentIterator::TextFragment& run, unsigned before) const
+Optional<unsigned> TextFragmentIterator::lastHyphenPosition(const TextFragmentIterator::TextFragment& run, unsigned before) const
 {
     ASSERT(run.start() < before);
     auto& segment = *m_currentSegment;
     ASSERT(segment.start <= before && before <= segment.end);
     ASSERT(is<RenderText>(segment.renderer));
     if (!m_style.shouldHyphenate || run.type() != TextFragment::NonWhitespace)
-        return std::nullopt;
+        return WTF::nullopt;
     // Check if there are enough characters in the run.
     unsigned runLength = run.end() - run.start();
     if (m_style.hyphenLimitBefore >= runLength || m_style.hyphenLimitAfter >= runLength || m_style.hyphenLimitBefore + m_style.hyphenLimitAfter > runLength)
-        return std::nullopt;
+        return WTF::nullopt;
     auto runStart = segment.toSegmentPosition(run.start());
     auto beforeIndex = segment.toSegmentPosition(before) - runStart;
     if (beforeIndex <= m_style.hyphenLimitBefore)
-        return std::nullopt;
+        return WTF::nullopt;
     // Adjust before index to accommodate the limit-after value (this is the last potential hyphen location).
     beforeIndex = std::min(beforeIndex, runLength - m_style.hyphenLimitAfter + 1);
     auto substringForHyphenation = StringView(segment.text).substring(runStart, run.end() - run.start());
@@ -190,7 +190,7 @@ std::optional<unsigned> TextFragmentIterator::lastHyphenPosition(const TextFragm
     // Check if there are enough characters before and after the hyphen.
     if (hyphenLocation && hyphenLocation >= m_style.hyphenLimitBefore && m_style.hyphenLimitAfter <= (runLength - hyphenLocation))
         return segment.toRenderPosition(hyphenLocation + runStart);
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 unsigned TextFragmentIterator::skipToNextPosition(PositionType positionType, unsigned startPosition, float& width, float xPosition, bool& overlappingFragment)

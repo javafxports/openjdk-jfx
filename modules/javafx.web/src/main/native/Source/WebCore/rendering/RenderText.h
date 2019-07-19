@@ -54,6 +54,7 @@ public:
     Color selectionBackgroundColor() const;
     Color selectionForegroundColor() const;
     Color selectionEmphasisMarkColor() const;
+    std::unique_ptr<RenderStyle> selectionPseudoStyle() const;
 
     virtual String originalText() const;
 
@@ -69,7 +70,7 @@ public:
 
     void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const final;
     Vector<IntRect> absoluteRectsForRange(unsigned startOffset = 0, unsigned endOffset = UINT_MAX, bool useSelectionHeight = false, bool* wasFixed = nullptr) const;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void collectSelectionRects(Vector<SelectionRect>&, unsigned startOffset = 0, unsigned endOffset = std::numeric_limits<unsigned>::max()) final;
 #endif
 
@@ -166,7 +167,7 @@ public:
     void deleteLineBoxesBeforeSimpleLineLayout();
     const SimpleLineLayout::Layout* simpleLineLayout() const;
 
-    StringView stringView(unsigned start = 0, std::optional<unsigned> stop = std::nullopt) const;
+    StringView stringView(unsigned start = 0, Optional<unsigned> stop = WTF::nullopt) const;
 
     LayoutUnit topOfFirstText() const;
 
@@ -290,6 +291,11 @@ inline Color RenderText::selectionForegroundColor() const
 inline Color RenderText::selectionEmphasisMarkColor() const
 {
     return parent()->selectionEmphasisMarkColor();
+}
+
+inline std::unique_ptr<RenderStyle> RenderText::selectionPseudoStyle() const
+{
+    return parent()->selectionPseudoStyle();
 }
 
 inline RenderText* Text::renderer() const

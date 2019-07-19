@@ -26,7 +26,7 @@
 #include "config.h"
 #include "WebMediaSessionManager.h"
 
-#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)
 
 #include "FloatRect.h"
 #include "Logging.h"
@@ -39,6 +39,8 @@ namespace WebCore {
 static const Seconds taskDelayInterval { 100_ms };
 
 struct ClientState {
+    WTF_MAKE_STRUCT_FAST_ALLOCATED;
+
     explicit ClientState(WebMediaSessionManagerClient& client, uint64_t contextId)
         : client(client)
         , contextId(contextId)
@@ -178,7 +180,7 @@ void WebMediaSessionManager::removeAllPlaybackTargetPickerClients(WebMediaSessio
     scheduleDelayedTask(TargetMonitoringConfigurationTask | TargetClientsConfigurationTask);
 }
 
-void WebMediaSessionManager::showPlaybackTargetPicker(WebMediaSessionManagerClient& client, uint64_t contextId, const IntRect& rect, bool)
+void WebMediaSessionManager::showPlaybackTargetPicker(WebMediaSessionManagerClient& client, uint64_t contextId, const IntRect& rect, bool, bool useDarkAppearance)
 {
     size_t index = find(&client, contextId);
     ASSERT(index != notFound);
@@ -193,7 +195,7 @@ void WebMediaSessionManager::showPlaybackTargetPicker(WebMediaSessionManagerClie
 
     bool hasActiveRoute = flagsAreSet(m_clientState[index]->flags, MediaProducer::IsPlayingToExternalDevice);
     LOG(Media, "WebMediaSessionManager::showPlaybackTargetPicker(%p + %llu) - hasActiveRoute = %i", &client, contextId, (int)hasActiveRoute);
-    targetPicker().showPlaybackTargetPicker(FloatRect(rect), hasActiveRoute);
+    targetPicker().showPlaybackTargetPicker(FloatRect(rect), hasActiveRoute, useDarkAppearance);
 }
 
 void WebMediaSessionManager::clientStateDidChange(WebMediaSessionManagerClient& client, uint64_t contextId, MediaProducer::MediaStateFlags newFlags)
@@ -464,4 +466,4 @@ void WebMediaSessionManager::watchdogTimerFired()
 
 } // namespace WebCore
 
-#endif // ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#endif // ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)

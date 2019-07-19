@@ -79,10 +79,16 @@ void SymbolConstructor::finishCreation(VM& vm, SymbolPrototype* prototype)
 
 static EncodedJSValue JSC_HOST_CALL callSymbol(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue description = exec->argument(0);
     if (description.isUndefined())
-        return JSValue::encode(Symbol::create(exec->vm()));
-    return JSValue::encode(Symbol::create(exec, description.toString(exec)));
+        return JSValue::encode(Symbol::create(vm));
+
+    String string = description.toWTFString(exec);
+    RETURN_IF_EXCEPTION(scope, { });
+    return JSValue::encode(Symbol::createWithDescription(vm, string));
 }
 
 EncodedJSValue JSC_HOST_CALL symbolConstructorFor(ExecState* exec)
@@ -98,7 +104,7 @@ EncodedJSValue JSC_HOST_CALL symbolConstructorFor(ExecState* exec)
     return JSValue::encode(Symbol::create(exec->vm(), exec->vm().symbolRegistry().symbolForKey(string)));
 }
 
-const char* const SymbolKeyForTypeError = "Symbol.keyFor requires that the first argument be a symbol";
+const ASCIILiteral SymbolKeyForTypeError { "Symbol.keyFor requires that the first argument be a symbol"_s };
 
 EncodedJSValue JSC_HOST_CALL symbolConstructorKeyFor(ExecState* exec)
 {
@@ -107,7 +113,7 @@ EncodedJSValue JSC_HOST_CALL symbolConstructorKeyFor(ExecState* exec)
 
     JSValue symbolValue = exec->argument(0);
     if (!symbolValue.isSymbol())
-        return JSValue::encode(throwTypeError(exec, scope, ASCIILiteral(SymbolKeyForTypeError)));
+        return JSValue::encode(throwTypeError(exec, scope, SymbolKeyForTypeError));
 
     SymbolImpl& uid = asSymbol(symbolValue)->privateName().uid();
     if (!uid.symbolRegistry())

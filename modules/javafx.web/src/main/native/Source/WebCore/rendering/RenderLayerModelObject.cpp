@@ -119,15 +119,15 @@ void RenderLayerModelObject::styleWillChange(StyleDifference diff, const RenderS
         if (parent()) {
             // Do a repaint with the old style first, e.g., for example if we go from
             // having an outline to not having an outline.
-            if (diff == StyleDifferenceRepaintLayer) {
+            if (diff == StyleDifference::RepaintLayer) {
                 layer()->repaintIncludingDescendants();
                 if (!(oldStyle->clip() == newStyle.clip()))
                     layer()->clearClipRectsIncludingDescendants();
-            } else if (diff == StyleDifferenceRepaint || newStyle.outlineSize() < oldStyle->outlineSize())
+            } else if (diff == StyleDifference::Repaint || newStyle.outlineSize() < oldStyle->outlineSize())
                 repaint();
         }
 
-        if (diff == StyleDifferenceLayout || diff == StyleDifferenceSimplifiedLayout) {
+        if (diff == StyleDifference::Layout || diff == StyleDifference::SimplifiedLayout) {
             // When a layout hint happens, we do a repaint of the layer, since the layer could end up being destroyed.
             if (hasLayer()) {
                 if (oldStyle->position() != newStyle.position()
@@ -170,9 +170,7 @@ void RenderLayerModelObject::styleDidChange(StyleDifference diff, const RenderSt
             createLayer();
             if (parent() && !needsLayout() && containingBlock()) {
                 layer()->setRepaintStatus(NeedsFullRepaint);
-                // There is only one layer to update, it is not worth using |cachedOffset| since
-                // we are not sure the value will be used.
-                layer()->updateLayerPositions(0);
+                layer()->updateLayerPositions();
             }
         }
     } else if (layer() && layer()->parent()) {
@@ -221,7 +219,7 @@ void RenderLayerModelObject::styleDidChange(StyleDifference diff, const RenderSt
         }
     }
     if (oldStyle && oldStyle->scrollSnapArea() != newStyle.scrollSnapArea()) {
-        const RenderBox* scrollSnapBox = enclosingBox().findEnclosingScrollableContainer();
+        auto* scrollSnapBox = enclosingScrollableContainerForSnapping();
         if (scrollSnapBox && scrollSnapBox->layer()) {
             const RenderStyle& style = scrollSnapBox->style();
             if (style.scrollSnapType().strictness != ScrollSnapStrictness::None) {
@@ -238,14 +236,14 @@ void RenderLayerModelObject::styleDidChange(StyleDifference diff, const RenderSt
 bool RenderLayerModelObject::shouldPlaceBlockDirectionScrollbarOnLeft() const
 {
 // RTL Scrollbars require some system support, and this system support does not exist on certain versions of OS X. iOS uses a separate mechanism.
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     return false;
 #else
     switch (settings().userInterfaceDirectionPolicy()) {
     case UserInterfaceDirectionPolicy::Content:
         return style().shouldPlaceBlockDirectionScrollbarOnLeft();
     case UserInterfaceDirectionPolicy::System:
-        return settings().systemLayoutDirection() == RTL;
+        return settings().systemLayoutDirection() == TextDirection::RTL;
     }
     ASSERT_NOT_REACHED();
     return style().shouldPlaceBlockDirectionScrollbarOnLeft();

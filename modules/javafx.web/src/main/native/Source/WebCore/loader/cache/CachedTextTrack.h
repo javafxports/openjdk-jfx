@@ -33,7 +33,7 @@ namespace WebCore {
 
 class CachedTextTrack final : public CachedResource {
 public:
-    CachedTextTrack(CachedResourceRequest&&, PAL::SessionID);
+    CachedTextTrack(CachedResourceRequest&&, const PAL::SessionID&, const CookieJar*);
 
 private:
     bool mayTryReplaceEncodedData() const override { return true; }
@@ -45,6 +45,6 @@ private:
 
 } // namespace WebCore
 
-SPECIALIZE_TYPE_TRAITS_CACHED_RESOURCE(CachedTextTrack, CachedResource::TextTrackResource)
+SPECIALIZE_TYPE_TRAITS_CACHED_RESOURCE(CachedTextTrack, CachedResource::Type::TextTrackResource)
 
 #endif // ENABLE(VIDEO_TRACK)

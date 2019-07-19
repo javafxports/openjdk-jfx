@@ -89,7 +89,7 @@ LayoutUnit RenderMathMLBlock::mathAxisHeight() const
 
 LayoutUnit RenderMathMLBlock::mirrorIfNeeded(LayoutUnit horizontalOffset, LayoutUnit boxWidth) const
 {
-    if (style().direction() == RTL)
+    if (style().direction() == TextDirection::RTL)
         return logicalWidth() - boxWidth - horizontalOffset;
 
     return horizontalOffset;
@@ -102,7 +102,7 @@ int RenderMathMLBlock::baselinePosition(FontBaseline baselineType, bool firstLin
     if (linePositionMode == PositionOfInteriorLineBoxes)
         return 0;
 
-    return firstLineBaseline().value_or(RenderBlock::baselinePosition(baselineType, firstLine, direction, linePositionMode));
+    return firstLineBaseline().valueOr(RenderBlock::baselinePosition(baselineType, firstLine, direction, linePositionMode));
 }
 
 #if ENABLE(DEBUG_MATH_LAYOUT)
@@ -110,7 +110,7 @@ void RenderMathMLBlock::paint(PaintInfo& info, const LayoutPoint& paintOffset)
 {
     RenderBlock::paint(info, paintOffset);
 
-    if (info.context().paintingDisabled() || info.phase != PaintPhaseForeground)
+    if (info.context().paintingDisabled() || info.phase != PaintPhase::Foreground)
         return;
 
     IntPoint adjustedPaintOffset = roundedIntPoint(paintOffset + location());
@@ -178,11 +178,11 @@ LayoutUnit toUserUnits(const MathMLElement::Length& length, const RenderStyle& s
     }
 }
 
-std::optional<int> RenderMathMLTable::firstLineBaseline() const
+Optional<int> RenderMathMLTable::firstLineBaseline() const
 {
     // By default the vertical center of <mtable> is aligned on the math axis.
     // This is different than RenderTable::firstLineBoxBaseline, which returns the baseline of the first row of a <table>.
-    return std::optional<int>(logicalHeight() / 2 + axisHeight(style()));
+    return Optional<int>(logicalHeight() / 2 + axisHeight(style()));
 }
 
 void RenderMathMLBlock::layoutItems(bool relayoutChildren)
@@ -190,7 +190,7 @@ void RenderMathMLBlock::layoutItems(bool relayoutChildren)
     LayoutUnit verticalOffset = borderBefore() + paddingBefore();
     LayoutUnit horizontalOffset = borderStart() + paddingStart();
 
-    LayoutUnit preferredHorizontalExtent = 0;
+    LayoutUnit preferredHorizontalExtent;
     for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         LayoutUnit childHorizontalExtent = child->maxPreferredLogicalWidth() - child->horizontalBorderAndPaddingExtent();
         LayoutUnit childHorizontalMarginBoxExtent = child->horizontalBorderAndPaddingExtent() + childHorizontalExtent;

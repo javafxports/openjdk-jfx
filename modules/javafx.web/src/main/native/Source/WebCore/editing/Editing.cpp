@@ -362,10 +362,10 @@ TextDirection directionOfEnclosingBlock(const Position& position)
 {
     auto block = enclosingBlock(position.containerNode());
     if (!block)
-        return LTR;
+        return TextDirection::LTR;
     auto renderer = block->renderer();
     if (!renderer)
-        return LTR;
+        return TextDirection::LTR;
     return renderer->style().direction();
 }
 
@@ -375,7 +375,7 @@ TextDirection directionOfEnclosingBlock(const Position& position)
 // on a Position before using it to create a DOM Range, or an exception will be thrown.
 int lastOffsetForEditing(const Node& node)
 {
-    if (node.offsetInCharacters())
+    if (node.isCharacterDataNode())
         return node.maxCharacterOffset();
 
     if (node.hasChildNodes())
@@ -456,13 +456,13 @@ static bool isSpecialHTMLElement(const Node* node)
     if (!renderer)
         return false;
 
-    if (renderer->style().display() == TABLE || renderer->style().display() == INLINE_TABLE)
+    if (renderer->style().display() == DisplayType::Table || renderer->style().display() == DisplayType::InlineTable)
         return true;
 
     if (renderer->style().isFloating())
         return true;
 
-    if (renderer->style().position() != StaticPosition)
+    if (renderer->style().position() != PositionType::Static)
         return true;
 
     return false;
@@ -927,13 +927,13 @@ Ref<Element> createTabSpanElement(Document& document, const String& tabText)
 
 Ref<Element> createTabSpanElement(Document& document)
 {
-    return createTabSpanElement(document, document.createEditingTextNode(ASCIILiteral("\t")));
+    return createTabSpanElement(document, document.createEditingTextNode("\t"_s));
 }
 
 bool isNodeRendered(const Node& node)
 {
     auto* renderer = node.renderer();
-    return renderer && renderer->style().visibility() == VISIBLE;
+    return renderer && renderer->style().visibility() == Visibility::Visible;
 }
 
 unsigned numEnclosingMailBlockquotes(const Position& position)
@@ -1117,10 +1117,21 @@ VisiblePosition visiblePositionForIndexUsingCharacterIterator(Node& node, int in
     if (index <= 0)
         return { firstPositionInOrBeforeNode(&node), DOWNSTREAM };
 
-    RefPtr<Range> range = Range::create(node.document());
+    auto range = Range::create(node.document());
     range->selectNodeContents(node);
-    CharacterIterator it(*range);
+    CharacterIterator it(range.get());
     it.advance(index - 1);
+
+    if (!it.atEnd() && it.text()[0] == '\n') {
+        // FIXME: workaround for collapsed range (where only start position is correct) emitted for some emitted newlines (see rdar://5192593)
+        auto range = it.range();
+        if (range->startPosition() == range->endPosition()) {
+            it.advance(1);
+            if (!it.atEnd())
+                return VisiblePosition(it.range()->startPosition());
+        }
+    }
+
     return { it.atEnd() ? range->endPosition() : it.range()->endPosition(), UPSTREAM };
 }
 
@@ -1165,7 +1176,7 @@ bool areIdenticalElements(const Node& first, const Node& second)
         return false;
     auto& firstElement = downcast<Element>(first);
     auto& secondElement = downcast<Element>(second);
-    return firstElement.hasTagName(secondElement.tagQName()) && firstElement.hasEquivalentAttributes(&secondElement);
+    return firstElement.hasTagName(secondElement.tagQName()) && firstElement.hasEquivalentAttributes(secondElement);
 }
 
 bool isNonTableCellHTMLBlockElement(const Node* node)

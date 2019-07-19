@@ -29,11 +29,12 @@
 #include "CommonVM.h"
 #include "DOMWindow.h"
 #include "Document.h"
+#include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "JSDOMWindow.h"
 #include "Logging.h"
-#include "MainFrame.h"
+#include "Page.h"
 #include "PageCache.h"
 
 namespace WebCore {
@@ -79,8 +80,8 @@ HashCountedSet<const char*> PerformanceLogging::javaScriptObjectCounts()
     return WTFMove(*commonVM().heap.objectTypeCounts());
 }
 
-PerformanceLogging::PerformanceLogging(MainFrame& mainFrame)
-    : m_mainFrame(mainFrame)
+PerformanceLogging::PerformanceLogging(Page& page)
+    : m_page(page)
 {
 }
 
@@ -90,7 +91,7 @@ void PerformanceLogging::didReachPointOfInterest(PointOfInterest poi)
     UNUSED_PARAM(poi);
 #else
     // Ignore synthetic main frames used internally by SVG and web inspector.
-    if (m_mainFrame.loader().client().isEmptyFrameLoaderClient())
+    if (m_page.mainFrame().loader().client().isEmptyFrameLoaderClient())
         return;
 
     auto stats = memoryUsageStatistics(ShouldIncludeExpensiveComputations::No);
@@ -104,7 +105,7 @@ void PerformanceLogging::didReachPointOfInterest(PointOfInterest poi)
 
 #if !PLATFORM(COCOA)
 void PerformanceLogging::getPlatformMemoryUsageStatistics(HashMap<const char*, size_t>&) { }
-std::optional<uint64_t> PerformanceLogging::physicalFootprint() { return std::nullopt; }
+Optional<uint64_t> PerformanceLogging::physicalFootprint() { return WTF::nullopt; }
 #endif
 
 }

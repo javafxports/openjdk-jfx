@@ -69,6 +69,10 @@ public:
 
     WTF_EXPORT_PRIVATE void setShouldUsePeriodicMemoryMonitor(bool);
 
+#if OS(LINUX)
+    WTF_EXPORT_PRIVATE void triggerMemoryPressureEvent(bool isCritical);
+#endif
+
     void setMemoryKillCallback(WTF::Function<void()>&& function) { m_memoryKillCallback = WTFMove(function); }
     void setMemoryPressureStatusChangedCallback(WTF::Function<void(bool)>&& function) { m_memoryPressureStatusChangedCallback = WTFMove(function); }
     void setDidExceedInactiveLimitWhileActiveCallback(WTF::Function<void()>&& function) { m_didExceedInactiveLimitWhileActiveCallback = WTFMove(function); }
@@ -88,8 +92,10 @@ public:
     }
     void setUnderMemoryPressure(bool);
 
-#if OS(LINUX)
-    void setMemoryPressureMonitorHandle(int fd);
+    WTF_EXPORT_PRIVATE static MemoryUsagePolicy currentMemoryUsagePolicy();
+
+#if PLATFORM(COCOA) || PLATFORM(JAVA) && OS(DARWIN)
+    WTF_EXPORT_PRIVATE void setDispatchQueue(dispatch_queue_t);
 #endif
 
     class ReliefLogger {
@@ -129,11 +135,11 @@ public:
             size_t resident { 0 };
             size_t physical { 0 };
         };
-        std::optional<MemoryUsage> platformMemoryUsage();
+        Optional<MemoryUsage> platformMemoryUsage();
         void logMemoryUsageChange();
 
         const char* m_logString;
-        std::optional<MemoryUsage> m_initialMemory;
+        Optional<MemoryUsage> m_initialMemory;
 
         WTF_EXPORT_PRIVATE static bool s_loggingEnabled;
     };
@@ -148,13 +154,15 @@ public:
 
     WTF_EXPORT_PRIVATE static void setPageCount(unsigned);
 
+    void setShouldLogMemoryMemoryPressureEvents(bool shouldLog) { m_shouldLogMemoryMemoryPressureEvents = shouldLog; }
+
 private:
     size_t thresholdForMemoryKill();
     void memoryPressureStatusChanged();
 
     void uninstall();
 
-    void holdOff(unsigned);
+    void holdOff(Seconds);
 
     MemoryPressureHandler();
     ~MemoryPressureHandler() = delete;
@@ -169,26 +177,6 @@ private:
     void doesExceedInactiveLimitWhileActive();
     void doesNotExceedInactiveLimitWhileActive();
 
-#if OS(LINUX)
-    class EventFDPoller {
-        WTF_MAKE_NONCOPYABLE(EventFDPoller); WTF_MAKE_FAST_ALLOCATED;
-    public:
-        EventFDPoller(int fd, WTF::Function<void ()>&& notifyHandler);
-        ~EventFDPoller();
-
-    private:
-        void readAndNotify() const;
-
-        std::optional<int> m_fd;
-        WTF::Function<void ()> m_notifyHandler;
-#if USE(GLIB)
-        GRefPtr<GSource> m_source;
-#else
-        RefPtr<Thread> m_thread;
-#endif
-    };
-#endif
-
     WebsamProcessState m_processState { WebsamProcessState::Inactive };
 
     unsigned m_pageCount { 0 };
@@ -198,6 +186,7 @@ private:
 
     std::atomic<bool> m_underMemoryPressure;
     bool m_isSimulatingMemoryPressure { false };
+    bool m_shouldLogMemoryMemoryPressureEvents { true };
 
     std::unique_ptr<RunLoop::Timer<MemoryPressureHandler>> m_measurementTimer;
     MemoryUsagePolicy m_memoryUsagePolicy { MemoryUsagePolicy::Unrestricted };
@@ -213,13 +202,12 @@ private:
 #endif
 
 #if OS(LINUX)
-    std::optional<int> m_eventFD;
-    std::optional<int> m_pressureLevelFD;
-    std::unique_ptr<EventFDPoller> m_eventFDPoller;
     RunLoop::Timer<MemoryPressureHandler> m_holdOffTimer;
     void holdOffTimerFired();
-    void logErrorAndCloseFDs(const char* error);
-    bool tryEnsureEventFD();
+#endif
+
+#if PLATFORM(COCOA) || PLATFORM(JAVA) && OS(DARWIN)
+    dispatch_queue_t m_dispatchQueue { nullptr };
 #endif
 };
 

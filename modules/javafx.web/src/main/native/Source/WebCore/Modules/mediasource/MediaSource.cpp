@@ -51,23 +51,33 @@
 
 namespace WebCore {
 
-#if !LOG_DISABLED
-namespace MediaSourceInternal {
-static const char* toString(MediaSource::ReadyState readyState)
+String convertEnumerationToString(MediaSourcePrivate::AddStatus enumerationValue)
 {
-    switch (readyState) {
-    case MediaSource::ReadyState::Closed:
-        return "closed";
-    case MediaSource::ReadyState::Ended:
-        return "ended";
-    case MediaSource::ReadyState::Open:
-        return "open";
-    default:
-        return "(unknown)";
-    }
+    static const NeverDestroyed<String> values[] = {
+        MAKE_STATIC_STRING_IMPL("Ok"),
+        MAKE_STATIC_STRING_IMPL("NotSupported"),
+        MAKE_STATIC_STRING_IMPL("ReachedIdLimit"),
+    };
+    static_assert(static_cast<size_t>(MediaSourcePrivate::AddStatus::Ok) == 0, "MediaSourcePrivate::AddStatus::Ok is not 0 as expected");
+    static_assert(static_cast<size_t>(MediaSourcePrivate::AddStatus::NotSupported) == 1, "MediaSourcePrivate::AddStatus::NotSupported is not 1 as expected");
+    static_assert(static_cast<size_t>(MediaSourcePrivate::AddStatus::ReachedIdLimit) == 2, "MediaSourcePrivate::AddStatus::ReachedIdLimit is not 2 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return values[static_cast<size_t>(enumerationValue)];
 }
+
+String convertEnumerationToString(MediaSourcePrivate::EndOfStreamStatus enumerationValue)
+{
+    static const NeverDestroyed<String> values[] = {
+        MAKE_STATIC_STRING_IMPL("EosNoError"),
+        MAKE_STATIC_STRING_IMPL("EosNetworkError"),
+        MAKE_STATIC_STRING_IMPL("EosDecodeError"),
+    };
+    static_assert(static_cast<size_t>(MediaSourcePrivate::EndOfStreamStatus::EosNoError) == 0, "MediaSourcePrivate::EndOfStreamStatus::EosNoError is not 0 as expected");
+    static_assert(static_cast<size_t>(MediaSourcePrivate::EndOfStreamStatus::EosNetworkError) == 1, "MediaSourcePrivate::EndOfStreamStatus::EosNetworkError is not 1 as expected");
+    static_assert(static_cast<size_t>(MediaSourcePrivate::EndOfStreamStatus::EosDecodeError) == 2, "MediaSourcePrivate::EndOfStreamStatus::EosDecodeError is not 2 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return values[static_cast<size_t>(enumerationValue)];
 }
-#endif
 
 URLRegistry* MediaSource::s_registry;
 
@@ -89,20 +99,23 @@ MediaSource::MediaSource(ScriptExecutionContext& context)
     , m_duration(MediaTime::invalidTime())
     , m_pendingSeekTime(MediaTime::invalidTime())
     , m_asyncEventQueue(*this)
+#if !RELEASE_LOG_DISABLED
+    , m_logger(downcast<Document>(context).logger())
+#endif
 {
-    LOG(MediaSource, "MediaSource::MediaSource %p", this);
     m_sourceBuffers = SourceBufferList::create(scriptExecutionContext());
     m_activeSourceBuffers = SourceBufferList::create(scriptExecutionContext());
 }
 
 MediaSource::~MediaSource()
 {
-    LOG(MediaSource, "MediaSource::~MediaSource %p", this);
+    ALWAYS_LOG(LOGIDENTIFIER);
     ASSERT(isClosed());
 }
 
 void MediaSource::setPrivateAndOpen(Ref<MediaSourcePrivate>&& mediaSourcePrivate)
 {
+    DEBUG_LOG(LOGIDENTIFIER);
     ASSERT(!m_private);
     ASSERT(m_mediaElement);
     m_private = WTFMove(mediaSourcePrivate);
@@ -133,12 +146,14 @@ void MediaSource::setPrivateAndOpen(Ref<MediaSourcePrivate>&& mediaSourcePrivate
 
 void MediaSource::addedToRegistry()
 {
-    setPendingActivity(this);
+    DEBUG_LOG(LOGIDENTIFIER);
+    setPendingActivity(*this);
 }
 
 void MediaSource::removedFromRegistry()
 {
-    unsetPendingActivity(this);
+    DEBUG_LOG(LOGIDENTIFIER);
+    unsetPendingActivity(*this);
 }
 
 MediaTime MediaSource::duration() const
@@ -148,6 +163,7 @@ MediaTime MediaSource::duration() const
 
 void MediaSource::durationChanged(const MediaTime& duration)
 {
+    ALWAYS_LOG(LOGIDENTIFIER, duration);
     m_duration = duration;
 }
 
@@ -210,6 +226,8 @@ void MediaSource::seekToTime(const MediaTime& time)
     if (isClosed())
         return;
 
+    ALWAYS_LOG(LOGIDENTIFIER, time);
+
     // 2.4.3 Seeking
     // https://rawgit.com/w3c/media-source/45627646344eea0170dd1cbc5a3d508ca751abb8/media-source-respec.html#mediasource-seeking
 
@@ -227,7 +245,6 @@ void MediaSource::seekToTime(const MediaTime& time)
         // 2. The media element waits until an appendBuffer() or an appendStream() call causes the coded
         // frame processing algorithm to set the HTMLMediaElement.readyState attribute to a value greater
         // than HAVE_METADATA.
-        LOG(MediaSource, "MediaSource::seekToTime(%p) - waitForSeekCompleted()", this);
         m_private->waitForSeekCompleted();
         return;
     }
@@ -250,6 +267,8 @@ void MediaSource::completeSeek()
     // https://dvcs.w3.org/hg/html-media/raw-file/tip/media-source/media-source.html#mediasource-seeking
 
     ASSERT(m_pendingSeekTime.isValid());
+
+    ALWAYS_LOG(LOGIDENTIFIER, m_pendingSeekTime);
 
     // 2. The media element resets all decoders and initializes each one with data from the appropriate
     // initialization segment.
@@ -310,6 +329,8 @@ ExceptionOr<void> MediaSource::setLiveSeekableRange(double start, double end)
     // W3C Editor's Draft 16 September 2016
     // https://rawgit.com/w3c/media-source/45627646344eea0170dd1cbc5a3d508ca751abb8/media-source-respec.html#dom-mediasource-setliveseekablerange
 
+    ALWAYS_LOG(LOGIDENTIFIER, "start = ", start, ", end = ", end);
+
     // If the readyState attribute is not "open" then throw an InvalidStateError exception and abort these steps.
     if (!isOpen())
         return Exception { InvalidStateError };
@@ -330,6 +351,8 @@ ExceptionOr<void> MediaSource::clearLiveSeekableRange()
     // W3C Editor's Draft 16 September 2016
     // https://rawgit.com/w3c/media-source/45627646344eea0170dd1cbc5a3d508ca751abb8/media-source-respec.html#dom-mediasource-clearliveseekablerange
 
+    ALWAYS_LOG(LOGIDENTIFIER);
+
     // If the readyState attribute is not "open" then throw an InvalidStateError exception and abort these steps.
     if (!isOpen())
         return Exception { InvalidStateError };
@@ -342,6 +365,11 @@ const MediaTime& MediaSource::currentTimeFudgeFactor()
     // Allow hasCurrentTime() to be off by as much as the length of two 24fps video frames
     static NeverDestroyed<MediaTime> fudgeFactor(2002, 24000);
     return fudgeFactor;
+}
+
+bool MediaSource::contentTypeShouldGenerateTimestamps(const ContentType& contentType)
+{
+    return contentType.containerType() == "audio/aac" || contentType.containerType() == "audio/mpeg";
 }
 
 bool MediaSource::hasBufferedTime(const MediaTime& time)
@@ -470,6 +498,8 @@ ExceptionOr<void> MediaSource::setDuration(double duration)
     // 2.1 Attributes - Duration
     // https://www.w3.org/TR/2016/REC-media-source-20161117/#attributes
 
+    ALWAYS_LOG(LOGIDENTIFIER, duration);
+
     // On setting, run the following steps:
     // 1. If the value being set is negative or NaN then throw a TypeError exception and abort these steps.
     if (duration < 0.0 || std::isnan(duration))
@@ -522,9 +552,9 @@ ExceptionOr<void> MediaSource::setDurationInternal(const MediaTime& duration)
 
     // 5. Update duration to new duration.
     m_duration = newDuration;
+    ALWAYS_LOG(LOGIDENTIFIER, duration);
 
     // 6. Update the media duration to new duration and run the HTMLMediaElement duration change algorithm.
-    LOG(MediaSource, "MediaSource::setDurationInternal(%p) - duration(%g)", this, duration.toDouble());
     m_private->durationChanged();
 
     return { };
@@ -533,8 +563,6 @@ ExceptionOr<void> MediaSource::setDurationInternal(const MediaTime& duration)
 void MediaSource::setReadyState(ReadyState state)
 {
     auto oldState = readyState();
-    LOG(MediaSource, "MediaSource::setReadyState(%p) : %s -> %s", this, MediaSourceInternal::toString(oldState), MediaSourceInternal::toString(state));
-
     if (oldState == state)
         return;
 
@@ -543,8 +571,10 @@ void MediaSource::setReadyState(ReadyState state)
     onReadyStateChange(oldState, state);
 }
 
-ExceptionOr<void> MediaSource::endOfStream(std::optional<EndOfStreamError> error)
+ExceptionOr<void> MediaSource::endOfStream(Optional<EndOfStreamError> error)
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+
     // 2.2 https://dvcs.w3.org/hg/html-media/raw-file/tip/media-source/media-source.html#widl-MediaSource-endOfStream-void-EndOfStreamError-error
     // 1. If the readyState attribute is not in the "open" state then throw an
     // InvalidStateError exception and abort these steps.
@@ -562,9 +592,15 @@ ExceptionOr<void> MediaSource::endOfStream(std::optional<EndOfStreamError> error
     return { };
 }
 
-void MediaSource::streamEndedWithError(std::optional<EndOfStreamError> error)
+void MediaSource::streamEndedWithError(Optional<EndOfStreamError> error)
 {
-    LOG(MediaSource, "MediaSource::streamEndedWithError(%p)", this);
+#if !RELEASE_LOG_DISABLED
+    if (error)
+        ALWAYS_LOG(LOGIDENTIFIER, error.value());
+    else
+        ALWAYS_LOG(LOGIDENTIFIER);
+#endif
+
     if (isClosed())
         return;
 
@@ -587,6 +623,8 @@ void MediaSource::streamEndedWithError(std::optional<EndOfStreamError> error)
         setDurationInternal(maxEndTime);
 
         // 2. Notify the media element that it now has all of the media data.
+        for (auto& sourceBuffer : *m_sourceBuffers)
+            sourceBuffer->trySignalAllSamplesEnqueued();
         m_private->markEndOfStream(MediaSourcePrivate::EosNoError);
     } else if (error == EndOfStreamError::Network) {
         // ↳ If error is set to "network"
@@ -623,9 +661,9 @@ void MediaSource::streamEndedWithError(std::optional<EndOfStreamError> error)
     }
 }
 
-ExceptionOr<SourceBuffer&> MediaSource::addSourceBuffer(const String& type)
+ExceptionOr<Ref<SourceBuffer>> MediaSource::addSourceBuffer(const String& type)
 {
-    LOG(MediaSource, "MediaSource::addSourceBuffer(%s) %p", type.ascii().data(), this);
+    DEBUG_LOG(LOGIDENTIFIER, type);
 
     // 2.2 http://www.w3.org/TR/media-source/#widl-MediaSource-addSourceBuffer-SourceBuffer-DOMString-type
     // When this method is invoked, the user agent must run the following steps:
@@ -655,12 +693,13 @@ ExceptionOr<SourceBuffer&> MediaSource::addSourceBuffer(const String& type)
     }
 
     auto buffer = SourceBuffer::create(sourceBufferPrivate.releaseReturnValue(), this);
+    DEBUG_LOG(LOGIDENTIFIER, "created SourceBuffer");
 
     // 6. Set the generate timestamps flag on the new object to the value in the "Generate Timestamps Flag"
     // column of the byte stream format registry [MSE-REGISTRY] entry that is associated with type.
     // NOTE: In the current byte stream format registry <http://www.w3.org/2013/12/byte-stream-format-registry/>
     // only the "MPEG Audio Byte Stream Format" has the "Generate Timestamps Flag" value set.
-    bool shouldGenerateTimestamps = contentType.containerType() == "audio/aac" || contentType.containerType() == "audio/mpeg";
+    bool shouldGenerateTimestamps = contentTypeShouldGenerateTimestamps(contentType);
     buffer->setShouldGenerateTimestamps(shouldGenerateTimestamps);
 
     // 7. If the generate timestamps flag equals true:
@@ -669,19 +708,18 @@ ExceptionOr<SourceBuffer&> MediaSource::addSourceBuffer(const String& type)
     // ↳ Set the mode attribute on the new object to "segments".
     buffer->setMode(shouldGenerateTimestamps ? SourceBuffer::AppendMode::Sequence : SourceBuffer::AppendMode::Segments);
 
-    auto& result = buffer.get();
-
     // 8. Add the new object to sourceBuffers and fire a addsourcebuffer on that object.
-    m_sourceBuffers->add(WTFMove(buffer));
+    m_sourceBuffers->add(buffer.copyRef());
     regenerateActiveSourceBuffers();
 
     // 9. Return the new object to the caller.
-    return result;
+    return WTFMove(buffer);
 }
 
 ExceptionOr<void> MediaSource::removeSourceBuffer(SourceBuffer& buffer)
 {
-    LOG(MediaSource, "MediaSource::removeSourceBuffer() %p", this);
+    DEBUG_LOG(LOGIDENTIFIER);
+
     Ref<SourceBuffer> protect(buffer);
 
     // 2. If sourceBuffer specifies an object that is not in sourceBuffers then
@@ -692,124 +730,127 @@ ExceptionOr<void> MediaSource::removeSourceBuffer(SourceBuffer& buffer)
     // 3. If the sourceBuffer.updating attribute equals true, then run the following steps: ...
     buffer.abortIfUpdating();
 
-    // 4. Let SourceBuffer audioTracks list equal the AudioTrackList object returned by sourceBuffer.audioTracks.
-    auto& audioTracks = buffer.audioTracks();
+    ASSERT(scriptExecutionContext());
+    if (!scriptExecutionContext()->activeDOMObjectsAreStopped()) {
+        // 4. Let SourceBuffer audioTracks list equal the AudioTrackList object returned by sourceBuffer.audioTracks.
+        auto& audioTracks = buffer.audioTracks();
 
-    // 5. If the SourceBuffer audioTracks list is not empty, then run the following steps:
-    if (audioTracks.length()) {
-        // 5.1 Let HTMLMediaElement audioTracks list equal the AudioTrackList object returned by the audioTracks
-        // attribute on the HTMLMediaElement.
-        // 5.2 Let the removed enabled audio track flag equal false.
-        bool removedEnabledAudioTrack = false;
+        // 5. If the SourceBuffer audioTracks list is not empty, then run the following steps:
+        if (audioTracks.length()) {
+            // 5.1 Let HTMLMediaElement audioTracks list equal the AudioTrackList object returned by the audioTracks
+            // attribute on the HTMLMediaElement.
+            // 5.2 Let the removed enabled audio track flag equal false.
+            bool removedEnabledAudioTrack = false;
 
-        // 5.3 For each AudioTrack object in the SourceBuffer audioTracks list, run the following steps:
-        while (audioTracks.length()) {
-            auto& track = *audioTracks.lastItem();
+            // 5.3 For each AudioTrack object in the SourceBuffer audioTracks list, run the following steps:
+            while (audioTracks.length()) {
+                auto& track = *audioTracks.lastItem();
 
-            // 5.3.1 Set the sourceBuffer attribute on the AudioTrack object to null.
-            track.setSourceBuffer(nullptr);
+                // 5.3.1 Set the sourceBuffer attribute on the AudioTrack object to null.
+                track.setSourceBuffer(nullptr);
 
-            // 5.3.2 If the enabled attribute on the AudioTrack object is true, then set the removed enabled
-            // audio track flag to true.
-            if (track.enabled())
-                removedEnabledAudioTrack = true;
+                // 5.3.2 If the enabled attribute on the AudioTrack object is true, then set the removed enabled
+                // audio track flag to true.
+                if (track.enabled())
+                    removedEnabledAudioTrack = true;
 
-            // 5.3.3 Remove the AudioTrack object from the HTMLMediaElement audioTracks list.
-            // 5.3.4 Queue a task to fire a trusted event named removetrack, that does not bubble and is not
-            // cancelable, and that uses the TrackEvent interface, at the HTMLMediaElement audioTracks list.
-            if (mediaElement())
-                mediaElement()->removeAudioTrack(track);
+                // 5.3.3 Remove the AudioTrack object from the HTMLMediaElement audioTracks list.
+                // 5.3.4 Queue a task to fire a trusted event named removetrack, that does not bubble and is not
+                // cancelable, and that uses the TrackEvent interface, at the HTMLMediaElement audioTracks list.
+                if (mediaElement())
+                    mediaElement()->removeAudioTrack(track);
 
-            // 5.3.5 Remove the AudioTrack object from the SourceBuffer audioTracks list.
-            // 5.3.6 Queue a task to fire a trusted event named removetrack, that does not bubble and is not
-            // cancelable, and that uses the TrackEvent interface, at the SourceBuffer audioTracks list.
-            audioTracks.remove(track);
+                // 5.3.5 Remove the AudioTrack object from the SourceBuffer audioTracks list.
+                // 5.3.6 Queue a task to fire a trusted event named removetrack, that does not bubble and is not
+                // cancelable, and that uses the TrackEvent interface, at the SourceBuffer audioTracks list.
+                audioTracks.remove(track);
+            }
+
+            // 5.4 If the removed enabled audio track flag equals true, then queue a task to fire a simple event
+            // named change at the HTMLMediaElement audioTracks list.
+            if (removedEnabledAudioTrack)
+                mediaElement()->ensureAudioTracks().scheduleChangeEvent();
         }
 
-        // 5.4 If the removed enabled audio track flag equals true, then queue a task to fire a simple event
-        // named change at the HTMLMediaElement audioTracks list.
-        if (removedEnabledAudioTrack)
-            mediaElement()->audioTracks().scheduleChangeEvent();
-    }
+        // 6. Let SourceBuffer videoTracks list equal the VideoTrackList object returned by sourceBuffer.videoTracks.
+        auto& videoTracks = buffer.videoTracks();
 
-    // 6. Let SourceBuffer videoTracks list equal the VideoTrackList object returned by sourceBuffer.videoTracks.
-    auto& videoTracks = buffer.videoTracks();
+        // 7. If the SourceBuffer videoTracks list is not empty, then run the following steps:
+        if (videoTracks.length()) {
+            // 7.1 Let HTMLMediaElement videoTracks list equal the VideoTrackList object returned by the videoTracks
+            // attribute on the HTMLMediaElement.
+            // 7.2 Let the removed selected video track flag equal false.
+            bool removedSelectedVideoTrack = false;
 
-    // 7. If the SourceBuffer videoTracks list is not empty, then run the following steps:
-    if (videoTracks.length()) {
-        // 7.1 Let HTMLMediaElement videoTracks list equal the VideoTrackList object returned by the videoTracks
-        // attribute on the HTMLMediaElement.
-        // 7.2 Let the removed selected video track flag equal false.
-        bool removedSelectedVideoTrack = false;
+            // 7.3 For each VideoTrack object in the SourceBuffer videoTracks list, run the following steps:
+            while (videoTracks.length()) {
+                auto& track = *videoTracks.lastItem();
 
-        // 7.3 For each VideoTrack object in the SourceBuffer videoTracks list, run the following steps:
-        while (videoTracks.length()) {
-            auto& track = *videoTracks.lastItem();
+                // 7.3.1 Set the sourceBuffer attribute on the VideoTrack object to null.
+                track.setSourceBuffer(nullptr);
 
-            // 7.3.1 Set the sourceBuffer attribute on the VideoTrack object to null.
-            track.setSourceBuffer(nullptr);
+                // 7.3.2 If the selected attribute on the VideoTrack object is true, then set the removed selected
+                // video track flag to true.
+                if (track.selected())
+                    removedSelectedVideoTrack = true;
 
-            // 7.3.2 If the selected attribute on the VideoTrack object is true, then set the removed selected
-            // video track flag to true.
-            if (track.selected())
-                removedSelectedVideoTrack = true;
+                // 7.3.3 Remove the VideoTrack object from the HTMLMediaElement videoTracks list.
+                // 7.3.4 Queue a task to fire a trusted event named removetrack, that does not bubble and is not
+                // cancelable, and that uses the TrackEvent interface, at the HTMLMediaElement videoTracks list.
+                if (mediaElement())
+                    mediaElement()->removeVideoTrack(track);
 
-            // 7.3.3 Remove the VideoTrack object from the HTMLMediaElement videoTracks list.
-            // 7.3.4 Queue a task to fire a trusted event named removetrack, that does not bubble and is not
-            // cancelable, and that uses the TrackEvent interface, at the HTMLMediaElement videoTracks list.
-            if (mediaElement())
-                mediaElement()->removeVideoTrack(track);
+                // 7.3.5 Remove the VideoTrack object from the SourceBuffer videoTracks list.
+                // 7.3.6 Queue a task to fire a trusted event named removetrack, that does not bubble and is not
+                // cancelable, and that uses the TrackEvent interface, at the SourceBuffer videoTracks list.
+                videoTracks.remove(track);
+            }
 
-            // 7.3.5 Remove the VideoTrack object from the SourceBuffer videoTracks list.
-            // 7.3.6 Queue a task to fire a trusted event named removetrack, that does not bubble and is not
-            // cancelable, and that uses the TrackEvent interface, at the SourceBuffer videoTracks list.
-            videoTracks.remove(track);
+            // 7.4 If the removed selected video track flag equals true, then queue a task to fire a simple event
+            // named change at the HTMLMediaElement videoTracks list.
+            if (removedSelectedVideoTrack)
+                mediaElement()->ensureVideoTracks().scheduleChangeEvent();
         }
 
-        // 7.4 If the removed selected video track flag equals true, then queue a task to fire a simple event
-        // named change at the HTMLMediaElement videoTracks list.
-        if (removedSelectedVideoTrack)
-            mediaElement()->videoTracks().scheduleChangeEvent();
-    }
+        // 8. Let SourceBuffer textTracks list equal the TextTrackList object returned by sourceBuffer.textTracks.
+        auto& textTracks = buffer.textTracks();
 
-    // 8. Let SourceBuffer textTracks list equal the TextTrackList object returned by sourceBuffer.textTracks.
-    auto& textTracks = buffer.textTracks();
+        // 9. If the SourceBuffer textTracks list is not empty, then run the following steps:
+        if (textTracks.length()) {
+            // 9.1 Let HTMLMediaElement textTracks list equal the TextTrackList object returned by the textTracks
+            // attribute on the HTMLMediaElement.
+            // 9.2 Let the removed enabled text track flag equal false.
+            bool removedEnabledTextTrack = false;
 
-    // 9. If the SourceBuffer textTracks list is not empty, then run the following steps:
-    if (textTracks.length()) {
-        // 9.1 Let HTMLMediaElement textTracks list equal the TextTrackList object returned by the textTracks
-        // attribute on the HTMLMediaElement.
-        // 9.2 Let the removed enabled text track flag equal false.
-        bool removedEnabledTextTrack = false;
+            // 9.3 For each TextTrack object in the SourceBuffer textTracks list, run the following steps:
+            while (textTracks.length()) {
+                auto& track = *textTracks.lastItem();
 
-        // 9.3 For each TextTrack object in the SourceBuffer textTracks list, run the following steps:
-        while (textTracks.length()) {
-            auto& track = *textTracks.lastItem();
+                // 9.3.1 Set the sourceBuffer attribute on the TextTrack object to null.
+                track.setSourceBuffer(nullptr);
 
-            // 9.3.1 Set the sourceBuffer attribute on the TextTrack object to null.
-            track.setSourceBuffer(nullptr);
+                // 9.3.2 If the mode attribute on the TextTrack object is set to "showing" or "hidden", then
+                // set the removed enabled text track flag to true.
+                if (track.mode() == TextTrack::Mode::Showing || track.mode() == TextTrack::Mode::Hidden)
+                    removedEnabledTextTrack = true;
 
-            // 9.3.2 If the mode attribute on the TextTrack object is set to "showing" or "hidden", then
-            // set the removed enabled text track flag to true.
-            if (track.mode() == TextTrack::Mode::Showing || track.mode() == TextTrack::Mode::Hidden)
-                removedEnabledTextTrack = true;
+                // 9.3.3 Remove the TextTrack object from the HTMLMediaElement textTracks list.
+                // 9.3.4 Queue a task to fire a trusted event named removetrack, that does not bubble and is not
+                // cancelable, and that uses the TrackEvent interface, at the HTMLMediaElement textTracks list.
+                if (mediaElement())
+                    mediaElement()->removeTextTrack(track);
 
-            // 9.3.3 Remove the TextTrack object from the HTMLMediaElement textTracks list.
-            // 9.3.4 Queue a task to fire a trusted event named removetrack, that does not bubble and is not
-            // cancelable, and that uses the TrackEvent interface, at the HTMLMediaElement textTracks list.
-            if (mediaElement())
-                mediaElement()->removeTextTrack(track);
+                // 9.3.5 Remove the TextTrack object from the SourceBuffer textTracks list.
+                // 9.3.6 Queue a task to fire a trusted event named removetrack, that does not bubble and is not
+                // cancelable, and that uses the TrackEvent interface, at the SourceBuffer textTracks list.
+                textTracks.remove(track);
+            }
 
-            // 9.3.5 Remove the TextTrack object from the SourceBuffer textTracks list.
-            // 9.3.6 Queue a task to fire a trusted event named removetrack, that does not bubble and is not
-            // cancelable, and that uses the TrackEvent interface, at the SourceBuffer textTracks list.
-            textTracks.remove(track);
+            // 9.4 If the removed enabled text track flag equals true, then queue a task to fire a simple event
+            // named change at the HTMLMediaElement textTracks list.
+            if (removedEnabledTextTrack)
+                mediaElement()->ensureTextTracks().scheduleChangeEvent();
         }
-
-        // 9.4 If the removed enabled text track flag equals true, then queue a task to fire a simple event
-        // named change at the HTMLMediaElement textTracks list.
-        if (removedEnabledTextTrack)
-            mediaElement()->textTracks().scheduleChangeEvent();
     }
 
     // 10. If sourceBuffer is in activeSourceBuffers, then remove sourceBuffer from activeSourceBuffers ...
@@ -827,16 +868,13 @@ ExceptionOr<void> MediaSource::removeSourceBuffer(SourceBuffer& buffer)
 
 bool MediaSource::isTypeSupported(const String& type)
 {
-    LOG(MediaSource, "MediaSource::isTypeSupported(%s)", type.ascii().data());
-
     // Section 2.2 isTypeSupported() method steps.
     // https://dvcs.w3.org/hg/html-media/raw-file/tip/media-source/media-source.html#widl-MediaSource-isTypeSupported-boolean-DOMString-type
     // 1. If type is an empty string, then return false.
     if (type.isNull() || type.isEmpty())
         return false;
 
-    // FIXME: Why do we convert to lowercase here, but not in MediaSource::addSourceBuffer?
-    ContentType contentType(type.convertToASCIILowercase());
+    ContentType contentType(type);
     String codecs = contentType.parameter("codecs");
 
     // 2. If type does not contain a valid MIME type string, then return false.
@@ -875,6 +913,8 @@ bool MediaSource::isEnded() const
 
 void MediaSource::detachFromElement(HTMLMediaElement& element)
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+
     ASSERT_UNUSED(element, m_mediaElement == &element);
 
     // 2.4.2 Detaching from a media element
@@ -922,6 +962,8 @@ void MediaSource::openIfInEndedState()
     if (m_readyState != ReadyState::Ended)
         return;
 
+    ALWAYS_LOG(LOGIDENTIFIER);
+
     setReadyState(ReadyState::Open);
     m_private->unmarkEndOfStream();
 }
@@ -932,8 +974,33 @@ bool MediaSource::hasPendingActivity() const
         || ActiveDOMObject::hasPendingActivity();
 }
 
+void MediaSource::suspend(ReasonForSuspension reason)
+{
+    ALWAYS_LOG(LOGIDENTIFIER, static_cast<int>(reason));
+
+    switch (reason) {
+    case ReasonForSuspension::PageCache:
+    case ReasonForSuspension::PageWillBeSuspended:
+        m_asyncEventQueue.suspend();
+        break;
+    case ReasonForSuspension::JavaScriptDebuggerPaused:
+    case ReasonForSuspension::WillDeferLoading:
+        // Do nothing, we don't pause media playback in these cases.
+        break;
+    }
+}
+
+void MediaSource::resume()
+{
+    ALWAYS_LOG(LOGIDENTIFIER);
+
+    m_asyncEventQueue.resume();
+}
+
 void MediaSource::stop()
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+
     m_asyncEventQueue.close();
     if (m_mediaElement)
         m_mediaElement->detachMediaSource();
@@ -953,6 +1020,8 @@ const char* MediaSource::activeDOMObjectName() const
 
 void MediaSource::onReadyStateChange(ReadyState oldState, ReadyState newState)
 {
+    ALWAYS_LOG(LOGIDENTIFIER, "old state = ", oldState, ", new state = ", newState);
+
     for (auto& buffer : *m_sourceBuffers)
         buffer->readyStateChanged();
 
@@ -1003,7 +1072,9 @@ ExceptionOr<Ref<SourceBufferPrivate>> MediaSource::createSourceBufferPrivate(con
 
 void MediaSource::scheduleEvent(const AtomicString& eventName)
 {
-    auto event = Event::create(eventName, false, false);
+    DEBUG_LOG(LOGIDENTIFIER, "scheduling '", eventName, "'");
+
+    auto event = Event::create(eventName, Event::CanBubble::No, Event::IsCancelable::No);
     event->setTarget(this);
 
     m_asyncEventQueue.enqueueEvent(WTFMove(event));
@@ -1035,6 +1106,19 @@ void MediaSource::regenerateActiveSourceBuffers()
     for (auto& sourceBuffer : *m_activeSourceBuffers)
         sourceBuffer->setBufferedDirty(true);
 }
+
+#if !RELEASE_LOG_DISABLED
+void MediaSource::setLogIdentifier(const void* identifier)
+{
+    m_logIdentifier = identifier;
+    ALWAYS_LOG(LOGIDENTIFIER);
+}
+
+WTFLogChannel& MediaSource::logChannel() const
+{
+    return LogMediaSource;
+}
+#endif
 
 }
 

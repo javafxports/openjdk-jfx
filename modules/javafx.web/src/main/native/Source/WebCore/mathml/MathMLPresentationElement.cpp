@@ -40,8 +40,11 @@
 #include "RenderMathMLBlock.h"
 #include "RenderTableCell.h"
 #include "SVGSVGElement.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(MathMLPresentationElement);
 
 using namespace MathMLNames;
 
@@ -181,7 +184,7 @@ bool MathMLPresentationElement::isFlowContent(const Node& node)
         || htmlElement.hasTagName(HTMLNames::ulTag);
 }
 
-const MathMLElement::BooleanValue& MathMLPresentationElement::cachedBooleanAttribute(const QualifiedName& name, std::optional<BooleanValue>& attribute)
+const MathMLElement::BooleanValue& MathMLPresentationElement::cachedBooleanAttribute(const QualifiedName& name, Optional<BooleanValue>& attribute)
 {
     if (attribute)
         return attribute.value();
@@ -305,7 +308,7 @@ MathMLElement::Length MathMLPresentationElement::parseMathMLLength(const String&
     return parseNamedSpace(stringView);
 }
 
-const MathMLElement::Length& MathMLPresentationElement::cachedMathMLLength(const QualifiedName& name, std::optional<Length>& length)
+const MathMLElement::Length& MathMLPresentationElement::cachedMathMLLength(const QualifiedName& name, Optional<Length>& length)
 {
     if (length)
         return length.value();
@@ -318,10 +321,10 @@ bool MathMLPresentationElement::acceptsDisplayStyleAttribute()
     return hasTagName(mtableTag);
 }
 
-std::optional<bool> MathMLPresentationElement::specifiedDisplayStyle()
+Optional<bool> MathMLPresentationElement::specifiedDisplayStyle()
 {
     if (!acceptsDisplayStyleAttribute())
-        return std::nullopt;
+        return WTF::nullopt;
     const MathMLElement::BooleanValue& specifiedDisplayStyle = cachedBooleanAttribute(displaystyleAttr, m_displayStyle);
     return toOptionalBool(specifiedDisplayStyle);
 }
@@ -368,13 +371,13 @@ MathMLElement::MathVariant MathMLPresentationElement::parseMathVariantAttribute(
     return MathVariant::None;
 }
 
-std::optional<MathMLElement::MathVariant> MathMLPresentationElement::specifiedMathVariant()
+Optional<MathMLElement::MathVariant> MathMLPresentationElement::specifiedMathVariant()
 {
     if (!acceptsMathVariantAttribute())
-        return std::nullopt;
+        return WTF::nullopt;
     if (!m_mathVariant)
         m_mathVariant = parseMathVariantAttribute(attributeWithoutSynchronization(mathvariantAttr));
-    return m_mathVariant.value() == MathVariant::None ? std::nullopt : m_mathVariant;
+    return m_mathVariant.value() == MathVariant::None ? WTF::nullopt : m_mathVariant;
 }
 
 void MathMLPresentationElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -382,9 +385,9 @@ void MathMLPresentationElement::parseAttribute(const QualifiedName& name, const 
     bool displayStyleAttribute = name == displaystyleAttr && acceptsDisplayStyleAttribute();
     bool mathVariantAttribute = name == mathvariantAttr && acceptsMathVariantAttribute();
     if (displayStyleAttribute)
-        m_displayStyle = std::nullopt;
+        m_displayStyle = WTF::nullopt;
     if (mathVariantAttribute)
-        m_mathVariant = std::nullopt;
+        m_mathVariant = WTF::nullopt;
     if ((displayStyleAttribute || mathVariantAttribute) && renderer())
         MathMLStyle::resolveMathMLStyleTree(renderer());
 

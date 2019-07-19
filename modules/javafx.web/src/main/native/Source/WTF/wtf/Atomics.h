@@ -23,14 +23,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Atomics_h
-#define Atomics_h
+#pragma once
 
 #include <atomic>
 #include <wtf/StdLibExtras.h>
 
 #if OS(WINDOWS)
-#if !COMPILER(GCC_OR_CLANG)
+#if !COMPILER(GCC_COMPATIBLE)
 extern "C" void _ReadWriteBarrier(void);
 #pragma intrinsic(_ReadWriteBarrier)
 #endif
@@ -242,7 +241,7 @@ inline T atomicExchange(T* location, T newValue, std::memory_order order = std::
 // to do things like register allocation and code motion over pure operations.
 inline void compilerFence()
 {
-#if OS(WINDOWS) && !COMPILER(GCC_OR_CLANG)
+#if OS(WINDOWS) && !COMPILER(GCC_COMPATIBLE)
     _ReadWriteBarrier();
 #else
     asm volatile("" ::: "memory");
@@ -276,16 +275,8 @@ inline void storeStoreFence() { arm_dmb_st(); }
 inline void memoryBarrierAfterLock() { arm_dmb(); }
 inline void memoryBarrierBeforeUnlock() { arm_dmb(); }
 inline void crossModifyingCodeFence() { arm_isb(); }
-inline void speculationFence() { arm_isb(); }
 
 #elif CPU(X86) || CPU(X86_64)
-
-inline void x86_lfence()
-{
-#if !OS(WINDOWS)
-    asm volatile("lfence" ::: "memory");
-#endif
-}
 
 inline void x86_ortop()
 {
@@ -305,18 +296,6 @@ inline void x86_cpuid()
 #if OS(WINDOWS)
     int info[4];
     __cpuid(info, 0);
-#elif CPU(X86)
-    // GCC 4.9 on x86 in PIC mode can't use %ebx, so we have to save and restore it manually.
-    // But since we don't care about what cpuid returns (we use it as a serializing instruction),
-    // we can simply throw away what cpuid put in %ebx.
-    intptr_t a = 0, c, d;
-    asm volatile(
-        "pushl %%ebx\n\t"
-        "cpuid\n\t"
-        "popl %%ebx\n\t"
-        : "+a"(a), "=c"(c), "=d"(d)
-        :
-        : "memory");
 #else
     intptr_t a = 0, b, c, d;
     asm volatile(
@@ -334,7 +313,6 @@ inline void storeStoreFence() { compilerFence(); }
 inline void memoryBarrierAfterLock() { compilerFence(); }
 inline void memoryBarrierBeforeUnlock() { compilerFence(); }
 inline void crossModifyingCodeFence() { x86_cpuid(); }
-inline void speculationFence() { x86_lfence(); }
 
 #else
 
@@ -345,7 +323,6 @@ inline void storeStoreFence() { std::atomic_thread_fence(std::memory_order_seq_c
 inline void memoryBarrierAfterLock() { std::atomic_thread_fence(std::memory_order_seq_cst); }
 inline void memoryBarrierBeforeUnlock() { std::atomic_thread_fence(std::memory_order_seq_cst); }
 inline void crossModifyingCodeFence() { std::atomic_thread_fence(std::memory_order_seq_cst); } // Probably not strong enough.
-inline void speculationFence() { } // Probably not strong enough.
 
 #endif
 
@@ -474,5 +451,3 @@ using WTF::InputAndValue;
 using WTF::inputAndValue;
 using WTF::ensurePointer;
 using WTF::opaqueMixture;
-
-#endif // Atomics_h

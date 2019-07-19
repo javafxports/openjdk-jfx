@@ -35,12 +35,13 @@
 #include "BlobData.h"
 #include "BlobPart.h"
 #include "BlobResourceHandle.h"
-#include "FileMetadata.h"
-#include "FileSystem.h"
 #include "ResourceError.h"
 #include "ResourceHandle.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
+#include <wtf/CompletionHandler.h>
+#include <wtf/FileMetadata.h>
+#include <wtf/FileSystem.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Scope.h>
@@ -251,7 +252,7 @@ bool BlobRegistryImpl::populateBlobsForFileWriting(const Vector<String>& blobURL
         blobsForWriting.append({ });
         blobsForWriting.last().blobURL = url.isolatedCopy();
 
-        auto* blobData = getBlobDataFromURL({ ParsedURLString, url });
+        auto* blobData = getBlobDataFromURL({ { }, url });
         if (!blobData)
             return false;
 
@@ -300,7 +301,7 @@ static bool writeFilePathsOrDataBuffersToFile(const Vector<std::pair<String, Thr
     return true;
 }
 
-void BlobRegistryImpl::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, Function<void(const Vector<String>& filePaths)>&& completionHandler)
+void BlobRegistryImpl::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, CompletionHandler<void(Vector<String>&& filePaths)>&& completionHandler)
 {
     Vector<BlobForFileWriting> blobsForWriting;
     if (!populateBlobsForFileWriting(blobURLs, blobsForWriting)) {
@@ -312,7 +313,7 @@ void BlobRegistryImpl::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs
         Vector<String> filePaths;
         for (auto& blob : blobsForWriting) {
             FileSystem::PlatformFileHandle file;
-            String tempFilePath = FileSystem::openTemporaryFile(ASCIILiteral("Blob"), file);
+            String tempFilePath = FileSystem::openTemporaryFile("Blob"_s, file);
             if (!writeFilePathsOrDataBuffersToFile(blob.filePathsOrDataBuffers, file, tempFilePath)) {
                 filePaths.clear();
                 break;
@@ -320,8 +321,8 @@ void BlobRegistryImpl::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs
             filePaths.append(tempFilePath.isolatedCopy());
         }
 
-        callOnMainThread([completionHandler = WTFMove(completionHandler), filePaths = WTFMove(filePaths)]() {
-            completionHandler(filePaths);
+        callOnMainThread([completionHandler = WTFMove(completionHandler), filePaths = WTFMove(filePaths)] () mutable {
+            completionHandler(WTFMove(filePaths));
         });
     });
 }

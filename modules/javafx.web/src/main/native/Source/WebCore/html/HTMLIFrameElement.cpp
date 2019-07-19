@@ -28,12 +28,14 @@
 #include "CSSPropertyNames.h"
 #include "DOMTokenList.h"
 #include "Frame.h"
-#include "HTMLDocument.h"
 #include "HTMLNames.h"
 #include "RenderIFrame.h"
 #include "ScriptableDocumentParser.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLIFrameElement);
 
 using namespace HTMLNames;
 
@@ -59,7 +61,7 @@ DOMTokenList& HTMLIFrameElement::sandbox()
 
 bool HTMLIFrameElement::isPresentationAttribute(const QualifiedName& name) const
 {
-    if (name == widthAttr || name == heightAttr || name == alignAttr || name == frameborderAttr)
+    if (name == widthAttr || name == heightAttr || name == frameborderAttr)
         return true;
     return HTMLFrameElementBase::isPresentationAttribute(name);
 }
@@ -101,7 +103,7 @@ void HTMLIFrameElement::parseAttribute(const QualifiedName& name, const AtomicSt
 
 bool HTMLIFrameElement::rendererIsNeeded(const RenderStyle& style)
 {
-    return isURLAllowed() && style.display() != NONE;
+    return isURLAllowed() && style.display() != DisplayType::None;
 }
 
 RenderPtr<RenderElement> HTMLIFrameElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)

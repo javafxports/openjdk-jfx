@@ -50,7 +50,7 @@ void ToFTLDeferredCompilationCallback::compilationDidBecomeReadyAsynchronously(
 {
     if (Options::verboseOSR()) {
         dataLog(
-            "Optimizing compilation of ", *codeBlock, " (for ", *profiledDFGCodeBlock,
+            "Optimizing compilation of ", codeBlock, " (for ", profiledDFGCodeBlock,
             ") did become ready.\n");
     }
 
@@ -63,21 +63,21 @@ void ToFTLDeferredCompilationCallback::compilationDidComplete(
 {
     if (Options::verboseOSR()) {
         dataLog(
-            "Optimizing compilation of ", *codeBlock, " (for ", *profiledDFGCodeBlock,
+            "Optimizing compilation of ", codeBlock, " (for ", profiledDFGCodeBlock,
             ") result: ", result, "\n");
     }
 
     if (profiledDFGCodeBlock->replacement() != profiledDFGCodeBlock) {
         if (Options::verboseOSR()) {
             dataLog(
-                "Dropping FTL code block ", *codeBlock, " on the floor because the "
-                "DFG code block ", *profiledDFGCodeBlock, " was jettisoned.\n");
+                "Dropping FTL code block ", codeBlock, " on the floor because the "
+                "DFG code block ", profiledDFGCodeBlock, " was jettisoned.\n");
         }
         return;
     }
 
     if (result == CompilationSuccessful)
-        codeBlock->ownerScriptExecutable()->installCode(codeBlock);
+        codeBlock->ownerExecutable()->installCode(codeBlock);
 
     profiledDFGCodeBlock->jitCode()->dfg()->setOptimizationThresholdBasedOnCompilationResult(
         profiledDFGCodeBlock, result);

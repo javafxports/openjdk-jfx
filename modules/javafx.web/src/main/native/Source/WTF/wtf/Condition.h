@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WTF_Condition_h
-#define WTF_Condition_h
+#pragma once
 
 #include <wtf/Noncopyable.h>
 #include <wtf/ParkingLot.h>
@@ -48,7 +47,7 @@ public:
     // are unlikely to be affected by the cost of conversions, it is better to use MonotonicTime.
     using Time = ParkingLot::Time;
 
-    Condition() = default;
+    constexpr Condition() = default;
 
     // Wait on a parking queue while releasing the given lock. It will unlock the lock just before
     // parking, and relock it upon wakeup. Returns true if we woke up due to some call to
@@ -178,6 +177,3 @@ using StaticCondition = Condition;
 
 using WTF::Condition;
 using WTF::StaticCondition;
-
-#endif // WTF_Condition_h
-

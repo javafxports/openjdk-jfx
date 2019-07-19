@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Peter Kelly (pmk@post.com)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2008, 2010, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -24,23 +24,33 @@
 #include "config.h"
 #include "StyledElement.h"
 
+#include "AttributeChangeInvalidation.h"
+#include "CSSComputedStyleDeclaration.h"
 #include "CSSImageValue.h"
 #include "CSSParser.h"
+#include "CSSPrimitiveValue.h"
+#include "CSSPropertyParser.h"
 #include "CSSStyleSheet.h"
 #include "CSSValuePool.h"
 #include "CachedResource.h"
 #include "ContentSecurityPolicy.h"
 #include "DOMTokenList.h"
+#include "ElementRareData.h"
 #include "HTMLElement.h"
 #include "HTMLParserIdioms.h"
 #include "InspectorInstrumentation.h"
 #include "PropertySetCSSStyleDeclaration.h"
 #include "ScriptableDocumentParser.h"
 #include "StyleProperties.h"
+#include "StylePropertyMap.h"
 #include "StyleResolver.h"
+#include "TypedOMCSSUnparsedValue.h"
 #include <wtf/HashFunctions.h>
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(StyledElement);
 
 COMPILE_ASSERT(sizeof(StyledElement) == sizeof(Element), styledelement_should_remain_same_size_as_element);
 
@@ -65,6 +75,55 @@ CSSStyleDeclaration& StyledElement::cssomStyle()
 {
     return ensureMutableInlineStyle().ensureInlineCSSStyleDeclaration(*this);
 }
+
+#if ENABLE(CSS_TYPED_OM)
+
+class StyledElementInlineStylePropertyMap final : public StylePropertyMap {
+public:
+    static Ref<StylePropertyMap> create(StyledElement& element)
+    {
+        return adoptRef(*new StyledElementInlineStylePropertyMap(element));
+    }
+
+private:
+    RefPtr<TypedOMCSSStyleValue> get(const String& property) const final
+    {
+        return extractInlineProperty(property, m_element.get());
+    }
+
+    explicit StyledElementInlineStylePropertyMap(StyledElement& element)
+        : m_element(makeRef(element))
+    {
+    }
+
+    static RefPtr<TypedOMCSSStyleValue> extractInlineProperty(const String& name, StyledElement& element)
+    {
+        if (!element.inlineStyle())
+            return nullptr;
+
+        if (isCustomPropertyName(name)) {
+            auto value = element.inlineStyle()->getCustomPropertyCSSValue(name);
+            return StylePropertyMapReadOnly::customPropertyValueOrDefault(name, element.document(), value.get(), &element);
+        }
+
+        CSSPropertyID propertyID = cssPropertyID(name);
+        if (!propertyID)
+            return nullptr;
+
+        auto value = element.inlineStyle()->getPropertyCSSValue(propertyID);
+        return StylePropertyMapReadOnly::reifyValue(value.get(), element.document(), &element);
+    }
+
+    Ref<StyledElement> m_element;
+};
+
+StylePropertyMap& StyledElement::ensureAttributeStyleMap()
+{
+    if (!attributeStyleMap())
+        setAttributeStyleMap(StyledElementInlineStylePropertyMap::create(*this));
+    return *attributeStyleMap();
+}
+#endif
 
 MutableStyleProperties& StyledElement::ensureMutableInlineStyle()
 {
@@ -152,6 +211,16 @@ void StyledElement::invalidateStyleAttribute()
 
     elementData()->setStyleAttributeIsDirty(true);
     invalidateStyle();
+
+    // In the rare case of selectors like "[style] ~ div" we need to synchronize immediately to invalidate.
+    if (styleResolver().ruleSets().hasComplexSelectorsForStyleAttribute()) {
+        if (auto* inlineStyle = this->inlineStyle()) {
+            elementData()->setStyleAttributeIsDirty(false);
+            auto newValue = inlineStyle->asText();
+            Style::AttributeChangeInvalidation styleInvalidation(*this, styleAttr, attributeWithoutSynchronization(styleAttr), newValue);
+            setSynchronizedLazyAttribute(styleAttr, newValue);
+        }
+    }
 }
 
 void StyledElement::inlineStyleChanged()

@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include <wtf/PointerPreparations.h>
+#include "JSCPtrTag.h"
 
 namespace JSC {
 
@@ -40,13 +40,13 @@ extern "C" {
 ALWAYS_INLINE bool isLLIntPC(void* pc)
 {
     uintptr_t pcAsInt = bitwise_cast<uintptr_t>(pc);
-    uintptr_t llintStart = bitwise_cast<uintptr_t>(WTF_PREPARE_FUNCTION_POINTER_FOR_EXECUTION(llintPCRangeStart));
-    uintptr_t llintEnd = bitwise_cast<uintptr_t>(WTF_PREPARE_FUNCTION_POINTER_FOR_EXECUTION(llintPCRangeEnd));
+    uintptr_t llintStart = untagCodePtr<uintptr_t>(llintPCRangeStart, CFunctionPtrTag);
+    uintptr_t llintEnd = untagCodePtr<uintptr_t>(llintPCRangeEnd, CFunctionPtrTag);
     RELEASE_ASSERT(llintStart < llintEnd);
     return llintStart <= pcAsInt && pcAsInt <= llintEnd;
 }
 
-#if ENABLE(JIT)
+#if !ENABLE(C_LOOP)
 static const GPRReg LLIntPC = GPRInfo::regT4;
 #endif
 

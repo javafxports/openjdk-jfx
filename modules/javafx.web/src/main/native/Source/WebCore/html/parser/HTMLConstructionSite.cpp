@@ -514,6 +514,7 @@ void HTMLConstructionSite::insertCustomElement(Ref<Element>&& element, const Ato
     setAttributes(element, attributes, m_parserContentPolicy);
     attachLater(currentNode(), element.copyRef());
     m_openElements.push(HTMLStackItem::create(WTFMove(element), localName, WTFMove(attributes)));
+    executeQueuedTasks();
 }
 
 void HTMLConstructionSite::insertSelfClosingHTMLElement(AtomicHTMLToken&& token)
@@ -649,6 +650,19 @@ inline Document& HTMLConstructionSite::ownerDocumentForCurrentNode()
     return currentNode().document();
 }
 
+static inline JSCustomElementInterface* findCustomElementInterface(Document& ownerDocument, const AtomicString& localName)
+{
+    auto* window = ownerDocument.domWindow();
+    if (!window)
+        return nullptr;
+
+    auto* registry = window->customElementRegistry();
+    if (LIKELY(!registry))
+        return nullptr;
+
+    return registry->findInterface(localName);
+}
+
 RefPtr<Element> HTMLConstructionSite::createHTMLElementOrFindCustomElementInterface(AtomicHTMLToken& token, JSCustomElementInterface** customElementInterface)
 {
     auto& localName = token.name();
@@ -658,25 +672,24 @@ RefPtr<Element> HTMLConstructionSite::createHTMLElementOrFindCustomElementInterf
     // http://www.whatwg.org/specs/web-apps/current-work/multipage/tree-construction.html#create-an-element-for-the-token
     Document& ownerDocument = ownerDocumentForCurrentNode();
     bool insideTemplateElement = !ownerDocument.frame();
-    RefPtr<Element> element = HTMLElementFactory::createKnownElement(localName, ownerDocument, insideTemplateElement ? nullptr : form(), true);
+    auto element = HTMLElementFactory::createKnownElement(localName, ownerDocument, insideTemplateElement ? nullptr : form(), true);
     if (UNLIKELY(!element)) {
-        auto window = makeRefPtr(ownerDocument.domWindow());
-        if (customElementInterface && window) {
-            auto registry = makeRefPtr(window->customElementRegistry());
-            if (UNLIKELY(registry)) {
-                if (auto elementInterface = makeRefPtr(registry->findInterface(localName))) {
-                    *customElementInterface = elementInterface.get();
-                    return nullptr;
-                }
+        if (auto* elementInterface = findCustomElementInterface(ownerDocument, localName)) {
+            if (!m_isParsingFragment) {
+                *customElementInterface = elementInterface;
+                return nullptr;
             }
-        }
-
-        QualifiedName qualifiedName(nullAtom(), localName, xhtmlNamespaceURI);
-        if (Document::validateCustomElementName(localName) == CustomElementNameValidationStatus::Valid) {
-            element = HTMLElement::create(qualifiedName, ownerDocument);
+            element = HTMLElement::create(QualifiedName { nullAtom(), localName, xhtmlNamespaceURI }, ownerDocument);
             element->setIsCustomElementUpgradeCandidate();
-        } else
-            element = HTMLUnknownElement::create(qualifiedName, ownerDocument);
+            element->enqueueToUpgrade(*elementInterface);
+        } else {
+            QualifiedName qualifiedName { nullAtom(), localName, xhtmlNamespaceURI };
+            if (Document::validateCustomElementName(localName) == CustomElementNameValidationStatus::Valid) {
+                element = HTMLElement::create(qualifiedName, ownerDocument);
+                element->setIsCustomElementUpgradeCandidate();
+            } else
+                element = HTMLUnknownElement::create(qualifiedName, ownerDocument);
+        }
     }
     ASSERT(element);
 
@@ -707,17 +720,17 @@ Ref<HTMLStackItem> HTMLConstructionSite::createElementFromSavedToken(HTMLStackIt
     return HTMLStackItem::create(createHTMLElement(fakeToken), WTFMove(fakeToken), item.namespaceURI());
 }
 
-std::optional<unsigned> HTMLConstructionSite::indexOfFirstUnopenFormattingElement() const
+Optional<unsigned> HTMLConstructionSite::indexOfFirstUnopenFormattingElement() const
 {
     if (m_activeFormattingElements.isEmpty())
-        return std::nullopt;
+        return WTF::nullopt;
     unsigned index = m_activeFormattingElements.size();
     do {
         --index;
         const auto& entry = m_activeFormattingElements.at(index);
         if (entry.isMarker() || m_openElements.contains(entry.element())) {
             unsigned firstUnopenElementIndex = index + 1;
-            return firstUnopenElementIndex < m_activeFormattingElements.size() ? firstUnopenElementIndex : std::optional<unsigned>(std::nullopt);
+            return firstUnopenElementIndex < m_activeFormattingElements.size() ? firstUnopenElementIndex : Optional<unsigned>(WTF::nullopt);
         }
     } while (index);
 
@@ -726,7 +739,7 @@ std::optional<unsigned> HTMLConstructionSite::indexOfFirstUnopenFormattingElemen
 
 void HTMLConstructionSite::reconstructTheActiveFormattingElements()
 {
-    std::optional<unsigned> firstUnopenElementIndex = indexOfFirstUnopenFormattingElement();
+    Optional<unsigned> firstUnopenElementIndex = indexOfFirstUnopenFormattingElement();
     if (!firstUnopenElementIndex)
         return;
 

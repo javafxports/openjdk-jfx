@@ -35,6 +35,8 @@
 
 #if PLATFORM(COCOA)
 #include "WebAudioSourceProviderAVFObjC.h"
+#elif ENABLE(WEB_AUDIO) && ENABLE(MEDIA_STREAM) && USE(LIBWEBRTC) && USE(GSTREAMER)
+#include "AudioSourceProviderGStreamer.h"
 #else
 #include "WebAudioSourceProvider.h"
 #endif
@@ -63,21 +65,42 @@ MediaStreamTrackPrivate::~MediaStreamTrackPrivate()
     m_source->removeObserver(*this);
 }
 
+void MediaStreamTrackPrivate::forEachObserver(const WTF::Function<void(Observer&)>& apply) const
+{
+    Vector<Observer*> observersCopy;
+    {
+        auto locker = holdLock(m_observersLock);
+        observersCopy = copyToVector(m_observers);
+    }
+    for (auto* observer : observersCopy) {
+        auto locker = holdLock(m_observersLock);
+        // Make sure the observer has not been destroyed.
+        if (!m_observers.contains(observer))
+            continue;
+        apply(*observer);
+    }
+}
+
 void MediaStreamTrackPrivate::addObserver(MediaStreamTrackPrivate::Observer& observer)
 {
-    m_observers.append(&observer);
+    auto locker = holdLock(m_observersLock);
+    m_observers.add(&observer);
 }
 
 void MediaStreamTrackPrivate::removeObserver(MediaStreamTrackPrivate::Observer& observer)
 {
-    size_t pos = m_observers.find(&observer);
-    if (pos != notFound)
-        m_observers.remove(pos);
+    auto locker = holdLock(m_observersLock);
+    m_observers.remove(&observer);
 }
 
 const String& MediaStreamTrackPrivate::label() const
 {
     return m_source->name();
+}
+
+void MediaStreamTrackPrivate::setContentHint(HintValue hintValue)
+{
+    m_contentHint = hintValue;
 }
 
 bool MediaStreamTrackPrivate::muted() const
@@ -98,8 +121,9 @@ void MediaStreamTrackPrivate::setEnabled(bool enabled)
     // Always update the enabled state regardless of the track being ended.
     m_isEnabled = enabled;
 
-    for (auto& observer : m_observers)
-        observer->trackEnabledChanged(*this);
+    forEachObserver([this](auto& observer) {
+        observer.trackEnabledChanged(*this);
+    });
 }
 
 void MediaStreamTrackPrivate::endTrack()
@@ -113,10 +137,11 @@ void MediaStreamTrackPrivate::endTrack()
     m_isEnded = true;
     updateReadyState();
 
-    m_source->requestStop(this);
+    m_source->requestToEnd(*this);
 
-    for (auto& observer : m_observers)
-        observer->trackEnded(*this);
+    forEachObserver([this](auto& observer) {
+        observer.trackEnded(*this);
+    });
 }
 
 Ref<MediaStreamTrackPrivate> MediaStreamTrackPrivate::clone()
@@ -124,6 +149,7 @@ Ref<MediaStreamTrackPrivate> MediaStreamTrackPrivate::clone()
     auto clonedMediaStreamTrackPrivate = create(m_source.copyRef());
     clonedMediaStreamTrackPrivate->m_isEnabled = this->m_isEnabled;
     clonedMediaStreamTrackPrivate->m_isEnded = this->m_isEnded;
+    clonedMediaStreamTrackPrivate->m_contentHint = this->m_contentHint;
     clonedMediaStreamTrackPrivate->updateReadyState();
 
     return clonedMediaStreamTrackPrivate;
@@ -144,9 +170,9 @@ const RealtimeMediaSourceCapabilities& MediaStreamTrackPrivate::capabilities() c
     return m_source->capabilities();
 }
 
-void MediaStreamTrackPrivate::applyConstraints(const MediaConstraints& constraints, RealtimeMediaSource::SuccessHandler&& successHandler, RealtimeMediaSource::FailureHandler&& failureHandler)
+void MediaStreamTrackPrivate::applyConstraints(const MediaConstraints& constraints, RealtimeMediaSource::ApplyConstraintsHandler&& completionHandler)
 {
-    m_source->applyConstraints(constraints, WTFMove(successHandler), WTFMove(failureHandler));
+    m_source->applyConstraints(constraints, WTFMove(completionHandler));
 }
 
 AudioSourceProvider* MediaStreamTrackPrivate::audioSourceProvider()
@@ -154,14 +180,18 @@ AudioSourceProvider* MediaStreamTrackPrivate::audioSourceProvider()
 #if PLATFORM(COCOA)
     if (!m_audioSourceProvider)
         m_audioSourceProvider = WebAudioSourceProviderAVFObjC::create(*this);
+#elif USE(LIBWEBRTC) && USE(GSTREAMER)
+    if (!m_audioSourceProvider)
+        m_audioSourceProvider = AudioSourceProviderGStreamer::create(*this);
 #endif
     return m_audioSourceProvider.get();
 }
 
 void MediaStreamTrackPrivate::sourceStarted()
 {
-    for (auto& observer : m_observers)
-        observer->trackStarted(*this);
+    forEachObserver([this](auto& observer) {
+        observer.trackStarted(*this);
+    });
 }
 
 void MediaStreamTrackPrivate::sourceStopped()
@@ -172,20 +202,23 @@ void MediaStreamTrackPrivate::sourceStopped()
     m_isEnded = true;
     updateReadyState();
 
-    for (auto& observer : m_observers)
-        observer->trackEnded(*this);
+    forEachObserver([this](auto& observer) {
+        observer.trackEnded(*this);
+    });
 }
 
 void MediaStreamTrackPrivate::sourceMutedChanged()
 {
-    for (auto& observer : m_observers)
-        observer->trackMutedChanged(*this);
+    forEachObserver([this](auto& observer) {
+        observer.trackMutedChanged(*this);
+    });
 }
 
 void MediaStreamTrackPrivate::sourceSettingsChanged()
 {
-    for (auto& observer : m_observers)
-        observer->trackSettingsChanged(*this);
+    forEachObserver([this](auto& observer) {
+        observer.trackSettingsChanged(*this);
+    });
 }
 
 bool MediaStreamTrackPrivate::preventSourceFromStopping()
@@ -205,10 +238,12 @@ void MediaStreamTrackPrivate::videoSampleAvailable(MediaSample& mediaSample)
         return;
 
     mediaSample.setTrackID(id());
-    for (auto& observer : m_observers)
-        observer->sampleBufferUpdated(*this, mediaSample);
+    forEachObserver([&](auto& observer) {
+        observer.sampleBufferUpdated(*this, mediaSample);
+    });
 }
 
+// May get called on a background thread.
 void MediaStreamTrackPrivate::audioSamplesAvailable(const MediaTime& mediaTime, const PlatformAudioData& data, const AudioStreamDescription& description, size_t sampleCount)
 {
     if (!m_haveProducedData) {
@@ -216,11 +251,9 @@ void MediaStreamTrackPrivate::audioSamplesAvailable(const MediaTime& mediaTime, 
         updateReadyState();
     }
 
-    if (!enabled())
-        return;
-
-    for (auto& observer : m_observers)
-        observer->audioSamplesAvailable(*this, mediaTime, data, description, sampleCount);
+    forEachObserver([&](auto& observer) {
+        observer.audioSamplesAvailable(*this, mediaTime, data, description, sampleCount);
+    });
 }
 
 
@@ -237,8 +270,9 @@ void MediaStreamTrackPrivate::updateReadyState()
         return;
 
     m_readyState = state;
-    for (auto& observer : m_observers)
-        observer->readyStateChanged(*this);
+    forEachObserver([this](auto& observer) {
+        observer.readyStateChanged(*this);
+    });
 }
 
 } // namespace WebCore

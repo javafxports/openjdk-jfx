@@ -29,7 +29,9 @@
 #include "RenderStyleConstants.h"
 #include "ShadowData.h"
 #include "StyleCustomPropertyData.h"
+#include "StyleFilterData.h"
 #include "StyleImage.h"
+#include "StyleSupportedColorSchemes.h"
 #include <wtf/PointerComparison.h>
 
 namespace WebCore {
@@ -41,16 +43,18 @@ struct GreaterThanOrSameSizeAsStyleRareInheritedData : public RefCounted<Greater
     Color colors[9];
     void* ownPtrs[1];
     AtomicString atomicStrings[5];
-    void* refPtrs[2];
+    void* refPtrs[3];
     Length lengths[2];
     float secondFloat;
+    TextUnderlineOffset offset;
+    TextDecorationThickness thickness;
     unsigned bitfields[4];
     short pagedMediaShorts[2];
     unsigned unsigneds[1];
     short hyphenationShorts[3];
 
-#if PLATFORM(IOS)
-    Color compositionColor;
+#if PLATFORM(IOS_FAMILY)
+    Color compositionColor; // FIXME: this has gone.
 #endif
 #if ENABLE(TEXT_AUTOSIZING)
     TextSizeAdjustment textSizeAdjust;
@@ -64,6 +68,10 @@ struct GreaterThanOrSameSizeAsStyleRareInheritedData : public RefCounted<Greater
     Color tapHighlightColor;
 #endif
 
+#if ENABLE(DARK_MODE_CSS)
+    StyleSupportedColorSchemes supportedColorSchemes;
+#endif
+
     void* customPropertyDataRefs[1];
 };
 
@@ -74,23 +82,25 @@ StyleRareInheritedData::StyleRareInheritedData()
     , textStrokeWidth(RenderStyle::initialTextStrokeWidth())
     , indent(RenderStyle::initialTextIndent())
     , effectiveZoom(RenderStyle::initialZoom())
+    , textUnderlineOffset(RenderStyle::initialTextUnderlineOffset())
+    , textDecorationThickness(RenderStyle::initialTextDecorationThickness())
     , customProperties(StyleCustomPropertyData::create())
     , widows(RenderStyle::initialWidows())
     , orphans(RenderStyle::initialOrphans())
     , hasAutoWidows(true)
     , hasAutoOrphans(true)
-    , textSecurity(RenderStyle::initialTextSecurity())
-    , userModify(READ_ONLY)
-    , wordBreak(RenderStyle::initialWordBreak())
-    , overflowWrap(RenderStyle::initialOverflowWrap())
-    , nbspMode(NBNORMAL)
-    , lineBreak(LineBreakAuto)
-    , userSelect(RenderStyle::initialUserSelect())
-    , speakAs(SpeakNormal)
-    , hyphens(HyphensManual)
-    , textEmphasisFill(TextEmphasisFillFilled)
-    , textEmphasisMark(TextEmphasisMarkNone)
-    , textEmphasisPosition(TextEmphasisPositionOver | TextEmphasisPositionRight)
+    , textSecurity(static_cast<unsigned>(RenderStyle::initialTextSecurity()))
+    , userModify(static_cast<unsigned>(UserModify::ReadOnly))
+    , wordBreak(static_cast<unsigned>(RenderStyle::initialWordBreak()))
+    , overflowWrap(static_cast<unsigned>(RenderStyle::initialOverflowWrap()))
+    , nbspMode(static_cast<unsigned>(NBSPMode::Normal))
+    , lineBreak(static_cast<unsigned>(LineBreak::Auto))
+    , userSelect(static_cast<unsigned>(RenderStyle::initialUserSelect()))
+    , speakAs(RenderStyle::initialSpeakAs().toRaw())
+    , hyphens(static_cast<unsigned>(Hyphens::Manual))
+    , textEmphasisFill(static_cast<unsigned>(TextEmphasisFill::Filled))
+    , textEmphasisMark(static_cast<unsigned>(TextEmphasisMark::None))
+    , textEmphasisPosition(static_cast<unsigned>(RenderStyle::initialTextEmphasisPosition().toRaw()))
     , textOrientation(static_cast<unsigned>(TextOrientation::Mixed))
 #if ENABLE(CSS3_TEXT)
     , textIndentLine(RenderStyle::initialTextIndentLine())
@@ -100,9 +110,9 @@ StyleRareInheritedData::StyleRareInheritedData()
 #if ENABLE(CSS_IMAGE_ORIENTATION)
     , imageOrientation(RenderStyle::initialImageOrientation())
 #endif
-    , imageRendering(RenderStyle::initialImageRendering())
-    , lineSnap(RenderStyle::initialLineSnap())
-    , lineAlign(RenderStyle::initialLineAlign())
+    , imageRendering(static_cast<unsigned>(RenderStyle::initialImageRendering()))
+    , lineSnap(static_cast<unsigned>(RenderStyle::initialLineSnap()))
+    , lineAlign(static_cast<unsigned>(RenderStyle::initialLineAlign()))
 #if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     , useTouchOverflowScrolling(RenderStyle::initialUseTouchOverflowScrolling())
 #endif
@@ -114,17 +124,14 @@ StyleRareInheritedData::StyleRareInheritedData()
     , textAlignLast(RenderStyle::initialTextAlignLast())
     , textJustify(RenderStyle::initialTextJustify())
 #endif
-    , textDecorationSkip(RenderStyle::initialTextDecorationSkip())
-    , textUnderlinePosition(RenderStyle::initialTextUnderlinePosition())
-    , rubyPosition(RenderStyle::initialRubyPosition())
-    , textZoom(RenderStyle::initialTextZoom())
-#if PLATFORM(IOS)
+    , textDecorationSkip(RenderStyle::initialTextDecorationSkip().toRaw())
+    , textUnderlinePosition(static_cast<unsigned>(RenderStyle::initialTextUnderlinePosition()))
+    , rubyPosition(static_cast<unsigned>(RenderStyle::initialRubyPosition()))
+    , textZoom(static_cast<unsigned>(RenderStyle::initialTextZoom()))
+#if PLATFORM(IOS_FAMILY)
     , touchCalloutEnabled(RenderStyle::initialTouchCalloutEnabled())
 #endif
-#if ENABLE(CSS_TRAILING_WORD)
-    , trailingWord(static_cast<unsigned>(RenderStyle::initialTrailingWord()))
-#endif
-    , hangingPunctuation(RenderStyle::initialHangingPunctuation())
+    , hangingPunctuation(RenderStyle::initialHangingPunctuation().toRaw())
     , paintOrder(static_cast<unsigned>(RenderStyle::initialPaintOrder()))
     , capStyle(RenderStyle::initialCapStyle())
     , joinStyle(RenderStyle::initialJoinStyle())
@@ -136,6 +143,7 @@ StyleRareInheritedData::StyleRareInheritedData()
     , hyphenationLimitBefore(-1)
     , hyphenationLimitAfter(-1)
     , hyphenationLimitLines(-1)
+    , appleColorFilter(StyleFilterData::create())
     , lineGrid(RenderStyle::initialLineGrid())
     , tabSize(RenderStyle::initialTabSize())
 #if ENABLE(TEXT_AUTOSIZING)
@@ -146,6 +154,9 @@ StyleRareInheritedData::StyleRareInheritedData()
 #endif
 #if ENABLE(TOUCH_EVENTS)
     , tapHighlightColor(RenderStyle::initialTapHighlightColor())
+#endif
+#if ENABLE(DARK_MODE_CSS)
+    , supportedColorSchemes(RenderStyle::initialSupportedColorSchemes())
 #endif
 {
 }
@@ -166,6 +177,8 @@ inline StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedDa
     , cursorData(o.cursorData)
     , indent(o.indent)
     , effectiveZoom(o.effectiveZoom)
+    , textUnderlineOffset(o.textUnderlineOffset)
+    , textDecorationThickness(o.textDecorationThickness)
     , customProperties(o.customProperties)
     , widows(o.widows)
     , orphans(o.orphans)
@@ -210,11 +223,8 @@ inline StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedDa
     , textUnderlinePosition(o.textUnderlinePosition)
     , rubyPosition(o.rubyPosition)
     , textZoom(o.textZoom)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     , touchCalloutEnabled(o.touchCalloutEnabled)
-#endif
-#if ENABLE(CSS_TRAILING_WORD)
-    , trailingWord(o.trailingWord)
 #endif
     , hangingPunctuation(o.hangingPunctuation)
     , paintOrder(o.paintOrder)
@@ -231,6 +241,7 @@ inline StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedDa
     , hyphenationLimitAfter(o.hyphenationLimitAfter)
     , hyphenationLimitLines(o.hyphenationLimitLines)
     , textEmphasisCustomMark(o.textEmphasisCustomMark)
+    , appleColorFilter(o.appleColorFilter)
     , lineGrid(o.lineGrid)
     , tabSize(o.tabSize)
 #if ENABLE(TEXT_AUTOSIZING)
@@ -241,6 +252,9 @@ inline StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedDa
 #endif
 #if ENABLE(TOUCH_EVENTS)
     , tapHighlightColor(o.tapHighlightColor)
+#endif
+#if ENABLE(DARK_MODE_CSS)
+    , supportedColorSchemes(o.supportedColorSchemes)
 #endif
 {
 }
@@ -270,6 +284,8 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
         && arePointingToEqualData(cursorData, o.cursorData)
         && indent == o.indent
         && effectiveZoom == o.effectiveZoom
+        && textUnderlineOffset == o.textUnderlineOffset
+        && textDecorationThickness == o.textDecorationThickness
         && widows == o.widows
         && orphans == o.orphans
         && hasAutoWidows == o.hasAutoWidows
@@ -286,6 +302,9 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
 #if ENABLE(TEXT_AUTOSIZING)
         && textSizeAdjust == o.textSizeAdjust
 #endif
+#if ENABLE(DARK_MODE_CSS)
+        && supportedColorSchemes == o.supportedColorSchemes
+#endif
         && userSelect == o.userSelect
         && speakAs == o.speakAs
         && hyphens == o.hyphens
@@ -301,12 +320,13 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
         && textIndentType == o.textIndentType
 #endif
         && lineBoxContain == o.lineBoxContain
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         && touchCalloutEnabled == o.touchCalloutEnabled
 #endif
         && hyphenationString == o.hyphenationString
         && textEmphasisCustomMark == o.textEmphasisCustomMark
         && arePointingToEqualData(quotes, o.quotes)
+        && appleColorFilter == o.appleColorFilter
         && tabSize == o.tabSize
         && lineGrid == o.lineGrid
 #if ENABLE(CSS_IMAGE_ORIENTATION)
@@ -328,9 +348,6 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
         && textZoom == o.textZoom
         && lineSnap == o.lineSnap
         && lineAlign == o.lineAlign
-#if ENABLE(CSS_TRAILING_WORD)
-        && trailingWord == o.trailingWord
-#endif
         && hangingPunctuation == o.hangingPunctuation
         && paintOrder == o.paintOrder
         && capStyle == o.capStyle
@@ -343,6 +360,11 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
         && miterLimit == o.miterLimit
         && customProperties == o.customProperties
         && arePointingToEqualData(listStyleImage, o.listStyleImage);
+}
+
+bool StyleRareInheritedData::hasColorFilters() const
+{
+    return !appleColorFilter->operations.isEmpty();
 }
 
 } // namespace WebCore

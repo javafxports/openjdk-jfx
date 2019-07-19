@@ -539,7 +539,7 @@ LayoutRect MathOperator::paintGlyph(const RenderStyle& style, PaintInfo& info, c
 
     GlyphBuffer buffer;
     buffer.add(data.glyph, data.font, advanceWidthForGlyph(data));
-    info.context().drawGlyphs(style.fontCascade(), *data.font, buffer, 0, 1, origin);
+    info.context().drawGlyphs(*data.font, buffer, 0, 1, origin, style.fontCascade().fontDescription().fontSmoothing());
 
     return glyphPaintRect;
 }
@@ -708,20 +708,20 @@ void MathOperator::paintHorizontalGlyphAssembly(const RenderStyle& style, PaintI
 
 void MathOperator::paint(const RenderStyle& style, PaintInfo& info, const LayoutPoint& paintOffset)
 {
-    if (info.context().paintingDisabled() || info.phase != PaintPhaseForeground || style.visibility() != VISIBLE)
+    if (info.context().paintingDisabled() || info.phase != PaintPhase::Foreground || style.visibility() != Visibility::Visible)
         return;
 
     // Make a copy of the PaintInfo because applyTransform will modify its rect.
     PaintInfo paintInfo(info);
     GraphicsContextStateSaver stateSaver(paintInfo.context());
-    paintInfo.context().setFillColor(style.visitedDependentColor(CSSPropertyColor));
+    paintInfo.context().setFillColor(style.visitedDependentColorWithColorFilter(CSSPropertyColor));
 
     // For a radical character, we may need some scale transform to stretch it vertically or mirror it.
     if (m_baseCharacter == kRadicalOperator) {
         float radicalHorizontalScale = style.isLeftToRightDirection() ? 1 : -1;
         if (radicalHorizontalScale == -1 || m_radicalVerticalScale > 1) {
             LayoutPoint scaleOrigin = paintOffset;
-            scaleOrigin.move(m_width / 2, 0);
+            scaleOrigin.move(m_width / 2, 0_lu);
             paintInfo.applyTransform(AffineTransform().translate(scaleOrigin).scale(radicalHorizontalScale, m_radicalVerticalScale).translate(-scaleOrigin));
         }
     }
@@ -746,7 +746,7 @@ void MathOperator::paint(const RenderStyle& style, PaintInfo& info, const Layout
     LayoutPoint operatorTopLeft = paintOffset;
     FloatRect glyphBounds = boundsForGlyph(glyphData);
     LayoutPoint operatorOrigin(operatorTopLeft.x(), operatorTopLeft.y() - glyphBounds.y());
-    paintInfo.context().drawGlyphs(style.fontCascade(), *glyphData.font, buffer, 0, 1, operatorOrigin);
+    paintInfo.context().drawGlyphs(*glyphData.font, buffer, 0, 1, operatorOrigin, style.fontCascade().fontDescription().fontSmoothing());
 }
 
 }

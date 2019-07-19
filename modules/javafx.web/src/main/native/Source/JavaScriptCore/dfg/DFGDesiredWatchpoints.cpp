@@ -41,7 +41,7 @@ void ArrayBufferViewWatchpointAdaptor::add(
     Watchpoint* watchpoint = common.watchpoints.add(codeBlock);
     ArrayBufferNeuteringWatchpoint* neuteringWatchpoint =
         ArrayBufferNeuteringWatchpoint::create(vm);
-    neuteringWatchpoint->set()->add(watchpoint);
+    neuteringWatchpoint->set().add(watchpoint);
     codeBlock->addConstant(neuteringWatchpoint);
     // FIXME: We don't need to set this watchpoint at all for shared buffers.
     // https://bugs.webkit.org/show_bug.cgi?id=164108
@@ -58,19 +58,15 @@ void InferredValueAdaptor::add(
 void AdaptiveStructureWatchpointAdaptor::add(
     CodeBlock* codeBlock, const ObjectPropertyCondition& key, CommonData& common)
 {
+    VM& vm = *codeBlock->vm();
     switch (key.kind()) {
     case PropertyCondition::Equivalence:
-        common.adaptiveInferredPropertyValueWatchpoints.add(key, codeBlock)->install();
+        common.adaptiveInferredPropertyValueWatchpoints.add(key, codeBlock)->install(vm);
         break;
     default:
-        common.adaptiveStructureWatchpoints.add(key, codeBlock)->install();
+        common.adaptiveStructureWatchpoints.add(key, codeBlock)->install(vm);
         break;
     }
-}
-
-void InferredTypeAdaptor::add(CodeBlock* codeBlock, const DesiredInferredType& key, CommonData& common)
-{
-    key.add(common.watchpoints.add(codeBlock));
 }
 
 DesiredWatchpoints::DesiredWatchpoints() { }
@@ -101,11 +97,6 @@ void DesiredWatchpoints::addLazily(const ObjectPropertyCondition& key)
     m_adaptiveStructureSets.addLazily(key);
 }
 
-void DesiredWatchpoints::addLazily(const DesiredInferredType& key)
-{
-    m_inferredTypes.addLazily(key);
-}
-
 bool DesiredWatchpoints::consider(Structure* structure)
 {
     if (!structure->dfgShouldWatch())
@@ -121,7 +112,6 @@ void DesiredWatchpoints::reallyAdd(CodeBlock* codeBlock, CommonData& commonData)
     m_inferredValues.reallyAdd(codeBlock, commonData);
     m_bufferViews.reallyAdd(codeBlock, commonData);
     m_adaptiveStructureSets.reallyAdd(codeBlock, commonData);
-    m_inferredTypes.reallyAdd(codeBlock, commonData);
 }
 
 bool DesiredWatchpoints::areStillValid() const
@@ -130,8 +120,7 @@ bool DesiredWatchpoints::areStillValid() const
         && m_inlineSets.areStillValid()
         && m_inferredValues.areStillValid()
         && m_bufferViews.areStillValid()
-        && m_adaptiveStructureSets.areStillValid()
-        && m_inferredTypes.areStillValid();
+        && m_adaptiveStructureSets.areStillValid();
 }
 
 void DesiredWatchpoints::dumpInContext(PrintStream& out, DumpContext* context) const
@@ -142,7 +131,6 @@ void DesiredWatchpoints::dumpInContext(PrintStream& out, DumpContext* context) c
     out.print("    Inferred values: ", inContext(m_inferredValues, context), "\n");
     out.print("    Buffer views: ", inContext(m_bufferViews, context), "\n");
     out.print("    Object property conditions: ", inContext(m_adaptiveStructureSets, context), "\n");
-    out.print("    Inferred types: ", inContext(m_inferredTypes, context), "\n");
 }
 
 } } // namespace JSC::DFG

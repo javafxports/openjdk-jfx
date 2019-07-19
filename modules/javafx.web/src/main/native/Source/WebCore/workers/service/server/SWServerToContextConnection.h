@@ -27,7 +27,9 @@
 
 #if ENABLE(SERVICE_WORKER)
 
+#include "SecurityOriginData.h"
 #include "ServiceWorkerClientQueryOptions.h"
+#include "ServiceWorkerContextData.h"
 #include "ServiceWorkerIdentifier.h"
 #include "ServiceWorkerTypes.h"
 #include <wtf/RefCounted.h>
@@ -51,20 +53,20 @@ public:
     SWServerToContextConnectionIdentifier identifier() const { return m_identifier; }
 
     // Messages to the SW host process
-    virtual void installServiceWorkerContext(const ServiceWorkerContextData&, PAL::SessionID) = 0;
+    virtual void installServiceWorkerContext(const ServiceWorkerContextData&, PAL::SessionID, const String& userAgent) = 0;
     virtual void fireInstallEvent(ServiceWorkerIdentifier) = 0;
     virtual void fireActivateEvent(ServiceWorkerIdentifier) = 0;
     virtual void terminateWorker(ServiceWorkerIdentifier) = 0;
     virtual void syncTerminateWorker(ServiceWorkerIdentifier) = 0;
-    virtual void findClientByIdentifierCompleted(uint64_t requestIdentifier, const std::optional<ServiceWorkerClientData>&, bool hasSecurityError) = 0;
+    virtual void findClientByIdentifierCompleted(uint64_t requestIdentifier, const Optional<ServiceWorkerClientData>&, bool hasSecurityError) = 0;
     virtual void matchAllCompleted(uint64_t requestIdentifier, const Vector<ServiceWorkerClientData>&) = 0;
     virtual void claimCompleted(uint64_t requestIdentifier) = 0;
     virtual void didFinishSkipWaiting(uint64_t callbackID) = 0;
 
     // Messages back from the SW host process
-    WEBCORE_EXPORT void scriptContextFailedToStart(const std::optional<ServiceWorkerJobDataIdentifier>&, ServiceWorkerIdentifier, const String& message);
-    WEBCORE_EXPORT void scriptContextStarted(const std::optional<ServiceWorkerJobDataIdentifier>&, ServiceWorkerIdentifier);
-    WEBCORE_EXPORT void didFinishInstall(const std::optional<ServiceWorkerJobDataIdentifier>&, ServiceWorkerIdentifier, bool wasSuccessful);
+    WEBCORE_EXPORT void scriptContextFailedToStart(const Optional<ServiceWorkerJobDataIdentifier>&, ServiceWorkerIdentifier, const String& message);
+    WEBCORE_EXPORT void scriptContextStarted(const Optional<ServiceWorkerJobDataIdentifier>&, ServiceWorkerIdentifier);
+    WEBCORE_EXPORT void didFinishInstall(const Optional<ServiceWorkerJobDataIdentifier>&, ServiceWorkerIdentifier, bool wasSuccessful);
     WEBCORE_EXPORT void didFinishActivation(ServiceWorkerIdentifier);
     WEBCORE_EXPORT void setServiceWorkerHasPendingEvents(ServiceWorkerIdentifier, bool hasPendingEvents);
     WEBCORE_EXPORT void skipWaiting(ServiceWorkerIdentifier, uint64_t callbackID);
@@ -72,18 +74,20 @@ public:
     WEBCORE_EXPORT void findClientByIdentifier(uint64_t clientIdRequestIdentifier, ServiceWorkerIdentifier, ServiceWorkerClientIdentifier);
     WEBCORE_EXPORT void matchAll(uint64_t requestIdentifier, ServiceWorkerIdentifier, const ServiceWorkerClientQueryOptions&);
     WEBCORE_EXPORT void claim(uint64_t requestIdentifier, ServiceWorkerIdentifier);
+    WEBCORE_EXPORT void setScriptResource(ServiceWorkerIdentifier, URL&& scriptURL, String&& script, URL&& responseURL, String&& mimeType);
 
-    static SWServerToContextConnection* connectionForIdentifier(SWServerToContextConnectionIdentifier);
+    static SWServerToContextConnection* connectionForOrigin(const SecurityOriginData&);
 
-    // FIXME: While we only ever have one SW context process this method makes sense.
-    // Once we have multiple ones this method should go away forcing use of connectionForIdentifier()
-    WEBCORE_EXPORT static SWServerToContextConnection* globalServerToContextConnection();
+    const SecurityOriginData& securityOrigin() const { return m_securityOrigin; }
+
+    virtual void connectionMayNoLongerBeNeeded() = 0;
 
 protected:
-    WEBCORE_EXPORT SWServerToContextConnection();
+    WEBCORE_EXPORT explicit SWServerToContextConnection(const SecurityOriginData&);
 
 private:
     SWServerToContextConnectionIdentifier m_identifier;
+    SecurityOriginData m_securityOrigin;
 };
 
 } // namespace WebCore

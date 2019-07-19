@@ -41,15 +41,15 @@ namespace JSC {
 //
 // To speed allocation, this object will hold all of the arguments in-place. The arguments as well
 // as a table of flags saying which arguments were overridden.
-class DirectArguments : public GenericArguments<DirectArguments> {
+class DirectArguments final : public GenericArguments<DirectArguments> {
 private:
     DirectArguments(VM&, Structure*, unsigned length, unsigned capacity);
 
 public:
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess>
     static CompleteSubspace* subspaceFor(VM& vm)
     {
-        RELEASE_ASSERT(!CellType::needsDestruction);
+        static_assert(!CellType::needsDestruction, "");
         return &vm.jsValueGigacageCellSpace;
     }
 
@@ -64,7 +64,7 @@ public:
     // Creates an arguments object by copying the argumnets from the stack.
     static DirectArguments* createByCopying(ExecState*);
 
-    static size_t estimatedSize(JSCell*);
+    static size_t estimatedSize(JSCell*, VM&);
     static void visitChildren(JSCell*, SlotVisitor&);
 
     uint32_t internalLength() const
@@ -79,8 +79,7 @@ public:
             auto scope = DECLARE_THROW_SCOPE(vm);
             JSValue value = get(exec, vm.propertyNames->length);
             RETURN_IF_EXCEPTION(scope, 0);
-            scope.release();
-            return value.toUInt32(exec);
+            RELEASE_AND_RETURN(scope, value.toUInt32(exec));
         }
         return m_length;
     }
@@ -98,28 +97,30 @@ public:
     JSValue getIndexQuickly(uint32_t i) const
     {
         ASSERT_WITH_SECURITY_IMPLICATION(isMappedArgument(i));
-        auto* ptr = &const_cast<DirectArguments*>(this)->storage()[i];
-        return preciseIndexMaskPtr(i, m_length, dynamicPoison(type(), DirectArgumentsType, ptr))->get();
+        return const_cast<DirectArguments*>(this)->storage()[i].get();
     }
 
     void setIndexQuickly(VM& vm, uint32_t i, JSValue value)
     {
         ASSERT_WITH_SECURITY_IMPLICATION(isMappedArgument(i));
-        auto* ptr = &storage()[i];
-        preciseIndexMaskPtr(i, m_length, dynamicPoison(type(), DirectArgumentsType, ptr))->set(vm, this, value);
+        storage()[i].set(vm, this, value);
     }
 
-    WriteBarrier<JSFunction>& callee()
+    JSFunction* callee()
     {
-        return m_callee;
+        return m_callee.get();
+    }
+
+    void setCallee(VM& vm, JSFunction* function)
+    {
+        m_callee.set(vm, this, function);
     }
 
     WriteBarrier<Unknown>& argument(DirectArgumentsOffset offset)
     {
         ASSERT(offset);
         ASSERT_WITH_SECURITY_IMPLICATION(offset.offset() < std::max(m_length, m_minCapacity));
-        auto* ptr = &storage()[offset.offset()];
-        return *preciseIndexMaskPtr(offset.offset(), std::max(m_length, m_minCapacity), dynamicPoison(type(), DirectArgumentsType, ptr));
+        return storage()[offset.offset()];
     }
 
     // Methods intended for use by the GenericArguments mixin.

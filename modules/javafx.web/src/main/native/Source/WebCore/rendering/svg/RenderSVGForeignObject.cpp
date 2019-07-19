@@ -56,7 +56,7 @@ void RenderSVGForeignObject::paint(PaintInfo& paintInfo, const LayoutPoint&)
     if (paintInfo.context().paintingDisabled())
         return;
 
-    if (paintInfo.phase != PaintPhaseForeground && paintInfo.phase != PaintPhaseSelection)
+    if (paintInfo.phase != PaintPhase::Foreground && paintInfo.phase != PaintPhase::Selection)
         return;
 
     PaintInfo childPaintInfo(paintInfo);
@@ -67,29 +67,29 @@ void RenderSVGForeignObject::paint(PaintInfo& paintInfo, const LayoutPoint&)
         childPaintInfo.context().clip(m_viewport);
 
     SVGRenderingContext renderingContext;
-    if (paintInfo.phase == PaintPhaseForeground) {
+    if (paintInfo.phase == PaintPhase::Foreground) {
         renderingContext.prepareToRenderSVGContent(*this, childPaintInfo);
         if (!renderingContext.isRenderingPrepared())
             return;
     }
 
     LayoutPoint childPoint = IntPoint();
-    if (paintInfo.phase == PaintPhaseSelection) {
+    if (paintInfo.phase == PaintPhase::Selection) {
         RenderBlock::paint(childPaintInfo, childPoint);
         return;
     }
 
     // Paint all phases of FO elements atomically, as though the FO element established its
     // own stacking context.
-    childPaintInfo.phase = PaintPhaseBlockBackground;
+    childPaintInfo.phase = PaintPhase::BlockBackground;
     RenderBlock::paint(childPaintInfo, childPoint);
-    childPaintInfo.phase = PaintPhaseChildBlockBackgrounds;
+    childPaintInfo.phase = PaintPhase::ChildBlockBackgrounds;
     RenderBlock::paint(childPaintInfo, childPoint);
-    childPaintInfo.phase = PaintPhaseFloat;
+    childPaintInfo.phase = PaintPhase::Float;
     RenderBlock::paint(childPaintInfo, childPoint);
-    childPaintInfo.phase = PaintPhaseForeground;
+    childPaintInfo.phase = PaintPhase::Foreground;
     RenderBlock::paint(childPaintInfo, childPoint);
-    childPaintInfo.phase = PaintPhaseOutline;
+    childPaintInfo.phase = PaintPhase::Outline;
     RenderBlock::paint(childPaintInfo, childPoint);
 }
 
@@ -98,14 +98,17 @@ LayoutRect RenderSVGForeignObject::clippedOverflowRectForRepaint(const RenderLay
     return SVGRenderSupport::clippedOverflowRectForRepaint(*this, repaintContainer);
 }
 
-FloatRect RenderSVGForeignObject::computeFloatRectForRepaint(const FloatRect& repaintRect, const RenderLayerModelObject* repaintContainer, bool fixed) const
+Optional<FloatRect> RenderSVGForeignObject::computeFloatVisibleRectInContainer(const FloatRect& rect, const RenderLayerModelObject* container, VisibleRectContext context) const
 {
-    return SVGRenderSupport::computeFloatRectForRepaint(*this, repaintRect, repaintContainer, fixed);
+    return SVGRenderSupport::computeFloatVisibleRectInContainer(*this, rect, container, context);
 }
 
-LayoutRect RenderSVGForeignObject::computeRectForRepaint(const LayoutRect& repaintRect, const RenderLayerModelObject* repaintContainer, RepaintContext context) const
+Optional<LayoutRect> RenderSVGForeignObject::computeVisibleRectInContainer(const LayoutRect& rect, const RenderLayerModelObject* container, VisibleRectContext context) const
 {
-    return enclosingLayoutRect(computeFloatRectForRepaint(repaintRect, repaintContainer, context.m_hasPositionFixedDescendant));
+    Optional<FloatRect> adjustedRect = computeFloatVisibleRectInContainer(rect, container, context);
+    if (adjustedRect)
+        return enclosingLayoutRect(*adjustedRect);
+    return WTF::nullopt;
 }
 
 const AffineTransform& RenderSVGForeignObject::localToParentTransform() const
@@ -182,7 +185,7 @@ bool RenderSVGForeignObject::nodeAtFloatPoint(const HitTestRequest& request, Hit
     if (hitTestAction != HitTestForeground)
         return false;
 
-    FloatPoint localPoint = localTransform().inverse().value_or(AffineTransform()).mapPoint(pointInParent);
+    FloatPoint localPoint = localTransform().inverse().valueOr(AffineTransform()).mapPoint(pointInParent);
 
     // Early exit if local point is not contained in clipped viewport area
     if (SVGRenderSupport::isOverflowHidden(*this) && !m_viewport.contains(localPoint))

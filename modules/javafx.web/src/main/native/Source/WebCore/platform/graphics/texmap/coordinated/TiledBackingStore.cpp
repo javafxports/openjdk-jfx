@@ -41,7 +41,6 @@ TiledBackingStore::TiledBackingStore(TiledBackingStoreClient& client, float cont
     , m_tileSize(defaultTileDimension, defaultTileDimension)
     , m_coverAreaMultiplier(2.0f)
     , m_contentsScale(contentsScale)
-    , m_supportsAlpha(false)
     , m_pendingTileCreation(false)
 {
 }
@@ -140,7 +139,6 @@ bool TiledBackingStore::visibleAreaIsCovered() const
 void TiledBackingStore::createTiles(const IntRect& visibleRect, const IntRect& scaledContentsRect, float coverAreaMultiplier)
 {
     // Update our backing store geometry.
-    const IntRect previousRect = m_rect;
     m_rect = scaledContentsRect;
     m_trajectoryVector = m_pendingTrajectoryVector;
     m_visibleRect = visibleRect;
@@ -185,8 +183,10 @@ void TiledBackingStore::createTiles(const IntRect& visibleRect, const IntRect& s
 
     // Resize tiles at the edge in case the contents size has changed, but only do so
     // after having dropped tiles outside the keep rect.
-    if (previousRect != m_rect)
+    if (m_previousRect != m_rect) {
+        m_previousRect = m_rect;
         resizeEdgeTiles();
+    }
 
     // Search for the tile position closest to the viewport center that does not yet contain a tile.
     // Which position is considered the closest depends on the tileDistance function.
@@ -392,14 +392,6 @@ Tile::Coordinate TiledBackingStore::tileCoordinateForPoint(const IntPoint& point
     int x = point.x() / m_tileSize.width();
     int y = point.y() / m_tileSize.height();
     return Tile::Coordinate(std::max(x, 0), std::max(y, 0));
-}
-
-void TiledBackingStore::setSupportsAlpha(bool a)
-{
-    if (a == m_supportsAlpha)
-        return;
-    m_supportsAlpha = a;
-    invalidate(m_rect);
 }
 
 }

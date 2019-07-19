@@ -27,8 +27,11 @@
 #include "CSSValueKeywords.h"
 #include "Document.h"
 #include "HTMLNames.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLParagraphElement);
 
 using namespace HTMLNames;
 
@@ -46,13 +49,6 @@ Ref<HTMLParagraphElement> HTMLParagraphElement::create(Document& document)
 Ref<HTMLParagraphElement> HTMLParagraphElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(*new HTMLParagraphElement(tagName, document));
-}
-
-bool HTMLParagraphElement::isPresentationAttribute(const QualifiedName& name) const
-{
-    if (name == alignAttr)
-        return true;
-    return HTMLElement::isPresentationAttribute(name);
 }
 
 void HTMLParagraphElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)

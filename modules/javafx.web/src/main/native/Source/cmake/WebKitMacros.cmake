@@ -16,41 +16,59 @@ macro(WEBKIT_COMPUTE_SOURCES _framework)
         set(WTF_SCRIPTS_DIR "${FORWARDING_HEADERS_DIR}/wtf/Scripts")
     endif ()
 
-    execute_process(COMMAND ${RUBY_EXECUTABLE} ${WTF_SCRIPTS_DIR}/generate-unified-source-bundles.rb
-        "--derived-sources-path" "${DERIVED_SOURCES_DIR}/${_framework}"
-        "--source-tree-path" ${CMAKE_CURRENT_SOURCE_DIR}
-        "--print-bundled-sources"
-        "--feature-flags" "${UNIFIED_SOURCE_LIST_ENABLED_FEATURES}"
-        ${_sourceListFileTruePaths}
-        RESULT_VARIABLE _resultTmp
-        OUTPUT_VARIABLE _outputTmp)
+    if (ENABLE_UNIFIED_BUILDS)
+        execute_process(COMMAND ${RUBY_EXECUTABLE} ${WTF_SCRIPTS_DIR}/generate-unified-source-bundles.rb
+            "--derived-sources-path" "${DERIVED_SOURCES_DIR}/${_framework}"
+            "--source-tree-path" ${CMAKE_CURRENT_SOURCE_DIR}
+            "--print-bundled-sources"
+            "--feature-flags" "${UNIFIED_SOURCE_LIST_ENABLED_FEATURES}"
+            ${_sourceListFileTruePaths}
+            RESULT_VARIABLE _resultTmp
+            OUTPUT_VARIABLE _outputTmp)
 
-    if (${_resultTmp})
-         message(FATAL_ERROR "generate-unified-source-bundles.rb exited with non-zero status, exiting")
+        if (${_resultTmp})
+             message(FATAL_ERROR "generate-unified-source-bundles.rb exited with non-zero status, exiting")
+        endif ()
+
+        foreach (_sourceFileTmp IN LISTS _outputTmp)
+            set_source_files_properties(${_sourceFileTmp} PROPERTIES HEADER_FILE_ONLY ON)
+            list(APPEND ${_framework}_HEADERS ${_sourceFileTmp})
+        endforeach ()
+        unset(_sourceFileTmp)
+
+        execute_process(COMMAND ${RUBY_EXECUTABLE} ${WTF_SCRIPTS_DIR}/generate-unified-source-bundles.rb
+            "--derived-sources-path" "${DERIVED_SOURCES_DIR}/${_framework}"
+            "--source-tree-path" ${CMAKE_CURRENT_SOURCE_DIR}
+            "--feature-flags" "${UNIFIED_SOURCE_LIST_ENABLED_FEATURES}"
+            ${_sourceListFileTruePaths}
+            RESULT_VARIABLE  _resultTmp
+            OUTPUT_VARIABLE _outputTmp)
+
+        if (${_resultTmp})
+            message(FATAL_ERROR "generate-unified-source-bundles.rb exited with non-zero status, exiting")
+        endif ()
+
+        list(APPEND ${_framework}_SOURCES ${_outputTmp})
+        unset(_resultTmp)
+        unset(_outputTmp)
+    else ()
+        execute_process(COMMAND ${RUBY_EXECUTABLE} ${WTF_SCRIPTS_DIR}/generate-unified-source-bundles.rb
+            "--derived-sources-path" "${DERIVED_SOURCES_DIR}/${_framework}"
+            "--source-tree-path" ${CMAKE_CURRENT_SOURCE_DIR}
+            "--print-all-sources"
+            "--feature-flags" "${UNIFIED_SOURCE_LIST_ENABLED_FEATURES}"
+            ${_sourceListFileTruePaths}
+            RESULT_VARIABLE _resultTmp
+            OUTPUT_VARIABLE _outputTmp)
+
+        if (${_resultTmp})
+             message(FATAL_ERROR "generate-unified-source-bundles.rb exited with non-zero status, exiting")
+        endif ()
+
+        list(APPEND ${_framework}_SOURCES ${_outputTmp})
+        unset(_resultTmp)
+        unset(_outputTmp)
     endif ()
-
-    foreach (_sourceFileTmp IN LISTS _outputTmp)
-        set_source_files_properties(${_sourceFileTmp} PROPERTIES HEADER_FILE_ONLY ON)
-        list(APPEND ${_framework}_HEADERS ${_sourceFileTmp})
-    endforeach ()
-    unset(_sourceFileTmp)
-
-    execute_process(COMMAND ${RUBY_EXECUTABLE} ${WTF_SCRIPTS_DIR}/generate-unified-source-bundles.rb
-        "--derived-sources-path" "${DERIVED_SOURCES_DIR}/${_framework}"
-        "--source-tree-path" ${CMAKE_CURRENT_SOURCE_DIR}
-        "--feature-flags" "${UNIFIED_SOURCE_LIST_ENABLED_FEATURES}"
-        ${_sourceListFileTruePaths}
-        RESULT_VARIABLE  _resultTmp
-        OUTPUT_VARIABLE _outputTmp)
-
-    if (${_resultTmp})
-        message(FATAL_ERROR "generate-unified-source-bundles.rb exited with non-zero status, exiting")
-    endif ()
-
-    list(APPEND ${_framework}_SOURCES ${_outputTmp})
-    unset(_platformSourcesFile)
-    unset(_resultTmp)
-    unset(_outputTmp)
 endmacro()
 
 macro(WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS)
@@ -217,7 +235,7 @@ endmacro()
 
 function(WEBKIT_MAKE_FORWARDING_HEADERS framework)
     set(options FLATTENED)
-    set(oneValueArgs DESTINATION)
+    set(oneValueArgs DESTINATION TARGET_NAME)
     set(multiValueArgs DIRECTORIES EXTRA_DIRECTORIES DERIVED_SOURCE_DIRECTORIES FILES)
     cmake_parse_arguments(opt "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     set(headers ${opt_FILES})
@@ -263,8 +281,13 @@ function(WEBKIT_MAKE_FORWARDING_HEADERS framework)
             list(APPEND fwd_headers ${fwd_header})
         endforeach ()
     endforeach ()
-    add_custom_target(${framework}ForwardingHeaders DEPENDS ${fwd_headers})
-    add_dependencies(${framework} ${framework}ForwardingHeaders)
+    if (opt_TARGET_NAME)
+        set(target_name ${opt_TARGET_NAME})
+    else ()
+        set(target_name ${framework}ForwardingHeaders)
+    endif ()
+    add_custom_target(${target_name} DEPENDS ${fwd_headers})
+    add_dependencies(${framework} ${target_name})
     if (opt_DERIVED_SOURCE_DIRECTORIES)
         set(script ${CMAKE_CURRENT_BINARY_DIR}/makeForwardingHeaders.cmake)
         set(content "")

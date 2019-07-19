@@ -35,13 +35,9 @@
 #include "Logging.h"
 #include "Settings.h"
 #include "Timer.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/Vector.h>
 #include <wtf/text/TextStream.h>
 #include <wtf/text/WTFString.h>
-#if USE(CG) && PLATFORM(WIN)
-#include <WebKitSystemInterface/WebKitSystemInterface.h>
-#endif
 
 namespace WebCore {
 
@@ -315,7 +311,7 @@ void BitmapImage::drawPattern(GraphicsContext& ctxt, const FloatRect& destRect, 
         setImageObserver(observer);
         buffer->convertToLuminanceMask();
 
-        m_cachedImage = buffer->copyImage(DontCopyBackingStore, PreserveResolution::Yes);
+        m_cachedImage = ImageBuffer::sinkIntoImage(WTFMove(buffer), PreserveResolution::Yes);
         if (!m_cachedImage)
             return;
     }
@@ -341,7 +337,7 @@ bool BitmapImage::canUseAsyncDecodingForLargeImages() const
 
 bool BitmapImage::shouldUseAsyncDecodingForAnimatedImages() const
 {
-    return canAnimate() && m_allowAnimatedImageAsyncDecoding && (shouldUseAsyncDecodingForAnimatedImagesForTesting() || m_source->canUseAsyncDecoding());
+    return canAnimate() && m_allowAnimatedImageAsyncDecoding && (shouldUseAsyncDecodingForTesting() || m_source->canUseAsyncDecoding());
 }
 
 void BitmapImage::clearTimer()
@@ -391,6 +387,8 @@ bool BitmapImage::canDestroyDecodedData()
 
 BitmapImage::StartAnimationStatus BitmapImage::internalStartAnimation()
 {
+    LOG_WITH_STREAM(Images, stream << "BitmapImage " << this << " internalStartAnimation");
+
     if (!canAnimate())
         return StartAnimationStatus::CannotStart;
 
@@ -442,7 +440,7 @@ BitmapImage::StartAnimationStatus BitmapImage::internalStartAnimation()
     // through the callback newFrameNativeImageAvailableAtIndex(). Otherwise, advanceAnimation() will be called
     // when the timer fires and m_currentFrame will be advanced to nextFrame since it is not being decoded.
     if (shouldUseAsyncDecodingForAnimatedImages()) {
-        if (frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(nextFrame, m_currentSubsamplingLevel, DecodingOptions(std::optional<IntSize>())))
+        if (frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(nextFrame, m_currentSubsamplingLevel, DecodingOptions(Optional<IntSize>())))
             LOG(Images, "BitmapImage::%s - %p - url: %s [cachedFrameCount = %ld nextFrame = %ld]", __FUNCTION__, this, sourceURL().string().utf8().data(), ++m_cachedFrameCount, nextFrame);
         else {
             m_source->requestFrameAsyncDecodingAtIndex(nextFrame, m_currentSubsamplingLevel);
@@ -450,7 +448,6 @@ BitmapImage::StartAnimationStatus BitmapImage::internalStartAnimation()
             LOG(Images, "BitmapImage::%s - %p - url: %s [requesting async decoding for nextFrame = %ld]", __FUNCTION__, this, sourceURL().string().utf8().data(), nextFrame);
         }
 
-        m_desiredFrameDecodeTimeForTesting = time + std::max(m_frameDecodingDurationForTesting, 0_s);
         if (m_clearDecoderAfterAsyncFrameRequestForTesting)
             m_source->resetData(data());
     }
@@ -463,17 +460,6 @@ BitmapImage::StartAnimationStatus BitmapImage::internalStartAnimation()
 void BitmapImage::advanceAnimation()
 {
     clearTimer();
-
-    // Pretend as if decoding nextFrame has taken m_frameDecodingDurationForTesting from
-    // the time this decoding was requested.
-    if (shouldUseAsyncDecodingForAnimatedImagesForTesting()) {
-        MonotonicTime time = MonotonicTime::now();
-        // Start a timer with the remaining time from now till the m_desiredFrameDecodeTime.
-        if (m_desiredFrameDecodeTimeForTesting > std::max(time, m_desiredFrameStartTime)) {
-            startTimer(m_desiredFrameDecodeTimeForTesting - time);
-            return;
-        }
-    }
 
     // Don't advance to nextFrame unless its decoding has finished or was not required.
     size_t nextFrame = (m_currentFrame + 1) % frameCount();
@@ -545,25 +531,25 @@ void BitmapImage::decode(WTF::Function<void()>&& callback)
         }
 
         // The animated image has not been displayed. In this case, either the first frame has not been decoded yet or the animation has not started yet.
-        bool frameIsCompatible = frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(m_currentFrame, m_currentSubsamplingLevel, std::optional<IntSize>());
-        bool frameIsBeingDecoded = frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(m_currentFrame, std::optional<IntSize>());
+        bool frameIsCompatible = frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(m_currentFrame, m_currentSubsamplingLevel, Optional<IntSize>());
+        bool frameIsBeingDecoded = frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(m_currentFrame, Optional<IntSize>());
 
         if (frameIsCompatible)
             internalStartAnimation();
         else if (!frameIsBeingDecoded) {
-            m_source->requestFrameAsyncDecodingAtIndex(m_currentFrame, m_currentSubsamplingLevel, std::optional<IntSize>());
+            m_source->requestFrameAsyncDecodingAtIndex(m_currentFrame, m_currentSubsamplingLevel, Optional<IntSize>());
             m_currentFrameDecodingStatus = DecodingStatus::Decoding;
         }
         return;
     }
 
-    bool frameIsCompatible = frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(m_currentFrame, m_currentSubsamplingLevel, std::optional<IntSize>());
-    bool frameIsBeingDecoded = frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(m_currentFrame, std::optional<IntSize>());
+    bool frameIsCompatible = frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(m_currentFrame, m_currentSubsamplingLevel, Optional<IntSize>());
+    bool frameIsBeingDecoded = frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(m_currentFrame, Optional<IntSize>());
 
     if (frameIsCompatible)
         callDecodingCallbacks();
     else if (!frameIsBeingDecoded) {
-        m_source->requestFrameAsyncDecodingAtIndex(m_currentFrame, m_currentSubsamplingLevel, std::optional<IntSize>());
+        m_source->requestFrameAsyncDecodingAtIndex(m_currentFrame, m_currentSubsamplingLevel, Optional<IntSize>());
         m_currentFrameDecodingStatus = DecodingStatus::Decoding;
     }
 }
@@ -609,7 +595,7 @@ void BitmapImage::imageFrameAvailableAtIndex(size_t index)
         ++m_decodeCountForTesting;
 
     // Call m_decodingCallbacks only if the image frame was decoded with the native size.
-    if (frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(m_currentFrame, m_currentSubsamplingLevel, std::optional<IntSize>()))
+    if (frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(m_currentFrame, m_currentSubsamplingLevel, Optional<IntSize>()))
         callDecodingCallbacks();
 
     if (imageObserver())

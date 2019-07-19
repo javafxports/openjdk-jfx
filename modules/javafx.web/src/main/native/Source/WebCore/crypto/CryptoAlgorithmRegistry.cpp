@@ -26,7 +26,7 @@
 #include "config.h"
 #include "CryptoAlgorithmRegistry.h"
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "CryptoAlgorithm.h"
 #include <wtf/Lock.h>
@@ -34,7 +34,7 @@
 
 namespace WebCore {
 
-static StaticLock registryMutex;
+static Lock registryMutex;
 
 CryptoAlgorithmRegistry& CryptoAlgorithmRegistry::singleton()
 {
@@ -47,24 +47,24 @@ CryptoAlgorithmRegistry::CryptoAlgorithmRegistry()
     platformRegisterAlgorithms();
 }
 
-std::optional<CryptoAlgorithmIdentifier> CryptoAlgorithmRegistry::identifier(const String& name)
+Optional<CryptoAlgorithmIdentifier> CryptoAlgorithmRegistry::identifier(const String& name)
 {
     if (name.isEmpty())
-        return std::nullopt;
+        return WTF::nullopt;
 
-    std::lock_guard<StaticLock> lock(registryMutex);
+    std::lock_guard<Lock> lock(registryMutex);
 
     // FIXME: How is it helpful to call isolatedCopy on the argument to find?
     auto identifier = m_identifiers.find(name.isolatedCopy());
     if (identifier == m_identifiers.end())
-        return std::nullopt;
+        return WTF::nullopt;
 
     return identifier->value;
 }
 
 String CryptoAlgorithmRegistry::name(CryptoAlgorithmIdentifier identifier)
 {
-    std::lock_guard<StaticLock> lock(registryMutex);
+    std::lock_guard<Lock> lock(registryMutex);
 
     auto contructor = m_constructors.find(static_cast<unsigned>(identifier));
     if (contructor == m_constructors.end())
@@ -75,7 +75,7 @@ String CryptoAlgorithmRegistry::name(CryptoAlgorithmIdentifier identifier)
 
 RefPtr<CryptoAlgorithm> CryptoAlgorithmRegistry::create(CryptoAlgorithmIdentifier identifier)
 {
-    std::lock_guard<StaticLock> lock(registryMutex);
+    std::lock_guard<Lock> lock(registryMutex);
 
     auto contructor = m_constructors.find(static_cast<unsigned>(identifier));
     if (contructor == m_constructors.end())
@@ -86,7 +86,7 @@ RefPtr<CryptoAlgorithm> CryptoAlgorithmRegistry::create(CryptoAlgorithmIdentifie
 
 void CryptoAlgorithmRegistry::registerAlgorithm(const String& name, CryptoAlgorithmIdentifier identifier, CryptoAlgorithmConstructor constructor)
 {
-    std::lock_guard<StaticLock> lock(registryMutex);
+    std::lock_guard<Lock> lock(registryMutex);
 
     ASSERT(!m_identifiers.contains(name));
     ASSERT(!m_constructors.contains(static_cast<unsigned>(identifier)));
@@ -98,4 +98,4 @@ void CryptoAlgorithmRegistry::registerAlgorithm(const String& name, CryptoAlgori
 
 } // namespace WebCore
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

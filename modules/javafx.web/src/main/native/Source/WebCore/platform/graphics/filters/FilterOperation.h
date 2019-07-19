@@ -23,13 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FilterOperation_h
-#define FilterOperation_h
+#pragma once
 
 #include "Color.h"
 #include "LayoutSize.h"
 #include "Length.h"
-#include <wtf/RefCounted.h>
+#include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/TypeCasts.h>
 #include <wtf/text/WTFString.h>
 
@@ -45,9 +44,10 @@ namespace WebCore {
 class CachedResourceLoader;
 class CachedSVGDocumentReference;
 class FilterEffect;
+struct FloatComponents;
 struct ResourceLoaderOptions;
 
-class FilterOperation : public RefCounted<FilterOperation> {
+class FilterOperation : public ThreadSafeRefCounted<FilterOperation> {
 public:
     enum OperationType {
         REFERENCE, // url(#somefilter)
@@ -56,6 +56,7 @@ public:
         SATURATE,
         HUE_ROTATE,
         INVERT,
+        APPLE_INVERT_LIGHTNESS,
         OPACITY,
         BRIGHTNESS,
         CONTRAST,
@@ -77,6 +78,9 @@ public:
     {
         return nullptr;
     }
+
+    virtual bool transformColor(FloatComponents&) const { return false; }
+    virtual bool inverseTransformColor(FloatComponents&) const { return false; }
 
     OperationType type() const { return m_type; }
 
@@ -185,9 +189,6 @@ public:
 
     CachedSVGDocumentReference* cachedSVGDocumentReference() const { return m_cachedSVGDocumentReference.get(); }
 
-    FilterEffect* filterEffect() const { return m_filterEffect.get(); }
-    void setFilterEffect(RefPtr<FilterEffect>&&);
-
 private:
     ReferenceFilterOperation(const String& url, const String& fragment);
 
@@ -196,7 +197,6 @@ private:
     String m_url;
     String m_fragment;
     std::unique_ptr<CachedSVGDocumentReference> m_cachedSVGDocumentReference;
-    RefPtr<FilterEffect> m_filterEffect;
 };
 
 // GRAYSCALE, SEPIA, SATURATE and HUE_ROTATE are variations on a basic color matrix effect.
@@ -227,6 +227,8 @@ private:
         , m_amount(amount)
     {
     }
+
+    bool transformColor(FloatComponents&) const override;
 
     double m_amount;
 };
@@ -261,7 +263,35 @@ private:
     {
     }
 
+    bool transformColor(FloatComponents&) const override;
+
     double m_amount;
+};
+
+class WEBCORE_EXPORT InvertLightnessFilterOperation : public FilterOperation {
+public:
+    static Ref<InvertLightnessFilterOperation> create()
+    {
+        return adoptRef(*new InvertLightnessFilterOperation());
+    }
+
+    Ref<FilterOperation> clone() const final
+    {
+        return adoptRef(*new InvertLightnessFilterOperation());
+    }
+
+    RefPtr<FilterOperation> blend(const FilterOperation* from, double progress, bool blendToPassthrough = false) override;
+
+private:
+    bool operator==(const FilterOperation&) const final;
+
+    InvertLightnessFilterOperation()
+        : FilterOperation(APPLE_INVERT_LIGHTNESS)
+    {
+    }
+
+    bool transformColor(FloatComponents&) const final;
+    bool inverseTransformColor(FloatComponents&) const final;
 };
 
 class WEBCORE_EXPORT BlurFilterOperation : public FilterOperation {
@@ -348,7 +378,7 @@ SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(PassthroughFilterOperation, type() == Web
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(ReferenceFilterOperation, type() == WebCore::FilterOperation::REFERENCE)
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(BasicColorMatrixFilterOperation, isBasicColorMatrixFilterOperation())
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(BasicComponentTransferFilterOperation, isBasicComponentTransferFilterOperation())
+SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(InvertLightnessFilterOperation, type() == WebCore::FilterOperation::APPLE_INVERT_LIGHTNESS)
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(BlurFilterOperation, type() == WebCore::FilterOperation::BLUR)
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(DropShadowFilterOperation, type() == WebCore::FilterOperation::DROP_SHADOW)
 
-#endif // FilterOperation_h

@@ -31,6 +31,7 @@ class DOMTokenList;
 class RenderIFrame;
 
 class HTMLIFrameElement final : public HTMLFrameElementBase {
+    WTF_MAKE_ISO_ALLOCATED(HTMLIFrameElement);
 public:
     static Ref<HTMLIFrameElement> create(const QualifiedName&, Document&);
 
@@ -42,8 +43,8 @@ public:
 private:
     HTMLIFrameElement(const QualifiedName&, Document&);
 
-#if PLATFORM(IOS)
-    bool isKeyboardFocusable(KeyboardEvent&) const final { return false; }
+#if PLATFORM(IOS_FAMILY)
+    bool isKeyboardFocusable(KeyboardEvent*) const final { return false; }
 #endif
 
     void parseAttribute(const QualifiedName&, const AtomicString&) final;

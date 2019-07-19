@@ -39,36 +39,10 @@ void GetterSetter::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     GetterSetter* thisObject = jsCast<GetterSetter*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    JSCell::visitChildren(thisObject, visitor);
+    Base::visitChildren(thisObject, visitor);
 
     visitor.append(thisObject->m_getter);
     visitor.append(thisObject->m_setter);
-}
-
-GetterSetter* GetterSetter::withGetter(VM& vm, JSGlobalObject* globalObject, JSObject* newGetter)
-{
-    if (isGetterNull()) {
-        setGetter(vm, globalObject, newGetter);
-        return this;
-    }
-
-    GetterSetter* result = GetterSetter::create(vm, globalObject);
-    result->setGetter(vm, globalObject, newGetter);
-    result->setSetter(vm, globalObject, setter());
-    return result;
-}
-
-GetterSetter* GetterSetter::withSetter(VM& vm, JSGlobalObject* globalObject, JSObject* newSetter)
-{
-    if (isSetterNull()) {
-        setSetter(vm, globalObject, newSetter);
-        return this;
-    }
-
-    GetterSetter* result = GetterSetter::create(vm, globalObject);
-    result->setGetter(vm, globalObject, getter());
-    result->setSetter(vm, globalObject, newSetter);
-    return result;
 }
 
 JSValue callGetter(ExecState* exec, JSValue base, JSValue getterSetter)
@@ -83,8 +57,7 @@ JSValue callGetter(ExecState* exec, JSValue base, JSValue getterSetter)
 
     CallData callData;
     CallType callType = getter->methodTable(vm)->getCallData(getter, callData);
-    scope.release();
-    return call(exec, getter, callType, callData, base, ArgList());
+    RELEASE_AND_RETURN(scope, call(exec, getter, callType, callData, base, ArgList()));
 }
 
 bool callSetter(ExecState* exec, JSValue base, JSValue getterSetter, JSValue value, ECMAMode ecmaMode)
@@ -95,7 +68,7 @@ bool callSetter(ExecState* exec, JSValue base, JSValue getterSetter, JSValue val
     GetterSetter* getterSetterObj = jsCast<GetterSetter*>(getterSetter);
 
     if (getterSetterObj->isSetterNull())
-        return typeError(exec, scope, ecmaMode == StrictMode, ASCIILiteral(ReadonlyPropertyWriteError));
+        return typeError(exec, scope, ecmaMode == StrictMode, ReadonlyPropertyWriteError);
 
     JSObject* setter = getterSetterObj->setter();
 

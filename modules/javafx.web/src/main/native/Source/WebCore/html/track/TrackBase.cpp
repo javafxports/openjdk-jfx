@@ -35,7 +35,6 @@
 #include "HTMLMediaElement.h"
 
 namespace WebCore {
-using namespace WTF;
 
 static int s_uniqueId = 0;
 
@@ -147,7 +146,7 @@ void TrackBase::setLanguage(const AtomicString& language)
     if (!language.isEmpty() && !isValidBCP47LanguageTag(language)) {
         String message;
         if (language.contains((UChar)'\0'))
-            message = WTF::ASCIILiteral("The language contains a null character and is not a valid BCP 47 language tag.");
+            message = "The language contains a null character and is not a valid BCP 47 language tag."_s;
         else {
             StringBuilder stringBuilder;
             stringBuilder.appendLiteral("The language '");

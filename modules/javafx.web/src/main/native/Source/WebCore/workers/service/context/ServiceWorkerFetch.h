@@ -35,6 +35,7 @@ class FetchEvent;
 struct FetchOptions;
 class FetchResponse;
 class FormData;
+class ResourceError;
 class ResourceRequest;
 class ResourceResponse;
 struct ServiceWorkerClientIdentifier;
@@ -43,19 +44,22 @@ class ServiceWorkerGlobalScope;
 class SharedBuffer;
 
 namespace ServiceWorkerFetch {
-class Client : public ThreadSafeRefCounted<Client> {
+class Client : public ThreadSafeRefCounted<Client, WTF::DestructionThread::Main> {
 public:
     virtual ~Client() = default;
 
+    virtual void didReceiveRedirection(const ResourceResponse&) = 0;
     virtual void didReceiveResponse(const ResourceResponse&) = 0;
     virtual void didReceiveData(Ref<SharedBuffer>&&) = 0;
     virtual void didReceiveFormDataAndFinish(Ref<FormData>&&) = 0;
-    virtual void didFail() = 0;
+    virtual void didFail(const ResourceError&) = 0;
     virtual void didFinish() = 0;
     virtual void didNotHandle() = 0;
+    virtual void cancel() = 0;
+    virtual void continueDidReceiveResponse() = 0;
 };
 
-void dispatchFetchEvent(Ref<Client>&&, ServiceWorkerGlobalScope&, std::optional<ServiceWorkerClientIdentifier>, ResourceRequest&&, String&& referrer, FetchOptions&&);
+void dispatchFetchEvent(Ref<Client>&&, ServiceWorkerGlobalScope&, Optional<ServiceWorkerClientIdentifier>, ResourceRequest&&, String&& referrer, FetchOptions&&);
 };
 
 } // namespace WebCore

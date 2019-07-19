@@ -26,7 +26,7 @@
 #include "config.h"
 #include "LegacyCDMSessionClearKey.h"
 
-#include "JSMainThreadExecState.h"
+#include "JSExecState.h"
 #include "Logging.h"
 #include "TextEncoding.h"
 #include "WebKitMediaKeyError.h"
@@ -194,7 +194,7 @@ RefPtr<ArrayBuffer> CDMSessionClearKey::cachedKeyForKeyID(const String& keyId) c
         return nullptr;
 
     auto keyData = m_cachedKeys.get(keyId);
-    RefPtr<Uint8Array> keyDataArray = Uint8Array::create(keyData.data(), keyData.size());
+    auto keyDataArray = Uint8Array::create(keyData.data(), keyData.size());
     return keyDataArray->unsharedBuffer();
 }
 

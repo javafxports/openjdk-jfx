@@ -56,7 +56,7 @@
 #include <wtf/text/TextBreakIterator.h>
 #include <wtf/unicode/CharacterNames.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "Document.h"
 #include "EditorClient.h"
 #include "LogicalSelectionOffsetCaches.h"
@@ -64,10 +64,9 @@
 #include "SelectionRect.h"
 #endif
 
-
 namespace WebCore {
-using namespace WTF;
-using namespace Unicode;
+
+using namespace WTF::Unicode;
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(RenderText);
 
@@ -199,7 +198,16 @@ inline RenderText::RenderText(Node& node, const String& text)
     ASSERT(!m_text.isNull());
     setIsText();
     m_canUseSimpleFontCodePath = computeCanUseSimpleFontCodePath();
-    view().frameView().incrementVisuallyNonEmptyCharacterCount(text.impl()->length());
+
+    // FIXME: Find out how to increment the visually non empty character count when the font becomes available.
+    auto isTextVisible = false;
+    if (auto* parentElement = node.parentElement()) {
+        auto* style = parentElement->renderer() ? &parentElement->renderer()->style() : nullptr;
+        isTextVisible = style && style->visibility() == Visibility::Visible && !style->fontCascade().isLoadingCustomFonts();
+    }
+
+    if (isTextVisible)
+        view().frameView().incrementVisuallyNonEmptyCharacterCount(text);
 }
 
 RenderText::RenderText(Text& textNode, const String& text)
@@ -253,7 +261,7 @@ void RenderText::styleDidChange(StyleDifference diff, const RenderStyle* oldStyl
     // we already did this for the parent of the text run.
     // We do have to schedule layouts, though, since a style change can force us to
     // need to relayout.
-    if (diff == StyleDifferenceLayout) {
+    if (diff == StyleDifference::Layout) {
         setNeedsLayoutAndPrefWidthsRecalc();
         m_knownToHaveNoOverflowAndNoFallbackFonts = false;
     }
@@ -271,8 +279,8 @@ void RenderText::styleDidChange(StyleDifference diff, const RenderStyle* oldStyl
     if (!oldStyle || oldStyle->fontCascade() != newStyle.fontCascade())
         m_canUseSimplifiedTextMeasuring = computeCanUseSimplifiedTextMeasuring();
 
-    ETextTransform oldTransform = oldStyle ? oldStyle->textTransform() : TTNONE;
-    ETextSecurity oldSecurity = oldStyle ? oldStyle->textSecurity() : TSNONE;
+    TextTransform oldTransform = oldStyle ? oldStyle->textTransform() : TextTransform::None;
+    TextSecurity oldSecurity = oldStyle ? oldStyle->textSecurity() : TextSecurity::None;
     if (needsResetText || oldTransform != newStyle.textTransform() || oldSecurity != newStyle.textSecurity())
         RenderText::setText(originalText(), true);
 }
@@ -338,7 +346,7 @@ Vector<IntRect> RenderText::absoluteRectsForRange(unsigned start, unsigned end, 
     return m_lineBoxes.absoluteRectsForRange(*this, start, end, useSelectionHeight, wasFixed);
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 // This function is similar in spirit to addLineBoxRects, but returns rectangles
 // which are annotated with additional state which helps the iPhone draw selections in its unique way.
 // Full annotations are added in this class.
@@ -418,7 +426,7 @@ void RenderText::collectSelectionRects(Vector<SelectionRect>& rects, unsigned st
 Vector<FloatQuad> RenderText::absoluteQuadsClippedToEllipsis() const
 {
     if (auto* layout = simpleLineLayout()) {
-        ASSERT(style().textOverflow() != TextOverflowEllipsis);
+        ASSERT(style().textOverflow() != TextOverflow::Ellipsis);
         return SimpleLineLayout::collectAbsoluteQuads(*this, *layout, nullptr);
     }
     return m_lineBoxes.absoluteQuads(*this, nullptr, RenderTextLineBoxes::ClipToEllipsis);
@@ -678,7 +686,7 @@ RenderText::Widths RenderText::trimmedPreferredWidths(float leadWidth, bool& str
 
 static inline bool isSpaceAccordingToStyle(UChar c, const RenderStyle& style)
 {
-    return c == ' ' || (c == noBreakSpace && style.nbspMode() == SPACE);
+    return c == ' ' || (c == noBreakSpace && style.nbspMode() == NBSPMode::Space);
 }
 
 float RenderText::minLogicalWidth() const
@@ -700,14 +708,14 @@ float RenderText::maxLogicalWidth() const
 LineBreakIteratorMode mapLineBreakToIteratorMode(LineBreak lineBreak)
 {
     switch (lineBreak) {
-    case LineBreakAuto:
-    case LineBreakAfterWhiteSpace:
+    case LineBreak::Auto:
+    case LineBreak::AfterWhiteSpace:
         return LineBreakIteratorMode::Default;
-    case LineBreakLoose:
+    case LineBreak::Loose:
         return LineBreakIteratorMode::Loose;
-    case LineBreakNormal:
+    case LineBreak::Normal:
         return LineBreakIteratorMode::Normal;
-    case LineBreakStrict:
+    case LineBreak::Strict:
         return LineBreakIteratorMode::Strict;
     }
     ASSERT_NOT_REACHED();
@@ -799,7 +807,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
     bool isSpace = false;
     bool firstWord = true;
     bool firstLine = true;
-    std::optional<unsigned> nextBreakable;
+    Optional<unsigned> nextBreakable;
     unsigned lastWordBoundary = 0;
 
     WordTrailingSpace wordTrailingSpace(style);
@@ -808,7 +816,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
     float maxWordWidth = std::numeric_limits<float>::max();
     unsigned minimumPrefixLength = 0;
     unsigned minimumSuffixLength = 0;
-    if (style.hyphens() == HyphensAuto && canHyphenate(style.locale())) {
+    if (style.hyphens() == Hyphens::Auto && canHyphenate(style.locale())) {
         maxWordWidth = 0;
 
         // Map 'hyphenate-limit-{before,after}: auto;' to 2.
@@ -819,15 +827,15 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
         minimumSuffixLength = after < 0 ? 2 : after;
     }
 
-    std::optional<int> firstGlyphLeftOverflow;
+    Optional<int> firstGlyphLeftOverflow;
 
-    bool breakNBSP = style.autoWrap() && style.nbspMode() == SPACE;
+    bool breakNBSP = style.autoWrap() && style.nbspMode() == NBSPMode::Space;
 
     // Note the deliberate omission of word-wrap and overflow-wrap from this breakAll check. Those
     // do not affect minimum preferred sizes. Note that break-word is a non-standard value for
     // word-break, but we support it as though it means break-all.
-    bool breakAll = (style.wordBreak() == BreakAllWordBreak || style.wordBreak() == BreakWordBreak) && style.autoWrap();
-    bool keepAllWords = style.wordBreak() == KeepAllWordBreak;
+    bool breakAll = (style.wordBreak() == WordBreak::BreakAll || style.wordBreak() == WordBreak::BreakWord) && style.autoWrap();
+    bool keepAllWords = style.wordBreak() == WordBreak::KeepAll;
     bool canUseLineBreakShortcut = iteratorMode == LineBreakIteratorMode::Default;
 
     for (unsigned i = 0; i < length; i++) {
@@ -865,7 +873,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
             ASSERT(lastWordBoundary == i);
             lastWordBoundary++;
             continue;
-        } else if (c == softHyphen && style.hyphens() != HyphensNone) {
+        } else if (c == softHyphen && style.hyphens() != Hyphens::None) {
             ASSERT(i >= lastWordBoundary);
             currMaxWidth += widthFromCache(font, lastWordBoundary, i - lastWordBoundary, leadWidth + currMaxWidth, &fallbackFonts, &glyphOverflow, style);
             if (!firstGlyphLeftOverflow)
@@ -877,7 +885,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
         bool hasBreak = breakAll || isBreakable(breakIterator, i, nextBreakable, breakNBSP, canUseLineBreakShortcut, keepAllWords);
         bool betweenWords = true;
         unsigned j = i;
-        while (c != '\n' && !isSpaceAccordingToStyle(c, style) && c != '\t' && (c != softHyphen || style.hyphens() == HyphensNone)) {
+        while (c != '\n' && !isSpaceAccordingToStyle(c, style) && c != '\t' && (c != softHyphen || style.hyphens() == Hyphens::None)) {
             j++;
             if (j == length)
                 break;
@@ -895,14 +903,14 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
             float currMinWidth = 0;
             bool isSpace = (j < length) && isSpaceAccordingToStyle(c, style);
             float w;
-            std::optional<float> wordTrailingSpaceWidth;
+            Optional<float> wordTrailingSpaceWidth;
             if (isSpace)
                 wordTrailingSpaceWidth = wordTrailingSpace.width(fallbackFonts);
             if (wordTrailingSpaceWidth)
                 w = widthFromCache(font, i, wordLen + 1, leadWidth + currMaxWidth, &fallbackFonts, &glyphOverflow, style) - wordTrailingSpaceWidth.value();
             else {
                 w = widthFromCache(font, i, wordLen, leadWidth + currMaxWidth, &fallbackFonts, &glyphOverflow, style);
-                if (c == softHyphen && style.hyphens() != HyphensNone)
+                if (c == softHyphen && style.hyphens() != Hyphens::None)
                     currMinWidth = hyphenWidth(*this, font);
             }
 
@@ -912,7 +920,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
 
                 if (suffixStart) {
                     float suffixWidth;
-                    std::optional<float> wordTrailingSpaceWidth;
+                    Optional<float> wordTrailingSpaceWidth;
                     if (isSpace)
                         wordTrailingSpaceWidth = wordTrailingSpace.width(fallbackFonts);
                     if (wordTrailingSpaceWidth)
@@ -995,7 +1003,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
         }
     }
 
-    glyphOverflow.left = firstGlyphLeftOverflow.value_or(glyphOverflow.left);
+    glyphOverflow.left = firstGlyphLeftOverflow.valueOr(glyphOverflow.left);
 
     if ((needsWordSpacing && length > 1) || (ignoringSpaces && !firstWord))
         currMaxWidth += wordSpacing;
@@ -1005,7 +1013,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
     if (!style.autoWrap())
         m_minWidth = m_maxWidth;
 
-    if (style.whiteSpace() == PRE) {
+    if (style.whiteSpace() == WhiteSpace::Pre) {
         if (firstLine)
             m_beginMinWidth = m_maxWidth;
         m_endMinWidth = currMaxWidth;
@@ -1054,7 +1062,7 @@ Vector<std::pair<unsigned, unsigned>> RenderText::draggedContentRangesBetweenOff
     if (!textNode())
         return { };
 
-    auto markers = document().markers().markersFor(textNode(), DocumentMarker::DraggedContent);
+    auto markers = document().markers().markersFor(*textNode(), DocumentMarker::DraggedContent);
     if (markers.isEmpty())
         return { };
 
@@ -1137,13 +1145,13 @@ LayoutUnit RenderText::topOfFirstText() const
 String applyTextTransform(const RenderStyle& style, const String& text, UChar previousCharacter)
 {
     switch (style.textTransform()) {
-    case TTNONE:
+    case TextTransform::None:
         return text;
-    case CAPITALIZE:
+    case TextTransform::Capitalize:
         return capitalize(text, previousCharacter); // FIXME: Need to take locale into account.
-    case UPPERCASE:
+    case TextTransform::Uppercase:
         return text.convertToUppercaseWithLocale(style.locale());
-    case LOWERCASE:
+    case TextTransform::Lowercase:
         return text.convertToLowercaseWithLocale(style.locale());
     }
     ASSERT_NOT_REACHED();
@@ -1161,28 +1169,30 @@ void RenderText::setRenderedText(const String& newText)
     if (m_useBackslashAsYenSymbol)
         m_text.replace('\\', yenSign);
 
-    m_text = applyTextTransform(style(), m_text, previousCharacter());
+    const auto& style = this->style();
+    if (style.textTransform() != TextTransform::None)
+        m_text = applyTextTransform(style, m_text, previousCharacter());
 
-    switch (style().textSecurity()) {
-    case TSNONE:
+    switch (style.textSecurity()) {
+    case TextSecurity::None:
         break;
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // We use the same characters here as for list markers.
     // See the listMarkerText function in RenderListMarker.cpp.
-    case TSCIRCLE:
+    case TextSecurity::Circle:
         secureText(whiteBullet);
         break;
-    case TSDISC:
+    case TextSecurity::Disc:
         secureText(bullet);
         break;
-    case TSSQUARE:
+    case TextSecurity::Square:
         secureText(blackSquare);
         break;
 #else
     // FIXME: Why this quirk on iOS?
-    case TSCIRCLE:
-    case TSDISC:
-    case TSSQUARE:
+    case TextSecurity::Circle:
+    case TextSecurity::Disc:
+    case TextSecurity::Square:
         secureText(blackCircle);
         break;
 #endif
@@ -1243,7 +1253,7 @@ bool RenderText::computeCanUseSimplifiedTextMeasuring() const
         return false;
 
     // Additional check on the font codepath.
-    TextRun run(text());
+    TextRun run(m_text);
     run.setCharacterScanForCodePath(false);
     if (font.codePath(run) != FontCascade::Simple)
         return false;
@@ -1283,8 +1293,12 @@ void RenderText::setText(const String& text, bool force)
 
 String RenderText::textWithoutConvertingBackslashToYenSymbol() const
 {
-    if (!m_useBackslashAsYenSymbol || style().textSecurity() != TSNONE)
+    if (!m_useBackslashAsYenSymbol || style().textSecurity() != TextSecurity::None)
         return text();
+
+    if (style().textTransform() == TextTransform::None)
+        return originalText();
+
     return applyTextTransform(style(), originalText(), previousCharacter());
 }
 
@@ -1304,7 +1318,7 @@ std::unique_ptr<InlineTextBox> RenderText::createTextBox()
 
 void RenderText::positionLineBox(InlineTextBox& textBox)
 {
-    if (!textBox.len())
+    if (!textBox.hasTextContent())
         return;
     m_containsReversedText |= !textBox.isLeftToRightDirection();
 }
@@ -1501,13 +1515,13 @@ int RenderText::previousOffset(int current) const
         return current - 1;
 
     CachedTextBreakIterator iterator(text(), TextBreakIterator::Mode::Caret, nullAtom());
-    return iterator.preceding(current).value_or(current - 1);
+    return iterator.preceding(current).valueOr(current - 1);
 }
 
 int RenderText::previousOffsetForBackwardDeletion(int current) const
 {
     CachedTextBreakIterator iterator(text(), TextBreakIterator::Mode::Delete, nullAtom());
-    return iterator.preceding(current).value_or(0);
+    return iterator.preceding(current).valueOr(0);
 }
 
 int RenderText::nextOffset(int current) const
@@ -1516,7 +1530,7 @@ int RenderText::nextOffset(int current) const
         return current + 1;
 
     CachedTextBreakIterator iterator(text(), TextBreakIterator::Mode::Caret, nullAtom());
-    return iterator.following(current).value_or(current + 1);
+    return iterator.following(current).valueOr(current + 1);
 }
 
 bool RenderText::computeCanUseSimpleFontCodePath() const
@@ -1528,7 +1542,7 @@ bool RenderText::computeCanUseSimpleFontCodePath() const
 
 void RenderText::momentarilyRevealLastTypedCharacter(unsigned offsetAfterLastTypedCharacter)
 {
-    if (style().textSecurity() == TSNONE)
+    if (style().textSecurity() == TextSecurity::None)
         return;
     auto& secureTextTimer = secureTextTimers().add(this, nullptr).iterator->value;
     if (!secureTextTimer)
@@ -1536,9 +1550,9 @@ void RenderText::momentarilyRevealLastTypedCharacter(unsigned offsetAfterLastTyp
     secureTextTimer->restart(offsetAfterLastTypedCharacter);
 }
 
-StringView RenderText::stringView(unsigned start, std::optional<unsigned> stop) const
+StringView RenderText::stringView(unsigned start, Optional<unsigned> stop) const
 {
-    unsigned destination = stop.value_or(text().length());
+    unsigned destination = stop.valueOr(text().length());
     ASSERT(start <= length());
     ASSERT(destination <= length());
     ASSERT(start <= destination);

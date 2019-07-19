@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2014-2016 Apple Inc. All rights reserved.
+# Copyright (c) 2014-2018 Apple Inc. All rights reserved.
 # Copyright (c) 2014 University of Washington. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,10 +29,16 @@ import logging
 import string
 from string import Template
 
-from cpp_generator import CppGenerator
-from cpp_generator_templates import CppGeneratorTemplates as CppTemplates
-from generator import Generator, ucfirst
-from models import ObjectType, ArrayType
+try:
+    from .cpp_generator import CppGenerator
+    from .cpp_generator_templates import CppGeneratorTemplates as CppTemplates
+    from .generator import Generator, ucfirst
+    from .models import ObjectType, ArrayType
+except ValueError:
+    from cpp_generator import CppGenerator
+    from cpp_generator_templates import CppGeneratorTemplates as CppTemplates
+    from generator import Generator, ucfirst
+    from models import ObjectType, ArrayType
 
 log = logging.getLogger('global')
 
@@ -45,7 +51,7 @@ class CppBackendDispatcherImplementationGenerator(CppGenerator):
         return "%sBackendDispatchers.cpp" % self.protocol_name()
 
     def domains_to_generate(self):
-        return filter(lambda domain: len(self.commands_for_domain(domain)) > 0, Generator.domains_to_generate(self))
+        return [domain for domain in Generator.domains_to_generate(self) if len(self.commands_for_domain(domain)) > 0]
 
     def generate_output(self):
         secondary_includes = self._generate_secondary_header_includes()
@@ -65,7 +71,7 @@ class CppBackendDispatcherImplementationGenerator(CppGenerator):
         sections.append(self.generate_license())
         sections.append(Template(CppTemplates.ImplementationPrelude).substitute(None, **header_args))
         sections.append("\n".join(map(self._generate_handler_class_destructor_for_domain, self.domains_to_generate())))
-        sections.extend(map(self._generate_dispatcher_implementations_for_domain, self.domains_to_generate()))
+        sections.extend(list(map(self._generate_dispatcher_implementations_for_domain, self.domains_to_generate())))
         sections.append(Template(CppTemplates.ImplementationPostlude).substitute(None, **header_args))
         return "\n\n".join(sections)
 
@@ -163,15 +169,15 @@ class CppBackendDispatcherImplementationGenerator(CppGenerator):
 
             if parameter.is_optional:
                 if CppGenerator.should_use_wrapper_for_return_type(parameter.type):
-                    out_parameter_assignments.append('    if (%(parameterName)s.isAssigned())' % param_args)
-                    out_parameter_assignments.append('        jsonMessage->%(keyedSetMethod)s(ASCIILiteral("%(parameterKey)s"), %(parameterName)s.getValue());' % param_args)
+                    out_parameter_assignments.append('    if (%(parameterName)s.hasValue())' % param_args)
+                    out_parameter_assignments.append('        jsonMessage->%(keyedSetMethod)s("%(parameterKey)s"_s, *%(parameterName)s);' % param_args)
                 else:
                     out_parameter_assignments.append('    if (%(parameterName)s)' % param_args)
-                    out_parameter_assignments.append('        jsonMessage->%(keyedSetMethod)s(ASCIILiteral("%(parameterKey)s"), %(parameterName)s);' % param_args)
+                    out_parameter_assignments.append('        jsonMessage->%(keyedSetMethod)s("%(parameterKey)s"_s, %(parameterName)s);' % param_args)
             elif parameter.type.is_enum():
-                out_parameter_assignments.append('    jsonMessage->%(keyedSetMethod)s(ASCIILiteral("%(parameterKey)s"), Inspector::Protocol::%(helpersNamespace)s::getEnumConstantValue(%(parameterName)s));' % param_args)
+                out_parameter_assignments.append('    jsonMessage->%(keyedSetMethod)s("%(parameterKey)s"_s, Inspector::Protocol::%(helpersNamespace)s::getEnumConstantValue(%(parameterName)s));' % param_args)
             else:
-                out_parameter_assignments.append('    jsonMessage->%(keyedSetMethod)s(ASCIILiteral("%(parameterKey)s"), %(parameterName)s);' % param_args)
+                out_parameter_assignments.append('    jsonMessage->%(keyedSetMethod)s("%(parameterKey)s"_s, %(parameterName)s);' % param_args)
 
         async_args = {
             'domainName': domain.domain_name,
@@ -186,7 +192,9 @@ class CppBackendDispatcherImplementationGenerator(CppGenerator):
         out_parameter_declarations = []
         out_parameter_assignments = []
         alternate_dispatcher_method_parameters = ['requestId']
-        method_parameters = ['error']
+        method_parameters = []
+        if not command.is_async:
+            method_parameters.append('error')
 
         for parameter in command.call_parameters:
             parameter_name = 'in_' + parameter.parameter_name
@@ -222,7 +230,7 @@ class CppBackendDispatcherImplementationGenerator(CppGenerator):
                 'successOutParam': out_success_argument
             }
 
-            in_parameter_declarations.append('    %(parameterType)s %(parameterName)s = m_backendDispatcher->%(keyedGetMethod)s(parameters.get(), ASCIILiteral("%(parameterKey)s"), %(successOutParam)s);' % param_args)
+            in_parameter_declarations.append('    %(parameterType)s %(parameterName)s = m_backendDispatcher->%(keyedGetMethod)s(parameters.get(), "%(parameterKey)s"_s, %(successOutParam)s);' % param_args)
 
             if parameter.is_optional:
                 optional_in_parameter_string = '%(parameterName)s_valueFound ? %(parameterExpression)s : nullptr' % param_args
@@ -256,17 +264,17 @@ class CppBackendDispatcherImplementationGenerator(CppGenerator):
                 out_parameter_declarations.append('    %(parameterType)s out_%(parameterName)s;' % param_args)
                 if parameter.is_optional:
                     if CppGenerator.should_use_wrapper_for_return_type(parameter.type):
-                        out_parameter_assignments.append('        if (out_%(parameterName)s.isAssigned())' % param_args)
-                        out_parameter_assignments.append('            result->%(keyedSetMethod)s(ASCIILiteral("%(parameterKey)s"), out_%(parameterName)s.getValue());' % param_args)
+                        out_parameter_assignments.append('        if (out_%(parameterName)s.hasValue())' % param_args)
+                        out_parameter_assignments.append('            result->%(keyedSetMethod)s("%(parameterKey)s"_s, *out_%(parameterName)s);' % param_args)
                     else:
                         out_parameter_assignments.append('        if (out_%(parameterName)s)' % param_args)
-                        out_parameter_assignments.append('            result->%(keyedSetMethod)s(ASCIILiteral("%(parameterKey)s"), out_%(parameterName)s);' % param_args)
+                        out_parameter_assignments.append('            result->%(keyedSetMethod)s("%(parameterKey)s"_s, out_%(parameterName)s);' % param_args)
                 elif parameter.type.is_enum():
-                    out_parameter_assignments.append('        result->%(keyedSetMethod)s(ASCIILiteral("%(parameterKey)s"), Inspector::Protocol::%(helpersNamespace)s::getEnumConstantValue(out_%(parameterName)s));' % param_args)
+                    out_parameter_assignments.append('        result->%(keyedSetMethod)s("%(parameterKey)s"_s, Inspector::Protocol::%(helpersNamespace)s::getEnumConstantValue(out_%(parameterName)s));' % param_args)
                 else:
-                    out_parameter_assignments.append('        result->%(keyedSetMethod)s(ASCIILiteral("%(parameterKey)s"), out_%(parameterName)s);' % param_args)
+                    out_parameter_assignments.append('        result->%(keyedSetMethod)s("%(parameterKey)s"_s, out_%(parameterName)s);' % param_args)
 
-                if CppGenerator.should_pass_by_copy_for_return_type(parameter.type):
+                if CppGenerator.should_pass_by_copy_for_return_type(parameter.type) or parameter.is_optional and CppGenerator.should_use_wrapper_for_return_type(parameter.type):
                     method_parameters.append('out_' + parameter.parameter_name)
                 else:
                     method_parameters.append('&out_' + parameter.parameter_name)
@@ -299,31 +307,31 @@ class CppBackendDispatcherImplementationGenerator(CppGenerator):
             lines.append('#endif')
             lines.append('')
 
-        lines.append('    ErrorString error;')
-        lines.append('    Ref<JSON::Object> result = JSON::Object::create();')
         if command.is_async:
             lines.append('    Ref<%(domainName)sBackendDispatcherHandler::%(callbackName)s> callback = adoptRef(*new %(domainName)sBackendDispatcherHandler::%(callbackName)s(m_backendDispatcher.copyRef(), requestId));' % command_args)
+        else:
+            lines.append('    ErrorString error;')
+            lines.append('    Ref<JSON::Object> result = JSON::Object::create();')
+
         if len(command.return_parameters) > 0:
             lines.extend(out_parameter_declarations)
         lines.append('    m_agent->%(commandName)s(%(invocationParameters)s);' % command_args)
         lines.append('')
-        if command.is_async:
-            lines.append('    if (error.length()) {')
-            lines.extend(out_parameter_assignments)
-            lines.append('    }')
-        elif len(command.return_parameters) > 1:
-            lines.append('    if (!error.length()) {')
-            lines.extend(out_parameter_assignments)
-            lines.append('    }')
-        elif len(command.return_parameters) == 1:
-            lines.append('    if (!error.length())')
-            lines.extend(out_parameter_assignments)
-            lines.append('')
 
         if not command.is_async:
+            if len(command.return_parameters) > 1:
+                lines.append('    if (!error.length()) {')
+                lines.extend(out_parameter_assignments)
+                lines.append('    }')
+            elif len(command.return_parameters) == 1:
+                lines.append('    if (!error.length())')
+                lines.extend(out_parameter_assignments)
+                lines.append('')
+
             lines.append('    if (!error.length())')
             lines.append('        m_backendDispatcher->sendResponse(requestId, WTFMove(result), false);')
             lines.append('    else')
             lines.append('        m_backendDispatcher->reportProtocolError(BackendDispatcher::ServerError, WTFMove(error));')
+
         lines.append('}')
         return "\n".join(lines)

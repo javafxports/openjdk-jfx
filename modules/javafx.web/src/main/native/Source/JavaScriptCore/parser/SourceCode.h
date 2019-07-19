@@ -33,6 +33,8 @@
 namespace JSC {
 
     class SourceCode : public UnlinkedSourceCode {
+        friend class CachedSourceCode;
+
     public:
         SourceCode()
             : UnlinkedSourceCode()
@@ -48,13 +50,6 @@ namespace JSC {
 
         SourceCode(Ref<SourceProvider>&& provider, int firstLine, int startColumn)
             : UnlinkedSourceCode(WTFMove(provider))
-            , m_firstLine(OrdinalNumber::fromOneBasedInt(std::max(firstLine, 1)))
-            , m_startColumn(OrdinalNumber::fromOneBasedInt(std::max(startColumn, 1)))
-        {
-        }
-
-        SourceCode(Ref<SourceProvider>&& provider, int startOffset, int endOffset, int firstLine, int startColumn)
-            : UnlinkedSourceCode(WTFMove(provider), startOffset, endOffset)
             , m_firstLine(OrdinalNumber::fromOneBasedInt(std::max(firstLine, 1)))
             , m_startColumn(OrdinalNumber::fromOneBasedInt(std::max(startColumn, 1)))
         {
@@ -79,19 +74,33 @@ namespace JSC {
 
         SourceProvider* provider() const { return m_provider.get(); }
 
-        SourceCode subExpression(unsigned openBrace, unsigned closeBrace, int firstLine, int startColumn);
+        SourceCode subExpression(unsigned openBrace, unsigned closeBrace, int firstLine, int startColumn) const;
+
+        bool operator==(const SourceCode& other) const
+        {
+            return m_firstLine == other.m_firstLine
+                && m_startColumn == other.m_startColumn
+                && m_provider == other.m_provider
+                && m_startOffset == other.m_startOffset
+                && m_endOffset == other.m_endOffset;
+        }
+
+        bool operator!=(const SourceCode& other) const
+        {
+            return !(*this == other);
+        }
 
     private:
         OrdinalNumber m_firstLine;
         OrdinalNumber m_startColumn;
     };
 
-    inline SourceCode makeSource(const String& source, const SourceOrigin& sourceOrigin, const String& url = String(), const TextPosition& startPosition = TextPosition(), SourceProviderSourceType sourceType = SourceProviderSourceType::Program)
+    inline SourceCode makeSource(const String& source, const SourceOrigin& sourceOrigin, URL&& url = URL(), const TextPosition& startPosition = TextPosition(), SourceProviderSourceType sourceType = SourceProviderSourceType::Program)
     {
-        return SourceCode(StringSourceProvider::create(source, sourceOrigin, url, startPosition, sourceType), startPosition.m_line.oneBasedInt(), startPosition.m_column.oneBasedInt());
+        return SourceCode(StringSourceProvider::create(source, sourceOrigin, WTFMove(url), startPosition, sourceType), startPosition.m_line.oneBasedInt(), startPosition.m_column.oneBasedInt());
     }
 
-    inline SourceCode SourceCode::subExpression(unsigned openBrace, unsigned closeBrace, int firstLine, int startColumn)
+    inline SourceCode SourceCode::subExpression(unsigned openBrace, unsigned closeBrace, int firstLine, int startColumn) const
     {
         startColumn += 1; // Convert to base 1.
         return SourceCode(RefPtr<SourceProvider> { provider() }, openBrace, closeBrace + 1, firstLine, startColumn);

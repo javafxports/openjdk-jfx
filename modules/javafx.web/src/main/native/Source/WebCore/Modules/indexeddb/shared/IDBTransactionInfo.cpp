@@ -95,25 +95,27 @@ void IDBTransactionInfo::isolatedCopy(const IDBTransactionInfo& source, IDBTrans
 }
 
 #if !LOG_DISABLED
+
 String IDBTransactionInfo::loggingString() const
 {
     String modeString;
     switch (m_mode) {
     case IDBTransactionMode::Readonly:
-        modeString = ASCIILiteral("readonly");
+        modeString = "readonly"_s;
         break;
     case IDBTransactionMode::Readwrite:
-        modeString = ASCIILiteral("readwrite");
+        modeString = "readwrite"_s;
         break;
     case IDBTransactionMode::Versionchange:
-        modeString = ASCIILiteral("versionchange");
+        modeString = "versionchange"_s;
         break;
     default:
         ASSERT_NOT_REACHED();
     }
 
-    return makeString("Transaction: ", m_identifier.loggingString(), " mode ", modeString, " newVersion ", String::number(m_newVersion));
+    return makeString("Transaction: ", m_identifier.loggingString(), " mode ", modeString, " newVersion ", m_newVersion);
 }
+
 #endif
 
 } // namespace WebCore

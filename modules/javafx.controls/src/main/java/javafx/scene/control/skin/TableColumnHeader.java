@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -455,7 +455,16 @@ public class TableColumnHeader extends Region {
     NestedTableColumnHeader getNestedColumnHeader() { return nestedColumnHeader; }
     void setNestedColumnHeader(NestedTableColumnHeader nch) { nestedColumnHeader = nch; }
 
-    TableHeaderRow getTableHeaderRow() { return tableHeaderRow; }
+    /**
+     * Returns the {@link TableHeaderRow} associated with this {@code TableColumnHeader}.
+     *
+     * @return the {@code TableHeaderRow} associated with this {@code TableColumnHeader}
+     * @since 12
+     */
+    protected TableHeaderRow getTableHeaderRow() {
+        return tableHeaderRow;
+    }
+
     void setTableHeaderRow(TableHeaderRow thr) {
         tableHeaderRow = thr;
         updateTableSkin();
@@ -477,7 +486,14 @@ public class TableColumnHeader extends Region {
         }
     }
 
-    TableViewSkinBase<?,?,?,?,?> getTableSkin() {
+    /**
+     * Returns the {@code TableViewSkinBase} in which this {@code TableColumnHeader} is inserted. This will return
+     * {@code null} until the {@code TableHeaderRow} has been set.
+     *
+     * @return the {@code TableViewSkinBase} in which this {@code TableColumnHeader} is inserted, or {@code null}
+     * @since 12
+     */
+    protected TableViewSkinBase<?, ?, ?, ?, ?> getTableSkin() {
         return tableHeaderRow == null ? null : tableHeaderRow.tableSkin;
     }
 
@@ -1079,8 +1095,9 @@ public class TableColumnHeader extends Region {
     }
 
     /**
-     * Returnst the CssMetaData associated with this class, which may include the
+     * Returns the CssMetaData associated with this class, which may include the
      * CssMetaData of its superclasses.
+     *
      * @return the CssMetaData associated with this class, which may include the
      * CssMetaData of its superclasses
      */

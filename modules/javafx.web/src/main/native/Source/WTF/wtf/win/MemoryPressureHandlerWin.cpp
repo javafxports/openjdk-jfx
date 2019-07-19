@@ -24,7 +24,7 @@
  */
 
 #include "config.h"
-#include "MemoryPressureHandler.h"
+#include <wtf/MemoryPressureHandler.h>
 
 #include <psapi.h>
 #include <wtf/NeverDestroyed.h>
@@ -73,7 +73,7 @@ void MemoryPressureHandler::platformReleaseMemory(Critical)
 void MemoryPressureHandler::install()
 {
     m_installed = true;
-    m_windowsMeasurementTimer.startRepeating(60.0);
+    m_windowsMeasurementTimer.startRepeating(60_s);
 }
 
 void MemoryPressureHandler::uninstall()
@@ -85,7 +85,7 @@ void MemoryPressureHandler::uninstall()
     m_installed = false;
 }
 
-void MemoryPressureHandler::holdOff(unsigned seconds)
+void MemoryPressureHandler::holdOff(Seconds seconds)
 {
 }
 
@@ -96,9 +96,9 @@ void MemoryPressureHandler::respondToMemoryPressure(Critical critical, Synchrono
     releaseMemory(critical, synchronous);
 }
 
-std::optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
+Optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
 {
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 } // namespace WTF

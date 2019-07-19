@@ -44,11 +44,12 @@ public:
 
     bool enqueue(RefPtr<JSC::ArrayBuffer>&& chunk) { return controller().enqueue(WTFMove(chunk)); }
     void close();
-    void error(const String&);
+    void error(const Exception&);
 
     bool isCancelling() const { return m_isCancelling; }
 
     void resolvePullPromise() { pullFinished(); }
+    void detach() { m_bodyOwner = nullptr; }
 
 private:
     void doStart() final;
@@ -57,8 +58,11 @@ private:
     void setActive() final;
     void setInactive() final;
 
-    FetchBodyOwner& m_bodyOwner;
+    FetchBodyOwner* m_bodyOwner;
     bool m_isCancelling { false };
+#ifndef NDEBUG
+    bool m_isClosed { false };
+#endif
 };
 
 } // namespace WebCore

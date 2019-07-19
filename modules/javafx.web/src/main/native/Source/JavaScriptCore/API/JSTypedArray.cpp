@@ -185,7 +185,7 @@ JSObjectRef JSObjectMakeTypedArrayWithBytesNoCopy(JSContextRef ctx, JSTypedArray
 
     unsigned elementByteSize = elementSize(toTypedArrayType(arrayType));
 
-    RefPtr<ArrayBuffer> buffer = ArrayBuffer::createFromBytes(bytes, length, [=](void* p) {
+    auto buffer = ArrayBuffer::createFromBytes(bytes, length, [=](void* p) {
         if (destructor)
             destructor(p, destructorContext);
     });
@@ -301,7 +301,7 @@ JSObjectRef JSObjectGetTypedArrayBuffer(JSContextRef ctx, JSObjectRef objectRef,
     JSObject* object = toJS(objectRef);
 
     if (JSArrayBufferView* typedArray = jsDynamicCast<JSArrayBufferView*>(vm, object))
-        return toRef(vm.m_typedArrayController->toJS(exec, typedArray->globalObject(), typedArray->possiblySharedBuffer()));
+        return toRef(vm.m_typedArrayController->toJS(exec, typedArray->globalObject(vm), typedArray->possiblySharedBuffer()));
 
     return nullptr;
 }
@@ -335,7 +335,7 @@ void* JSObjectGetArrayBufferBytesPtr(JSContextRef ctx, JSObjectRef objectRef, JS
     if (JSArrayBuffer* jsBuffer = jsDynamicCast<JSArrayBuffer*>(vm, object)) {
         ArrayBuffer* buffer = jsBuffer->impl();
         if (buffer->isWasmMemory()) {
-            setException(exec, exception, createTypeError(exec, ASCIILiteral("Cannot get the backing buffer for a WebAssembly.Memory")));
+            setException(exec, exception, createTypeError(exec, "Cannot get the backing buffer for a WebAssembly.Memory"_s));
             return nullptr;
         }
 

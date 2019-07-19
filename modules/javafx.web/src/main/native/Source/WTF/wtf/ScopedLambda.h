@@ -23,8 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScopedLambda_h
-#define ScopedLambda_h
+#pragma once
+
+#include <wtf/ForbidHeapAllocation.h>
 
 namespace WTF {
 
@@ -43,6 +44,7 @@ namespace WTF {
 template<typename FunctionType> class ScopedLambda;
 template<typename ResultType, typename... ArgumentTypes>
 class ScopedLambda<ResultType (ArgumentTypes...)> {
+    WTF_FORBID_HEAP_ALLOCATION;
 public:
     ScopedLambda(ResultType (*impl)(void* arg, ArgumentTypes...) = nullptr, void* arg = nullptr)
         : m_impl(impl)
@@ -192,6 +194,3 @@ ScopedLambdaRefFunctor<FunctionType, Functor> scopedLambdaRef(const Functor& fun
 using WTF::ScopedLambda;
 using WTF::scopedLambda;
 using WTF::scopedLambdaRef;
-
-#endif // ScopedLambda_h
-

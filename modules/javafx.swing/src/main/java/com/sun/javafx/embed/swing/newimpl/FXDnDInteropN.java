@@ -27,7 +27,6 @@ package com.sun.javafx.embed.swing.newimpl;
 
 import com.sun.javafx.embed.swing.CachingTransferable;
 import com.sun.javafx.embed.swing.FXDnD;
-import com.sun.javafx.embed.swing.FXDnDInterop;
 import com.sun.javafx.embed.swing.SwingDnD;
 import com.sun.javafx.embed.swing.SwingEvents;
 import com.sun.javafx.embed.swing.SwingNodeHelper;
@@ -50,6 +49,7 @@ import java.awt.dnd.DropTargetDropEvent;
 import java.awt.dnd.DropTargetListener;
 import java.awt.dnd.InvalidDnDOperationException;
 import java.awt.dnd.MouseDragGestureRecognizer;
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
 import javafx.application.Platform;
@@ -65,7 +65,7 @@ import jdk.swing.interop.DragSourceContextWrapper;
 import jdk.swing.interop.DropTargetContextWrapper;
 import jdk.swing.interop.LightweightFrameWrapper;
 
-public class FXDnDInteropN extends FXDnDInterop {
+public class FXDnDInteropN {
 
     public Component findComponentAt(Object frame, int x, int y,
                                               boolean ignoreEnabled) {
@@ -103,15 +103,15 @@ public class FXDnDInteropN extends FXDnDInterop {
         }
     }
 
-    private SwingNode getNode() {
-        return node;
+    public SwingNode getNode() {
+        return nodeRef.get();
     }
 
     public void setNode(SwingNode swnode) {
-        node = swnode;
+        this.nodeRef = new WeakReference<SwingNode>(swnode);
     }
 
-    private SwingNode node = null;
+    private WeakReference<SwingNode> nodeRef = null;
 
     /**
      * Utility class that operates on Maps with Components as keys.
@@ -126,24 +126,27 @@ public class FXDnDInteropN extends FXDnDInterop {
             this.x = xArg;
             this.y = yArg;
 
-            final LightweightFrameWrapper lwFrame = (LightweightFrameWrapper)SwingNodeHelper.getLightweightFrame(node);
-            Component c = lwFrame.findComponentAt(lwFrame, x, y, false);
-            if (c == null) return;
+            SwingNode node = getNode();
+            if (node != null) {
+                final LightweightFrameWrapper lwFrame = (LightweightFrameWrapper) SwingNodeHelper.getLightweightFrame(node);
+                Component c = lwFrame.findComponentAt(lwFrame, x, y, false);
+                if (c == null) return;
 
-            synchronized (c.getTreeLock()) {
-                do {
-                    object = map.get(c);
-                } while (object == null && (c = c.getParent()) != null);
+                synchronized (c.getTreeLock()) {
+                    do {
+                        object = map.get(c);
+                    } while (object == null && (c = c.getParent()) != null);
 
-                if (object != null) {
-                    // The object is either a DropTarget or a DragSource, so:
-                    //assert c == object.getComponent();
+                    if (object != null) {
+                        // The object is either a DropTarget or a DragSource, so:
+                        //assert c == object.getComponent();
 
-                    // Translate x, y from lwFrame to component coordinates
-                    while ((lwFrame.isCompEqual(c,lwFrame)) && c != null) {
-                        x -= c.getX();
-                        y -= c.getY();
-                        c = c.getParent();
+                        // Translate x, y from lwFrame to component coordinates
+                        while ((lwFrame.isCompEqual(c, lwFrame)) && c != null) {
+                            x -= c.getX();
+                            y -= c.getY();
+                            c = c.getParent();
+                        }
                     }
                 }
             }
@@ -191,9 +194,12 @@ public class FXDnDInteropN extends FXDnDInterop {
         protected void registerListeners() {
             runOnFxThread(() -> {
                 if (!isDragSourceListenerInstalled) {
-                    node.addEventHandler(MouseEvent.MOUSE_PRESSED, onMousePressHandler);
-                    node.addEventHandler(MouseEvent.DRAG_DETECTED, onDragStartHandler);
-                    node.addEventHandler(DragEvent.DRAG_DONE, onDragDoneHandler);
+                    SwingNode node = getNode();
+                    if (node != null) {
+                        node.addEventHandler(MouseEvent.MOUSE_PRESSED, onMousePressHandler);
+                        node.addEventHandler(MouseEvent.DRAG_DETECTED, onDragStartHandler);
+                        node.addEventHandler(DragEvent.DRAG_DONE, onDragDoneHandler);
+                    }
 
                     isDragSourceListenerInstalled = true;
                 }
@@ -203,9 +209,12 @@ public class FXDnDInteropN extends FXDnDInterop {
         protected void unregisterListeners() {
             runOnFxThread(() -> {
                 if (isDragSourceListenerInstalled) {
-                    node.removeEventHandler(MouseEvent.MOUSE_PRESSED, onMousePressHandler);
-                    node.removeEventHandler(MouseEvent.DRAG_DETECTED, onDragStartHandler);
-                    node.removeEventHandler(DragEvent.DRAG_DONE, onDragDoneHandler);
+                    SwingNode node = getNode();
+                    if (node != null) {
+                        node.removeEventHandler(MouseEvent.MOUSE_PRESSED, onMousePressHandler);
+                        node.removeEventHandler(MouseEvent.DRAG_DETECTED, onDragStartHandler);
+                        node.removeEventHandler(DragEvent.DRAG_DONE, onDragDoneHandler);
+                    }
 
                     isDragSourceListenerInstalled = false;
                 }
@@ -267,22 +276,25 @@ public class FXDnDInteropN extends FXDnDInterop {
         // Since we're going to start DnD, consume the event.
         event.consume();
 
-        Dragboard db = getNode().startDragAndDrop(SwingDnD.dropActionsToTransferModes(
+        SwingNode node = getNode();
+        if (node != null) {
+            Dragboard db = node.startDragAndDrop(SwingDnD.dropActionsToTransferModes(
                     activeDSContextPeer.sourceActions).toArray(new TransferMode[1]));
 
-        // At this point the activeDSContextPeer.transferable contains all the data from AWT
-        Map<DataFormat, Object> fxData = new HashMap<>();
-        for (String mt : activeDSContextPeer.transferable.getMimeTypes()) {
-            DataFormat f = DataFormat.lookupMimeType(mt);
-            //TODO: what to do if f == null?
-            if (f != null) fxData.put(f, activeDSContextPeer.transferable.getData(mt));
-        }
+            // At this point the activeDSContextPeer.transferable contains all the data from AWT
+            Map<DataFormat, Object> fxData = new HashMap<>();
+            for (String mt : activeDSContextPeer.transferable.getMimeTypes()) {
+                DataFormat f = DataFormat.lookupMimeType(mt);
+                //TODO: what to do if f == null?
+                if (f != null) fxData.put(f, activeDSContextPeer.transferable.getData(mt));
+            }
 
-        final boolean hasContent = db.setContent(fxData);
-        if (!hasContent) {
-            // No data, no DnD, no onDragDoneHandler, so release the AWT loop now
-            if (!FXDnD.fxAppThreadIsDispatchThread) {
-                loop.exit();
+            final boolean hasContent = db.setContent(fxData);
+            if (!hasContent) {
+                // No data, no DnD, no onDragDoneHandler, so release the AWT loop now
+                if (!FXDnD.fxAppThreadIsDispatchThread) {
+                    loop.exit();
+                }
             }
         }
     };

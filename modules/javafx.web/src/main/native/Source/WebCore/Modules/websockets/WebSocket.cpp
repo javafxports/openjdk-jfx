@@ -55,12 +55,12 @@
 #include <JavaScriptCore/ArrayBufferView.h>
 #include <JavaScriptCore/ScriptCallStack.h>
 #include <wtf/HashSet.h>
+#include <wtf/HexNumber.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/RunLoop.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
-#include <wtf/text/WTFString.h>
 
 #if USE(WEB_THREAD)
 #include "WebCoreThreadRun.h"
@@ -98,9 +98,10 @@ static String encodeProtocolString(const String& protocol)
 {
     StringBuilder builder;
     for (size_t i = 0; i < protocol.length(); i++) {
-        if (protocol[i] < 0x20 || protocol[i] > 0x7E)
-            builder.append(String::format("\\u%04X", protocol[i]));
-        else if (protocol[i] == 0x5c)
+        if (protocol[i] < 0x20 || protocol[i] > 0x7E) {
+            builder.appendLiteral("\\u");
+            appendUnsignedAsHexFixedSize(protocol[i], builder, 4);
+        } else if (protocol[i] == 0x5c)
             builder.appendLiteral("\\\\");
         else
             builder.append(protocol[i]);
@@ -185,9 +186,9 @@ HashSet<WebSocket*>& WebSocket::allActiveWebSockets(const LockHolder&)
     return activeWebSockets;
 }
 
-StaticLock& WebSocket::allActiveWebSocketsMutex()
+Lock& WebSocket::allActiveWebSocketsMutex()
 {
-    static StaticLock mutex;
+    static Lock mutex;
     return mutex;
 }
 
@@ -234,9 +235,9 @@ ExceptionOr<void> WebSocket::connect(const String& url, const Vector<String>& pr
     if (!portAllowed(m_url)) {
         String message;
         if (m_url.port())
-            message = makeString("WebSocket port ", String::number(m_url.port().value()), " blocked");
+            message = makeString("WebSocket port ", static_cast<unsigned>(m_url.port().value()), " blocked");
         else
-            message = ASCIILiteral("WebSocket without port blocked");
+            message = "WebSocket without port blocked"_s;
         context.addConsoleMessage(MessageSource::JS, MessageLevel::Error, message);
         m_state = CLOSED;
         return Exception { SecurityError };
@@ -279,35 +280,28 @@ ExceptionOr<void> WebSocket::connect(const String& url, const Vector<String>& pr
         }
     }
 
+    RunLoop::main().dispatch([targetURL = m_url.isolatedCopy(), mainFrameURL = context.url().isolatedCopy(), sessionID = context.sessionID()]() {
+        ResourceLoadObserver::shared().logWebSocketLoading(targetURL, mainFrameURL, sessionID);
+    });
+
     if (is<Document>(context)) {
         Document& document = downcast<Document>(context);
         RefPtr<Frame> frame = document.frame();
         if (!frame || !frame->loader().mixedContentChecker().canRunInsecureContent(document.securityOrigin(), m_url)) {
-            // Balanced by the call to ActiveDOMObject::unsetPendingActivity() in WebSocket::stop().
-            ActiveDOMObject::setPendingActivity(this);
+            m_pendingActivity = makePendingActivity(*this);
 
             // We must block this connection. Instead of throwing an exception, we indicate this
             // using the error event. But since this code executes as part of the WebSocket's
             // constructor, we have to wait until the constructor has completed before firing the
             // event; otherwise, users can't connect to the event.
-#if USE(WEB_THREAD)
-            ref();
-            dispatch_async(dispatch_get_main_queue(), ^{
-                WebThreadRun(^{
-                    dispatchOrQueueErrorEvent();
-                    stop();
-                    deref();
-                });
+
+            document.postTask([this, protectedThis = makeRef(*this)](auto&) {
+                this->dispatchOrQueueErrorEvent();
+                this->stop();
             });
-#else
-            RunLoop::main().dispatch([this, protectedThis = makeRef(*this)]() {
-                dispatchOrQueueErrorEvent();
-                stop();
-            });
-#endif
+
             return { };
         }
-        ResourceLoadObserver::shared().logWebSocketLoading(frame.get(), m_url);
     }
 
     String protocolString;
@@ -315,7 +309,7 @@ ExceptionOr<void> WebSocket::connect(const String& url, const Vector<String>& pr
         protocolString = joinStrings(protocols, subprotocolSeparator());
 
     m_channel->connect(m_url, protocolString);
-    ActiveDOMObject::setPendingActivity(this);
+    m_pendingActivity = makePendingActivity(*this);
 
     return { };
 }
@@ -386,7 +380,7 @@ ExceptionOr<void> WebSocket::send(Blob& binaryData)
     return { };
 }
 
-ExceptionOr<void> WebSocket::close(std::optional<unsigned short> optionalCode, const String& reason)
+ExceptionOr<void> WebSocket::close(Optional<unsigned short> optionalCode, const String& reason)
 {
     int code = optionalCode ? optionalCode.value() : static_cast<int>(WebSocketChannel::CloseEventCodeNotSpecified);
     if (code == WebSocketChannel::CloseEventCodeNotSpecified)
@@ -397,7 +391,7 @@ ExceptionOr<void> WebSocket::close(std::optional<unsigned short> optionalCode, c
             return Exception { InvalidAccessError };
         CString utf8 = reason.utf8(StrictConversionReplacingUnpairedSurrogatesWithFFFD);
         if (utf8.length() > maxReasonSizeInBytes) {
-            scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, ASCIILiteral("WebSocket close message is too long."));
+            scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, "WebSocket close message is too long."_s);
             return Exception { SyntaxError };
         }
     }
@@ -449,9 +443,9 @@ String WebSocket::binaryType() const
 {
     switch (m_binaryType) {
     case BinaryType::Blob:
-        return ASCIILiteral("blob");
+        return "blob"_s;
     case BinaryType::ArrayBuffer:
-        return ASCIILiteral("arraybuffer");
+        return "arraybuffer"_s;
     }
     ASSERT_NOT_REACHED();
     return String();
@@ -502,7 +496,7 @@ void WebSocket::suspend(ReasonForSuspension reason)
     m_shouldDelayEventFiring = true;
 
     if (m_channel) {
-        if (reason == ActiveDOMObject::PageCache) {
+        if (reason == ReasonForSuspension::PageCache) {
             // This will cause didClose() to be called.
             m_channel->fail("WebSocket is closed due to suspension.");
         } else
@@ -536,15 +530,13 @@ void WebSocket::resumeTimerFired()
 
 void WebSocket::stop()
 {
-    bool pending = hasPendingActivity();
     if (m_channel)
         m_channel->disconnect();
     m_channel = nullptr;
     m_state = CLOSED;
     m_pendingEvents.clear();
     ActiveDOMObject::stop();
-    if (pending)
-        ActiveDOMObject::unsetPendingActivity(this);
+    m_pendingActivity = nullptr;
 }
 
 const char* WebSocket::activeDOMObjectName() const
@@ -563,7 +555,7 @@ void WebSocket::didConnect()
     m_state = OPEN;
     m_subprotocol = m_channel->subprotocol();
     m_extensions = m_channel->extensions();
-    dispatchEvent(Event::create(eventNames().openEvent, false, false));
+    dispatchEvent(Event::create(eventNames().openEvent, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 void WebSocket::didReceiveMessage(const String& msg)
@@ -627,8 +619,7 @@ void WebSocket::didClose(unsigned unhandledBufferedAmount, ClosingHandshakeCompl
         m_channel->disconnect();
         m_channel = nullptr;
     }
-    if (hasPendingActivity())
-        ActiveDOMObject::unsetPendingActivity(this);
+    m_pendingActivity = nullptr;
 }
 
 void WebSocket::didUpgradeURL()
@@ -657,7 +648,7 @@ void WebSocket::dispatchOrQueueErrorEvent()
         return;
 
     m_dispatchedErrorEvent = true;
-    dispatchOrQueueEvent(Event::create(eventNames().errorEvent, false, false));
+    dispatchOrQueueEvent(Event::create(eventNames().errorEvent, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 void WebSocket::dispatchOrQueueEvent(Ref<Event>&& event)

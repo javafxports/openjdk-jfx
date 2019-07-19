@@ -32,6 +32,8 @@ enum JSType : uint8_t {
     CustomGetterSetterType,
     APIValueWrapperType,
 
+    NativeExecutableType,
+
     ProgramExecutableType,
     ModuleProgramExecutableType,
     EvalExecutableType,
@@ -47,6 +49,7 @@ enum JSType : uint8_t {
     CodeBlockType,
 
     JSFixedArrayType,
+    JSImmutableButterflyType,
     JSSourceCodeType,
     JSScriptFetcherType,
     JSScriptFetchParametersType,
@@ -61,7 +64,6 @@ enum JSType : uint8_t {
     ErrorInstanceType,
     PureForwardingProxyType,
     ImpureProxyType,
-    WithScopeType,
     DirectArgumentsType,
     ScopedArgumentsType,
     ClonedArgumentsType,
@@ -71,7 +73,9 @@ enum JSType : uint8_t {
     DerivedArrayType,
     // End JSArray types.
 
-    // Start JSArrayBufferView types.
+    ArrayBufferType,
+
+    // Start JSArrayBufferView types. Keep in sync with the order of FOR_EACH_TYPED_ARRAY_TYPE_EXCLUDING_DATA_VIEW.
     Int8ArrayType,
     Uint8ArrayType,
     Uint8ClampedArrayType,
@@ -86,13 +90,21 @@ enum JSType : uint8_t {
 
     GetterSetterType,
 
+    // JSScope <- JSWithScope
+    //         <- StrictEvalActivation
+    //         <- JSSymbolTableObject  <- JSLexicalEnvironment      <- JSModuleEnvironment
+    //                                 <- JSSegmentedVariableObject <- JSGlobalLexicalEnvironment
+    //                                                              <- JSGlobalObject
+    // Start JSScope types.
     // Start environment record types.
     GlobalObjectType,
-    LexicalEnvironmentType,
     GlobalLexicalEnvironmentType,
+    LexicalEnvironmentType,
     ModuleEnvironmentType,
     StrictEvalActivationType,
     // End environment record types.
+    WithScopeType,
+    // End JSScope types.
 
     RegExpObjectType,
     ProxyObjectType,
@@ -100,20 +112,37 @@ enum JSType : uint8_t {
     JSSetType,
     JSWeakMapType,
     JSWeakSetType,
-
-    WebAssemblyFunctionType,
     WebAssemblyToJSCalleeType,
+    StringObjectType,
 
-    LastJSCObjectType = WebAssemblyToJSCalleeType,
+    LastJSCObjectType = StringObjectType, // This is the last "JSC" Object type. After this, we have embedder's (e.g., WebCore) extended object types.
     MaxJSType = 0b11111111,
 };
 
-static const uint32_t FirstTypedArrayType = Int8ArrayType;
-static const uint32_t LastTypedArrayType = DataViewType;
+static constexpr uint32_t FirstTypedArrayType = Int8ArrayType;
+static constexpr uint32_t LastTypedArrayType = DataViewType;
+
+// LastObjectType should be MaxJSType (not LastJSCObjectType) since embedders can add their extended object types after the enums listed in JSType.
+static constexpr uint32_t FirstObjectType = ObjectType;
+static constexpr uint32_t LastObjectType = MaxJSType;
+
 static constexpr uint32_t NumberOfTypedArrayTypes = LastTypedArrayType - FirstTypedArrayType + 1;
 static constexpr uint32_t NumberOfTypedArrayTypesExcludingDataView = NumberOfTypedArrayTypes - 1;
 
 static_assert(sizeof(JSType) == sizeof(uint8_t), "sizeof(JSType) is one byte.");
 static_assert(LastJSCObjectType < 128, "The highest bit is reserved for embedder's extension.");
 
+inline constexpr bool isTypedArrayType(JSType type)
+{
+    return (static_cast<uint32_t>(type) - FirstTypedArrayType) < NumberOfTypedArrayTypesExcludingDataView;
+}
+
 } // namespace JSC
+
+namespace WTF {
+
+class PrintStream;
+
+void printInternal(PrintStream&, JSC::JSType);
+
+} // namespace WTF

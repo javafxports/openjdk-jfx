@@ -55,7 +55,7 @@ class IDBConnectionToServer : public ThreadSafeRefCounted<IDBConnectionToServer>
 public:
     WEBCORE_EXPORT static Ref<IDBConnectionToServer> create(IDBConnectionToServerDelegate&);
 
-    uint64_t identifier() const;
+    WEBCORE_EXPORT uint64_t identifier() const;
 
     IDBConnectionProxy& proxy();
 
@@ -143,7 +143,11 @@ public:
 private:
     IDBConnectionToServer(IDBConnectionToServerDelegate&);
 
-    Ref<IDBConnectionToServerDelegate> m_delegate;
+    typedef void (IDBConnectionToServer::*ResultFunction)(const IDBResultData&);
+    void callResultFunctionWithErrorLater(ResultFunction, const IDBResourceIdentifier& requestIdentifier);
+
+    WeakPtr<IDBConnectionToServerDelegate> m_delegate;
+    bool m_serverConnectionIsValid { true };
 
     HashMap<uint64_t, WTF::Function<void (const Vector<String>&)>> m_getAllDatabaseNamesCallbacks;
 

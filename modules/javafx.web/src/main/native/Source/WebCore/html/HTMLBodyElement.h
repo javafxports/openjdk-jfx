@@ -28,6 +28,7 @@
 namespace WebCore {
 
 class HTMLBodyElement final : public HTMLElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLBodyElement);
 public:
     static Ref<HTMLBodyElement> create(Document&);
     static Ref<HTMLBodyElement> create(const QualifiedName&, Document&);
@@ -37,8 +38,6 @@ public:
 
 private:
     HTMLBodyElement(const QualifiedName&, Document&);
-
-    bool isFirstBodyElementOfDocument() const;
 
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
     bool isPresentationAttribute(const QualifiedName&) const final;
@@ -50,17 +49,6 @@ private:
     bool isURLAttribute(const Attribute&) const final;
 
     bool supportsFocus() const final;
-
-    int scrollLeft() final;
-    void setScrollLeft(int) final;
-
-    int scrollTop() final;
-    void setScrollTop(int) final;
-
-    void scrollTo(const ScrollToOptions&, ScrollClamping) final;
-
-    int scrollHeight() final;
-    int scrollWidth() final;
 
     void addSubresourceAttributeURLs(ListHashSet<URL>&) const final;
 

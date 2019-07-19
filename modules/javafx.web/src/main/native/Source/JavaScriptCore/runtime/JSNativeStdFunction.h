@@ -32,18 +32,18 @@ namespace JSC {
 class JSGlobalObject;
 class NativeStdFunctionCell;
 
-typedef std::function<EncodedJSValue (ExecState*)> NativeStdFunction;
+using NativeStdFunction = WTF::Function<EncodedJSValue(ExecState*)>;
 
-class JSNativeStdFunction : public JSFunction {
+class JSNativeStdFunction final : public JSFunction {
 public:
     typedef JSFunction Base;
 
     const static unsigned StructureFlags = Base::StructureFlags;
 
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess mode>
     static IsoSubspace* subspaceFor(VM& vm)
     {
-        return &vm.nativeStdFunctionSpace;
+        return vm.nativeStdFunctionSpace<mode>();
     }
 
     DECLARE_EXPORT_INFO;

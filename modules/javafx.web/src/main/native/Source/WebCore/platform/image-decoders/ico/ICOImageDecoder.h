@@ -45,18 +45,18 @@ public:
     virtual ~ICOImageDecoder();
 
     // ScalableImageDecoder
-    String filenameExtension() const final { return ASCIILiteral("ico"); }
+    String filenameExtension() const final { return "ico"_s; }
     void setData(SharedBuffer&, bool allDataReceived) final;
     IntSize size() const final;
     IntSize frameSizeAtIndex(size_t, SubsamplingLevel) const final;
     bool setSize(const IntSize&) final;
     size_t frameCount() const final;
-    ImageFrame* frameBufferAtIndex(size_t) final;
+    ScalableImageDecoderFrame* frameBufferAtIndex(size_t) final;
     // CAUTION: setFailed() deletes all readers and decoders. Be careful to
     // avoid accessing deleted memory, especially when calling this from
     // inside BMPImageReader!
     bool setFailed() final;
-    std::optional<IntPoint> hotSpot() const final;
+    Optional<IntPoint> hotSpot() const final;
 
 private:
     enum ImageType {
@@ -119,8 +119,8 @@ private:
     // could be decoded.
     bool processDirectoryEntries();
 
-    // Returns the hot-spot for |index|, returns std::nullopt if there is none.
-    std::optional<IntPoint> hotSpotAtIndex(size_t) const;
+    // Returns the hot-spot for |index|, returns WTF::nullopt if there is none.
+    Optional<IntPoint> hotSpotAtIndex(size_t) const;
 
     // Reads and returns a directory entry from the current offset into
     // |data|.

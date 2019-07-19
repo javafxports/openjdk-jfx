@@ -45,12 +45,12 @@ public:
 
     Inspector::RemoteControllableTarget::Type type() const final { return Inspector::RemoteControllableTarget::Type::ServiceWorker; }
 
-    String name() const final { return ASCIILiteral("ServiceWorker"); }
+    String name() const final { return "ServiceWorker"_s; }
     String url() const final { return m_scopeURL; }
     bool hasLocalDebugger() const final { return false; }
 
-    void connect(Inspector::FrontendChannel*, bool isAutomaticConnection = false, bool immediatelyPause = false) final;
-    void disconnect(Inspector::FrontendChannel*) final;
+    void connect(Inspector::FrontendChannel&, bool isAutomaticConnection = false, bool immediatelyPause = false) final;
+    void disconnect(Inspector::FrontendChannel&) final;
     void dispatchMessageFromRemote(const String& message) final;
 
 private:

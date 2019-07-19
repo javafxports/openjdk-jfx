@@ -102,7 +102,7 @@ public:
     LayoutUnit paddingBefore() const override;
     LayoutUnit paddingAfter() const override;
 
-    void setOverrideLogicalContentHeightFromRowHeight(LayoutUnit);
+    void setOverrideContentLogicalHeightFromRowHeight(LayoutUnit);
 
     void scrollbarsChanged(bool horizontalScrollbarChanged, bool verticalScrollbarChanged) override;
 
@@ -155,7 +155,7 @@ private:
     bool boxShadowShouldBeAppliedToBackground(const LayoutPoint& paintOffset, BackgroundBleedAvoidance, InlineFlowBox*) const override;
 
     LayoutSize offsetFromContainer(RenderElement&, const LayoutPoint&, bool* offsetDependsOnPoint = 0) const override;
-    LayoutRect computeRectForRepaint(const LayoutRect&, const RenderLayerModelObject* repaintContainer, RepaintContext = { }) const override;
+    Optional<LayoutRect> computeVisibleRectInContainer(const LayoutRect&, const RenderLayerModelObject* container, VisibleRectContext) const override;
 
     LayoutUnit borderHalfLeft(bool outer) const;
     LayoutUnit borderHalfRight(bool outer) const;
@@ -198,6 +198,8 @@ private:
 
     void nextSibling() const = delete;
     void previousSibling() const = delete;
+
+    bool hasLineIfEmpty() const final;
 
     // Note MSVC will only pack members if they have identical types, hence we use unsigned instead of bool here.
     unsigned m_column : 25;
@@ -291,15 +293,15 @@ inline LayoutUnit RenderTableCell::logicalHeightForRowSizing() const
     LayoutUnit styleLogicalHeight = valueForLength(style().logicalHeight(), 0);
     // In strict mode, box-sizing: content-box do the right thing and actually add in the border and padding.
     // Call computedCSSPadding* directly to avoid including implicitPadding.
-    if (!document().inQuirksMode() && style().boxSizing() != BORDER_BOX)
+    if (!document().inQuirksMode() && style().boxSizing() != BoxSizing::BorderBox)
         styleLogicalHeight += computedCSSPaddingBefore() + computedCSSPaddingAfter() + borderBefore() + borderAfter();
     return std::max(styleLogicalHeight, adjustedLogicalHeight);
 }
 
 inline bool RenderTableCell::isBaselineAligned() const
 {
-    EVerticalAlign va = style().verticalAlign();
-    return va == BASELINE || va == TEXT_BOTTOM || va == TEXT_TOP || va == SUPER || va == SUB || va == LENGTH;
+    VerticalAlign va = style().verticalAlign();
+    return va == VerticalAlign::Baseline || va == VerticalAlign::TextBottom || va == VerticalAlign::TextTop || va == VerticalAlign::Super || va == VerticalAlign::Sub || va == VerticalAlign::Length;
 }
 
 inline const BorderValue& RenderTableCell::borderAdjoiningTableStart() const

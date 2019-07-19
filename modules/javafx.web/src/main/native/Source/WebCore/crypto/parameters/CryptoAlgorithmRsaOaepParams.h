@@ -29,38 +29,46 @@
 #include "CryptoAlgorithmParameters.h"
 #include <wtf/Vector.h>
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 namespace WebCore {
 
 class CryptoAlgorithmRsaOaepParams final : public CryptoAlgorithmParameters {
 public:
     // Use labelVector() instead of label. The label will be gone once labelVector() is called.
-    std::optional<BufferSource::VariantType> label;
+    mutable Optional<BufferSource::VariantType> label;
 
     Class parametersClass() const final { return Class::RsaOaepParams; }
 
-    const Vector<uint8_t>& labelVector()
+    const Vector<uint8_t>& labelVector() const
     {
         if (!m_labelVector.isEmpty() || !label)
             return m_labelVector;
 
-        m_labelBuffer = WTFMove(*label);
-        label = std::nullopt;
-        if (!m_labelBuffer.length())
+        BufferSource labelBuffer = WTFMove(*label);
+        label = WTF::nullopt;
+        if (!labelBuffer.length())
             return m_labelVector;
 
-        m_labelVector.append(m_labelBuffer.data(), m_labelBuffer.length());
+        m_labelVector.append(labelBuffer.data(), labelBuffer.length());
         return m_labelVector;
     }
 
+    CryptoAlgorithmRsaOaepParams isolatedCopy() const
+    {
+        CryptoAlgorithmRsaOaepParams result;
+        result.identifier = identifier;
+        result.m_labelVector = labelVector();
+
+        return result;
+    }
+
 private:
-    Vector<uint8_t> m_labelVector;
-    BufferSource m_labelBuffer;
+    mutable Vector<uint8_t> m_labelVector;
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CRYPTO_ALGORITHM_PARAMETERS(RsaOaepParams)
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

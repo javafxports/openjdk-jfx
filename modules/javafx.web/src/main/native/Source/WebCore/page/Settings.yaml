@@ -1,6 +1,13 @@
 # FIXME: Add support for global settings.
 # FIXME: Add support for custom getters/setters.
 
+# contextMenuEnabled and userAgent are applicable for JAVA platform
+contextMenuEnabled:
+  initial: false
+  getter: isContextMenuEnabled
+userAgent:
+  type: String
+
 defaultTextEncodingName:
   type: String
 ftpDirectoryTemplatePath:
@@ -74,7 +81,7 @@ defaultFontSize:
   onChange: setNeedsRecalcStyleInAllFrames
 defaultFixedFontSize:
   type: int
-  initial: 0
+  initial: 13
   onChange: setNeedsRecalcStyleInAllFrames
 
 editingBehaviorType:
@@ -101,8 +108,12 @@ allowFileAccessFromFileURLs:
   initial: true
 allowSettingAnyXHRHeaderFromFileURLs:
   initial: false
+allowCrossOriginSubresourcesToAskForCredentials:
+  initial: false
 needsStorageAccessFromFileURLsQuirk:
   initial: true
+needsFrameNameFallbackToIdQuirk:
+  initial: false
 useAnonymousModeWhenFetchingMaskImages:
   initial: true
 javaScriptCanOpenWindowsAutomatically:
@@ -124,6 +135,7 @@ textAreasAreResizable:
 authorAndUserStylesEnabled:
   initial: true
   onChange: setNeedsRecalcStyleInAllFrames
+  inspectorOverride: true
 userStyleSheetLocation:
   type: URL
   onChange: userStyleSheetLocationChanged
@@ -148,6 +160,8 @@ resourceUsageOverlayVisible:
   initial: false
   onChange: resourceUsageOverlayVisibleChanged
   condition: RESOURCE_USAGE
+disableScreenSizeOverride:
+  initial: false
 
 # This is a quirk we are pro-actively applying to old applications. It changes keyboard event dispatching,
 # making keyIdentifier available on keypress events, making charCode available on keydown/keyup events,
@@ -173,6 +187,7 @@ scriptMarkupEnabled:
   initial: true
 needsSiteSpecificQuirks:
   initial: false
+  inspectorOverride: true
 domTimersThrottlingEnabled:
   initial: true
 webArchiveDebugModeEnabled:
@@ -185,8 +200,6 @@ offlineWebApplicationCacheEnabled:
 enforceCSSMIMETypeInNoQuirksMode:
   initial: true
 usesEncodingDetector:
-  initial: false
-allowScriptsToCloseWindows:
   initial: false
 canvasUsesAcceleratedDrawing:
   initial: false
@@ -204,14 +217,12 @@ javaScriptRuntimeFlags:
 # FIXME: This should really be disabled by default as it makes platforms that don't support the feature download files
 # they can't use by. Leaving enabled for now to not change existing behavior.
 downloadableBinaryFontsEnabled:
-  initial: true
+  initial: defaultDownloadableBinaryFontsEnabled()
 
 xssAuditorEnabled:
   initial: false
 acceleratedCompositingForFixedPositionEnabled:
   initial: defaultAcceleratedCompositingForFixedPositionEnabled
-acceleratedCompositingForOverflowScrollEnabled:
-  initial: false
 rubberBandingForSubScrollableRegionsEnabled:
   initial: true
   conditional: RUBBER_BANDING
@@ -221,6 +232,8 @@ experimentalNotificationsEnabled:
 webGLEnabled:
   initial: false
 webGLErrorsToConsoleEnabled:
+  initial: true
+unhandledPromiseRejectionToConsoleEnabled:
   initial: true
 forceSoftwareWebGLRendering:
   initial: false
@@ -325,10 +338,16 @@ wantsBalancedSetDefersLoadingBehavior:
 requestAnimationFrameEnabled:
   initial: true
 
+HTTPSUpgradeEnabled:
+  initial: false
+
+thirdPartyIframeRedirectBlockingEnabled:
+  initial: true
+
 cookieEnabled:
   initial: true
 mediaEnabled:
-  initial: true
+  initial: defaultMediaEnabled
 DOMPasteAllowed:
   initial: false
 
@@ -340,27 +359,42 @@ windowFocusRestricted:
 
 diagnosticLoggingEnabled:
   initial: false
+
 delegatesPageScaling:
   initial: false
+
 plugInSnapshottingEnabled:
   initial: false
+
 snapshotAllPlugIns:
   initial: false
+
 autostartOriginPlugInSnapshottingEnabled:
   initial: true
+
 primaryPlugInSnapshotDetectionEnabled:
   initial: true
+
 maximumPlugInSnapshotAttempts:
   type: unsigned
   initial: 20
+
 frameFlattening:
   type: FrameFlattening
   initial: FrameFlattening::Disabled
+  onChange: setNeedsRelayoutAllFrames
+
 asyncFrameScrollingEnabled:
   initial: false
+  onChange: setNeedsRelayoutAllFrames
+
+asyncOverflowScrollingEnabled:
+  initial: false
+  onChange: setNeedsRelayoutAllFrames
 
 webSecurityEnabled:
   initial: true
+  inspectorOverride: true
 spatialNavigationEnabled:
   initial: false
 
@@ -385,6 +419,8 @@ smartInsertDeleteEnabled:
   initial: defaultSmartInsertDeleteEnabled
 selectTrailingWhitespaceEnabled:
   initial: defaultSelectTrailingWhitespaceEnabled
+selectionAcrossShadowBoundariesEnabled:
+  initial: true
 
 useLegacyBackgroundSizeShorthandBehavior:
   initial: false
@@ -421,6 +457,10 @@ useGiantTiles:
   initial: false
 
 mediaSourceEnabled:
+  initial: platformDefaultMediaSourceEnabled()
+  conditional: MEDIA_SOURCE
+
+sourceBufferChangeTypeEnabled:
   initial: true
   conditional: MEDIA_SOURCE
 
@@ -479,9 +519,6 @@ serviceControlsEnabled:
 appleMailPaginationQuirkEnabled:
   initial: false
 
-appleMailLinesClampEnabled:
-  initial: false
-
 deferredCSSParserEnabled:
   initial: false
 
@@ -503,7 +540,7 @@ userInterfaceDirectionPolicy:
   initial: UserInterfaceDirectionPolicy::Content
 systemLayoutDirection:
   type: TextDirection
-  initial: LTR
+  initial: TextDirection::LTR
 
 allowContentSecurityPolicySourceStarToMatchAnyProtocol:
   initial: false
@@ -516,8 +553,14 @@ shouldConvertInvalidURLsToBlank:
 
 springTimingFunctionEnabled:
   initial: false
-conicGradientsEnabled:
+
+colorFilterEnabled:
   initial: false
+  onChange: setNeedsRecalcStyleInAllFrames
+
+punchOutWhiteBackgroundsInDarkMode:
+  initial: false
+  onChange: setNeedsRecalcStyleInAllFrames
 
 treatIPAddressAsDomain:
   initial: false
@@ -525,12 +568,20 @@ treatIPAddressAsDomain:
 mediaPreloadingEnabled:
   initial: false
 
+layoutViewportHeightExpansionFactor:
+  type: double
+  initial: 0
+  onChange: setNeedsRecalcStyleInAllFrames
+
 # Runtime-enabled features
 visualViewportEnabled:
   initial: false
   onChange: setNeedsRecalcStyleInAllFrames
 
 visualViewportAPIEnabled:
+  initial: false
+
+CSSOMViewScrollingAPIEnabled:
   initial: false
 
 inputEventsEnabled:
@@ -628,10 +679,11 @@ imagesEnabled:
   initial: true
   getter: areImagesEnabled
   onChange: imagesEnabledChanged
+  inspectorOverride: true
 scriptEnabled:
   initial: false
   getter: isScriptEnabled
-  onChange: scriptEnabledChanged
+  inspectorOverride: true
 pluginsEnabled:
   initial: false
   getter: arePluginsEnabled
@@ -711,20 +763,61 @@ touchEventEmulationEnabled:
   getter: isTouchEventEmulationEnabled
   conditional: TOUCH_EVENTS
 
-# contextMenuEnabled and userAgent are applicable for JAVA platform
-contextMenuEnabled:
-  initial: false
-  getter: isContextMenuEnabled
+deviceOrientationEventEnabled:
+  type: bool
+  initial: true
+  conditional: DEVICE_ORIENTATION
 
-userAgent:
-  type: String
+shouldEnableTextAutosizingBoost:
+  type: bool
+  initial: false
+  conditional: TEXT_AUTOSIZING
+  onChange: shouldEnableTextAutosizingBoostChanged
 
 mediaCapabilitiesEnabled:
-  initial: false
-
-resourceLoadStatisticsDebugMode:
   initial: false
 
 clientCoordinatesRelativeToLayoutViewport:
   initial: false
   onChange: setNeedsRecalcStyleInAllFrames
+
+accessibilityEventsEnabled:
+  initial: true
+  conditional: ACCESSIBILITY_EVENTS
+
+incompleteImageBorderEnabled:
+  initial: false
+
+shouldDeferAsynchronousScriptsUntilAfterDocumentLoad:
+  initial: false
+
+shouldIgnoreMetaViewport:
+  initial: false
+
+videoQualityIncludesDisplayCompositingEnabled:
+  initial: false
+  conditional: VIDEO
+
+editableImagesEnabled:
+  initial: false
+
+adClickAttributionEnabled:
+  initial: false
+
+# Deprecated
+
+iceCandidateFilteringEnabled:
+  initial: true
+  onChange: iceCandidateFilteringEnabledChanged
+  inspectorOverride: true
+
+mockCaptureDevicesEnabled:
+  initial: false
+  conditional: MEDIA_STREAM
+  onChange: mockCaptureDevicesEnabledChanged
+  inspectorOverride: true
+
+mediaCaptureRequiresSecureConnection:
+  initial: true
+  conditional: MEDIA_STREAM
+  inspectorOverride: true

@@ -35,10 +35,12 @@ namespace WebCore {
 
 static ExceptionOr<bool> canWriteHeader(const String& name, const String& value, FetchHeaders::Guard guard)
 {
-    if (!isValidHTTPToken(name) || !isValidHTTPHeaderValue(value))
-        return Exception { TypeError };
+    if (!isValidHTTPToken(name))
+        return Exception { TypeError, makeString("Invalid header name: '", name, "'") };
+    if (!isValidHTTPHeaderValue(value))
+        return Exception { TypeError, makeString("Header '", name, "' has invalid value: '", value, "'") };
     if (guard == FetchHeaders::Guard::Immutable)
-        return Exception { TypeError };
+        return Exception { TypeError, "Headers object's guard is 'immutable'"_s };
     if (guard == FetchHeaders::Guard::Request && isForbiddenHeaderName(name))
         return false;
     if (guard == FetchHeaders::Guard::RequestNoCors && !isSimpleHeader(name, value))
@@ -98,7 +100,7 @@ static ExceptionOr<void> fillHeaderMap(HTTPHeaderMap& headers, const FetchHeader
     return { };
 }
 
-ExceptionOr<Ref<FetchHeaders>> FetchHeaders::create(std::optional<Init>&& headersInit)
+ExceptionOr<Ref<FetchHeaders>> FetchHeaders::create(Optional<Init>&& headersInit)
 {
     HTTPHeaderMap headers;
 
@@ -146,14 +148,14 @@ ExceptionOr<void> FetchHeaders::remove(const String& name)
 ExceptionOr<String> FetchHeaders::get(const String& name) const
 {
     if (!isValidHTTPToken(name))
-        return Exception { TypeError };
+        return Exception { TypeError, makeString("Invalid header name: '", name, "'") };
     return m_headers.get(name);
 }
 
 ExceptionOr<bool> FetchHeaders::has(const String& name) const
 {
     if (!isValidHTTPToken(name))
-        return Exception { TypeError };
+        return Exception { TypeError, makeString("Invalid header name: '", name, "'") };
     return m_headers.contains(name);
 }
 
@@ -184,7 +186,7 @@ void FetchHeaders::filterAndFill(const HTTPHeaderMap& headers, Guard guard)
     }
 }
 
-std::optional<WTF::KeyValuePair<String, String>> FetchHeaders::Iterator::next()
+Optional<WTF::KeyValuePair<String, String>> FetchHeaders::Iterator::next()
 {
     while (m_currentIndex < m_keys.size()) {
         auto key = m_keys[m_currentIndex++];
@@ -192,7 +194,7 @@ std::optional<WTF::KeyValuePair<String, String>> FetchHeaders::Iterator::next()
         if (!value.isNull())
             return WTF::KeyValuePair<String, String> { WTFMove(key), WTFMove(value) };
     }
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 FetchHeaders::Iterator::Iterator(FetchHeaders& headers)

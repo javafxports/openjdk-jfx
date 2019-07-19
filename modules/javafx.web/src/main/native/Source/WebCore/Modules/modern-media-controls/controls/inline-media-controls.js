@@ -25,8 +25,6 @@
 
 const InsideMargin = 6; // Minimum margin to guarantee around all controls, this constant needs to stay in sync with the --inline-controls-inside-margin CSS variable.
 const BottomControlsBarHeight = 31; // This constant needs to stay in sync with the --inline-controls-bar-height CSS variable.
-const MinimumSizeToShowAnyControl = 47;
-const MaximumSizeToShowSmallProminentControl = 88;
 
 class InlineMediaControls extends MediaControls
 {
@@ -136,7 +134,7 @@ class InlineMediaControls extends MediaControls
         this._topLeftControlsBarContainer.children = this._topLeftContainerButtons();
         this._topLeftControlsBarContainer.layout();
         this.topLeftControlsBar.width = this._topLeftControlsBarContainer.width;
-        this.topLeftControlsBar.visible = this._topLeftControlsBarContainer.children.length > 0;
+        this.topLeftControlsBar.visible = this._topLeftControlsBarContainer.children.some(button => button.visible);
 
         // Compute the visible size for the controls bar.
         this.bottomControlsBar.width = this._shouldUseAudioLayout ? this.width : (this.width - 2 * InsideMargin);

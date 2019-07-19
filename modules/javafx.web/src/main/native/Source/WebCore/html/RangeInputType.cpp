@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -42,12 +42,12 @@
 #include "MouseEvent.h"
 #include "PlatformMouseEvent.h"
 #include "RenderSlider.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScopedEventQueue.h"
 #include "ShadowRoot.h"
 #include "SliderThumbElement.h"
 #include <limits>
 #include <wtf/MathExtras.h>
-#include <wtf/NeverDestroyed.h>
 
 #if ENABLE(TOUCH_EVENTS)
 #include "Touch.h"
@@ -69,6 +69,7 @@ static const int rangeDefaultMaximum = 100;
 static const int rangeDefaultStep = 1;
 static const int rangeDefaultStepBase = 0;
 static const int rangeStepScaleFactor = 1;
+static const StepRange::StepDescription rangeStepDescription { rangeDefaultStep, rangeDefaultStepBase, rangeStepScaleFactor };
 
 static Decimal ensureMaximum(const Decimal& proposedValue, const Decimal& minimum, const Decimal& fallbackValue)
 {
@@ -115,8 +116,6 @@ bool RangeInputType::supportsRequired() const
 
 StepRange RangeInputType::createStepRange(AnyStepHandling anyStepHandling) const
 {
-    static NeverDestroyed<const StepRange::StepDescription> stepDescription(rangeDefaultStep, rangeDefaultStepBase, rangeStepScaleFactor);
-
     ASSERT(element());
     const Decimal minimum = parseToNumber(element()->attributeWithoutSynchronization(minAttr), rangeDefaultMinimum);
     const Decimal maximum = ensureMaximum(parseToNumber(element()->attributeWithoutSynchronization(maxAttr), rangeDefaultMaximum), minimum, rangeDefaultMaximum);
@@ -124,11 +123,11 @@ StepRange RangeInputType::createStepRange(AnyStepHandling anyStepHandling) const
     const AtomicString& precisionValue = element()->attributeWithoutSynchronization(precisionAttr);
     if (!precisionValue.isNull()) {
         const Decimal step = equalLettersIgnoringASCIICase(precisionValue, "float") ? Decimal::nan() : 1;
-        return StepRange(minimum, RangeLimitations::Valid, minimum, maximum, step, stepDescription);
+        return StepRange(minimum, RangeLimitations::Valid, minimum, maximum, step, rangeStepDescription);
     }
 
-    const Decimal step = StepRange::parseStep(anyStepHandling, stepDescription, element()->attributeWithoutSynchronization(stepAttr));
-    return StepRange(minimum, RangeLimitations::Valid, minimum, maximum, step, stepDescription);
+    const Decimal step = StepRange::parseStep(anyStepHandling, rangeStepDescription, element()->attributeWithoutSynchronization(stepAttr));
+    return StepRange(minimum, RangeLimitations::Valid, minimum, maximum, step, rangeStepDescription);
 }
 
 bool RangeInputType::isSteppable() const
@@ -136,7 +135,7 @@ bool RangeInputType::isSteppable() const
     return true;
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 void RangeInputType::handleMouseDownEvent(MouseEvent& event)
 {
@@ -161,7 +160,7 @@ void RangeInputType::handleMouseDownEvent(MouseEvent& event)
 #if ENABLE(TOUCH_EVENTS)
 void RangeInputType::handleTouchEvent(TouchEvent& event)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     typedSliderThumbElement().handleTouchEvent(event);
 #elif ENABLE(TOUCH_SLIDER)
     ASSERT(element());
@@ -191,9 +190,9 @@ bool RangeInputType::hasTouchEventHandler() const
 #endif
 #endif // ENABLE(TOUCH_EVENTS)
 
-void RangeInputType::disabledAttributeChanged()
+void RangeInputType::disabledStateChanged()
 {
-    typedSliderThumbElement().disabledAttributeChanged();
+    typedSliderThumbElement().hostDisabledStateChanged();
 }
 
 void RangeInputType::handleKeydownEvent(KeyboardEvent& event)
@@ -323,20 +322,22 @@ void RangeInputType::accessKeyAction(bool sendMouseEvents)
 {
     InputType::accessKeyAction(sendMouseEvents);
 
-    ASSERT(element());
-    element()->dispatchSimulatedClick(0, sendMouseEvents ? SendMouseUpDownEvents : SendNoEvents);
+    if (auto* element = this->element())
+        element->dispatchSimulatedClick(0, sendMouseEvents ? SendMouseUpDownEvents : SendNoEvents);
 }
 
-void RangeInputType::minOrMaxAttributeChanged()
+void RangeInputType::attributeChanged(const QualifiedName& name)
 {
-    InputType::minOrMaxAttributeChanged();
-
-    // Sanitize the value.
-    if (auto* element = this->element()) {
-        if (element->hasDirtyValue())
-            element->setValue(element->value());
+    // FIXME: Don't we need to do this work for precisionAttr too?
+    if (name == maxAttr || name == minAttr) {
+        // Sanitize the value.
+        if (auto* element = this->element()) {
+            if (element->hasDirtyValue())
+                element->setValue(element->value());
+        }
+        typedSliderThumbElement().setPositionFromValue();
     }
-    typedSliderThumbElement().setPositionFromValue();
+    InputType::attributeChanged(name);
 }
 
 void RangeInputType::setValue(const String& value, bool valueChanged, TextFieldEventBehavior eventBehavior)
@@ -368,7 +369,11 @@ String RangeInputType::sanitizeValue(const String& proposedValue) const
 
 bool RangeInputType::shouldRespectListAttribute()
 {
+#if ENABLE(DATALIST_ELEMENT)
+    return RuntimeEnabledFeatures::sharedFeatures().dataListElementEnabled();
+#else
     return InputType::themeSupportsDataListUI(this);
+#endif
 }
 
 #if ENABLE(DATALIST_ELEMENT)
@@ -404,11 +409,11 @@ void RangeInputType::updateTickMarkValues()
     std::sort(m_tickMarkValues.begin(), m_tickMarkValues.end());
 }
 
-std::optional<Decimal> RangeInputType::findClosestTickMarkValue(const Decimal& value)
+Optional<Decimal> RangeInputType::findClosestTickMarkValue(const Decimal& value)
 {
     updateTickMarkValues();
     if (!m_tickMarkValues.size())
-        return std::nullopt;
+        return WTF::nullopt;
 
     size_t left = 0;
     size_t right = m_tickMarkValues.size();
@@ -431,8 +436,8 @@ std::optional<Decimal> RangeInputType::findClosestTickMarkValue(const Decimal& v
             right = middle;
     }
 
-    std::optional<Decimal> closestLeft = middle ? std::make_optional(m_tickMarkValues[middle - 1]) : std::nullopt;
-    std::optional<Decimal> closestRight = middle != m_tickMarkValues.size() ? std::make_optional(m_tickMarkValues[middle]) : std::nullopt;
+    Optional<Decimal> closestLeft = middle ? makeOptional(m_tickMarkValues[middle - 1]) : WTF::nullopt;
+    Optional<Decimal> closestRight = middle != m_tickMarkValues.size() ? makeOptional(m_tickMarkValues[middle]) : WTF::nullopt;
 
     if (!closestLeft)
         return closestRight;

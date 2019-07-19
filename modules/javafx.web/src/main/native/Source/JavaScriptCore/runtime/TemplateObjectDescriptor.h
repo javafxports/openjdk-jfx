@@ -37,7 +37,7 @@ class TemplateObjectDescriptorTable;
 class TemplateObjectDescriptor : public RefCounted<TemplateObjectDescriptor> {
 public:
     typedef Vector<String, 4> StringVector;
-    typedef Vector<std::optional<String>, 4> OptionalStringVector;
+    typedef Vector<Optional<String>, 4> OptionalStringVector;
 
     enum DeletedValueTag { DeletedValue };
     TemplateObjectDescriptor(DeletedValueTag);
@@ -81,7 +81,7 @@ private:
 inline TemplateObjectDescriptor::TemplateObjectDescriptor(StringVector&& rawStrings, OptionalStringVector&& cookedStrings)
     : m_rawStrings(WTFMove(rawStrings))
     , m_cookedStrings(WTFMove(cookedStrings))
-    , m_hash(calculateHash(rawStrings))
+    , m_hash(calculateHash(m_rawStrings))
 {
 }
 

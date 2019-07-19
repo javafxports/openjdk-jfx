@@ -100,6 +100,9 @@ static jint getModifier(JSContextRef context, const JSValueRef value, JSValueRef
     else if (JSStringIsEqualToUTF8CString(string, "rangeSelectionKey")) {
         modifier = 8; // com.sun.javafx.webkit.drt.EventSender.SHIFT
     }
+    else if (JSStringIsEqualToUTF8CString(string, "capsLockKey")) {
+        modifier = 32; // com.sun.javafx.webkit.drt.EventSender.CAPS_LOCK
+    }
     JSStringRelease(string);
     return modifier;
 }

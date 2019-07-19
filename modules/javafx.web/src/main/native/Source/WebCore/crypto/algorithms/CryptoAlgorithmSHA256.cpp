@@ -26,7 +26,7 @@
 #include "config.h"
 #include "CryptoAlgorithmSHA256.h"
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "ScriptExecutionContext.h"
 #include <pal/crypto/CryptoDigest.h>
@@ -51,17 +51,15 @@ void CryptoAlgorithmSHA256::digest(Vector<uint8_t>&& message, VectorCallback&& c
         return;
     }
 
-    context.ref();
-    workQueue.dispatch([digest = WTFMove(digest), message = WTFMove(message), callback = WTFMove(callback), &context]() mutable {
+    workQueue.dispatch([digest = WTFMove(digest), message = WTFMove(message), callback = WTFMove(callback), contextIdentifier = context.contextIdentifier()]() mutable {
         digest->addBytes(message.data(), message.size());
         auto result = digest->computeHash();
-        context.postTask([callback = WTFMove(callback), result = WTFMove(result)](ScriptExecutionContext& context) {
+        ScriptExecutionContext::postTaskTo(contextIdentifier, [callback = WTFMove(callback), result = WTFMove(result)](auto&) {
             callback(result);
-            context.deref();
         });
     });
 }
 
 }
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

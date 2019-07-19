@@ -34,10 +34,11 @@
 
 namespace WebCore {
 
-CSSImageValue::CSSImageValue(URL&& url)
+CSSImageValue::CSSImageValue(URL&& url, LoadedFromOpaqueSource loadedFromOpaqueSource)
     : CSSValue(ImageClass)
     , m_url(WTFMove(url))
     , m_accessedImage(false)
+    , m_loadedFromOpaqueSource(loadedFromOpaqueSource)
 {
 }
 
@@ -62,7 +63,9 @@ CachedImage* CSSImageValue::loadImage(CachedResourceLoader& loader, const Resour
     if (!m_accessedImage) {
         m_accessedImage = true;
 
-        CachedResourceRequest request(ResourceRequest(loader.document()->completeURL(m_url.string())), options);
+        ResourceLoaderOptions loadOptions = options;
+        loadOptions.loadedFromOpaqueSource = m_loadedFromOpaqueSource;
+        CachedResourceRequest request(ResourceRequest(loader.document()->completeURL(m_url.string())), loadOptions);
         if (m_initiatorName.isEmpty())
             request.setInitiator(cachedResourceRequestInitiators().css);
         else
@@ -100,11 +103,11 @@ Ref<DeprecatedCSSOMValue> CSSImageValue::createDeprecatedCSSOMWrapper(CSSStyleDe
     return DeprecatedCSSOMPrimitiveValue::create(CSSPrimitiveValue::create(m_url, CSSPrimitiveValue::CSS_URI), styleDeclaration);
 }
 
-bool CSSImageValue::knownToBeOpaque(const RenderElement* renderer) const
+bool CSSImageValue::knownToBeOpaque(const RenderElement& renderer) const
 {
     if (!m_cachedImage)
         return false;
-    return m_cachedImage->currentFrameKnownToBeOpaque(renderer);
+    return m_cachedImage->currentFrameKnownToBeOpaque(&renderer);
 }
 
 } // namespace WebCore

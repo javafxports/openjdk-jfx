@@ -29,44 +29,36 @@
 
 #include "BasicCredential.h"
 #include "ExceptionOr.h"
+#include "JSDOMPromiseDeferred.h"
 #include <JavaScriptCore/ArrayBuffer.h>
 #include <wtf/Forward.h>
 
 namespace WebCore {
 
 class AuthenticatorResponse;
-class DeferredPromise;
-class SecurityOrigin;
+class Document;
 
-struct PublicKeyCredentialCreationOptions;
-struct PublicKeyCredentialRequestOptions;
+struct PublicKeyCredentialData;
 
 class PublicKeyCredential final : public BasicCredential {
 public:
-    static Ref<PublicKeyCredential> create(RefPtr<ArrayBuffer>&& id, RefPtr<AuthenticatorResponse>&& response)
-    {
-        return adoptRef(*new PublicKeyCredential(WTFMove(id), WTFMove(response)));
-    }
+    static Ref<PublicKeyCredential> create(Ref<ArrayBuffer>&& id, Ref<AuthenticatorResponse>&&);
+    static RefPtr<PublicKeyCredential> tryCreate(const PublicKeyCredentialData&);
 
-    static Vector<Ref<BasicCredential>> collectFromCredentialStore(PublicKeyCredentialRequestOptions&&, bool);
-    static ExceptionOr<RefPtr<BasicCredential>> discoverFromExternalSource(const SecurityOrigin&, const PublicKeyCredentialRequestOptions&, bool sameOriginWithAncestors);
-    static RefPtr<BasicCredential> store(RefPtr<BasicCredential>&&, bool);
-    static ExceptionOr<RefPtr<BasicCredential>> create(const SecurityOrigin&, const PublicKeyCredentialCreationOptions&, bool sameOriginWithAncestors);
-
-    ArrayBuffer* rawId() const;
-    AuthenticatorResponse* response() const;
+    ArrayBuffer* rawId() const { return m_rawId.ptr(); }
+    AuthenticatorResponse* response() const { return m_response.ptr(); }
     // Not support yet. Always throws.
     ExceptionOr<bool> getClientExtensionResults() const;
 
-    static void isUserVerifyingPlatformAuthenticatorAvailable(Ref<DeferredPromise>&&);
+    static void isUserVerifyingPlatformAuthenticatorAvailable(Document&, DOMPromiseDeferred<IDLBoolean>&&);
 
 private:
-    PublicKeyCredential(RefPtr<ArrayBuffer>&& id, RefPtr<AuthenticatorResponse>&&);
+    PublicKeyCredential(Ref<ArrayBuffer>&& id, Ref<AuthenticatorResponse>&&);
 
     Type credentialType() const final { return Type::PublicKey; }
 
-    RefPtr<ArrayBuffer> m_rawId;
-    RefPtr<AuthenticatorResponse> m_response;
+    Ref<ArrayBuffer> m_rawId;
+    Ref<AuthenticatorResponse> m_response;
 };
 
 } // namespace WebCore

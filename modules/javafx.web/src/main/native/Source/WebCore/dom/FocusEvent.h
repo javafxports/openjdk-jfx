@@ -35,9 +35,9 @@ class Node;
 
 class FocusEvent final : public UIEvent {
 public:
-    static Ref<FocusEvent> create(const AtomicString& type, bool canBubble, bool cancelable, DOMWindow* view, int detail, RefPtr<EventTarget>&& relatedTarget)
+    static Ref<FocusEvent> create(const AtomicString& type, CanBubble canBubble, IsCancelable cancelable, RefPtr<WindowProxy>&& view, int detail, RefPtr<EventTarget>&& relatedTarget)
     {
-        return adoptRef(*new FocusEvent(type, canBubble, cancelable, view, detail, WTFMove(relatedTarget)));
+        return adoptRef(*new FocusEvent(type, canBubble, cancelable, WTFMove(view), detail, WTFMove(relatedTarget)));
     }
 
     static Ref<FocusEvent> createForBindings()
@@ -49,17 +49,17 @@ public:
         RefPtr<EventTarget> relatedTarget;
     };
 
-    static Ref<FocusEvent> create(const AtomicString& type, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
+    static Ref<FocusEvent> create(const AtomicString& type, const Init& initializer)
     {
-        return adoptRef(*new FocusEvent(type, initializer, isTrusted));
+        return adoptRef(*new FocusEvent(type, initializer));
     }
 
     EventTarget* relatedTarget() const final { return m_relatedTarget.get(); }
 
 private:
     FocusEvent() = default;
-    FocusEvent(const AtomicString& type, bool canBubble, bool cancelable, DOMWindow*, int, RefPtr<EventTarget>&&);
-    FocusEvent(const AtomicString& type, const Init&, IsTrusted);
+    FocusEvent(const AtomicString& type, CanBubble, IsCancelable, RefPtr<WindowProxy>&&, int, RefPtr<EventTarget>&&);
+    FocusEvent(const AtomicString& type, const Init&);
 
     EventInterface eventInterface() const final;
     bool isFocusEvent() const final;

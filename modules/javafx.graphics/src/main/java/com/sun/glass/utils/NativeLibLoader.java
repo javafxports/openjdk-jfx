@@ -39,6 +39,7 @@ import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 
 public class NativeLibLoader {
 
@@ -111,9 +112,16 @@ public class NativeLibLoader {
     }
 
     private static void loadLibraryInternal(String libraryName, List<String> dependencies, Class caller) {
-        // Look for the library in the same directory as the jar file
-        // containing this class.
-        // If that fails, then try System.loadLibrary.
+        // The search order for native library loading is:
+        // - try to load the native library from the same folder as this jar
+        //   (only on non-modular builds)
+        // - if the native library comes bundled as a resource it is extracted
+        //   and loaded
+        // - the java.library.path is searched for the library in definition
+        //   order
+        // - the library is loaded via System#loadLibrary
+        // - on iOS native library is staticly linked and detected from the
+        //   existence of a JNI_OnLoad_libraryname funtion
         try {
             // FIXME: JIGSAW -- We should eventually remove this legacy path,
             // since it isn't applicable to Jigsaw.
@@ -121,6 +129,11 @@ public class NativeLibLoader {
         } catch (UnsatisfiedLinkError ex) {
             if (verbose && !usingModules) {
                 System.err.println("WARNING: " + ex);
+            }
+
+            // if the library is available in the jar, copy it to cache and load it from there
+            if (loadLibraryFromResource(libraryName, dependencies, caller)) {
+                return;
             }
 
             // NOTE: First attempt to load the libraries from the java.library.path.
@@ -153,15 +166,11 @@ public class NativeLibLoader {
                             + libraryName + ") succeeded");
                 }
             } catch (UnsatisfiedLinkError ex2) {
-                // if the library is available in the jar, copy it to cache and load it from there
-                if (loadLibraryFromResource(libraryName, dependencies, caller)) {
-                    return;
-                }
                 //On iOS we link all libraries staticaly. Presence of library
                 //is recognized by existence of JNI_OnLoad_libraryname() C function.
                 //If libraryname contains hyphen, it needs to be translated
                 //to underscore to form valid C function indentifier.
-                if ("iOS".equals(System.getProperty("os.name"))
+                if ("ios".equals(System.getProperty("os.name").toLowerCase(Locale.ROOT))
                         && libraryName.contains("-")) {
                     libraryName = libraryName.replace("-", "_");
                     try {
@@ -222,15 +231,39 @@ public class NativeLibLoader {
 
     private static String cacheLibrary(InputStream is, String name, Class caller) throws IOException {
         String jfxVersion = System.getProperty("javafx.version", "versionless");
-        String userCache = System.getProperty("user.home") + "/.openjfx/cache/" + jfxVersion;
+        String userCache = System.getProperty("javafx.cachedir", "");
+        if (userCache.isEmpty()) {
+            userCache = System.getProperty("user.home") + "/.openjfx/cache/" + jfxVersion;
+        }
         File cacheDir = new File(userCache);
+        boolean cacheDirOk = true;
         if (cacheDir.exists()) {
             if (!cacheDir.isDirectory()) {
-                throw new IOException ("Cache exists but is not a directory: "+cacheDir);
+                System.err.println("Cache exists but is not a directory: "+cacheDir);
+                cacheDirOk = false;
             }
         } else {
             if (!cacheDir.mkdirs()) {
-                throw new IOException ("Can not create cache at "+cacheDir);
+                System.err.println("Can not create cache at "+cacheDir);
+                cacheDirOk = false;
+            }
+        }
+        if (!cacheDir.canRead()) {
+            // on some systems, directories in user.home can be written but not read.
+            cacheDirOk = false;
+        }
+        if (!cacheDirOk) {
+            String username = System.getProperty("user.name", "anonymous");
+            String tmpCache = System.getProperty("java.io.tmpdir") + "/.openjfx_" + username + "/cache/" + jfxVersion;
+            cacheDir = new File(tmpCache);
+            if (cacheDir.exists()) {
+                if (!cacheDir.isDirectory()) {
+                    throw new IOException("Cache exists but is not a directory: "+cacheDir);
+                }
+            } else {
+                if (!cacheDir.mkdirs()) {
+                    throw new IOException("Can not create cache at "+cacheDir);
+                }
             }
         }
         // we have a cache directory. Add the file here

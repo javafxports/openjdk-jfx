@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2018 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -43,17 +43,15 @@ namespace JSC  {
 
     typedef ExecState CallFrame;
 
-    struct CallSiteIndex {
-        CallSiteIndex()
-            : m_bits(UINT_MAX)
-        {
-        }
+    class CallSiteIndex {
+    public:
+        CallSiteIndex() = default;
 
         explicit CallSiteIndex(uint32_t bits)
             : m_bits(bits)
         { }
 #if USE(JSVALUE32_64)
-        explicit CallSiteIndex(Instruction* instruction)
+        explicit CallSiteIndex(const Instruction* instruction)
             : m_bits(bitwise_cast<uint32_t>(instruction))
         { }
 #endif
@@ -64,13 +62,29 @@ namespace JSC  {
         inline uint32_t bits() const { return m_bits; }
 
     private:
-        uint32_t m_bits;
+        uint32_t m_bits { UINT_MAX };
     };
 
+    class DisposableCallSiteIndex : public CallSiteIndex {
+    public:
+        DisposableCallSiteIndex() = default;
+
+        explicit DisposableCallSiteIndex(uint32_t bits)
+            : CallSiteIndex(bits)
+        {
+        }
+
+        static DisposableCallSiteIndex fromCallSiteIndex(CallSiteIndex callSiteIndex)
+        {
+            return DisposableCallSiteIndex(callSiteIndex.bits());
+        }
+    };
+
+    // arm64_32 expects caller frame and return pc to use 8 bytes
     struct CallerFrameAndPC {
-        CallFrame* callerFrame;
-        Instruction* pc;
-        static const int sizeInRegisters = 2 * sizeof(void*) / sizeof(Register);
+        alignas(CPURegister) CallFrame* callerFrame;
+        alignas(CPURegister) const Instruction* returnPC;
+        static const int sizeInRegisters = 2 * sizeof(CPURegister) / sizeof(Register);
     };
     static_assert(CallerFrameAndPC::sizeInRegisters == sizeof(CallerFrameAndPC) / sizeof(Register), "CallerFrameAndPC::sizeInRegisters is incorrect.");
 
@@ -106,7 +120,7 @@ namespace JSC  {
             return this[CallFrameSlot::callee].object();
         }
         CalleeBits callee() const { return CalleeBits(this[CallFrameSlot::callee].pointer()); }
-        SUPPRESS_ASAN CalleeBits unsafeCallee() const { return CalleeBits(this[CallFrameSlot::callee].pointer()); }
+        SUPPRESS_ASAN CalleeBits unsafeCallee() const { return CalleeBits(this[CallFrameSlot::callee].asanUnsafePointer()); }
         CodeBlock* codeBlock() const { return this[CallFrameSlot::codeBlock].Register::codeBlock(); }
         CodeBlock** addressOfCodeBlock() const { return bitwise_cast<CodeBlock**>(this + CallFrameSlot::codeBlock); }
         SUPPRESS_ASAN CodeBlock* unsafeCodeBlock() const { return this[CallFrameSlot::codeBlock].Register::asanUnsafeCodeBlock(); }
@@ -115,18 +129,13 @@ namespace JSC  {
             ASSERT(this[scopeRegisterOffset].Register::scope());
             return this[scopeRegisterOffset].Register::scope();
         }
-        // Global object in which execution began.
-        // This variant is not safe to call from a Wasm frame.
-        JS_EXPORT_PRIVATE JSGlobalObject* vmEntryGlobalObject();
-        // This variant is safe to call from a Wasm frame.
-        JSGlobalObject* vmEntryGlobalObject(VM&);
 
         JSGlobalObject* wasmAwareLexicalGlobalObject(VM&);
 
         bool isAnyWasmCallee();
 
         // Global object in which the currently executing code was defined.
-        // Differs from vmEntryGlobalObject() during function calls across web browser frames.
+        // Differs from VM::vmEntryGlobalObject() during function calls across web browser frames.
         JSGlobalObject* lexicalGlobalObject() const;
 
         // Differs from lexicalGlobalObject because this will have DOM window shell rather than
@@ -145,17 +154,17 @@ namespace JSC  {
         void* callerFrameOrEntryFrame() const { return callerFrameAndPC().callerFrame; }
         SUPPRESS_ASAN void* unsafeCallerFrameOrEntryFrame() const { return unsafeCallerFrameAndPC().callerFrame; }
 
-        CallFrame* unsafeCallerFrame(EntryFrame*&);
-        JS_EXPORT_PRIVATE CallFrame* callerFrame(EntryFrame*&);
+        CallFrame* unsafeCallerFrame(EntryFrame*&) const;
+        JS_EXPORT_PRIVATE CallFrame* callerFrame(EntryFrame*&) const;
 
         JS_EXPORT_PRIVATE SourceOrigin callerSourceOrigin();
 
         static ptrdiff_t callerFrameOffset() { return OBJECT_OFFSETOF(CallerFrameAndPC, callerFrame); }
 
-        ReturnAddressPtr returnPC() const { return ReturnAddressPtr(callerFrameAndPC().pc); }
-        bool hasReturnPC() const { return !!callerFrameAndPC().pc; }
-        void clearReturnPC() { callerFrameAndPC().pc = 0; }
-        static ptrdiff_t returnPCOffset() { return OBJECT_OFFSETOF(CallerFrameAndPC, pc); }
+        ReturnAddressPtr returnPC() const { return ReturnAddressPtr(callerFrameAndPC().returnPC); }
+        bool hasReturnPC() const { return !!callerFrameAndPC().returnPC; }
+        void clearReturnPC() { callerFrameAndPC().returnPC = 0; }
+        static ptrdiff_t returnPCOffset() { return OBJECT_OFFSETOF(CallerFrameAndPC, returnPC); }
         AbstractPC abstractReturnPC(VM& vm) { return AbstractPC(vm, this); }
 
         bool callSiteBitsAreBytecodeOffset() const;
@@ -187,8 +196,8 @@ namespace JSC  {
             return topOfFrameInternal();
         }
 
-        Instruction* currentVPC() const; // This only makes sense in the LLInt and baseline.
-        void setCurrentVPC(Instruction* vpc);
+        const Instruction* currentVPC() const; // This only makes sense in the LLInt and baseline.
+        void setCurrentVPC(const Instruction*);
 
         void setCallerFrame(CallFrame* frame) { callerFrameAndPC().callerFrame = frame; }
         void setScope(int scopeRegisterOffset, JSScope* scope) { static_cast<Register*>(this)[scopeRegisterOffset] = scope; }
@@ -255,12 +264,20 @@ namespace JSC  {
 
         static int offsetFor(size_t argumentCountIncludingThis) { return argumentCountIncludingThis + CallFrameSlot::thisArgument - 1; }
 
-        static CallFrame* noCaller() { return 0; }
+        static CallFrame* noCaller() { return nullptr; }
+        bool isGlobalExec() const
+        {
+            return callerFrameAndPC().callerFrame == noCaller() && callerFrameAndPC().returnPC == nullptr;
+        }
+
+        void convertToStackOverflowFrame(VM&, CodeBlock* codeBlockToKeepAliveUntilFrameIsUnwound);
+        inline bool isStackOverflowFrame() const;
+        inline bool isWasmFrame() const;
 
         void setArgumentCountIncludingThis(int count) { static_cast<Register*>(this)[CallFrameSlot::argumentCount].payload() = count; }
         void setCallee(JSObject* callee) { static_cast<Register*>(this)[CallFrameSlot::callee] = callee; }
         void setCodeBlock(CodeBlock* codeBlock) { static_cast<Register*>(this)[CallFrameSlot::codeBlock] = codeBlock; }
-        void setReturnPC(void* value) { callerFrameAndPC().pc = reinterpret_cast<Instruction*>(value); }
+        void setReturnPC(void* value) { callerFrameAndPC().returnPC = reinterpret_cast<const Instruction*>(value); }
 
         String friendlyFunctionName();
 
@@ -269,7 +286,7 @@ namespace JSC  {
         // FIXME: This method is improper. We rely on the fact that we can call it with a null
         // receiver. We should always be using StackVisitor directly.
         // It's only valid to call this from a non-wasm top frame.
-        template <typename Functor> void iterate(const Functor& functor)
+        template <StackVisitor::EmptyEntryFrameAction action = StackVisitor::ContinueIfTopEntryFrameIsEmpty, typename Functor> void iterate(const Functor& functor)
         {
             VM* vm;
             void* rawThis = this;
@@ -278,7 +295,7 @@ namespace JSC  {
                 vm = &this->vm();
             } else
                 vm = nullptr;
-            StackVisitor::visit<Functor>(this, vm, functor);
+            StackVisitor::visit<action, Functor>(this, vm, functor);
         }
 
         void dump(PrintStream&);

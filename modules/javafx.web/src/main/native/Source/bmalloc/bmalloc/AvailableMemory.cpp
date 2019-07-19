@@ -25,10 +25,16 @@
 
 #include "AvailableMemory.h"
 
+#include "Environment.h"
+#if BPLATFORM(IOS_FAMILY)
+#include "MemoryStatusSPI.h"
+#endif
+#include "PerProcess.h"
+#include "Scavenger.h"
 #include "Sizes.h"
 #include <mutex>
 #if BOS(DARWIN)
-#if BPLATFORM(IOS)
+#if BPLATFORM(IOS_FAMILY)
 #import <algorithm>
 #endif
 #import <dispatch/dispatch.h>
@@ -37,6 +43,10 @@
 #import <mach/mach_error.h>
 #import <math.h>
 #elif BOS(UNIX)
+#if BOS(LINUX)
+#include <algorithm>
+#include <fcntl.h>
+#endif
 #include <unistd.h>
 #endif
 
@@ -44,12 +54,14 @@ namespace bmalloc {
 
 static const size_t availableMemoryGuess = 512 * bmalloc::MB;
 
-static size_t computeAvailableMemory()
+#if BOS(DARWIN)
+static size_t memorySizeAccordingToKernel()
 {
-#if BPLATFORM(IOS_SIMULATOR)
-    // Pretend we have 512MB of memory to make cache sizes behave like on device.
-    return availableMemoryGuess;
-#elif BOS(DARWIN)
+#if BPLATFORM(IOS_FAMILY_SIMULATOR)
+    BUNUSED_PARAM(availableMemoryGuess);
+    // Pretend we have 1024MB of memory to make cache sizes behave like on device.
+    return 1024 * bmalloc::MB;
+#else
     host_basic_info_data_t hostInfo;
 
     mach_port_t host = mach_host_self();
@@ -62,15 +74,94 @@ static size_t computeAvailableMemory()
     if (hostInfo.max_mem > std::numeric_limits<size_t>::max())
         return std::numeric_limits<size_t>::max();
 
-    size_t sizeAccordingToKernel = static_cast<size_t>(hostInfo.max_mem);
-#if BPLATFORM(IOS)
-    sizeAccordingToKernel = std::min(sizeAccordingToKernel, 840 * bmalloc::MB);
+    return static_cast<size_t>(hostInfo.max_mem);
+#endif
+}
+#endif
+
+#if BPLATFORM(IOS_FAMILY)
+static size_t jetsamLimit()
+{
+    memorystatus_memlimit_properties_t properties;
+    pid_t pid = getpid();
+    if (memorystatus_control(MEMORYSTATUS_CMD_GET_MEMLIMIT_PROPERTIES, pid, 0, &properties, sizeof(properties)))
+        return 840 * bmalloc::MB;
+    if (properties.memlimit_active < 0)
+        return std::numeric_limits<size_t>::max();
+    return static_cast<size_t>(properties.memlimit_active) * bmalloc::MB;
+}
+#endif
+
+#if BOS(LINUX)
+struct LinuxMemory {
+    static const LinuxMemory& singleton()
+    {
+        static LinuxMemory s_singleton;
+        static std::once_flag s_onceFlag;
+        std::call_once(s_onceFlag,
+            [] {
+                long numPages = sysconf(_SC_PHYS_PAGES);
+                s_singleton.pageSize = sysconf(_SC_PAGE_SIZE);
+                if (numPages == -1 || s_singleton.pageSize == -1)
+                    s_singleton.availableMemory = availableMemoryGuess;
+                else
+                    s_singleton.availableMemory = numPages * s_singleton.pageSize;
+
+                s_singleton.statmFd = open("/proc/self/statm", O_RDONLY | O_CLOEXEC);
+            });
+        return s_singleton;
+    }
+
+    size_t footprint() const
+    {
+        if (statmFd == -1)
+            return 0;
+
+        std::array<char, 256> statmBuffer;
+        ssize_t numBytes = pread(statmFd, statmBuffer.data(), statmBuffer.size(), 0);
+        if (numBytes <= 0)
+            return 0;
+
+        std::array<char, 32> rssBuffer;
+        {
+            auto begin = std::find(statmBuffer.begin(), statmBuffer.end(), ' ');
+            if (begin == statmBuffer.end())
+                return 0;
+
+            std::advance(begin, 1);
+            auto end = std::find(begin, statmBuffer.end(), ' ');
+            if (end == statmBuffer.end())
+                return 0;
+
+            auto last = std::copy_n(begin, std::min<size_t>(31, std::distance(begin, end)), rssBuffer.begin());
+            *last = '\0';
+        }
+
+        unsigned long dirtyPages = strtoul(rssBuffer.data(), nullptr, 10);
+        return dirtyPages * pageSize;
+    }
+
+    long pageSize { 0 };
+    size_t availableMemory { 0 };
+
+    int statmFd { -1 };
+};
+#endif
+
+static size_t computeAvailableMemory()
+{
+#if BOS(DARWIN)
+    size_t sizeAccordingToKernel = memorySizeAccordingToKernel();
+#if BPLATFORM(IOS_FAMILY)
+    sizeAccordingToKernel = std::min(sizeAccordingToKernel, jetsamLimit());
 #endif
     size_t multiple = 128 * bmalloc::MB;
 
     // Round up the memory size to a multiple of 128MB because max_mem may not be exactly 512MB
     // (for example) and we have code that depends on those boundaries.
     return ((sizeAccordingToKernel + multiple - 1) / multiple) * multiple;
+#elif BOS(LINUX)
+    return LinuxMemory::singleton().availableMemory;
 #elif BOS(UNIX)
     long pages = sysconf(_SC_PHYS_PAGES);
     long pageSize = sysconf(_SC_PAGE_SIZE);
@@ -92,9 +183,10 @@ size_t availableMemory()
     return availableMemory;
 }
 
-#if BPLATFORM(IOS)
+#if BPLATFORM(IOS_FAMILY) || BOS(LINUX)
 MemoryStatus memoryStatus()
 {
+#if BPLATFORM(IOS_FAMILY)
     task_vm_info_data_t vmInfo;
     mach_msg_type_number_t vmSize = TASK_VM_INFO_COUNT;
 
@@ -103,8 +195,13 @@ MemoryStatus memoryStatus()
         memoryFootprint = static_cast<size_t>(vmInfo.phys_footprint);
 
     double percentInUse = static_cast<double>(memoryFootprint) / static_cast<double>(availableMemory());
-    double percentAvailableMemoryInUse = std::min(percentInUse, 1.0);
+#elif BOS(LINUX)
+    auto& memory = LinuxMemory::singleton();
+    size_t memoryFootprint = memory.footprint();
+    double percentInUse = static_cast<double>(memoryFootprint) / static_cast<double>(memory.availableMemory);
+#endif
 
+    double percentAvailableMemoryInUse = std::min(percentInUse, 1.0);
     return MemoryStatus(memoryFootprint, percentAvailableMemoryInUse);
 }
 #endif

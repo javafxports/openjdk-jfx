@@ -25,6 +25,7 @@
 
 import os
 import sys
+import subprocess
 
 
 def enumerablePseudoType(stringPseudoType):
@@ -91,12 +92,10 @@ output_file.write("""
 #include "config.h"
 #include "SelectorPseudoTypeMap.h"
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunknown-pragmas"
-#pragma clang diagnostic ignored "-Wdeprecated-register"
-#pragma clang diagnostic ignored "-Wimplicit-fallthrough"
-#endif
+IGNORE_WARNINGS_BEGIN("implicit-fallthrough")
+
+// Older versions of gperf like to use the `register` keyword.
+#define register
 
 namespace WebCore {
 
@@ -195,9 +194,7 @@ CSSSelector::PseudoElementType parsePseudoElementString(const StringImpl& pseudo
 
 } // namespace WebCore
 
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
+IGNORE_WARNINGS_END
 
 """)
 output_file.close()
@@ -206,7 +203,6 @@ gperf_command = sys.argv[2]
 if 'GPERF' in os.environ:
     gperf_command = os.environ['GPERF']
 
-gperf_return = os.system("%s --key-positions=\"*\" -m 10 -s 2 SelectorPseudoElementTypeMap.gperf --output-file=SelectorPseudoElementTypeMap.cpp" % gperf_command)
-if gperf_return != 0:
+if subprocess.call([gperf_command, '--key-positions=*', '-m', '10', '-s', '2', 'SelectorPseudoElementTypeMap.gperf', '--output-file=SelectorPseudoElementTypeMap.cpp']) != 0:
     print("Error when generating SelectorPseudoElementTypeMap.cpp from SelectorPseudoElementTypeMap.gperf :(")
     sys.exit(gperf_return)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,10 @@
 
 #include "ProbeContext.h"
 #include <wtf/InlineASM.h>
+
+#if COMPILER(MSVC)
+#include <intrin.h>
+#endif
 
 namespace JSC {
 
@@ -167,7 +171,7 @@ static_assert((PROBE_EXECUTOR_OFFSET + PTR_SIZE) <= (PROBE_SIZE + OUT_SIZE), "Mu
 #undef PROBE_OFFSETOF
 
 #if CPU(X86)
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
 asm (
     ".globl " SYMBOL_STRING(ctiMasmProbeTrampoline) "\n"
     HIDE_SYMBOL(ctiMasmProbeTrampoline) "\n"
@@ -507,7 +511,7 @@ extern "C" __declspec(naked) void ctiMasmProbeTrampoline()
 #endif // CPU(X86)
 
 #if CPU(X86_64)
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
 asm (
     ".globl " SYMBOL_STRING(ctiMasmProbeTrampoline) "\n"
     HIDE_SYMBOL(ctiMasmProbeTrampoline) "\n"
@@ -701,7 +705,7 @@ asm (
     "popq %rbp" "\n"
     "ret" "\n"
 );
-#endif // COMPILER(GCC_OR_CLANG)
+#endif // COMPILER(GCC_COMPATIBLE)
 #endif // CPU(X86_64)
 
 // What code is emitted for the probe?
@@ -753,18 +757,58 @@ void MacroAssembler::probe(Probe::Function function, void* arg)
     move(TrustedImmPtr(reinterpret_cast<void*>(function)), RegisterID::edx);
     push(RegisterID::ebx);
     move(TrustedImmPtr(arg), RegisterID::ebx);
-    call(RegisterID::eax);
+    call(RegisterID::eax, CFunctionPtrTag);
 }
 #endif // ENABLE(MASM_PROBE)
 
-#if CPU(X86) && !OS(MAC_OS_X)
-MacroAssemblerX86Common::SSE2CheckState MacroAssemblerX86Common::s_sse2CheckState = NotCheckedSSE2;
+MacroAssemblerX86Common::CPUID MacroAssemblerX86Common::getCPUID(unsigned level)
+{
+    return getCPUIDEx(level, 0);
+}
+
+MacroAssemblerX86Common::CPUID MacroAssemblerX86Common::getCPUIDEx(unsigned level, unsigned count)
+{
+    CPUID result { };
+#if COMPILER(MSVC)
+    __cpuidex(bitwise_cast<int*>(result.data()), level, count);
+#else
+    __asm__ (
+        "cpuid\n"
+        : "=a"(result[0]), "=b"(result[1]), "=c"(result[2]), "=d"(result[3])
+        : "0"(level), "2"(count)
+    );
 #endif
+    return result;
+}
+
+void MacroAssemblerX86Common::collectCPUFeatures()
+{
+    static std::once_flag onceKey;
+    std::call_once(onceKey, [] {
+        {
+            CPUID cpuid = getCPUID(0x1);
+            s_sse4_1CheckState = (cpuid[2] & (1 << 19)) ? CPUIDCheckState::Set : CPUIDCheckState::Clear;
+            s_sse4_2CheckState = (cpuid[2] & (1 << 20)) ? CPUIDCheckState::Set : CPUIDCheckState::Clear;
+            s_popcntCheckState = (cpuid[2] & (1 << 23)) ? CPUIDCheckState::Set : CPUIDCheckState::Clear;
+            s_avxCheckState = (cpuid[2] & (1 << 28)) ? CPUIDCheckState::Set : CPUIDCheckState::Clear;
+        }
+        {
+            CPUID cpuid = getCPUID(0x7);
+            s_bmi1CheckState = (cpuid[2] & (1 << 3)) ? CPUIDCheckState::Set : CPUIDCheckState::Clear;
+        }
+        {
+            CPUID cpuid = getCPUID(0x80000001);
+            s_lzcntCheckState = (cpuid[2] & (1 << 5)) ? CPUIDCheckState::Set : CPUIDCheckState::Clear;
+        }
+    });
+}
 
 MacroAssemblerX86Common::CPUIDCheckState MacroAssemblerX86Common::s_sse4_1CheckState = CPUIDCheckState::NotChecked;
+MacroAssemblerX86Common::CPUIDCheckState MacroAssemblerX86Common::s_sse4_2CheckState = CPUIDCheckState::NotChecked;
 MacroAssemblerX86Common::CPUIDCheckState MacroAssemblerX86Common::s_avxCheckState = CPUIDCheckState::NotChecked;
 MacroAssemblerX86Common::CPUIDCheckState MacroAssemblerX86Common::s_lzcntCheckState = CPUIDCheckState::NotChecked;
 MacroAssemblerX86Common::CPUIDCheckState MacroAssemblerX86Common::s_bmi1CheckState = CPUIDCheckState::NotChecked;
+MacroAssemblerX86Common::CPUIDCheckState MacroAssemblerX86Common::s_popcntCheckState = CPUIDCheckState::NotChecked;
 
 } // namespace JSC
 

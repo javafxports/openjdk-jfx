@@ -122,8 +122,9 @@ HTMLFormElement* FormAssociatedElement::findAssociatedForm(const HTMLElement* el
 void FormAssociatedElement::formOwnerRemovedFromTree(const Node& formRoot)
 {
     ASSERT(m_form);
-    RefPtr<Node> rootNode = &asHTMLElement();
-    for (auto ancestor = makeRefPtr(asHTMLElement().parentNode()); ancestor; ancestor = ancestor->parentNode()) {
+    // Can't use RefPtr here beacuse this function might be called inside ~ShadowRoot via addChildNodesToDeletionQueue. See webkit.org/b/189493.
+    Node* rootNode = &asHTMLElement();
+    for (auto* ancestor = asHTMLElement().parentNode(); ancestor; ancestor = ancestor->parentNode()) {
         if (ancestor == m_form) {
             // Form is our ancestor so we don't need to reset our owner, we also no longer
             // need an id observer since we are no longer connected.
@@ -175,7 +176,7 @@ void FormAssociatedElement::resetFormOwner()
     setForm(findAssociatedForm(&asHTMLElement(), m_form));
     HTMLElement& element = asHTMLElement();
     if (m_form && m_form != originalForm && m_form->isConnected())
-        element.document().didAssociateFormControl(&element);
+        element.document().didAssociateFormControl(element);
 }
 
 void FormAssociatedElement::formAttributeChanged()
@@ -186,7 +187,7 @@ void FormAssociatedElement::formAttributeChanged()
         RefPtr<HTMLFormElement> originalForm = m_form;
         setForm(HTMLFormElement::findClosestFormAncestor(element));
         if (m_form && m_form != originalForm && m_form->isConnected())
-            element.document().didAssociateFormControl(&element);
+            element.document().didAssociateFormControl(element);
         m_formAttributeTargetObserver = nullptr;
     } else {
         resetFormOwner();

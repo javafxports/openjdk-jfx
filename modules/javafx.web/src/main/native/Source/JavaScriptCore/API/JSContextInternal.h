@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,17 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSContextInternal_h
-#define JSContextInternal_h
-
 #import <JavaScriptCore/JavaScriptCore.h>
 
 #if JSC_OBJC_API_ENABLED
 
-#import <JavaScriptCore/JSContext.h>
+#import <JavaScriptCore/JSContextPrivate.h>
 
 struct CallbackData {
-    CallbackData *next;
+    CallbackData* next;
     JSContext *context;
     JSValue *preservedException;
     JSValueRef calleeValue;
@@ -43,23 +40,9 @@ struct CallbackData {
     NSArray *currentArguments;
 };
 
-class WeakContextRef {
-public:
-    WeakContextRef(JSContext * = nil);
-    ~WeakContextRef();
-
-    JSContext * get();
-    void set(JSContext *);
-
-private:
-    JSContext *m_weakContext;
-};
-
 @class JSWrapperMap;
 
 @interface JSContext(Internal)
-
-- (instancetype)initWithGlobalContextRef:(JSGlobalContextRef)context;
 
 - (void)notifyException:(JSValueRef)exception;
 - (JSValue *)valueFromNotifyException:(JSValueRef)exception;
@@ -68,13 +51,10 @@ private:
 - (void)beginCallbackWithData:(CallbackData *)callbackData calleeValue:(JSValueRef)calleeValue thisValue:(JSValueRef)thisValue argumentCount:(size_t)argumentCount arguments:(const JSValueRef *)arguments;
 - (void)endCallbackWithData:(CallbackData *)callbackData;
 
+- (JSWrapperMap *)wrapperMap;
 - (JSValue *)wrapperForObjCObject:(id)object;
 - (JSValue *)wrapperForJSObject:(JSValueRef)value;
-
-@property (readonly, retain) JSWrapperMap *wrapperMap;
 
 @end
 
 #endif
-
-#endif // JSContextInternal_h

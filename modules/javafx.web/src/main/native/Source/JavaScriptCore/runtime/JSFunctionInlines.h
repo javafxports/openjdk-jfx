@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@ namespace JSC {
 inline JSFunction* JSFunction::createWithInvalidatedReallocationWatchpoint(
     VM& vm, FunctionExecutable* executable, JSScope* scope)
 {
-    ASSERT(executable->singletonFunction()->hasBeenInvalidated());
+    ASSERT(executable->singletonFunctionHasBeenInvalidated());
     return createImpl(vm, executable, scope, selectStructureForNewFuncExp(scope->globalObject(vm), executable));
 }
 
@@ -43,6 +43,7 @@ inline JSFunction::JSFunction(VM& vm, FunctionExecutable* executable, JSScope* s
     , m_executable(vm, this, executable)
     , m_rareData()
 {
+    assertTypeInfoFlagInvariants();
 }
 
 inline FunctionExecutable* JSFunction::jsExecutable() const
@@ -77,19 +78,19 @@ inline bool JSFunction::isClassConstructorFunction() const
     return !isHostFunction() && jsExecutable()->isClassConstructorFunction();
 }
 
-inline NativeFunction JSFunction::nativeFunction()
+inline TaggedNativeFunction JSFunction::nativeFunction()
 {
     ASSERT(isHostFunctionNonInline());
     return static_cast<NativeExecutable*>(m_executable.get())->function();
 }
 
-inline NativeFunction JSFunction::nativeConstructor()
+inline TaggedNativeFunction JSFunction::nativeConstructor()
 {
     ASSERT(isHostFunctionNonInline());
     return static_cast<NativeExecutable*>(m_executable.get())->constructor();
 }
 
-inline bool isHostFunction(JSValue value, NativeFunction nativeFunction)
+inline bool isHostFunction(JSValue value, TaggedNativeFunction nativeFunction)
 {
     JSFunction* function = jsCast<JSFunction*>(getJSFunction(value));
     if (!function || !function->isHostFunction())
@@ -109,8 +110,16 @@ inline bool JSFunction::hasReifiedName() const
 
 inline bool JSFunction::canUseAllocationProfile()
 {
-    if (isHostFunction())
-        return false;
+    if (isHostOrBuiltinFunction()) {
+        if (isHostFunction())
+            return false;
+
+        VM& vm = globalObject()->vm();
+        unsigned attributes;
+        JSValue prototype = getDirect(vm, vm.propertyNames->prototype, attributes);
+        if (!prototype || (attributes & PropertyAttribute::AccessorOrCustomAccessorOrValue))
+            return false;
+    }
 
     // If we don't have a prototype property, we're not guaranteed it's
     // non-configurable. For example, user code can define the prototype

@@ -38,8 +38,12 @@
 #include "MathMLNames.h"
 #include "MouseEvent.h"
 #include "RenderTableCell.h"
+#include <wtf/IsoMallocInlines.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(MathMLElement);
 
 using namespace MathMLNames;
 
@@ -94,6 +98,17 @@ bool MathMLElement::isPresentationAttribute(const QualifiedName& name) const
     return StyledElement::isPresentationAttribute(name);
 }
 
+static String convertToPercentageIfNeeded(const AtomicString& value)
+{
+    // FIXME: Might be better to use double than float.
+    // FIXME: Might be better to use "shortest" numeric formatting instead of fixed width.
+    bool ok = false;
+    float unitlessValue = value.toFloat(&ok);
+    if (!ok)
+        return value;
+    return makeString(FormattedNumber::fixedWidth(unitlessValue * 100, 3), '%');
+}
+
 void MathMLElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
 {
     if (name == mathbackgroundAttr)
@@ -101,10 +116,10 @@ void MathMLElement::collectStyleForPresentationAttribute(const QualifiedName& na
     else if (name == mathsizeAttr) {
         // The following three values of mathsize are handled in WebCore/css/mathml.css
         if (value != "normal" && value != "small" && value != "big")
-            addPropertyToPresentationAttributeStyle(style, CSSPropertyFontSize, value);
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyFontSize, convertToPercentageIfNeeded(value));
     } else if (name == mathcolorAttr)
         addPropertyToPresentationAttributeStyle(style, CSSPropertyColor, value);
-    // FIXME: deprecated attributes that should loose in a conflict with a non deprecated attribute
+    // FIXME: The following are deprecated attributes that should lose if there is a conflict with a non-deprecated attribute.
     else if (name == fontsizeAttr)
         addPropertyToPresentationAttributeStyle(style, CSSPropertyFontSize, value);
     else if (name == backgroundAttr)
@@ -122,8 +137,7 @@ void MathMLElement::collectStyleForPresentationAttribute(const QualifiedName& na
             addPropertyToPresentationAttributeStyle(style, CSSPropertyDirection, value);
     }  else {
         ASSERT(!isPresentationAttribute(name));
-        StyledElement::collectStyleForPresentationAttribute(name, value
-        , style);
+        StyledElement::collectStyleForPresentationAttribute(name, value, style);
     }
 }
 
@@ -167,7 +181,7 @@ bool MathMLElement::canStartSelection() const
     return hasEditableStyle();
 }
 
-bool MathMLElement::isKeyboardFocusable(KeyboardEvent& event) const
+bool MathMLElement::isKeyboardFocusable(KeyboardEvent* event) const
 {
     if (isFocusable() && StyledElement::supportsFocus())
         return StyledElement::isKeyboardFocusable(event);

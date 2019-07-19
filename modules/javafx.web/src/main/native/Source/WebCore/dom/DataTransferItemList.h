@@ -44,7 +44,7 @@ namespace WebCore {
 class DataTransferItem;
 class File;
 
-class DataTransferItemList : public ScriptWrappable {
+class DataTransferItemList : public ScriptWrappable, public CanMakeWeakPtr<DataTransferItemList> {
     WTF_MAKE_NONCOPYABLE(DataTransferItemList); WTF_MAKE_FAST_ALLOCATED;
 public:
     DataTransferItemList(DataTransfer&);
@@ -65,7 +65,7 @@ public:
 
     void didClearStringData(const String& type);
     void didSetStringData(const String& type);
-    bool hasItems() const { return m_items.has_value(); }
+    bool hasItems() const { return m_items.hasValue(); }
     const Vector<Ref<DataTransferItem>>& items() const
     {
         ASSERT(m_items);
@@ -75,9 +75,8 @@ public:
 private:
     Vector<Ref<DataTransferItem>>& ensureItems() const;
 
-    WeakPtrFactory<DataTransferItemList> m_weakPtrFactory;
     DataTransfer& m_dataTransfer;
-    mutable std::optional<Vector<Ref<DataTransferItem>>> m_items;
+    mutable Optional<Vector<Ref<DataTransferItem>>> m_items;
 };
 
 } // namespace WebCore

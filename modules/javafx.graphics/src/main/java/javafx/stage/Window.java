@@ -457,7 +457,7 @@ public class Window implements EventTarget {
      * The horizontal scale that the {@code Window} will use when rendering
      * its {@code Scene} to the rendering buffer.
      * This property is automatically updated whenever there is a change in
-     * the {@link #outputScaleXProperty() outpitScaleX} property and can be overridden either by
+     * the {@link #outputScaleXProperty() outputScaleX} property and can be overridden either by
      * calling {@code setRenderScaleX()} in response to a listener on the
      * {@code outputScaleX} property or by binding it appropriately.
      *
@@ -487,7 +487,7 @@ public class Window implements EventTarget {
      * The vertical scale that the {@code Window} will use when rendering
      * its {@code Scene} to the rendering buffer.
      * This property is automatically updated whenever there is a change in
-     * the {@link #outputScaleYProperty() outpitScaleY} property and can be overridden either by
+     * the {@link #outputScaleYProperty() outputScaleY} property and can be overridden either by
      * calling {@code setRenderScaleY()} in response to a listener on the
      * {@code outputScaleY} property or by binding it appropriately.
      *
@@ -1531,6 +1531,10 @@ public class Window implements EventTarget {
 
         public void apply() {
             if (dirty) {
+                if (peer == null) {
+                    reset();
+                    return;
+                }
                 // Snapshot values and then reset() before we call down
                 // as we may end up with recursive calls back up with
                 // new values that must be recorded as dirty.
@@ -1548,9 +1552,9 @@ public class Window implements EventTarget {
                 float newRY = (float) renderScaleY;
                 reset();
                 peer.setBounds(newX, newY, xSet, ySet,
-                                    newWW, newWH, newCW, newCH,
-                                    newXG, newYG,
-                                    newRX, newRY);
+                        newWW, newWH, newCW, newCH,
+                        newXG, newYG,
+                        newRX, newRY);
             }
         }
 

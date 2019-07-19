@@ -126,7 +126,7 @@ std::unique_ptr<IDBBackingStore> IDBServer::createBackingStore(const IDBDatabase
     if (m_databaseDirectoryPath.isEmpty())
         return MemoryIDBBackingStore::create(identifier);
 
-    return std::make_unique<SQLiteIDBBackingStore>(identifier, m_databaseDirectoryPath, m_backingStoreTemporaryFileHandler);
+    return std::make_unique<SQLiteIDBBackingStore>(identifier, m_databaseDirectoryPath, m_backingStoreTemporaryFileHandler, m_perOriginQuota);
 }
 
 void IDBServer::openDatabase(const IDBRequestData& requestData)
@@ -459,7 +459,7 @@ void IDBServer::performGetAllDatabaseNames(uint64_t serverConnectionIdentifier, 
 {
     String directory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(mainFrameOrigin, openingOrigin, m_databaseDirectoryPath);
 
-    Vector<String> entries = FileSystem::listDirectory(directory, ASCIILiteral("*"));
+    Vector<String> entries = FileSystem::listDirectory(directory, "*"_s);
     Vector<String> databases;
     databases.reserveInitialCapacity(entries.size());
     for (auto& entry : entries) {
@@ -509,8 +509,8 @@ void IDBServer::closeAndDeleteDatabasesModifiedSince(WallTime modificationTime, 
     }
 
     HashSet<UniqueIDBDatabase*> openDatabases;
-    for (auto* connection : m_databaseConnections.values())
-        openDatabases.add(&connection->database());
+    for (auto& database : m_uniqueIDBDatabaseMap.values())
+        openDatabases.add(database.get());
 
     for (auto& database : openDatabases)
         database->immediateCloseForUserDelete();
@@ -525,11 +525,11 @@ void IDBServer::closeAndDeleteDatabasesForOrigins(const Vector<SecurityOriginDat
     ASSERT_UNUSED(addResult, addResult.isNewEntry);
 
     HashSet<UniqueIDBDatabase*> openDatabases;
-    for (auto* connection : m_databaseConnections.values()) {
-        const auto& identifier = connection->database().identifier();
+    for (auto& database : m_uniqueIDBDatabaseMap.values()) {
+        const auto& identifier = database->identifier();
         for (auto& origin : origins) {
             if (identifier.isRelatedToOrigin(origin)) {
-                openDatabases.add(&connection->database());
+                openDatabases.add(database.get());
                 break;
             }
         }
@@ -543,11 +543,14 @@ void IDBServer::closeAndDeleteDatabasesForOrigins(const Vector<SecurityOriginDat
 
 static void removeAllDatabasesForOriginPath(const String& originPath, WallTime modifiedSince)
 {
+    LOG(IndexedDB, "removeAllDatabasesForOriginPath with originPath %s", originPath.utf8().data());
     Vector<String> databasePaths = FileSystem::listDirectory(originPath, "*");
 
     for (auto& databasePath : databasePaths) {
-        String databaseFile = FileSystem::pathByAppendingComponent(databasePath, "IndexedDB.sqlite3");
+        if (FileSystem::fileIsDirectory(databasePath, FileSystem::ShouldFollowSymbolicLinks::No))
+            removeAllDatabasesForOriginPath(databasePath, modifiedSince);
 
+        String databaseFile = FileSystem::pathByAppendingComponent(databasePath, "IndexedDB.sqlite3");
         if (modifiedSince > -WallTime::infinity() && FileSystem::fileExists(databaseFile)) {
             auto modificationTime = FileSystem::getFileModificationTime(databaseFile);
             if (!modificationTime)
@@ -623,6 +626,11 @@ void IDBServer::performCloseAndDeleteDatabasesForOrigins(const Vector<SecurityOr
         for (const auto& origin : origins) {
             String originPath = FileSystem::pathByAppendingComponent(m_databaseDirectoryPath, origin.databaseIdentifier());
             removeAllDatabasesForOriginPath(originPath, -WallTime::infinity());
+
+            for (const auto& topOriginPath : FileSystem::listDirectory(m_databaseDirectoryPath, "*")) {
+                originPath = FileSystem::pathByAppendingComponent(topOriginPath, origin.databaseIdentifier());
+                removeAllDatabasesForOriginPath(originPath, -WallTime::infinity());
+            }
         }
     }
 
@@ -634,6 +642,14 @@ void IDBServer::didPerformCloseAndDeleteDatabases(uint64_t callbackID)
     auto callback = m_deleteDatabaseCompletionHandlers.take(callbackID);
     ASSERT(callback);
     callback();
+}
+
+void IDBServer::setPerOriginQuota(uint64_t quota)
+{
+    m_perOriginQuota = quota;
+
+    for (auto& database : m_uniqueIDBDatabaseMap.values())
+        database->setQuota(quota);
 }
 
 } // namespace IDBServer

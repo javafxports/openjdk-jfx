@@ -41,7 +41,6 @@
 
 
 namespace WebCore {
-using namespace WTF;
 
 #ifndef NDEBUG
 void EventListenerMap::assertNoActiveIterators() const
@@ -85,6 +84,11 @@ void EventListenerMap::clear()
     auto locker = holdLock(m_lock);
 
     assertNoActiveIterators();
+
+    for (auto& entry : m_entries) {
+        for (auto& listener : *entry.second)
+            listener->markAsRemoved();
+    }
 
     m_entries.clear();
 }

@@ -28,12 +28,15 @@
 
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSImportRule.h"
+#include "CSSParserFastPaths.h"
+#include "CSSParserMode.h"
 #include "CSSPropertyNames.h"
 #include "CSSPropertySourceData.h"
 #include "CSSRule.h"
 #include "CSSRuleList.h"
 #include "CSSStyleRule.h"
 #include "CSSStyleSheet.h"
+#include "CSSValueKeywords.h"
 #include "ContentSecurityPolicy.h"
 #include "DOMWindow.h"
 #include "FontCache.h"
@@ -59,8 +62,7 @@
 #include <wtf/Ref.h>
 #include <wtf/Vector.h>
 #include <wtf/text/CString.h>
-#include <wtf/text/StringConcatenate.h>
-
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace WebCore {
 
@@ -154,7 +156,7 @@ private:
 
     String mergeId() final
     {
-        return String::format("SetStyleSheetText %s", m_styleSheet->id().utf8().data());
+        return "SetStyleSheetText " + m_styleSheet->id();
     }
 
     void merge(std::unique_ptr<Action> action) override
@@ -195,7 +197,7 @@ public:
     String mergeId() override
     {
         ASSERT(m_styleSheet->id() == m_cssId.styleSheetId());
-        return String::format("SetStyleText %s:%u", m_styleSheet->id().utf8().data(), m_cssId.ordinal());
+        return makeString("SetStyleText ", m_styleSheet->id(), ':', m_cssId.ordinal());
     }
 
     void merge(std::unique_ptr<Action> action) override
@@ -291,7 +293,7 @@ CSSStyleRule* InspectorCSSAgent::asCSSStyleRule(CSSRule& rule)
 }
 
 InspectorCSSAgent::InspectorCSSAgent(WebAgentContext& context, InspectorDOMAgent* domAgent)
-    : InspectorAgentBase(ASCIILiteral("CSS"), context)
+    : InspectorAgentBase("CSS"_s, context)
     , m_frontendDispatcher(std::make_unique<CSSFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(CSSBackendDispatcher::create(context.backendDispatcher, this))
     , m_domAgent(domAgent)
@@ -438,10 +440,10 @@ void InspectorCSSAgent::getMatchedStylesForNode(ErrorString& errorString, int no
 
     Element* originalElement = element;
     PseudoId elementPseudoId = element->pseudoId();
-    if (elementPseudoId) {
+    if (elementPseudoId != PseudoId::None) {
         element = downcast<PseudoElement>(*element).hostElement();
         if (!element) {
-            errorString = ASCIILiteral("Pseudo element has no parent");
+            errorString = "Pseudo element has no parent"_s;
             return;
         }
     }
@@ -455,7 +457,7 @@ void InspectorCSSAgent::getMatchedStylesForNode(ErrorString& errorString, int no
         // Pseudo elements.
         if (!includePseudo || *includePseudo) {
             auto pseudoElements = JSON::ArrayOf<Inspector::Protocol::CSS::PseudoIdMatches>::create();
-            for (PseudoId pseudoId = FIRST_PUBLIC_PSEUDOID; pseudoId < AFTER_LAST_INTERNAL_PSEUDOID; pseudoId = static_cast<PseudoId>(pseudoId + 1)) {
+            for (PseudoId pseudoId = PseudoId::FirstPublicPseudoId; pseudoId < PseudoId::AfterLastInternalPseudoId; pseudoId = static_cast<PseudoId>(static_cast<unsigned>(pseudoId) + 1)) {
                 auto matchedRules = styleResolver.pseudoStyleRulesForElement(element, pseudoId, StyleResolver::AllCSSRules);
                 if (!matchedRules.isEmpty()) {
                     auto matches = Inspector::Protocol::CSS::PseudoIdMatches::create()
@@ -477,7 +479,7 @@ void InspectorCSSAgent::getMatchedStylesForNode(ErrorString& errorString, int no
                 StyleResolver& parentStyleResolver = parentElement->styleResolver();
                 auto parentMatchedRules = parentStyleResolver.styleRulesForElement(parentElement, StyleResolver::AllCSSRules);
                 auto entry = Inspector::Protocol::CSS::InheritedStyleEntry::create()
-                    .setMatchedCSSRules(buildArrayForMatchedRuleList(parentMatchedRules, styleResolver, *parentElement, NOPSEUDO))
+                    .setMatchedCSSRules(buildArrayForMatchedRuleList(parentMatchedRules, styleResolver, *parentElement, PseudoId::None))
                     .release();
                 if (is<StyledElement>(*parentElement) && downcast<StyledElement>(*parentElement).cssomStyle().length()) {
                     auto& styleSheet = asInspectorStyleSheet(downcast<StyledElement>(*parentElement));
@@ -630,19 +632,19 @@ void InspectorCSSAgent::createStyleSheet(ErrorString& errorString, const String&
 {
     Frame* frame = m_domAgent->pageAgent()->frameForId(frameId);
     if (!frame) {
-        errorString = ASCIILiteral("No frame for given id found");
+        errorString = "No frame for given id found"_s;
         return;
     }
 
     Document* document = frame->document();
     if (!document) {
-        errorString = ASCIILiteral("No document for frame");
+        errorString = "No document for frame"_s;
         return;
     }
 
     InspectorStyleSheet* inspectorStyleSheet = createInspectorStyleSheetForDocument(*document);
     if (!inspectorStyleSheet) {
-        errorString = ASCIILiteral("Could not create stylesheet for the frame.");
+        errorString = "Could not create stylesheet for the frame."_s;
         return;
     }
 
@@ -694,7 +696,7 @@ void InspectorCSSAgent::addRule(ErrorString& errorString, const String& styleShe
 {
     InspectorStyleSheet* inspectorStyleSheet = assertStyleSheetForId(errorString, styleSheetId);
     if (!inspectorStyleSheet) {
-        errorString = ASCIILiteral("No target stylesheet found");
+        errorString = "No target stylesheet found"_s;
         return;
     }
 
@@ -715,25 +717,47 @@ void InspectorCSSAgent::getSupportedCSSProperties(ErrorString&, RefPtr<JSON::Arr
 {
     auto properties = JSON::ArrayOf<Inspector::Protocol::CSS::CSSPropertyInfo>::create();
     for (int i = firstCSSProperty; i <= lastCSSProperty; ++i) {
-        CSSPropertyID id = convertToCSSPropertyID(i);
-        if (isInternalCSSProperty(id))
+        CSSPropertyID propertyID = convertToCSSPropertyID(i);
+        if (isInternalCSSProperty(propertyID) || !isEnabledCSSProperty(propertyID))
             continue;
 
         auto property = Inspector::Protocol::CSS::CSSPropertyInfo::create()
-            .setName(getPropertyNameString(id))
+            .setName(getPropertyNameString(propertyID))
             .release();
 
-        const StylePropertyShorthand& shorthand = shorthandForProperty(id);
-        if (!shorthand.length()) {
-            properties->addItem(WTFMove(property));
-            continue;
+        auto aliases = CSSProperty::aliasesForProperty(propertyID);
+        if (!aliases.isEmpty()) {
+            auto aliasesArray = JSON::ArrayOf<String>::create();
+            for (auto& alias : aliases)
+                aliasesArray->addItem(alias);
+            property->setAliases(WTFMove(aliasesArray));
         }
-        auto longhands = JSON::ArrayOf<String>::create();
-        for (unsigned j = 0; j < shorthand.length(); ++j) {
-            CSSPropertyID longhandID = shorthand.properties()[j];
-            longhands->addItem(getPropertyNameString(longhandID));
+
+        const StylePropertyShorthand& shorthand = shorthandForProperty(propertyID);
+        if (shorthand.length()) {
+            auto longhands = JSON::ArrayOf<String>::create();
+            for (unsigned j = 0; j < shorthand.length(); ++j) {
+                CSSPropertyID longhandID = shorthand.properties()[j];
+                if (isEnabledCSSProperty(longhandID))
+                    longhands->addItem(getPropertyNameString(longhandID));
+            }
+            property->setLonghands(WTFMove(longhands));
         }
-        property->setLonghands(WTFMove(longhands));
+
+        if (CSSParserFastPaths::isKeywordPropertyID(propertyID)) {
+            auto values = JSON::ArrayOf<String>::create();
+            for (int j = firstCSSValueKeyword; j <= lastCSSValueKeyword; ++j) {
+                CSSValueID valueID = convertToCSSValueID(j);
+                if (CSSParserFastPaths::isValidKeywordPropertyAndValue(propertyID, valueID, HTMLStandardMode))
+                    values->addItem(getValueNameString(valueID));
+            }
+            if (values->length())
+                property->setValues(WTFMove(values));
+        }
+
+        if (CSSProperty::isInheritedProperty(propertyID))
+            property->setInherited(true);
+
         properties->addItem(WTFMove(property));
     }
     cssProperties = WTFMove(properties);
@@ -788,11 +812,11 @@ Element* InspectorCSSAgent::elementForId(ErrorString& errorString, int nodeId)
 {
     Node* node = m_domAgent->nodeForId(nodeId);
     if (!node) {
-        errorString = ASCIILiteral("No node with given id found");
+        errorString = "No node with given id found"_s;
         return nullptr;
     }
     if (!is<Element>(*node)) {
-        errorString = ASCIILiteral("Not an element node");
+        errorString = "Not an element node"_s;
         return nullptr;
     }
     return downcast<Element>(node);
@@ -828,7 +852,7 @@ InspectorStyleSheet* InspectorCSSAgent::assertStyleSheetForId(ErrorString& error
 {
     IdToInspectorStyleSheet::iterator it = m_idToInspectorStyleSheet.find(styleSheetId);
     if (it == m_idToInspectorStyleSheet.end()) {
-        errorString = ASCIILiteral("No stylesheet with given id found");
+        errorString = "No stylesheet with given id found"_s;
         return nullptr;
     }
     return it->value.get();
@@ -893,7 +917,7 @@ RefPtr<JSON::ArrayOf<Inspector::Protocol::CSS::RuleMatch>> InspectorCSSAgent::bu
     auto result = JSON::ArrayOf<Inspector::Protocol::CSS::RuleMatch>::create();
 
     SelectorChecker::CheckingContext context(SelectorChecker::Mode::CollectingRules);
-    context.pseudoId = pseudoId ? pseudoId : element.pseudoId();
+    context.pseudoId = pseudoId != PseudoId::None ? pseudoId : element.pseudoId();
     SelectorChecker selectorChecker(element.document());
 
     for (auto& matchedRule : matchedRules) {

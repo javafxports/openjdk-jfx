@@ -22,6 +22,7 @@
 
 #include "CSSValue.h"
 #include "CachedResourceHandle.h"
+#include "ResourceLoaderOptions.h"
 #include <wtf/Function.h>
 #include <wtf/Ref.h>
 
@@ -32,11 +33,10 @@ class CachedResourceLoader;
 class DeprecatedCSSOMValue;
 class CSSStyleDeclaration;
 class RenderElement;
-struct ResourceLoaderOptions;
 
 class CSSImageValue final : public CSSValue {
 public:
-    static Ref<CSSImageValue> create(URL&& url) { return adoptRef(*new CSSImageValue(WTFMove(url))); }
+    static Ref<CSSImageValue> create(URL&& url, LoadedFromOpaqueSource loadedFromOpaqueSource) { return adoptRef(*new CSSImageValue(WTFMove(url), loadedFromOpaqueSource)); }
     static Ref<CSSImageValue> create(CachedImage& image) { return adoptRef(*new CSSImageValue(image)); }
     ~CSSImageValue();
 
@@ -54,18 +54,19 @@ public:
 
     bool equals(const CSSImageValue&) const;
 
-    bool knownToBeOpaque(const RenderElement*) const;
+    bool knownToBeOpaque(const RenderElement&) const;
 
     void setInitiator(const AtomicString& name) { m_initiatorName = name; }
 
 private:
-    explicit CSSImageValue(URL&&);
+    CSSImageValue(URL&&, LoadedFromOpaqueSource);
     explicit CSSImageValue(CachedImage&);
 
     URL m_url;
     CachedResourceHandle<CachedImage> m_cachedImage;
     bool m_accessedImage;
     AtomicString m_initiatorName;
+    LoadedFromOpaqueSource m_loadedFromOpaqueSource { LoadedFromOpaqueSource::No };
 };
 
 } // namespace WebCore

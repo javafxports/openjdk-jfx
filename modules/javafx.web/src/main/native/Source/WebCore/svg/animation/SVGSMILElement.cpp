@@ -40,12 +40,16 @@
 #include "SVGParserUtilities.h"
 #include "SVGSVGElement.h"
 #include "SVGURIReference.h"
+#include "SVGUseElement.h"
 #include "XLinkNames.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/MathExtras.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGSMILElement);
 
 static SMILEventSender& smilBeginEventSender()
 {
@@ -157,7 +161,7 @@ SVGSMILElement::~SVGSMILElement()
 
 void SVGSMILElement::clearResourceReferences()
 {
-    document().accessSVGExtensions().removeAllTargetReferencesForElement(this);
+    document().accessSVGExtensions().removeAllTargetReferencesForElement(*this);
 }
 
 void SVGSMILElement::clearTarget()
@@ -180,8 +184,11 @@ void SVGSMILElement::buildPendingResource()
     auto& href = getAttribute(XLinkNames::hrefAttr);
     if (href.isEmpty())
         target = parentElement();
-    else
-        target = SVGURIReference::targetElementFromIRIString(href.string(), document(), &id);
+    else {
+        auto result = SVGURIReference::targetElementFromIRIString(href.string(), treeScope());
+        target = WTFMove(result.element);
+        id = WTFMove(result.identifier);
+    }
     SVGElement* svgTarget = is<SVGElement>(target) ? downcast<SVGElement>(target.get()) : nullptr;
 
     if (svgTarget && !svgTarget->isConnected())
@@ -192,17 +199,17 @@ void SVGSMILElement::buildPendingResource()
 
     if (!svgTarget) {
         // Do not register as pending if we are already pending this resource.
-        if (document().accessSVGExtensions().isPendingResource(this, id))
+        if (document().accessSVGExtensions().isPendingResource(*this, id))
             return;
 
         if (!id.isEmpty()) {
-            document().accessSVGExtensions().addPendingResource(id, this);
+            document().accessSVGExtensions().addPendingResource(id, *this);
             ASSERT(hasPendingResources());
         }
     } else {
         // Register us with the target in the dependencies map. Any change of hrefElement
         // that leads to relayout/repainting now informs us, so we can react to it.
-        document().accessSVGExtensions().addElementReferencingTarget(this, svgTarget);
+        document().accessSVGExtensions().addElementReferencingTarget(*this, *svgTarget);
     }
 }
 
@@ -259,7 +266,7 @@ Node::InsertedIntoAncestorResult SVGSMILElement::insertedIntoAncestor(InsertionT
         return InsertedIntoAncestorResult::Done;
 
     // Verify we are not in <use> instance tree.
-    ASSERT(!isInShadowTree());
+    ASSERT(!isInShadowTree() || !is<SVGUseElement>(shadowHost()));
 
     updateAttributeName();
 
@@ -443,9 +450,7 @@ void SVGSMILElement::parseBeginOrEnd(const String& parseString, BeginOrEnd begin
     HashSet<double> existing;
     for (auto& time : timeList)
         existing.add(time.time().value());
-    Vector<String> splitString;
-    parseString.split(';', splitString);
-    for (auto& string : splitString) {
+    for (auto& string : parseString.split(';')) {
         SMILTime value = parseClockValue(string);
         if (value.isUnresolved())
             parseCondition(string, beginOrEnd);
@@ -466,6 +471,7 @@ bool SVGSMILElement::isSupportedAttribute(const QualifiedName& attrName)
         SVGNames::minAttr,
         SVGNames::maxAttr,
         SVGNames::attributeNameAttr,
+        SVGNames::hrefAttr,
         XLinkNames::hrefAttr,
     });
     return supportedAttributes.get().contains<SVGAttributeHashTranslator>(attrName);
@@ -518,7 +524,7 @@ void SVGSMILElement::svgAttributeChanged(const QualifiedName& attrName)
         m_cachedMax = invalidCachedTime;
     else if (attrName == SVGNames::attributeNameAttr)
         updateAttributeName();
-    else if (attrName.matches(XLinkNames::hrefAttr)) {
+    else if (attrName.matches(SVGNames::hrefAttr) || attrName.matches(XLinkNames::hrefAttr)) {
         InstanceInvalidationGuard guard(*this);
         buildPendingResource();
     } else if (isConnected()) {
@@ -1220,7 +1226,7 @@ void SVGSMILElement::dispatchPendingEvent(SMILEventSender* eventSender)
 {
     ASSERT(eventSender == &smilBeginEventSender() || eventSender == &smilEndEventSender());
     const AtomicString& eventType = eventSender->eventType();
-    dispatchEvent(Event::create(eventType, false, false));
+    dispatchEvent(Event::create(eventType, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 }

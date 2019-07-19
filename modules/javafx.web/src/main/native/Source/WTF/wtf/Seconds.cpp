@@ -24,13 +24,14 @@
  */
 
 #include "config.h"
-#include "Seconds.h"
+#include <wtf/Seconds.h>
 
-#include "CurrentTime.h"
-#include "MonotonicTime.h"
-#include "PrintStream.h"
-#include "TimeWithDynamicClockType.h"
-#include "WallTime.h"
+#include <wtf/Condition.h>
+#include <wtf/Lock.h>
+#include <wtf/MonotonicTime.h>
+#include <wtf/PrintStream.h>
+#include <wtf/TimeWithDynamicClockType.h>
+#include <wtf/WallTime.h>
 
 namespace WTF {
 
@@ -67,6 +68,19 @@ TimeWithDynamicClockType Seconds::operator-(const TimeWithDynamicClockType& othe
 void Seconds::dump(PrintStream& out) const
 {
     out.print(m_value, " sec");
+}
+
+void sleep(Seconds value)
+{
+    // It's very challenging to find portable ways of sleeping for less than a second. On UNIX, you want to
+    // use usleep() but it's hard to #include it in a portable way (you'd think it's in unistd.h, but then
+    // you'd be wrong on some OSX SDKs). Also, usleep() won't save you on Windows. Hence, bottoming out in
+    // lock code, which already solves the sleeping problem, is probably for the best.
+
+    Lock fakeLock;
+    Condition fakeCondition;
+    LockHolder fakeLocker(fakeLock);
+    fakeCondition.waitFor(fakeLock, value);
 }
 
 } // namespace WTF

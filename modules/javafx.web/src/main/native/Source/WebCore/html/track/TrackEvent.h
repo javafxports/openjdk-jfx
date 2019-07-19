@@ -38,7 +38,7 @@ class TrackEvent final : public Event {
 public:
     virtual ~TrackEvent();
 
-    static Ref<TrackEvent> create(const AtomicString& type, bool canBubble, bool cancelable, Ref<TrackBase>&& track)
+    static Ref<TrackEvent> create(const AtomicString& type, CanBubble canBubble, IsCancelable cancelable, Ref<TrackBase>&& track)
     {
         return adoptRef(*new TrackEvent(type, canBubble, cancelable, WTFMove(track)));
     }
@@ -46,7 +46,7 @@ public:
     using TrackEventTrack = Variant<RefPtr<VideoTrack>, RefPtr<AudioTrack>, RefPtr<TextTrack>>;
 
     struct Init : public EventInit {
-        std::optional<TrackEventTrack> track;
+        Optional<TrackEventTrack> track;
     };
 
     static Ref<TrackEvent> create(const AtomicString& type, Init&& initializer, IsTrusted isTrusted = IsTrusted::No)
@@ -54,15 +54,15 @@ public:
         return adoptRef(*new TrackEvent(type, WTFMove(initializer), isTrusted));
     }
 
-    std::optional<TrackEventTrack> track() const { return m_track; }
+    Optional<TrackEventTrack> track() const { return m_track; }
 
 private:
-    TrackEvent(const AtomicString& type, bool canBubble, bool cancelable, Ref<TrackBase>&&);
+    TrackEvent(const AtomicString& type, CanBubble, IsCancelable, Ref<TrackBase>&&);
     TrackEvent(const AtomicString& type, Init&& initializer, IsTrusted);
 
     EventInterface eventInterface() const override;
 
-    std::optional<TrackEventTrack> m_track;
+    Optional<TrackEventTrack> m_track;
 };
 
 } // namespace WebCore

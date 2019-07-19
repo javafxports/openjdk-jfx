@@ -89,7 +89,7 @@ void BytecodeLivenessAnalysis::computeKills(CodeBlock* codeBlock, BytecodeKills&
     FastBitVector out;
 
     result.m_codeBlock = codeBlock;
-    result.m_killSets = std::make_unique<BytecodeKills::KillSet[]>(codeBlock->instructions().size());
+    result.m_killSets = makeUniqueArray<BytecodeKills::KillSet>(codeBlock->instructions().size());
 
     for (std::unique_ptr<BytecodeBasicBlock>& block : m_graph.basicBlocksInReverseOrder()) {
         if (block->isEntryBlock() || block->isExitBlock())
@@ -119,7 +119,7 @@ void BytecodeLivenessAnalysis::computeKills(CodeBlock* codeBlock, BytecodeKills&
 void BytecodeLivenessAnalysis::dumpResults(CodeBlock* codeBlock)
 {
     dataLog("\nDumping bytecode liveness for ", *codeBlock, ":\n");
-    Instruction* instructionsBegin = codeBlock->instructions().begin();
+    const auto& instructions = codeBlock->instructions();
     unsigned i = 0;
 
     unsigned numberOfBlocks = m_graph.size();
@@ -167,17 +167,15 @@ void BytecodeLivenessAnalysis::dumpResults(CodeBlock* codeBlock)
             continue;
         }
         for (unsigned bytecodeOffset = block->leaderOffset(); bytecodeOffset < block->leaderOffset() + block->totalLength();) {
-            const Instruction* currentInstruction = &instructionsBegin[bytecodeOffset];
+            const auto currentInstruction = instructions.at(bytecodeOffset);
 
             dataLogF("Live variables:");
             FastBitVector liveBefore = getLivenessInfoAtBytecodeOffset(codeBlock, bytecodeOffset);
             dumpBitVector(liveBefore);
             dataLogF("\n");
-            codeBlock->dumpBytecode(WTF::dataFile(), instructionsBegin, currentInstruction);
+            codeBlock->dumpBytecode(WTF::dataFile(), currentInstruction);
 
-            OpcodeID opcodeID = Interpreter::getOpcodeID(instructionsBegin[bytecodeOffset].u.opcode);
-            unsigned opcodeLength = opcodeLengths[opcodeID];
-            bytecodeOffset += opcodeLength;
+            bytecodeOffset += currentInstruction->size();
         }
 
         dataLogF("Live variables:");

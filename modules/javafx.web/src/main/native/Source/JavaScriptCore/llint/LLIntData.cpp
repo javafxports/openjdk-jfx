@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,55 +30,51 @@
 #include "BytecodeConventions.h"
 #include "CodeBlock.h"
 #include "CodeType.h"
-#include "InitializeThreading.h"
 #include "Instruction.h"
 #include "JSScope.h"
 #include "LLIntCLoop.h"
-#include "LLIntCommon.h"
 #include "MaxFrameExtentForSlowPathCall.h"
 #include "Opcode.h"
 #include "PropertyOffset.h"
 #include "ShadowChicken.h"
 #include "WriteBarrier.h"
-#include <string>
-#include <wtf/NeverDestroyed.h>
 
 #define STATIC_ASSERT(cond) static_assert(cond, "LLInt assumes " #cond)
 
-namespace JSC { namespace LLInt {
 
-Instruction* Data::s_exceptionInstructions = 0;
-Opcode Data::s_opcodeMap[numOpcodeIDs] = { };
-OpcodeStatsArray* Data::s_opcodeStatsArray = nullptr;
+namespace JSC {
 
-#if ENABLE(JIT)
-extern "C" void llint_entry(void*);
+namespace LLInt {
+
+
+uint8_t Data::s_exceptionInstructions[maxOpcodeLength + 1] = { };
+Opcode g_opcodeMap[numOpcodeIDs] = { };
+Opcode g_opcodeMapWide[numOpcodeIDs] = { };
+
+#if !ENABLE(C_LOOP)
+extern "C" void llint_entry(void*, void*);
 #endif
 
 void initialize()
 {
-    Data::s_exceptionInstructions = new Instruction[maxOpcodeLength + 1];
-
-#if !ENABLE(JIT)
+#if ENABLE(C_LOOP)
     CLoop::initialize();
 
-#else // ENABLE(JIT)
-    llint_entry(&Data::s_opcodeMap);
+#else // !ENABLE(C_LOOP)
+    llint_entry(&g_opcodeMap, &g_opcodeMapWide);
 
+    for (int i = 0; i < numOpcodeIDs; ++i) {
+        g_opcodeMap[i] = tagCodePtr(g_opcodeMap[i], BytecodePtrTag);
+        g_opcodeMapWide[i] = tagCodePtr(g_opcodeMapWide[i], BytecodePtrTag);
+    }
+
+    ASSERT(llint_throw_from_slow_path_trampoline < UINT8_MAX);
     for (int i = 0; i < maxOpcodeLength + 1; ++i)
-        Data::s_exceptionInstructions[i].u.pointer =
-            LLInt::getCodePtr(llint_throw_from_slow_path_trampoline);
-#endif // ENABLE(JIT)
-
-#if ENABLE(LLINT_STATS)
-    Data::ensureStats();
-#endif
+        Data::s_exceptionInstructions[i] = llint_throw_from_slow_path_trampoline;
+#endif // ENABLE(C_LOOP)
 }
 
-#if COMPILER(CLANG)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmissing-noreturn"
-#endif
+IGNORE_WARNINGS_BEGIN("missing-noreturn")
 void Data::performAssertions(VM& vm)
 {
     UNUSED_PARAM(vm);
@@ -87,22 +83,20 @@ void Data::performAssertions(VM& vm)
     // prepared to change LowLevelInterpreter.asm as well!!
 
 #if USE(JSVALUE64)
-    const ptrdiff_t PtrSize = 8;
     const ptrdiff_t CallFrameHeaderSlots = 5;
 #else // USE(JSVALUE64) // i.e. 32-bit version
-    const ptrdiff_t PtrSize = 4;
     const ptrdiff_t CallFrameHeaderSlots = 4;
 #endif
+    const ptrdiff_t MachineRegisterSize = sizeof(CPURegister);
     const ptrdiff_t SlotSize = 8;
 
-    STATIC_ASSERT(sizeof(void*) == PtrSize);
     STATIC_ASSERT(sizeof(Register) == SlotSize);
     STATIC_ASSERT(CallFrame::headerSizeInRegisters == CallFrameHeaderSlots);
 
     ASSERT(!CallFrame::callerFrameOffset());
-    STATIC_ASSERT(CallerFrameAndPC::sizeInRegisters == (PtrSize * 2) / SlotSize);
-    ASSERT(CallFrame::returnPCOffset() == CallFrame::callerFrameOffset() + PtrSize);
-    ASSERT(CallFrameSlot::codeBlock * sizeof(Register) == CallFrame::returnPCOffset() + PtrSize);
+    STATIC_ASSERT(CallerFrameAndPC::sizeInRegisters == (MachineRegisterSize * 2) / SlotSize);
+    ASSERT(CallFrame::returnPCOffset() == CallFrame::callerFrameOffset() + MachineRegisterSize);
+    ASSERT(CallFrameSlot::codeBlock * sizeof(Register) == CallFrame::returnPCOffset() + MachineRegisterSize);
     STATIC_ASSERT(CallFrameSlot::callee * sizeof(Register) == CallFrameSlot::codeBlock * sizeof(Register) + SlotSize);
     STATIC_ASSERT(CallFrameSlot::argumentCount * sizeof(Register) == CallFrameSlot::callee * sizeof(Register) + SlotSize);
     STATIC_ASSERT(CallFrameSlot::thisArgument * sizeof(Register) == CallFrameSlot::argumentCount * sizeof(Register) + SlotSize);
@@ -111,11 +105,11 @@ void Data::performAssertions(VM& vm)
     ASSERT(CallFrame::argumentOffsetIncludingThis(0) == CallFrameSlot::thisArgument);
 
 #if CPU(BIG_ENDIAN)
-    ASSERT(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag) == 0);
-    ASSERT(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload) == 4);
+    STATIC_ASSERT(TagOffset == 0);
+    STATIC_ASSERT(PayloadOffset == 4);
 #else
-    ASSERT(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag) == 4);
-    ASSERT(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload) == 0);
+    STATIC_ASSERT(TagOffset == 4);
+    STATIC_ASSERT(PayloadOffset == 0);
 #endif
 #if USE(JSVALUE32_64)
     STATIC_ASSERT(JSValue::Int32Tag == static_cast<unsigned>(-1));
@@ -136,22 +130,15 @@ void Data::performAssertions(VM& vm)
     STATIC_ASSERT(ValueUndefined == (TagBitTypeOther | TagBitUndefined));
     STATIC_ASSERT(ValueNull == TagBitTypeOther);
 #endif
-#if (CPU(X86_64) && !OS(WINDOWS)) || CPU(ARM64) || !ENABLE(JIT)
-    STATIC_ASSERT(!maxFrameExtentForSlowPathCall);
-#elif CPU(ARM)
-    STATIC_ASSERT(maxFrameExtentForSlowPathCall == 24);
-#elif CPU(X86) || CPU(MIPS)
-    STATIC_ASSERT(maxFrameExtentForSlowPathCall == 40);
-#elif CPU(X86_64) && OS(WINDOWS)
-    STATIC_ASSERT(maxFrameExtentForSlowPathCall == 64);
-#endif
 
-#if !ENABLE(JIT) || USE(JSVALUE32_64)
-    ASSERT(!CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters());
+#if ENABLE(C_LOOP)
+    ASSERT(CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters() == 1);
+#elif USE(JSVALUE32_64)
+    ASSERT(CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters() == 1);
 #elif (CPU(X86_64) && !OS(WINDOWS))  || CPU(ARM64)
-    ASSERT(CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters() == 3);
+    ASSERT(CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters() == 4);
 #elif (CPU(X86_64) && OS(WINDOWS))
-    ASSERT(CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters() == 3);
+    ASSERT(CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters() == 4);
 #endif
 
     ASSERT(!(reinterpret_cast<ptrdiff_t>((reinterpret_cast<WriteBarrier<JSCell>*>(0x4000)->slot())) - 0x4000));
@@ -164,185 +151,39 @@ void Data::performAssertions(VM& vm)
     ASSERT(bitwise_cast<int**>(&testVector)[0] == testVector.begin());
 #endif
 
-    ASSERT(StringImpl::s_hashFlag8BitBuffer == 8);
-
     {
-        uint32_t bits = 0x480000;
-        UNUSED_PARAM(bits);
         ArithProfile arithProfile;
         arithProfile.lhsSawInt32();
         arithProfile.rhsSawInt32();
-        ASSERT(arithProfile.bits() == bits);
-        ASSERT(ArithProfile::fromInt(bits).lhsObservedType().isOnlyInt32());
-        ASSERT(ArithProfile::fromInt(bits).rhsObservedType().isOnlyInt32());
+        ASSERT(arithProfile.bits() == ArithProfile::observedBinaryIntInt().bits());
+        STATIC_ASSERT(ArithProfile::observedBinaryIntInt().lhsObservedType().isOnlyInt32());
+        STATIC_ASSERT(ArithProfile::observedBinaryIntInt().rhsObservedType().isOnlyInt32());
     }
     {
-        uint32_t bits = 0x880000;
-        UNUSED_PARAM(bits);
         ArithProfile arithProfile;
         arithProfile.lhsSawNumber();
         arithProfile.rhsSawInt32();
-        ASSERT(arithProfile.bits() == bits);
-        ASSERT(ArithProfile::fromInt(bits).lhsObservedType().isOnlyNumber());
-        ASSERT(ArithProfile::fromInt(bits).rhsObservedType().isOnlyInt32());
+        ASSERT(arithProfile.bits() == ArithProfile::observedBinaryNumberInt().bits());
+        STATIC_ASSERT(ArithProfile::observedBinaryNumberInt().lhsObservedType().isOnlyNumber());
+        STATIC_ASSERT(ArithProfile::observedBinaryNumberInt().rhsObservedType().isOnlyInt32());
     }
     {
-        uint32_t bits = 0x900000;
-        UNUSED_PARAM(bits);
         ArithProfile arithProfile;
         arithProfile.lhsSawNumber();
         arithProfile.rhsSawNumber();
-        ASSERT(arithProfile.bits() == bits);
-        ASSERT(ArithProfile::fromInt(bits).lhsObservedType().isOnlyNumber());
-        ASSERT(ArithProfile::fromInt(bits).rhsObservedType().isOnlyNumber());
+        ASSERT(arithProfile.bits() == ArithProfile::observedBinaryNumberNumber().bits());
+        STATIC_ASSERT(ArithProfile::observedBinaryNumberNumber().lhsObservedType().isOnlyNumber());
+        STATIC_ASSERT(ArithProfile::observedBinaryNumberNumber().rhsObservedType().isOnlyNumber());
     }
     {
-        uint32_t bits = 0x500000;
-        UNUSED_PARAM(bits);
         ArithProfile arithProfile;
         arithProfile.lhsSawInt32();
         arithProfile.rhsSawNumber();
-        ASSERT(arithProfile.bits() == bits);
-        ASSERT(ArithProfile::fromInt(bits).lhsObservedType().isOnlyInt32());
-        ASSERT(ArithProfile::fromInt(bits).rhsObservedType().isOnlyNumber());
+        ASSERT(arithProfile.bits() == ArithProfile::observedBinaryIntNumber().bits());
+        STATIC_ASSERT(ArithProfile::observedBinaryIntNumber().lhsObservedType().isOnlyInt32());
+        STATIC_ASSERT(ArithProfile::observedBinaryIntNumber().rhsObservedType().isOnlyNumber());
     }
 }
-#if COMPILER(CLANG)
-#pragma clang diagnostic pop
-#endif
-
-void Data::finalizeStats()
-{
-#if ENABLE(LLINT_STATS)
-    if (!Options::reportLLIntStats())
-        return;
-
-    if (Options::llintStatsFile())
-        saveStats();
-
-    dumpStats();
-#endif
-}
-
-#if ENABLE(LLINT_STATS)
-namespace LLIntDataInternal {
-static const bool verboseStats = false;
-}
-
-static bool compareStats(const OpcodeStats& a, const OpcodeStats& b)
-{
-    if (a.count > b.count)
-        return true;
-    if (a.count < b.count)
-        return false;
-    return a.slowPathCount > b.slowPathCount;
-}
-
-void Data::dumpStats()
-{
-    ASSERT(Options::reportLLIntStats());
-    auto statsCopy = *s_opcodeStatsArray;
-    std::sort(statsCopy.begin(), statsCopy.end(), compareStats);
-
-    dataLog("Opcode stats:\n");
-    unsigned i = 0;
-    for (auto& stats : statsCopy) {
-        if (stats.count || stats.slowPathCount)
-            dataLog("   [", i++, "]: fast:", stats.count, " slow:", stats.slowPathCount, " ", opcodeNames[stats.id], "\n");
-    }
-}
-
-void Data::ensureStats()
-{
-    static std::once_flag initializeOptionsOnceFlag;
-    std::call_once(initializeOptionsOnceFlag, [] {
-        s_opcodeStatsArray = new OpcodeStatsArray();
-        resetStats();
-    });
-}
-
-void Data::loadStats()
-{
-    static NeverDestroyed<std::string> installedStatsFile;
-    if (!Options::llintStatsFile() || !installedStatsFile.get().compare(Options::llintStatsFile()))
-        return;
-
-    Options::reportLLIntStats() = true; // Force stats collection.
-    installedStatsFile.get() = Options::llintStatsFile();
-
-    ensureStats();
-
-    const char* filename = Options::llintStatsFile();
-    FILE* file = fopen(filename, "r");
-    if (!file) {
-        dataLogF("Failed to open file %s. Did you add the file-read-write-data entitlement to WebProcess.sb?\n", filename);
-        return;
-    }
-
-    resetStats();
-
-    OpcodeStats loaded;
-    unsigned index;
-    char opcodeName[100];
-    while (fscanf(file, "[%u]: fast:%zu slow:%zu id:%u %s\n", &index, &loaded.count, &loaded.slowPathCount, &loaded.id, opcodeName) != EOF) {
-        if (LLIntDataInternal::verboseStats)
-            dataLogF("loaded [%u]: fast %zu slow %zu id:%u %s\n", index, loaded.count, loaded.slowPathCount, loaded.id, opcodeName);
-
-        OpcodeStats& stats = opcodeStats(loaded.id);
-        stats.count = loaded.count;
-        stats.slowPathCount = loaded.slowPathCount;
-    }
-
-    if (LLIntDataInternal::verboseStats) {
-        dataLogF("After loading from %s, ", filename);
-        dumpStats();
-    }
-
-    int result = fclose(file);
-    if (result)
-        dataLogF("Failed to close file %s: %s\n", filename, strerror(errno));
-}
-
-void Data::resetStats()
-{
-    unsigned i = 0;
-    for (auto& stats : *s_opcodeStatsArray) {
-        stats.id = static_cast<OpcodeID>(i++);
-        stats.count = 0;
-        stats.slowPathCount = 0;
-    }
-}
-
-void Data::saveStats()
-{
-    ASSERT(Options::reportLLIntStats() && Options::llintStatsFile());
-    const char* filename = Options::llintStatsFile();
-
-    FILE* file = fopen(filename, "w");
-    if (!file) {
-        dataLogF("Failed to open file %s. Did you add the file-read-write-data entitlement to WebProcess.sb?\n", filename);
-        return;
-    }
-
-    auto statsCopy = *s_opcodeStatsArray;
-    std::sort(statsCopy.begin(), statsCopy.end(), compareStats);
-
-    int index = 0;
-    for (auto& stats : statsCopy) {
-        if (!stats.count && !stats.slowPathCount)
-            break; // stats are sorted. If we encountered 0 counts, then there are no more non-zero counts.
-
-        if (LLIntDataInternal::verboseStats)
-            dataLogF("saved [%u]: fast:%zu slow:%zu id:%u %s\n", index, stats.count, stats.slowPathCount, stats.id, opcodeNames[stats.id]);
-
-        fprintf(file, "[%u]: fast:%zu slow:%zu id:%u %s\n", index, stats.count, stats.slowPathCount, stats.id, opcodeNames[stats.id]);
-        index++;
-    }
-
-    int result = fclose(file);
-    if (result)
-        dataLogF("Failed to close file %s: %s\n", filename, strerror(errno));
-}
-#endif
+IGNORE_WARNINGS_END
 
 } } // namespace JSC::LLInt

@@ -39,7 +39,7 @@ namespace WebCore {
 using namespace Inspector;
 
 InspectorMemoryAgent::InspectorMemoryAgent(PageAgentContext& context)
-    : InspectorAgentBase(ASCIILiteral("Memory"), context)
+    : InspectorAgentBase("Memory"_s, context)
     , m_frontendDispatcher(std::make_unique<Inspector::MemoryFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(Inspector::MemoryBackendDispatcher::create(context.backendDispatcher, this))
 {
@@ -74,13 +74,13 @@ void InspectorMemoryAgent::startTracking(ErrorString&)
     if (m_tracking)
         return;
 
-    ResourceUsageThread::addObserver(this, [this] (const ResourceUsageData& data) {
+    ResourceUsageThread::addObserver(this, Memory, [this] (const ResourceUsageData& data) {
         collectSample(data);
     });
 
     m_tracking = true;
 
-    m_frontendDispatcher->trackingStart(m_environment.executionStopwatch()->elapsedTime());
+    m_frontendDispatcher->trackingStart(m_environment.executionStopwatch()->elapsedTime().seconds());
 }
 
 void InspectorMemoryAgent::stopTracking(ErrorString&)
@@ -101,13 +101,13 @@ void InspectorMemoryAgent::didHandleMemoryPressure(Critical critical)
         return;
 
     MemoryFrontendDispatcher::Severity severity = critical == Critical::Yes ? MemoryFrontendDispatcher::Severity::Critical : MemoryFrontendDispatcher::Severity::NonCritical;
-    m_frontendDispatcher->memoryPressure(m_environment.executionStopwatch()->elapsedTime(), severity);
+    m_frontendDispatcher->memoryPressure(m_environment.executionStopwatch()->elapsedTime().seconds(), severity);
 }
 
 void InspectorMemoryAgent::collectSample(const ResourceUsageData& data)
 {
     auto javascriptCategory = Protocol::Memory::CategoryData::create()
-        .setType(Protocol::Memory::CategoryData::Type::Javascript)
+        .setType(Protocol::Memory::CategoryData::Type::JavaScript)
         .setSize(data.categories[MemoryCategory::GCHeap].totalSize() + data.categories[MemoryCategory::GCOwned].totalSize())
         .release();
 
@@ -145,13 +145,13 @@ void InspectorMemoryAgent::collectSample(const ResourceUsageData& data)
     categories->addItem(WTFMove(otherCategory));
 
     auto event = Protocol::Memory::Event::create()
-        .setTimestamp(m_environment.executionStopwatch()->elapsedTime())
+        .setTimestamp(m_environment.executionStopwatch()->elapsedTimeSince(data.timestamp).seconds())
         .setCategories(WTFMove(categories))
         .release();
 
     m_frontendDispatcher->trackingUpdate(WTFMove(event));
 }
 
-} // namespace Inspector
+} // namespace WebCore
 
 #endif // ENABLE(RESOURCE_USAGE)

@@ -114,30 +114,30 @@ void BackendDispatcher::dispatch(const String& message)
     {
         // In case this is a re-entrant call from a nested run loop, we don't want to lose
         // the outer request's id just because the inner request is bogus.
-        SetForScope<std::optional<long>> scopedRequestId(m_currentRequestId, std::nullopt);
+        SetForScope<Optional<long>> scopedRequestId(m_currentRequestId, WTF::nullopt);
 
         RefPtr<JSON::Value> parsedMessage;
         if (!JSON::Value::parseJSON(message, parsedMessage)) {
-            reportProtocolError(ParseError, ASCIILiteral("Message must be in JSON format"));
+            reportProtocolError(ParseError, "Message must be in JSON format"_s);
             sendPendingErrors();
             return;
         }
 
         if (!parsedMessage->asObject(messageObject)) {
-            reportProtocolError(InvalidRequest, ASCIILiteral("Message must be a JSONified object"));
+            reportProtocolError(InvalidRequest, "Message must be a JSONified object"_s);
             sendPendingErrors();
             return;
         }
 
         RefPtr<JSON::Value> requestIdValue;
-        if (!messageObject->getValue(ASCIILiteral("id"), requestIdValue)) {
-            reportProtocolError(InvalidRequest, ASCIILiteral("'id' property was not found"));
+        if (!messageObject->getValue("id"_s, requestIdValue)) {
+            reportProtocolError(InvalidRequest, "'id' property was not found"_s);
             sendPendingErrors();
             return;
         }
 
         if (!requestIdValue->asInteger(requestId)) {
-            reportProtocolError(InvalidRequest, ASCIILiteral("The type of 'id' property must be integer"));
+            reportProtocolError(InvalidRequest, "The type of 'id' property must be integer"_s);
             sendPendingErrors();
             return;
         }
@@ -145,26 +145,25 @@ void BackendDispatcher::dispatch(const String& message)
 
     {
         // We could be called re-entrantly from a nested run loop, so restore the previous id.
-        SetForScope<std::optional<long>> scopedRequestId(m_currentRequestId, requestId);
+        SetForScope<Optional<long>> scopedRequestId(m_currentRequestId, requestId);
 
         RefPtr<JSON::Value> methodValue;
-        if (!messageObject->getValue(ASCIILiteral("method"), methodValue)) {
-            reportProtocolError(InvalidRequest, ASCIILiteral("'method' property wasn't found"));
+        if (!messageObject->getValue("method"_s, methodValue)) {
+            reportProtocolError(InvalidRequest, "'method' property wasn't found"_s);
             sendPendingErrors();
             return;
         }
 
         String methodString;
         if (!methodValue->asString(methodString)) {
-            reportProtocolError(InvalidRequest, ASCIILiteral("The type of 'method' property must be string"));
+            reportProtocolError(InvalidRequest, "The type of 'method' property must be string"_s);
             sendPendingErrors();
             return;
         }
 
-        Vector<String> domainAndMethod;
-        methodString.split('.', true, domainAndMethod);
+        Vector<String> domainAndMethod = methodString.splitAllowingEmptyEntries('.');
         if (domainAndMethod.size() != 2 || !domainAndMethod[0].length() || !domainAndMethod[1].length()) {
-            reportProtocolError(InvalidRequest, ASCIILiteral("The 'method' property was formatted incorrectly. It should be 'Domain.method'"));
+            reportProtocolError(InvalidRequest, "The 'method' property was formatted incorrectly. It should be 'Domain.method'"_s);
             sendPendingErrors();
             return;
         }
@@ -198,8 +197,8 @@ void BackendDispatcher::sendResponse(long requestId, RefPtr<JSON::Object>&& resu
     // The JSON-RPC 2.0 specification requires that the "error" member have the value 'null'
     // if no error occurred during an invocation, but we do not include it at all.
     Ref<JSON::Object> responseMessage = JSON::Object::create();
-    responseMessage->setObject(ASCIILiteral("result"), WTFMove(result));
-    responseMessage->setInteger(ASCIILiteral("id"), requestId);
+    responseMessage->setObject("result"_s, WTFMove(result));
+    responseMessage->setInteger("id"_s, requestId);
     m_frontendRouter->sendResponse(responseMessage->toJSONString());
 }
 
@@ -230,29 +229,29 @@ void BackendDispatcher::sendPendingErrors()
         ASSERT_ARG(errorCode, errorCodes[errorCode]);
 
         Ref<JSON::Object> error = JSON::Object::create();
-        error->setInteger(ASCIILiteral("code"), errorCodes[errorCode]);
-        error->setString(ASCIILiteral("message"), errorMessage);
+        error->setInteger("code"_s, errorCodes[errorCode]);
+        error->setString("message"_s, errorMessage);
         payload->pushObject(WTFMove(error));
     }
 
     Ref<JSON::Object> topLevelError = JSON::Object::create();
-    topLevelError->setInteger(ASCIILiteral("code"), errorCodes[errorCode]);
-    topLevelError->setString(ASCIILiteral("message"), errorMessage);
-    topLevelError->setArray(ASCIILiteral("data"), WTFMove(payload));
+    topLevelError->setInteger("code"_s, errorCodes[errorCode]);
+    topLevelError->setString("message"_s, errorMessage);
+    topLevelError->setArray("data"_s, WTFMove(payload));
 
     Ref<JSON::Object> message = JSON::Object::create();
-    message->setObject(ASCIILiteral("error"), WTFMove(topLevelError));
+    message->setObject("error"_s, WTFMove(topLevelError));
     if (m_currentRequestId)
-        message->setInteger(ASCIILiteral("id"), m_currentRequestId.value());
+        message->setInteger("id"_s, m_currentRequestId.value());
     else {
         // The 'null' value for an unknown id is specified in JSON-RPC 2.0, Section 5.
-        message->setValue(ASCIILiteral("id"), JSON::Value::null());
+        message->setValue("id"_s, JSON::Value::null());
     }
 
     m_frontendRouter->sendResponse(message->toJSONString());
 
     m_protocolErrors.clear();
-    m_currentRequestId = std::nullopt;
+    m_currentRequestId = WTF::nullopt;
 }
 
 void BackendDispatcher::reportProtocolError(CommonErrorCode errorCode, const String& errorMessage)
@@ -260,7 +259,7 @@ void BackendDispatcher::reportProtocolError(CommonErrorCode errorCode, const Str
     reportProtocolError(m_currentRequestId, errorCode, errorMessage);
 }
 
-void BackendDispatcher::reportProtocolError(std::optional<long> relatedRequestId, CommonErrorCode errorCode, const String& errorMessage)
+void BackendDispatcher::reportProtocolError(Optional<long> relatedRequestId, CommonErrorCode errorCode, const String& errorMessage)
 {
     ASSERT_ARG(errorCode, errorCode >= 0);
 
@@ -271,15 +270,13 @@ void BackendDispatcher::reportProtocolError(std::optional<long> relatedRequestId
     m_protocolErrors.append(std::tuple<CommonErrorCode, String>(errorCode, errorMessage));
 }
 
-#if PLATFORM(MAC)
 void BackendDispatcher::reportProtocolError(WTF::DeprecatedOptional<long> relatedRequestId, CommonErrorCode errorCode, const String& errorMessage)
 {
     if (relatedRequestId)
         reportProtocolError(relatedRequestId.value(), errorCode, errorMessage);
     else
-        reportProtocolError(std::nullopt, errorCode, errorMessage);
+        reportProtocolError(WTF::nullopt, errorCode, errorMessage);
 }
-#endif
 
 template<typename T>
 T BackendDispatcher::getPropertyValue(JSON::Object* object, const String& name, bool* out_optionalValueFound, T defaultValue, std::function<bool(JSON::Value&, T&)> asMethod, const char* typeName)
@@ -292,19 +289,19 @@ T BackendDispatcher::getPropertyValue(JSON::Object* object, const String& name, 
 
     if (!object) {
         if (!out_optionalValueFound)
-            reportProtocolError(BackendDispatcher::InvalidParams, String::format("'params' object must contain required parameter '%s' with type '%s'.", name.utf8().data(), typeName));
+            reportProtocolError(BackendDispatcher::InvalidParams, makeString("'params' object must contain required parameter '", name, "' with type '", typeName, "'."));
         return result;
     }
 
     auto findResult = object->find(name);
     if (findResult == object->end()) {
         if (!out_optionalValueFound)
-            reportProtocolError(BackendDispatcher::InvalidParams, String::format("Parameter '%s' with type '%s' was not found.", name.utf8().data(), typeName));
+            reportProtocolError(BackendDispatcher::InvalidParams, makeString("Parameter '", name, "' with type '", typeName, "' was not found."));
         return result;
     }
 
     if (!asMethod(*findResult->value, result)) {
-        reportProtocolError(BackendDispatcher::InvalidParams, String::format("Parameter '%s' has wrong type. It must be '%s'.", name.utf8().data(), typeName));
+        reportProtocolError(BackendDispatcher::InvalidParams, makeString("Parameter '", name, "' has wrong type. It must be '", typeName, "'."));
         return result;
     }
 

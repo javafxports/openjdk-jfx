@@ -254,6 +254,9 @@ public:
                     break;
                 case MakeRope:
                 case ValueAdd:
+                case ValueSub:
+                case ValueMul:
+                case ValueDiv:
                 case ArithAdd:
                 case ArithSub:
                 case ArithMul:
@@ -271,6 +274,7 @@ public:
                 case CompareBelowEq:
                 case CompareEq:
                 case CompareStrictEq:
+                case SameValue:
                 case StrCat:
                     VALIDATE((node), !!node->child1());
                     VALIDATE((node), !!node->child2());
@@ -351,6 +355,12 @@ public:
                         VALIDATE((node), inlineCallFrame->isVarargs());
                     break;
                 }
+                case NewArray:
+                    VALIDATE((node), node->vectorLengthHint() >= node->numChildren());
+                    break;
+                case NewArrayBuffer:
+                    VALIDATE((node), node->vectorLengthHint() >= node->castOperand<JSImmutableButterfly*>()->length());
+                    break;
                 default:
                     break;
                 }
@@ -370,8 +380,8 @@ public:
 
         // Validate clobbered states.
         struct DefLambdaAdaptor {
-            std::function<void(PureValue)> pureValue;
-            std::function<void(HeapLocation, LazyNode)> locationAndNode;
+            Function<void(PureValue)> pureValue;
+            Function<void(HeapLocation, LazyNode)> locationAndNode;
 
             void operator()(PureValue value) const
             {
@@ -407,6 +417,14 @@ public:
                         }
                 });
             }
+        }
+
+        for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
+            // We expect the predecessor list to be de-duplicated.
+            HashSet<BasicBlock*> predecessors;
+            for (BasicBlock* predecessor : block->predecessors)
+                predecessors.add(predecessor);
+            VALIDATE((block), predecessors.size() == block->predecessors.size());
         }
     }
 
@@ -787,6 +805,7 @@ private:
 
                 case PhantomNewArrayBuffer:
                     VALIDATE((node), m_graph.m_form == SSA);
+                    VALIDATE((node), node->vectorLengthHint() >= node->castOperand<JSImmutableButterfly*>()->length());
                     break;
 
                 case NewArrayWithSpread: {

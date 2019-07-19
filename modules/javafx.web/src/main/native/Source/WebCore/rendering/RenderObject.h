@@ -46,6 +46,7 @@ class CSSAnimationController;
 class Color;
 class Cursor;
 class Document;
+class DocumentTimeline;
 class HitTestLocation;
 class HitTestRequest;
 class HitTestResult;
@@ -68,17 +69,21 @@ class SelectionRangeData;
 class TransformState;
 class VisiblePosition;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 class SelectionRect;
 #endif
 
 struct PaintInfo;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 const int caretWidth = 2; // This value should be kept in sync with UIKit. See <rdar://problem/15580601>.
 #else
 const int caretWidth = 1;
 #endif
+
+enum class ShouldAllowCrossOriginScrolling { No, Yes };
+
+struct ScrollRectToVisibleOptions;
 
 #if ENABLE(DASHBOARD_SUPPORT)
 struct AnnotatedRegionValue {
@@ -99,7 +104,7 @@ struct AnnotatedRegionValue {
 #endif
 
 // Base class for all rendering tree objects.
-class RenderObject : public CachedImageClient {
+class RenderObject : public CachedImageClient, public CanMakeWeakPtr<RenderObject> {
     WTF_MAKE_ISO_ALLOCATED(RenderObject);
     friend class RenderBlock;
     friend class RenderBlockFlow;
@@ -110,8 +115,6 @@ public:
     // marked as anonymous in the constructor.
     explicit RenderObject(Node&);
     virtual ~RenderObject();
-
-    auto& weakPtrFactory() const { return m_weakFactory; }
 
     RenderTheme& theme() const;
 
@@ -157,11 +160,12 @@ public:
     WEBCORE_EXPORT RenderLayer* enclosingLayer() const;
 
     // Scrolling is a RenderBox concept, however some code just cares about recursively scrolling our enclosing ScrollableArea(s).
-    WEBCORE_EXPORT bool scrollRectToVisible(SelectionRevealMode, const LayoutRect& absoluteRect, bool insideFixed, const ScrollAlignment& alignX = ScrollAlignment::alignCenterIfNeeded, const ScrollAlignment& alignY = ScrollAlignment::alignCenterIfNeeded);
+    WEBCORE_EXPORT bool scrollRectToVisible(const LayoutRect& absoluteRect, bool insideFixed, const ScrollRectToVisibleOptions&);
 
     // Convenience function for getting to the nearest enclosing box of a RenderObject.
     WEBCORE_EXPORT RenderBox& enclosingBox() const;
     RenderBoxModelObject& enclosingBoxModelObject() const;
+    const RenderBox* enclosingScrollableContainerForSnapping() const;
 
     // Function to return our enclosing flow thread if we are contained inside one. This
     // function follows the containing block chain.
@@ -172,6 +176,9 @@ public:
 
         return locateEnclosingFragmentedFlow();
     }
+
+    WEBCORE_EXPORT bool useDarkAppearance() const;
+    OptionSet<StyleColor::Options> styleColorOptions() const;
 
 #ifndef NDEBUG
     void setHasAXObject(bool flag) { m_hasAXObject = flag; }
@@ -283,9 +290,6 @@ public:
     virtual bool isRenderMultiColumnSet() const { return false; }
     virtual bool isRenderMultiColumnFlow() const { return false; }
     virtual bool isRenderMultiColumnSpannerPlaceholder() const { return false; }
-
-    virtual bool isRenderLinesClampFlow() const { return false; }
-    virtual bool isRenderLinesClampSet() const { return false; }
 
     virtual bool isRenderScrollbarPart() const { return false; }
 
@@ -404,9 +408,9 @@ public:
     {
         // This function is kept in sync with anonymous block creation conditions in
         // RenderBlock::createAnonymousBlock(). This includes creating an anonymous
-        // RenderBlock having a BLOCK or BOX display. Other classes such as RenderTextFragment
+        // RenderBlock having a DisplayType::Block or DisplayType::Box display. Other classes such as RenderTextFragment
         // are not RenderBlocks and will return false. See https://bugs.webkit.org/show_bug.cgi?id=56709.
-        return isAnonymous() && (style().display() == BLOCK || style().display() == BOX) && style().styleType() == NOPSEUDO && isRenderBlock() && !isListMarker() && !isRenderFragmentedFlow() && !isRenderMultiColumnSet() && !isRenderView()
+        return isAnonymous() && (style().display() == DisplayType::Block || style().display() == DisplayType::Box) && style().styleType() == PseudoId::None && isRenderBlock() && !isListMarker() && !isRenderFragmentedFlow() && !isRenderMultiColumnSet() && !isRenderView()
 #if ENABLE(FULLSCREEN_API)
             && !isRenderFullScreen()
             && !isRenderFullScreenPlaceholder()
@@ -422,8 +426,8 @@ public:
     bool isPositioned() const { return m_bitfields.isPositioned(); }
     bool isInFlowPositioned() const { return m_bitfields.isRelativelyPositioned() || m_bitfields.isStickilyPositioned(); }
     bool isOutOfFlowPositioned() const { return m_bitfields.isOutOfFlowPositioned(); } // absolute or fixed positioning
-    bool isFixedPositioned() const { return isOutOfFlowPositioned() && style().position() == FixedPosition; }
-    bool isAbsolutelyPositioned() const { return isOutOfFlowPositioned() && style().position() == AbsolutePosition; }
+    bool isFixedPositioned() const { return isOutOfFlowPositioned() && style().position() == PositionType::Fixed; }
+    bool isAbsolutelyPositioned() const { return isOutOfFlowPositioned() && style().position() == PositionType::Absolute; }
     bool isRelativelyPositioned() const { return m_bitfields.isRelativelyPositioned(); }
     bool isStickilyPositioned() const { return m_bitfields.isStickilyPositioned(); }
 
@@ -528,10 +532,10 @@ public:
         setPreferredLogicalWidthsDirty(true);
     }
 
-    void setPositionState(EPosition position)
+    void setPositionState(PositionType position)
     {
-        ASSERT((position != AbsolutePosition && position != FixedPosition) || isBox());
-        m_bitfields.setPositionedState(position);
+        ASSERT((position != PositionType::Absolute && position != PositionType::Fixed) || isBox());
+        m_bitfields.setPositionedState(static_cast<int>(position));
     }
     void clearPositionedState() { m_bitfields.clearPositionedState(); }
 
@@ -607,7 +611,7 @@ public:
     // Return the offset from an object up the container() chain. Asserts that none of the intermediate objects have transforms.
     LayoutSize offsetFromAncestorContainer(RenderElement&) const;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual void collectSelectionRects(Vector<SelectionRect>&, unsigned startOffset = 0, unsigned endOffset = std::numeric_limits<unsigned>::max());
     virtual void absoluteQuadsForSelection(Vector<FloatQuad>& quads) const { absoluteQuads(quads); }
 #endif
@@ -671,23 +675,36 @@ public:
 
     // Given a rect in the object's coordinate space, compute a rect suitable for repainting
     // that rect in view coordinates.
-    LayoutRect computeAbsoluteRepaintRect(const LayoutRect& r, bool fixed = false) const
+    LayoutRect computeAbsoluteRepaintRect(const LayoutRect& r) const
     {
-        return computeRectForRepaint(r, nullptr, { fixed, false });
+        return computeRectForRepaint(r, nullptr);
     }
     // Given a rect in the object's coordinate space, compute a rect suitable for repainting
     // that rect in the coordinate space of repaintContainer.
-    struct RepaintContext {
-        RepaintContext(bool hasPositionFixedDescendant = false, bool dirtyRectIsFlipped = false)
+    LayoutRect computeRectForRepaint(const LayoutRect&, const RenderLayerModelObject* repaintContainer) const;
+    FloatRect computeFloatRectForRepaint(const FloatRect&, const RenderLayerModelObject* repaintContainer) const;
+
+    // Given a rect in the object's coordinate space, compute the location in container space where this rect is visible,
+    // when clipping and scrolling as specified by the context. When using edge-inclusive intersection, return WTF::nullopt
+    // rather than an empty rect if the rect is completely clipped out in container space.
+    enum class VisibleRectContextOption {
+        UseEdgeInclusiveIntersection = 1 << 0,
+        ApplyCompositedClips = 1 << 1,
+        ApplyCompositedContainerScrolls  = 1 << 2,
+    };
+    struct VisibleRectContext {
+        VisibleRectContext(bool hasPositionFixedDescendant = false, bool dirtyRectIsFlipped = false, OptionSet<VisibleRectContextOption> options = { })
             : m_hasPositionFixedDescendant(hasPositionFixedDescendant)
             , m_dirtyRectIsFlipped(dirtyRectIsFlipped)
+            , m_options(options)
             {
             }
         bool m_hasPositionFixedDescendant;
         bool m_dirtyRectIsFlipped;
+        OptionSet<VisibleRectContextOption> m_options;
     };
-    virtual LayoutRect computeRectForRepaint(const LayoutRect&, const RenderLayerModelObject* repaintContainer, RepaintContext = { }) const;
-    virtual FloatRect computeFloatRectForRepaint(const FloatRect&, const RenderLayerModelObject* repaintContainer, bool fixed = false) const;
+    virtual Optional<LayoutRect> computeVisibleRectInContainer(const LayoutRect&, const RenderLayerModelObject* repaintContainer, VisibleRectContext) const;
+    virtual Optional<FloatRect> computeFloatVisibleRectInContainer(const FloatRect&, const RenderLayerModelObject* repaintContainer, VisibleRectContext) const;
 
     virtual unsigned int length() const { return 1; }
 
@@ -755,6 +772,7 @@ public:
     virtual void imageChanged(WrappedImagePtr, const IntRect* = nullptr) { }
 
     CSSAnimationController& animation() const;
+    DocumentTimeline* documentTimeline() const;
 
     // Map points and quads through elements, potentially via 3d transforms. You should never need to call these directly; use
     // localToAbsolute/absoluteToLocal methods instead.
@@ -780,6 +798,8 @@ public:
     void initializeFragmentedFlowStateOnInsertion();
     virtual void insertedIntoTree();
 
+    WEBCORE_EXPORT bool isTransparentOrFullyClippedRespectingParentFrames() const;
+
 protected:
     //////////////////////////////////////////
     // Helper functions. Dangerous to use!
@@ -800,9 +820,13 @@ protected:
     void setNeedsSimplifiedNormalFlowLayoutBit(bool b) { m_bitfields.setNeedsSimplifiedNormalFlowLayout(b); }
 
     virtual RenderFragmentedFlow* locateEnclosingFragmentedFlow() const;
-    static void calculateBorderStyleColor(const EBorderStyle&, const BoxSide&, Color&);
+    static void calculateBorderStyleColor(const BorderStyle&, const BoxSide&, Color&);
 
     static FragmentedFlowState computedFragmentedFlowState(const RenderObject&);
+
+    static bool shouldApplyCompositedContainerScrollsForRepaint();
+
+    static VisibleRectContext visibleRectContextForRepaint();
 
 private:
 #ifndef NDEBUG
@@ -834,8 +858,6 @@ private:
     RenderElement* m_parent;
     RenderObject* m_previous;
     RenderObject* m_next;
-
-    WeakPtrFactory<RenderObject> m_weakFactory;
 
 #ifndef NDEBUG
     bool m_hasAXObject             : 1;
@@ -940,10 +962,10 @@ private:
 
         void setPositionedState(int positionState)
         {
-            // This mask maps FixedPosition and AbsolutePosition to IsOutOfFlowPositioned, saving one bit.
+            // This mask maps PositionType::Fixed and PositionType::Absolute to IsOutOfFlowPositioned, saving one bit.
             m_positionedState = static_cast<PositionedState>(positionState & 0x3);
         }
-        void clearPositionedState() { m_positionedState = StaticPosition; }
+        void clearPositionedState() { m_positionedState = static_cast<unsigned>(PositionType::Static); }
 
         ALWAYS_INLINE SelectionState selectionState() const { return static_cast<SelectionState>(m_selectionState); }
         ALWAYS_INLINE void setSelectionState(SelectionState selectionState) { m_selectionState = selectionState; }
@@ -959,6 +981,7 @@ private:
 
     // FIXME: This should be RenderElementRareData.
     class RenderObjectRareData {
+        WTF_MAKE_FAST_ALLOCATED;
     public:
         RenderObjectRareData()
             : m_isDragging(false)
@@ -1005,6 +1028,11 @@ inline CSSAnimationController& RenderObject::animation() const
     return frame().animation();
 }
 
+inline DocumentTimeline* RenderObject::documentTimeline() const
+{
+    return document().existingTimeline();
+}
+
 inline bool RenderObject::renderTreeBeingDestroyed() const
 {
     return document().renderTreeBeingDestroyed();
@@ -1015,7 +1043,7 @@ inline bool RenderObject::isBeforeContent() const
     // Text nodes don't have their own styles, so ignore the style on a text node.
     if (isText())
         return false;
-    if (style().styleType() != BEFORE)
+    if (style().styleType() != PseudoId::Before)
         return false;
     return true;
 }
@@ -1025,7 +1053,7 @@ inline bool RenderObject::isAfterContent() const
     // Text nodes don't have their own styles, so ignore the style on a text node.
     if (isText())
         return false;
-    if (style().styleType() != AFTER)
+    if (style().styleType() != PseudoId::After)
         return false;
     return true;
 }
@@ -1099,6 +1127,7 @@ inline bool RenderObject::needsSimplifiedNormalFlowLayoutOnly() const
 #if ENABLE(TREE_DEBUGGING)
 void printRenderTreeForLiveDocuments();
 void printLayerTreeForLiveDocuments();
+void printGraphicsLayerTreeForLiveDocuments();
 #endif
 
 } // namespace WebCore

@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef WTF_HashFunctions_h
-#define WTF_HashFunctions_h
+#pragma once
 
 #include <stdint.h>
 #include <tuple>
@@ -243,6 +242,10 @@ namespace WTF {
 
     template<typename P, typename Deleter> struct DefaultHash<std::unique_ptr<P, Deleter>> { typedef PtrHash<std::unique_ptr<P, Deleter>> Hash; };
 
+#ifdef __OBJC__
+    template<> struct DefaultHash<__unsafe_unretained id> { using Hash = PtrHash<__unsafe_unretained id>; };
+#endif
+
     // make IntPairHash the default hash function for pairs of (at most) 32-bit integers.
 
     template<> struct DefaultHash<std::pair<short, short>> { typedef IntPairHash<short, short> Hash; };
@@ -272,5 +275,3 @@ namespace WTF {
 using WTF::DefaultHash;
 using WTF::IntHash;
 using WTF::PtrHash;
-
-#endif // WTF_HashFunctions_h

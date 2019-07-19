@@ -35,19 +35,19 @@
 #include "AsyncFileStream.h"
 #include "BlobData.h"
 #include "FileStream.h"
-#include "FileSystem.h"
 #include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
 #include "ParsedContentRange.h"
-#include "URL.h"
 #include "ResourceError.h"
 #include "ResourceHandleClient.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include "SharedBuffer.h"
 #include <wtf/CompletionHandler.h>
+#include <wtf/FileSystem.h>
 #include <wtf/MainThread.h>
 #include <wtf/Ref.h>
+#include <wtf/URL.h>
 
 namespace WebCore {
 
@@ -79,7 +79,7 @@ public:
     void didFail(ResourceHandle*, const ResourceError&) final;
     void willSendRequestAsync(ResourceHandle*, ResourceRequest&&, ResourceResponse&&, CompletionHandler<void(ResourceRequest&&)>&&) final;
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    void canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&) final;
+    void canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&, CompletionHandler<void(bool)>&&) final;
 #endif
 
 private:
@@ -102,10 +102,10 @@ void BlobResourceSynchronousLoader::willSendRequestAsync(ResourceHandle*, Resour
 }
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-void BlobResourceSynchronousLoader::canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle* handle, const ProtectionSpace&)
+void BlobResourceSynchronousLoader::canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&, CompletionHandler<void(bool)>&& completionHandler)
 {
     ASSERT_NOT_REACHED();
-    handle->continueCanAuthenticateAgainstProtectionSpace(false);
+    completionHandler(false);
 }
 #endif
 

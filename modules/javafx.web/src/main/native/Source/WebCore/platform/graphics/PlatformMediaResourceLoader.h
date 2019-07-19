@@ -27,6 +27,7 @@
 
 #if ENABLE(VIDEO)
 
+#include "PolicyChecker.h"
 #include <wtf/CompletionHandler.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RefCounted.h>
@@ -43,7 +44,7 @@ class PlatformMediaResourceClient {
 public:
     virtual ~PlatformMediaResourceClient() = default;
 
-    virtual void responseReceived(PlatformMediaResource&, const ResourceResponse&) { }
+    virtual void responseReceived(PlatformMediaResource&, const ResourceResponse&, CompletionHandler<void(ShouldContinue)>&& completionHandler) { completionHandler(ShouldContinue::Yes); }
     virtual void redirectReceived(PlatformMediaResource&, ResourceRequest&& request, const ResourceResponse&, CompletionHandler<void(ResourceRequest&&)>&& completionHandler) { completionHandler(WTFMove(request)); }
     virtual bool shouldCacheResponse(PlatformMediaResource&, const ResourceResponse&) { return true; }
     virtual void dataSent(PlatformMediaResource&, unsigned long long, unsigned long long) { }
@@ -70,16 +71,16 @@ protected:
     PlatformMediaResourceLoader() = default;
 };
 
-class PlatformMediaResource : public RefCounted<PlatformMediaResource> {
+class PlatformMediaResource : public ThreadSafeRefCounted<PlatformMediaResource> {
     WTF_MAKE_NONCOPYABLE(PlatformMediaResource); WTF_MAKE_FAST_ALLOCATED;
 public:
     PlatformMediaResource() = default;
     virtual ~PlatformMediaResource() = default;
     virtual void stop() { }
-    virtual void setDefersLoading(bool) { }
     virtual bool didPassAccessControlCheck() const { return false; }
 
     void setClient(std::unique_ptr<PlatformMediaResourceClient>&& client) { m_client = WTFMove(client); }
+    PlatformMediaResourceClient* client() { return m_client.get(); }
 
 protected:
     std::unique_ptr<PlatformMediaResourceClient> m_client;

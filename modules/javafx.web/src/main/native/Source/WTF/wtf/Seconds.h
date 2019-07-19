@@ -23,10 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WTF_Seconds_h
-#define WTF_Seconds_h
+#pragma once
 
 #include <wtf/MathExtras.h>
+#include <wtf/Optional.h>
 
 namespace WTF {
 
@@ -87,6 +87,11 @@ public:
     static constexpr Seconds infinity()
     {
         return Seconds(std::numeric_limits<double>::infinity());
+    }
+
+    static constexpr Seconds nan()
+    {
+        return Seconds(std::numeric_limits<double>::quiet_NaN());
     }
 
     explicit constexpr operator bool() const { return !!m_value; }
@@ -214,8 +219,51 @@ public:
         return *this;
     }
 
+    template<class Encoder>
+    void encode(Encoder& encoder) const
+    {
+        encoder << m_value;
+    }
+
+    template<class Decoder>
+    static Optional<Seconds> decode(Decoder& decoder)
+    {
+        Optional<double> seconds;
+        decoder >> seconds;
+        if (!seconds)
+            return WTF::nullopt;
+        return Seconds(*seconds);
+    }
+
+    template<class Decoder>
+    static bool decode(Decoder& decoder, Seconds& seconds)
+    {
+        double value;
+        if (!decoder.decode(value))
+            return false;
+
+        seconds = Seconds(value);
+        return true;
+    }
+
+    struct MarkableTraits;
+
 private:
     double m_value { 0 };
+};
+
+WTF_EXPORT_PRIVATE void sleep(Seconds);
+
+struct Seconds::MarkableTraits {
+    static bool isEmptyValue(Seconds seconds)
+    {
+        return std::isnan(seconds.value());
+    }
+
+    static constexpr Seconds emptyValue()
+    {
+        return Seconds::nan();
+    }
 };
 
 inline namespace seconds_literals {
@@ -284,6 +332,8 @@ constexpr Seconds operator"" _ns(unsigned long long nanoseconds)
 
 } // namespace WTF
 
+using WTF::sleep;
+
 namespace std {
 
 inline bool isnan(WTF::Seconds seconds)
@@ -305,5 +355,3 @@ inline bool isfinite(WTF::Seconds seconds)
 
 using namespace WTF::seconds_literals;
 using WTF::Seconds;
-
-#endif // WTF_Seconds_h

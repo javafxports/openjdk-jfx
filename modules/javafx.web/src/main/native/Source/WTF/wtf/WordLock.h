@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WTF_WordLock_h
-#define WTF_WordLock_h
+#pragma once
 
 #include <wtf/Atomics.h>
 #include <wtf/Compiler.h>
@@ -50,7 +49,7 @@ class WordLock {
     WTF_MAKE_NONCOPYABLE(WordLock);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    WordLock() = default;
+    constexpr WordLock() = default;
 
     void lock()
     {
@@ -101,14 +100,9 @@ protected:
     Atomic<uintptr_t> m_word { 0 };
 };
 
-using StaticWordLock = WordLock;
 using WordLockHolder = Locker<WordLock>;
 
 } // namespace WTF
 
 using WTF::WordLock;
 using WTF::WordLockHolder;
-using WTF::StaticWordLock;
-
-#endif // WTF_WordLock_h
-

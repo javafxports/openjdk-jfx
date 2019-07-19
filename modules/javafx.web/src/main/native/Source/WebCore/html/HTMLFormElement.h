@@ -42,6 +42,7 @@ class HTMLFormControlsCollection;
 class HTMLImageElement;
 
 class HTMLFormElement final : public HTMLElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLFormElement);
 public:
     static Ref<HTMLFormElement> create(Document&);
     static Ref<HTMLFormElement> create(const QualifiedName&, Document&);
@@ -53,7 +54,7 @@ public:
 
     WEBCORE_EXPORT unsigned length() const;
     HTMLElement* item(unsigned index);
-    std::optional<Variant<RefPtr<RadioNodeList>, RefPtr<Element>>> namedItem(const AtomicString&);
+    Optional<Variant<RefPtr<RadioNodeList>, RefPtr<Element>>> namedItem(const AtomicString&);
     Vector<AtomicString> supportedPropertyNames() const;
 
     String enctype() const { return m_attributes.encodingType(); }
@@ -95,8 +96,8 @@ public:
     String acceptCharset() const { return m_attributes.acceptCharset(); }
     void setAcceptCharset(const String&);
 
-    String action() const;
-    void setAction(const String&);
+    WEBCORE_EXPORT String action() const;
+    WEBCORE_EXPORT void setAction(const String&);
 
     WEBCORE_EXPORT String method() const;
     WEBCORE_EXPORT void setMethod(const String&);
@@ -132,7 +133,7 @@ private:
     void removedFromAncestor(RemovalType, ContainerNode&) final;
     void finishParsingChildren() final;
 
-    void handleLocalEvents(Event&) final;
+    void handleLocalEvents(Event&, EventInvokePhase) final;
 
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
     bool isURLAttribute(const Attribute&) const final;

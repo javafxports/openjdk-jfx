@@ -47,7 +47,7 @@ void Table::setLength(uint32_t length)
     ASSERT(m_mask == WTF::maskForSize(allocatedLength(length)));
 }
 
-RefPtr<Table> Table::create(uint32_t initial, std::optional<uint32_t> maximum)
+RefPtr<Table> Table::tryCreate(uint32_t initial, Optional<uint32_t> maximum)
 {
     if (!isValidLength(initial))
         return nullptr;
@@ -58,7 +58,7 @@ Table::~Table()
 {
 }
 
-Table::Table(uint32_t initial, std::optional<uint32_t> maximum)
+Table::Table(uint32_t initial, Optional<uint32_t> maximum)
 {
     setLength(initial);
     m_maximum = maximum;
@@ -66,17 +66,17 @@ Table::Table(uint32_t initial, std::optional<uint32_t> maximum)
 
     // FIXME: It might be worth trying to pre-allocate maximum here. The spec recommends doing so.
     // But for now, we're not doing that.
-    m_functions = MallocPtr<Wasm::CallableFunction>::malloc((sizeof(Wasm::CallableFunction) * Checked<size_t>(allocatedLength(m_length))).unsafeGet());
+    m_importableFunctions = MallocPtr<WasmToWasmImportableFunction>::malloc((sizeof(WasmToWasmImportableFunction) * Checked<size_t>(allocatedLength(m_length))).unsafeGet());
     // FIXME this over-allocates and could be smarter about not committing all of that memory https://bugs.webkit.org/show_bug.cgi?id=181425
     m_instances = MallocPtr<Instance*>::malloc((sizeof(Instance*) * Checked<size_t>(allocatedLength(m_length))).unsafeGet());
     for (uint32_t i = 0; i < allocatedLength(m_length); ++i) {
-        new (&m_functions.get()[i]) CallableFunction();
-        ASSERT(m_functions.get()[i].signatureIndex == Wasm::Signature::invalidIndex); // We rely on this in compiled code.
+        new (&m_importableFunctions.get()[i]) WasmToWasmImportableFunction();
+        ASSERT(m_importableFunctions.get()[i].signatureIndex == Wasm::Signature::invalidIndex); // We rely on this in compiled code.
         m_instances.get()[i] = nullptr;
     }
 }
 
-std::optional<uint32_t> Table::grow(uint32_t delta)
+Optional<uint32_t> Table::grow(uint32_t delta)
 {
     if (delta == 0)
         return length();
@@ -86,12 +86,12 @@ std::optional<uint32_t> Table::grow(uint32_t delta)
     newLengthChecked += delta;
     uint32_t newLength;
     if (newLengthChecked.safeGet(newLength) == CheckedState::DidOverflow)
-        return std::nullopt;
+        return WTF::nullopt;
 
     if (maximum() && newLength > *maximum())
-        return std::nullopt;
+        return WTF::nullopt;
     if (!isValidLength(newLength))
-        return std::nullopt;
+        return WTF::nullopt;
 
     auto checkedGrow = [&] (auto& container) {
         if (newLengthChecked.unsafeGet() > allocatedLength(m_length)) {
@@ -108,10 +108,10 @@ std::optional<uint32_t> Table::grow(uint32_t delta)
         return true;
     };
 
-    if (!checkedGrow(m_functions))
-        return std::nullopt;
+    if (!checkedGrow(m_importableFunctions))
+        return WTF::nullopt;
     if (!checkedGrow(m_instances))
-        return std::nullopt;
+        return WTF::nullopt;
 
     setLength(newLength);
 
@@ -121,15 +121,15 @@ std::optional<uint32_t> Table::grow(uint32_t delta)
 void Table::clearFunction(uint32_t index)
 {
     RELEASE_ASSERT(index < length());
-    m_functions.get()[index & m_mask] = Wasm::CallableFunction();
-    ASSERT(m_functions.get()[index & m_mask].signatureIndex == Wasm::Signature::invalidIndex); // We rely on this in compiled code.
+    m_importableFunctions.get()[index & m_mask] = WasmToWasmImportableFunction();
+    ASSERT(m_importableFunctions.get()[index & m_mask].signatureIndex == Wasm::Signature::invalidIndex); // We rely on this in compiled code.
     m_instances.get()[index & m_mask] = nullptr;
 }
 
-void Table::setFunction(uint32_t index, CallableFunction function, Instance* instance)
+void Table::setFunction(uint32_t index, WasmToWasmImportableFunction function, Instance* instance)
 {
     RELEASE_ASSERT(index < length());
-    m_functions.get()[index & m_mask] = function;
+    m_importableFunctions.get()[index & m_mask] = function;
     m_instances.get()[index & m_mask] = instance;
 }
 

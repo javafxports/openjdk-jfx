@@ -37,12 +37,14 @@ class Blob;
 class HTMLCanvasElement;
 class HTMLImageElement;
 class HTMLVideoElement;
+class ImageBitmapImageObserver;
 class ImageBuffer;
 class ImageData;
 class IntRect;
 class IntSize;
 class PendingImageBitmap;
 class ScriptExecutionContext;
+class TypedOMCSSImageValue;
 struct ImageBitmapOptions;
 
 class ImageBitmap : public ScriptWrappable, public RefCounted<ImageBitmap> {
@@ -54,6 +56,9 @@ public:
 #endif
         RefPtr<HTMLCanvasElement>,
         RefPtr<ImageBitmap>,
+#if ENABLE(CSS_TYPED_OM)
+        RefPtr<TypedOMCSSImageValue>,
+#endif
         RefPtr<Blob>,
         RefPtr<ImageData>
     >;
@@ -64,6 +69,7 @@ public:
     static void createPromise(ScriptExecutionContext&, Source&&, ImageBitmapOptions&&, int sx, int sy, int sw, int sh, Promise&&);
 
     static Ref<ImageBitmap> create(IntSize);
+    static Ref<ImageBitmap> create(std::pair<std::unique_ptr<ImageBuffer>, bool>&&);
 
     ~ImageBitmap();
 
@@ -79,20 +85,25 @@ public:
 
     std::unique_ptr<ImageBuffer> transferOwnershipAndClose();
 
+    static Vector<std::pair<std::unique_ptr<ImageBuffer>, bool>> detachBitmaps(Vector<RefPtr<ImageBitmap>>&&);
+
 private:
+    friend class ImageBitmapImageObserver;
     friend class PendingImageBitmap;
 
-    static Ref<ImageBitmap> create();
-    ImageBitmap();
+    static Ref<ImageBitmap> create(std::unique_ptr<ImageBuffer>&&);
+    ImageBitmap(std::unique_ptr<ImageBuffer>&&);
 
-    static void createPromise(ScriptExecutionContext&, RefPtr<HTMLImageElement>&, ImageBitmapOptions&&, std::optional<IntRect>, Promise&&);
+    static void createPromise(ScriptExecutionContext&, RefPtr<HTMLImageElement>&, ImageBitmapOptions&&, Optional<IntRect>, Promise&&);
 #if ENABLE(VIDEO)
-    static void createPromise(ScriptExecutionContext&, RefPtr<HTMLVideoElement>&, ImageBitmapOptions&&, std::optional<IntRect>, Promise&&);
+    static void createPromise(ScriptExecutionContext&, RefPtr<HTMLVideoElement>&, ImageBitmapOptions&&, Optional<IntRect>, Promise&&);
 #endif
-    static void createPromise(ScriptExecutionContext&, RefPtr<HTMLCanvasElement>&, ImageBitmapOptions&&, std::optional<IntRect>, Promise&&);
-    static void createPromise(ScriptExecutionContext&, RefPtr<ImageBitmap>&, ImageBitmapOptions&&, std::optional<IntRect>, Promise&&);
-    static void createPromise(ScriptExecutionContext&, RefPtr<Blob>&, ImageBitmapOptions&&, std::optional<IntRect>, Promise&&);
-    static void createPromise(ScriptExecutionContext&, RefPtr<ImageData>&, ImageBitmapOptions&&, std::optional<IntRect>, Promise&&);
+    static void createPromise(ScriptExecutionContext&, RefPtr<HTMLCanvasElement>&, ImageBitmapOptions&&, Optional<IntRect>, Promise&&);
+    static void createPromise(ScriptExecutionContext&, RefPtr<ImageBitmap>&, ImageBitmapOptions&&, Optional<IntRect>, Promise&&);
+    static void createPromise(ScriptExecutionContext&, RefPtr<Blob>&, ImageBitmapOptions&&, Optional<IntRect>, Promise&&);
+    static void createPromise(ScriptExecutionContext&, RefPtr<ImageData>&, ImageBitmapOptions&&, Optional<IntRect>, Promise&&);
+    static void createPromise(ScriptExecutionContext&, RefPtr<TypedOMCSSImageValue>&, ImageBitmapOptions&&, Optional<IntRect>, Promise&&);
+    static void createFromBuffer(Ref<ArrayBuffer>&&, String mimeType, long long expectedContentLength, const URL&, ImageBitmapOptions&&, Optional<IntRect>, Promise&&);
 
     std::unique_ptr<ImageBuffer> m_bitmapData;
     bool m_detached { false };

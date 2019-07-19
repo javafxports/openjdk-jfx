@@ -26,10 +26,10 @@ require 'risc'
 
 # GPR conventions, to match the baseline JIT
 #
-# $a0 => a0
-# $a1 => a1
-# $a2 => a2
-# $a3 => a3
+# $a0 => a0, t7
+# $a1 => a1, t8
+# $a2 => a2, t9
+# $a3 => a3, t10
 # $v0 => t0, r0
 # $v1 => t1, r1
 # $t0 =>            (scratch)
@@ -113,13 +113,13 @@ end
 class RegisterID
     def mipsOperand
         case name
-        when "a0"
+        when "a0", "t7"
             "$a0"
-        when "a1"
+        when "a1", "t8"
             "$a1"
-        when "a2"
+        when "a2", "t9"
             "$a2"
-        when "a3"
+        when "a3", "t10"
             "$a3"
         when "t0", "r0"
             "$v0"
@@ -135,6 +135,8 @@ class RegisterID
             "$t5"
         when "cfr"
             "$fp"
+        when "csr0"
+            "$s0"
         when "lr"
             "$ra"
         when "sp"
@@ -878,7 +880,7 @@ class Instruction
             $asm.puts "sw #{mipsOperands(operands)}"
         when "loadb"
             $asm.puts "lbu #{mipsFlippedOperands(operands)}"
-        when "loadbs"
+        when "loadbs", "loadbsp"
             $asm.puts "lb #{mipsFlippedOperands(operands)}"
         when "storeb"
             $asm.puts "sb #{mipsOperands(operands)}"
@@ -1014,10 +1016,18 @@ class Instruction
             $asm.puts "sw #{operands[1].mipsOperand}, #{operands[0].value * 4}($sp)"
         when "fii2d"
             $asm.puts "mtc1 #{operands[0].mipsOperand}, #{operands[2].mipsSingleLo}"
+            $asm.putStr("#if WTF_MIPS_ISA_REV_AT_LEAST(2)")
+            $asm.puts "mthc1 #{operands[1].mipsOperand}, #{operands[2].mipsSingleLo}"
+            $asm.putStr("#else")
             $asm.puts "mtc1 #{operands[1].mipsOperand}, #{operands[2].mipsSingleHi}"
+            $asm.putStr("#endif")
         when "fd2ii"
             $asm.puts "mfc1 #{operands[1].mipsOperand}, #{operands[0].mipsSingleLo}"
+            $asm.putStr("#if WTF_MIPS_ISA_REV_AT_LEAST(2)")
+            $asm.puts "mfhc1 #{operands[2].mipsOperand}, #{operands[0].mipsSingleLo}"
+            $asm.putStr("#else")
             $asm.puts "mfc1 #{operands[2].mipsOperand}, #{operands[0].mipsSingleHi}"
+            $asm.putStr("#endif")
         when /^bo/
             $asm.puts "bgt #{operands[0].mipsOperand}, #{operands[1].mipsOperand}, #{operands[2].asmLabel}"
         when /^bs/
@@ -1027,7 +1037,14 @@ class Instruction
         when /^bnz/
             $asm.puts "bne #{operands[0].mipsOperand}, #{operands[1].mipsOperand}, #{operands[2].asmLabel}"
         when "leai", "leap"
-            operands[0].mipsEmitLea(operands[1])
+            if operands[0].is_a? LabelReference
+                labelRef = operands[0]
+                raise unless labelRef.offset == 0
+                $asm.puts "lw #{operands[1].mipsOperand}, %got(#{labelRef.asmLabel})($gp)"
+            else
+                operands[0].mipsEmitLea(operands[1])
+            end
+
         when "smulli"
             raise "Wrong number of arguments to smull in #{self.inspect} at #{codeOriginString}" unless operands.length == 4
             $asm.puts "mult #{operands[0].mipsOperand}, #{operands[1].mipsOperand}"

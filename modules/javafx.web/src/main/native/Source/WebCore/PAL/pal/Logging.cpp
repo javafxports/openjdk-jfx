@@ -26,10 +26,6 @@
 #include "config.h"
 #include "Logging.h"
 
-#include "LogInitialization.h"
-
-#include <wtf/StdLibExtras.h>
-#include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA)
@@ -39,54 +35,11 @@
 
 namespace PAL {
 
-#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
-
-#define DEFINE_PAL_LOG_CHANNEL(name) DEFINE_LOG_CHANNEL(name, LOG_CHANNEL_WEBKIT_SUBSYSTEM)
-PAL_LOG_CHANNELS(DEFINE_PAL_LOG_CHANNEL)
-
-static WTFLogChannel* logChannels[] = {
-    PAL_LOG_CHANNELS(LOG_CHANNEL_ADDRESS)
-};
-
-static const size_t logChannelCount = WTF_ARRAY_LENGTH(logChannels);
-
-bool isLogChannelEnabled(const String& name)
-{
-    WTFLogChannel* channel = WTFLogChannelByName(logChannels, logChannelCount, name.utf8().data());
-    if (!channel)
-        return false;
-    return channel->state != WTFLogChannelOff;
-}
-
-static bool logChannelsNeedInitialization = true;
-
-void setLogChannelToAccumulate(const String& name)
-{
-    WTFLogChannel* channel = WTFLogChannelByName(logChannels, logChannelCount, name.utf8().data());
-    if (!channel)
-        return;
-
-    channel->state = WTFLogChannelOnWithAccumulation;
-    logChannelsNeedInitialization = true;
-}
-
-void initializeLogChannelsIfNecessary(std::optional<String> logChannelString)
-{
-    if (!logChannelsNeedInitialization && !logChannelString)
-        return;
-
-    logChannelsNeedInitialization = false;
-
-    String enabledChannelsString = logChannelString ? logChannelString.value() : logLevelString();
-    WTFInitializeLogChannelStatesFromString(logChannels, logChannelCount, enabledChannelsString.utf8().data());
-}
-
-#ifndef NDEBUG
 void registerNotifyCallback(const String& notifyID, WTF::Function<void()>&& callback)
 {
 #if PLATFORM(COCOA)
     int token;
-    notify_register_dispatch(notifyID.utf8().data(), &token, dispatch_get_main_queue(), BlockPtr<void(int)>::fromCallable([callback = WTFMove(callback)](int) {
+    notify_register_dispatch(notifyID.utf8().data(), &token, dispatch_get_main_queue(), makeBlockPtr([callback = WTFMove(callback)](int) {
         callback();
     }).get());
 #else
@@ -94,9 +47,5 @@ void registerNotifyCallback(const String& notifyID, WTF::Function<void()>&& call
     UNUSED_PARAM(callback);
 #endif
 }
-#endif
-
-#endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED
 
 } // namespace WebCore
-

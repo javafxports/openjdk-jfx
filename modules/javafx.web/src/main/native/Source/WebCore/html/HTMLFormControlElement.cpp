@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2018 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  *
  * This library is free software; you can redistribute it and/or
@@ -40,12 +40,17 @@
 #include "HTMLTextAreaElement.h"
 #include "RenderBox.h"
 #include "RenderTheme.h"
+#include "ScriptDisallowedScope.h"
+#include "Settings.h"
 #include "StyleTreeResolver.h"
 #include "ValidationMessage.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/Ref.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLFormControlElement);
 
 using namespace HTMLNames;
 
@@ -156,12 +161,12 @@ void HTMLFormControlElement::parseAttribute(const QualifiedName& name, const Ato
         bool wasReadOnly = m_isReadOnly;
         m_isReadOnly = !value.isNull();
         if (wasReadOnly != m_isReadOnly)
-            readOnlyAttributeChanged();
+            readOnlyStateChanged();
     } else if (name == requiredAttr) {
         bool wasRequired = m_isRequired;
         m_isRequired = !value.isNull();
         if (wasRequired != m_isRequired)
-            requiredAttributeChanged();
+            requiredStateChanged();
     } else
         HTMLElement::parseAttribute(name, value);
 }
@@ -179,13 +184,13 @@ void HTMLFormControlElement::disabledStateChanged()
         renderer()->theme().stateChanged(*renderer(), ControlStates::EnabledState);
 }
 
-void HTMLFormControlElement::readOnlyAttributeChanged()
+void HTMLFormControlElement::readOnlyStateChanged()
 {
     setNeedsWillValidateCheck();
     invalidateStyleForSubtree();
 }
 
-void HTMLFormControlElement::requiredAttributeChanged()
+void HTMLFormControlElement::requiredStateChanged()
 {
     updateValidity();
     // Style recalculation is needed because style selectors may include
@@ -203,7 +208,7 @@ static bool shouldAutofocus(HTMLFormControlElement* element)
         return false;
     if (element->document().isSandboxed(SandboxAutomaticFeatures)) {
         // FIXME: This message should be moved off the console once a solution to https://bugs.webkit.org/show_bug.cgi?id=103274 exists.
-        element->document().addConsoleMessage(MessageSource::Security, MessageLevel::Error, ASCIILiteral("Blocked autofocusing on a form control because the form's frame is sandboxed and the 'allow-scripts' permission is not set."));
+        element->document().addConsoleMessage(MessageSource::Security, MessageLevel::Error, "Blocked autofocusing on a form control because the form's frame is sandboxed and the 'allow-scripts' permission is not set."_s);
         return false;
     }
     if (element->hasAutofocused())
@@ -276,7 +281,9 @@ static void removeInvalidElementToAncestorFromInsertionPoint(const HTMLFormContr
 
 Node::InsertedIntoAncestorResult HTMLFormControlElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
+    if (m_dataListAncestorState == NotInsideDataList)
     m_dataListAncestorState = Unknown;
+
     setNeedsWillValidateCheck();
     if (willValidate() && !isValidFormControlElement())
         addInvalidElementToAncestorFromInsertionPoint(*this, &parentOfInsertedTree);
@@ -299,12 +306,21 @@ void HTMLFormControlElement::removedFromAncestor(RemovalType removalType, Contai
     m_validationMessage = nullptr;
     if (m_disabledByAncestorFieldset)
         setAncestorDisabled(computeIsDisabledByFieldsetAncestor());
+
+    bool wasInsideDataList = false;
+    if (m_dataListAncestorState == InsideDataList) {
     m_dataListAncestorState = Unknown;
+        wasInsideDataList = true;
+    }
+
     HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
     FormAssociatedElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
 
     if (wasMatchingInvalidPseudoClass)
         removeInvalidElementToAncestorFromInsertionPoint(*this, &oldParentOfRemovedTree);
+
+    if (wasInsideDataList)
+        setNeedsWillValidateCheck();
 }
 
 void HTMLFormControlElement::setChangedSinceLastFormControlChangeEvent(bool changed)
@@ -314,7 +330,7 @@ void HTMLFormControlElement::setChangedSinceLastFormControlChangeEvent(bool chan
 
 void HTMLFormControlElement::dispatchChangeEvent()
 {
-    dispatchScopedEvent(Event::create(eventNames().changeEvent, true, false));
+    dispatchScopedEvent(Event::create(eventNames().changeEvent, Event::CanBubble::Yes, Event::IsCancelable::No));
 }
 
 void HTMLFormControlElement::dispatchFormControlChangeEvent()
@@ -357,7 +373,7 @@ bool HTMLFormControlElement::supportsFocus() const
     return !isDisabledFormControl();
 }
 
-bool HTMLFormControlElement::isKeyboardFocusable(KeyboardEvent& event) const
+bool HTMLFormControlElement::isKeyboardFocusable(KeyboardEvent* event) const
 {
     return isFocusable()
         && document().frame()
@@ -369,6 +385,8 @@ bool HTMLFormControlElement::isMouseFocusable() const
 #if PLATFORM(GTK)
     return HTMLElement::isMouseFocusable();
 #else
+    if (needsMouseFocusableQuirk())
+        return HTMLElement::isMouseFocusable();
     return false;
 #endif
 }
@@ -471,7 +489,7 @@ bool HTMLFormControlElement::checkValidity(Vector<RefPtr<HTMLFormControlElement>
     // An event handler can deref this object.
     Ref<HTMLFormControlElement> protectedThis(*this);
     Ref<Document> originalDocument(document());
-    auto event = Event::create(eventNames().invalidEvent, false, true);
+    auto event = Event::create(eventNames().invalidEvent, Event::CanBubble::No, Event::IsCancelable::Yes);
     dispatchEvent(event);
     if (!event->defaultPrevented() && unhandledInvalidControls && isConnected() && originalDocument.ptr() == &document())
         unhandledInvalidControls->append(this);
@@ -513,7 +531,13 @@ void HTMLFormControlElement::focusAndShowValidationMessage()
 {
     // Calling focus() will scroll the element into view.
     focus();
-    updateVisibleValidationMessage();
+
+    // focus() will scroll the element into view and this scroll may happen asynchronously.
+    // Because scrolling the view hides the validation message, we need to show the validation
+    // message asynchronously as well.
+    callOnMainThread([this, protectedThis = makeRef(*this)] {
+        updateVisibleValidationMessage();
+    });
 }
 
 inline bool HTMLFormControlElement::isValidFormControlElement() const
@@ -533,8 +557,10 @@ void HTMLFormControlElement::willChangeForm()
 
 void HTMLFormControlElement::didChangeForm()
 {
+    ScriptDisallowedScope::InMainThread scriptDisallowedScope;
+
     FormAssociatedElement::didChangeForm();
-    if (RefPtr<HTMLFormElement> form = this->form()) {
+    if (auto* form = this->form()) {
         if (m_willValidateInitialized && m_willValidate && !isValidFormControlElement())
             form->registerInvalidAssociatedFormControl(*this);
     }
@@ -644,6 +670,20 @@ AutofillData HTMLFormControlElement::autofillData() const
     // owner's autocomplete attribute changed or the form owner itself changed.
 
     return AutofillData::createFromHTMLFormControlElement(*this);
+}
+
+// FIXME: We should remove the quirk once <rdar://problem/47334655> is fixed.
+bool HTMLFormControlElement::needsMouseFocusableQuirk() const
+{
+#if PLATFORM(MAC)
+    if (!document().settings().needsSiteSpecificQuirks())
+        return false;
+
+    auto host = document().url().host();
+    return equalLettersIgnoringASCIICase(host, "ceac.state.gov") || host.endsWithIgnoringASCIICase(".ceac.state.gov");
+#else
+    return false;
+#endif
 }
 
 } // namespace Webcore

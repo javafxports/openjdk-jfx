@@ -18,7 +18,9 @@ CFLAGS = -fPIC                   \
          -Wformat                \
          -Wextra                 \
          -Wformat-security       \
+         -fstack-protector       \
          -Werror=implicit-function-declaration \
+         -Werror=trampolines     \
          -msse2                  \
          -fbuiltin               \
          -DHAVE_STDINT_H         \
@@ -47,6 +49,7 @@ PACKAGES_INCLUDES := $(shell pkg-config --cflags glib-2.0)
 PACKAGES_LIBS := $(shell pkg-config --libs glib-2.0 gobject-2.0)
 
 LDFLAGS = -L$(BUILD_DIR) -lgstreamer-lite $(PACKAGES_LIBS) \
+          -z relro \
           -static-libgcc -static-libstdc++ -Wl,--gc-sections
 
 ifeq ($(ARCH), x32)

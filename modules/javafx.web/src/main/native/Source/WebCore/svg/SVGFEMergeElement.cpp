@@ -27,8 +27,11 @@
 #include "SVGFEMergeNodeElement.h"
 #include "SVGFilterBuilder.h"
 #include "SVGNames.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGFEMergeElement);
 
 inline SVGFEMergeElement::SVGFEMergeElement(const QualifiedName& tagName, Document& document)
     : SVGFilterPrimitiveStandardAttributes(tagName, document)
@@ -43,7 +46,7 @@ Ref<SVGFEMergeElement> SVGFEMergeElement::create(const QualifiedName& tagName, D
 
 RefPtr<FilterEffect> SVGFEMergeElement::build(SVGFilterBuilder* filterBuilder, Filter& filter)
 {
-    RefPtr<FilterEffect> effect = FEMerge::create(filter);
+    auto effect = FEMerge::create(filter);
     FilterEffectVector& mergeInputs = effect->inputEffects();
 
     for (auto& mergeNode : childrenOfType<SVGFEMergeNodeElement>(*this)) {
@@ -56,7 +59,7 @@ RefPtr<FilterEffect> SVGFEMergeElement::build(SVGFilterBuilder* filterBuilder, F
     if (mergeInputs.isEmpty())
         return nullptr;
 
-    return effect;
+    return WTFMove(effect);
 }
 
 }

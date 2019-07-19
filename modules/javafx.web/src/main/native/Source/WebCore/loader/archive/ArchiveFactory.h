@@ -38,9 +38,9 @@ class SharedBuffer;
 
 class ArchiveFactory {
 public:
-    static bool isArchiveMimeType(const String&);
+    static bool isArchiveMIMEType(const String&);
     static RefPtr<Archive> create(const URL&, SharedBuffer* data, const String& mimeType);
-    static void registerKnownArchiveMIMETypes();
+    static void registerKnownArchiveMIMETypes(HashSet<String, ASCIICaseInsensitiveHash>&);
 };
 
 } // namespace WebCore

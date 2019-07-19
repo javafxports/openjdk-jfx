@@ -58,7 +58,11 @@ static const char * gtk3_chain[] = {
 static JavaVM* javaVM;
 
 JNIEXPORT jint JNICALL
+#ifdef STATIC_BUILD
+JNI_OnLoad_glass(JavaVM *jvm, void *reserved)
+#else
 JNI_OnLoad(JavaVM *jvm, void *reserved)
+#endif
 {
     (void) reserved;
 
@@ -190,6 +194,9 @@ JNIEXPORT jint JNICALL Java_com_sun_glass_ui_gtk_GtkApplication__1queryLibrary
     (void) clazz;
 
     gtk_versionDebug = verbose;
+
+    //Set the gtk backend to x11 on all the systems
+    putenv("GDK_BACKEND=x11");
 
     // Before doing anything with GTK we validate that the DISPLAY can be opened
     Display *display = XOpenDisplay(NULL);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,12 +27,12 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-#include "JSCPoison.h"
 #include "JSDestructibleObject.h"
 #include "JSObject.h"
 #include "JSWebAssemblyCodeBlock.h"
 #include "JSWebAssemblyMemory.h"
 #include "JSWebAssemblyTable.h"
+#include "WasmCreationMode.h"
 #include "WasmInstance.h"
 #include <wtf/Ref.h>
 
@@ -46,16 +46,18 @@ namespace Wasm {
 class CodeBlock;
 }
 
-class JSWebAssemblyInstance : public JSDestructibleObject {
+class JSWebAssemblyInstance final : public JSDestructibleObject {
 public:
     typedef JSDestructibleObject Base;
 
-    static JSWebAssemblyInstance* create(VM&, ExecState*, JSWebAssemblyModule*, JSObject* importObject, Structure*, Ref<Wasm::Module>&&);
+    static Identifier createPrivateModuleKey();
+
+    static JSWebAssemblyInstance* create(VM&, ExecState*, const Identifier& moduleKey, JSWebAssemblyModule*, JSObject* importObject, Structure*, Ref<Wasm::Module>&&, Wasm::CreationMode);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     DECLARE_EXPORT_INFO;
 
-    void finalizeCreation(VM&, ExecState*, Ref<Wasm::CodeBlock>&&);
+    void finalizeCreation(VM&, ExecState*, Ref<Wasm::CodeBlock>&&, JSObject* importObject, Wasm::CreationMode);
 
     Wasm::Instance& instance() { return m_instance.get(); }
     JSModuleNamespaceObject* moduleNamespaceObject() { return m_moduleNamespaceObject.get(); }
@@ -76,11 +78,10 @@ public:
         instance().setTable(makeRef(*table()->table()));
     }
 
-    static size_t offsetOfPoisonedInstance() { return OBJECT_OFFSETOF(JSWebAssemblyInstance, m_instance); }
-    static size_t offsetOfPoisonedCallee() { return OBJECT_OFFSETOF(JSWebAssemblyInstance, m_callee); }
+    JSWebAssemblyModule* module() const { return m_module.get(); }
 
-    template<typename T>
-    using PoisonedBarrier = PoisonedWriteBarrier<JSWebAssemblyInstancePoison, T>;
+    static size_t offsetOfInstance() { return OBJECT_OFFSETOF(JSWebAssemblyInstance, m_instance); }
+    static size_t offsetOfCallee() { return OBJECT_OFFSETOF(JSWebAssemblyInstance, m_callee); }
 
 protected:
     JSWebAssemblyInstance(VM&, Structure*, Ref<Wasm::Instance>&&);
@@ -89,16 +90,14 @@ protected:
     static void visitChildren(JSCell*, SlotVisitor&);
 
 private:
-    JSWebAssemblyModule* module() const { return m_module.get(); }
+    Ref<Wasm::Instance> m_instance;
 
-    PoisonedRef<JSWebAssemblyInstancePoison, Wasm::Instance> m_instance;
-
-    PoisonedBarrier<JSWebAssemblyModule> m_module;
-    PoisonedBarrier<JSWebAssemblyCodeBlock> m_codeBlock;
-    PoisonedBarrier<JSModuleNamespaceObject> m_moduleNamespaceObject;
-    PoisonedBarrier<JSWebAssemblyMemory> m_memory;
-    PoisonedBarrier<JSWebAssemblyTable> m_table;
-    PoisonedBarrier<WebAssemblyToJSCallee> m_callee;
+    WriteBarrier<JSWebAssemblyModule> m_module;
+    WriteBarrier<JSWebAssemblyCodeBlock> m_codeBlock;
+    WriteBarrier<JSModuleNamespaceObject> m_moduleNamespaceObject;
+    WriteBarrier<JSWebAssemblyMemory> m_memory;
+    WriteBarrier<JSWebAssemblyTable> m_table;
+    WriteBarrier<WebAssemblyToJSCallee> m_callee;
 };
 
 } // namespace JSC

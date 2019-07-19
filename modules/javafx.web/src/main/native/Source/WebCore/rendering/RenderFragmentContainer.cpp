@@ -42,6 +42,7 @@
 #include "RenderLayer.h"
 #include "RenderView.h"
 #include "StyleResolver.h"
+#include <wtf/HexNumber.h>
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
@@ -81,7 +82,7 @@ LayoutPoint RenderFragmentContainer::mapFragmentPointIntoFragmentedFlowCoordinat
     effectiveFixedPointDenominator.setRawValue(1);
 
     if (pointLogicalTop < 0) {
-        LayoutPoint pointInThread(0, fragmentedFlowLogicalTop);
+        LayoutPoint pointInThread(0_lu, fragmentedFlowLogicalTop);
         return isHorizontalWritingMode() ? pointInThread : pointInThread.transposedPoint();
     }
 
@@ -158,14 +159,14 @@ LayoutRect RenderFragmentContainer::overflowRectForFragmentedFlowPortion(const L
     if (m_fragmentedFlow->isHorizontalWritingMode()) {
         LayoutUnit minY = isFirstPortion ? fragmentedFlowOverflow.y() : fragmentedFlowPortionRect.y();
         LayoutUnit maxY = isLastPortion ? std::max(fragmentedFlowPortionRect.maxY(), fragmentedFlowOverflow.maxY()) : fragmentedFlowPortionRect.maxY();
-        bool clipX = style().overflowX() != OVISIBLE;
+        bool clipX = style().overflowX() != Overflow::Visible;
         LayoutUnit minX = clipX ? fragmentedFlowPortionRect.x() : std::min(fragmentedFlowPortionRect.x(), fragmentedFlowOverflow.x());
         LayoutUnit maxX = clipX ? fragmentedFlowPortionRect.maxX() : std::max(fragmentedFlowPortionRect.maxX(), fragmentedFlowOverflow.maxX());
         clipRect = LayoutRect(minX, minY, maxX - minX, maxY - minY);
     } else {
         LayoutUnit minX = isFirstPortion ? fragmentedFlowOverflow.x() : fragmentedFlowPortionRect.x();
         LayoutUnit maxX = isLastPortion ? std::max(fragmentedFlowPortionRect.maxX(), fragmentedFlowOverflow.maxX()) : fragmentedFlowPortionRect.maxX();
-        bool clipY = style().overflowY() != OVISIBLE;
+        bool clipY = style().overflowY() != Overflow::Visible;
         LayoutUnit minY = clipY ? fragmentedFlowPortionRect.y() : std::min(fragmentedFlowPortionRect.y(), fragmentedFlowOverflow.y());
         LayoutUnit maxY = clipY ? fragmentedFlowPortionRect.maxY() : std::max(fragmentedFlowPortionRect.y(), fragmentedFlowOverflow.maxY());
         clipRect = LayoutRect(minX, minY, maxX - minX, maxY - minY);
@@ -176,11 +177,6 @@ LayoutRect RenderFragmentContainer::overflowRectForFragmentedFlowPortion(const L
 LayoutUnit RenderFragmentContainer::pageLogicalTopForOffset(LayoutUnit /* offset */) const
 {
     return fragmentedFlow()->isHorizontalWritingMode() ? fragmentedFlowPortionRect().y() : fragmentedFlowPortionRect().x();
-}
-
-LayoutUnit RenderFragmentContainer::pageLogicalHeightForOffset(LayoutUnit /* offset */) const
-{
-    return pageLogicalHeight();
 }
 
 bool RenderFragmentContainer::isFirstFragment() const
@@ -564,5 +560,14 @@ CurrentRenderFragmentContainerMaintainer::~CurrentRenderFragmentContainerMaintai
     RenderFragmentedFlow* fragmentedFlow = m_fragment.fragmentedFlow();
     fragmentedFlow->setCurrentFragmentMaintainer(nullptr);
 }
+
+#ifndef NDEBUG
+
+String RenderFragmentContainer::debugString() const
+{
+    return makeString("0x", hex(reinterpret_cast<uintptr_t>(this), Lowercase));
+}
+
+#endif
 
 } // namespace WebCore

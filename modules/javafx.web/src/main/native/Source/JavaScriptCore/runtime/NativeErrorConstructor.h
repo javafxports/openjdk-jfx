@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2008-2018 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "Error.h"
 #include "InternalFunction.h"
 #include "NativeErrorPrototype.h"
 
@@ -29,16 +30,9 @@ class ErrorInstance;
 class FunctionPrototype;
 class NativeErrorPrototype;
 
-class NativeErrorConstructor : public InternalFunction {
+class NativeErrorConstructorBase : public InternalFunction {
 public:
-    typedef InternalFunction Base;
-
-    static NativeErrorConstructor* create(VM& vm, JSGlobalObject* globalObject, Structure* structure, Structure* prototypeStructure, const String& name)
-    {
-        NativeErrorConstructor* constructor = new (NotNull, allocateCell<NativeErrorConstructor>(vm.heap)) NativeErrorConstructor(vm, structure);
-        constructor->finishCreation(vm, globalObject, prototypeStructure, name);
-        return constructor;
-    }
+    using Base = InternalFunction;
 
     DECLARE_INFO;
 
@@ -47,16 +41,45 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
     }
 
-    Structure* errorStructure() { return m_errorStructure.get(); }
-
 protected:
-    void finishCreation(VM&, JSGlobalObject*, Structure* prototypeStructure, const String& name);
+    NativeErrorConstructorBase(VM& vm, Structure* structure, NativeFunction functionForCall, NativeFunction functionForConstruct)
+        : InternalFunction(vm, structure, functionForCall, functionForConstruct)
+    {
+    }
 
-private:
-    NativeErrorConstructor(VM&, Structure*);
-    static void visitChildren(JSCell*, SlotVisitor&);
-
-    WriteBarrier<Structure> m_errorStructure;
+    void finishCreation(VM&, NativeErrorPrototype*, ErrorType);
 };
+
+template<ErrorType errorType>
+class NativeErrorConstructor final : public NativeErrorConstructorBase {
+public:
+    static NativeErrorConstructor* create(VM& vm, Structure* structure, NativeErrorPrototype* prototype)
+    {
+        NativeErrorConstructor* constructor = new (NotNull, allocateCell<NativeErrorConstructor>(vm.heap)) NativeErrorConstructor(vm, structure);
+        constructor->finishCreation(vm, prototype, errorType);
+        return constructor;
+    }
+
+    Structure* errorStructure(VM& vm) { return globalObject(vm)->errorStructure(errorType); }
+private:
+    static EncodedJSValue JSC_HOST_CALL callNativeErrorConstructor(ExecState*);
+    static EncodedJSValue JSC_HOST_CALL constructNativeErrorConstructor(ExecState*);
+
+    NativeErrorConstructor(VM&, Structure*);
+};
+
+using EvalErrorConstructor = NativeErrorConstructor<ErrorType::EvalError>;
+using RangeErrorConstructor = NativeErrorConstructor<ErrorType::RangeError>;
+using ReferenceErrorConstructor = NativeErrorConstructor<ErrorType::ReferenceError>;
+using SyntaxErrorConstructor = NativeErrorConstructor<ErrorType::SyntaxError>;
+using TypeErrorConstructor = NativeErrorConstructor<ErrorType::TypeError>;
+using URIErrorConstructor = NativeErrorConstructor<ErrorType::URIError>;
+
+static_assert(sizeof(EvalErrorConstructor) == sizeof(InternalFunction), "");
+static_assert(sizeof(RangeErrorConstructor) == sizeof(InternalFunction), "");
+static_assert(sizeof(ReferenceErrorConstructor) == sizeof(InternalFunction), "");
+static_assert(sizeof(SyntaxErrorConstructor) == sizeof(InternalFunction), "");
+static_assert(sizeof(TypeErrorConstructor) == sizeof(InternalFunction), "");
+static_assert(sizeof(URIErrorConstructor) == sizeof(InternalFunction), "");
 
 } // namespace JSC

@@ -25,26 +25,20 @@
 
 #pragma once
 
-#include <wtf/Assertions.h>
-#include <wtf/HexNumber.h>
-#include <wtf/Noncopyable.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 #include <wtf/text/StringBuilder.h>
-#include <wtf/text/WTFString.h>
 
 namespace WTF {
 
 template<typename T>
 struct LogArgument {
-    template<typename U = T> static typename std::enable_if<std::is_same<U, bool>::value, String>::type toString(bool argument) { return argument ? ASCIILiteral("true") : ASCIILiteral("false"); }
+    template<typename U = T> static typename std::enable_if<std::is_same<U, bool>::value, String>::type toString(bool argument) { return argument ? "true"_s : "false"_s; }
     template<typename U = T> static typename std::enable_if<std::is_same<U, int>::value, String>::type toString(int argument) { return String::number(argument); }
     template<typename U = T> static typename std::enable_if<std::is_same<U, unsigned>::value, String>::type toString(unsigned argument) { return String::number(argument); }
     template<typename U = T> static typename std::enable_if<std::is_same<U, unsigned long>::value, String>::type toString(unsigned long argument) { return String::number(argument); }
     template<typename U = T> static typename std::enable_if<std::is_same<U, long>::value, String>::type toString(long argument) { return String::number(argument); }
     template<typename U = T> static typename std::enable_if<std::is_same<U, float>::value, String>::type toString(float argument) { return String::number(argument); }
     template<typename U = T> static typename std::enable_if<std::is_same<U, double>::value, String>::type toString(double argument) { return String::number(argument); }
-    template<typename U = T> static typename std::enable_if<std::is_same<typename std::remove_reference<U>::type, AtomicString>::value, String>::type toString(AtomicString argument) { return argument.string(); }
+    template<typename U = T> static typename std::enable_if<std::is_same<typename std::remove_reference<U>::type, AtomicString>::value, String>::type toString(const AtomicString& argument) { return argument.string(); }
     template<typename U = T> static typename std::enable_if<std::is_same<typename std::remove_reference<U>::type, String>::value, String>::type toString(String argument) { return argument; }
     template<typename U = T> static typename std::enable_if<std::is_same<typename std::remove_reference<U>::type, StringBuilder*>::value, String>::type toString(StringBuilder* argument) { return argument->toString(); }
     template<typename U = T> static typename std::enable_if<std::is_same<U, const char*>::value, String>::type toString(const char* argument) { return String(argument); }
@@ -210,6 +204,8 @@ public:
         {
         }
 
+        WTF_EXPORT String toString() const;
+
         const char* className { nullptr };
         const char* methodName { nullptr };
         const uintptr_t objectPtr { 0 };
@@ -260,22 +256,8 @@ private:
     bool m_enabled { true };
 };
 
-template <>
-struct LogArgument<Logger::LogSiteIdentifier> {
-    static String toString(const Logger::LogSiteIdentifier& value)
-    {
-        StringBuilder builder;
-
-        if (value.className) {
-            builder.append(value.className);
-            builder.appendLiteral("::");
-        }
-        builder.append(value.methodName);
-        builder.append('(');
-        appendUnsigned64AsHex(value.objectPtr, builder);
-        builder.appendLiteral(") ");
-        return builder.toString();
-    }
+template<> struct LogArgument<Logger::LogSiteIdentifier> {
+    static String toString(const Logger::LogSiteIdentifier& value) { return value.toString(); }
 };
 
 } // namespace WTF

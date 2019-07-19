@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
- * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -26,6 +26,7 @@
 #include "Autocapitalize.h"
 #endif
 
+#include "InputMode.h"
 #include "StyledElement.h"
 
 namespace WebCore {
@@ -36,6 +37,7 @@ class HTMLCollection;
 class HTMLFormElement;
 
 class HTMLElement : public StyledElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLElement);
 public:
     static Ref<HTMLElement> create(const QualifiedName& tagName, Document&);
 
@@ -105,6 +107,10 @@ public:
     WEBCORE_EXPORT virtual bool shouldAutocorrect() const;
     WEBCORE_EXPORT void setAutocorrect(bool);
 #endif
+
+    WEBCORE_EXPORT InputMode canonicalInputMode() const;
+    const AtomicString& inputMode() const;
+    void setInputMode(const AtomicString& value);
 
 protected:
     HTMLElement(const QualifiedName& tagName, Document&, ConstructionType);

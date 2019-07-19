@@ -64,7 +64,8 @@ public:
     // into one block.
     static constexpr size_t largeCutoff = (blockPayload / 2) & ~(sizeStep - 1);
 
-    static constexpr size_t numSizeClasses = largeCutoff / sizeStep;
+    // We have an extra size class for size zero.
+    static constexpr size_t numSizeClasses = largeCutoff / sizeStep + 1;
 
     static constexpr HeapVersion nullVersion = 0; // The version of freshly allocated blocks.
     static constexpr HeapVersion initialVersion = 2; // The version that the heap starts out with. Set to make sure that nextVersion(nullVersion) != initialVersion.
@@ -79,13 +80,14 @@ public:
 
     static size_t sizeClassToIndex(size_t size)
     {
-        ASSERT(size);
-        return (size + sizeStep - 1) / sizeStep - 1;
+        return (size + sizeStep - 1) / sizeStep;
     }
 
     static size_t indexToSizeClass(size_t index)
     {
-        return (index + 1) * sizeStep;
+        size_t result = index * sizeStep;
+        ASSERT(sizeClassToIndex(result) == index);
+        return result;
     }
 
     MarkedSpace(Heap*);
@@ -199,22 +201,22 @@ private:
     unsigned m_largeAllocationsNurseryOffset { 0 };
     unsigned m_largeAllocationsOffsetForThisCollection { 0 };
     unsigned m_largeAllocationsNurseryOffsetForSweep { 0 };
+    unsigned m_largeAllocationsForThisCollectionSize { 0 };
     LargeAllocation** m_largeAllocationsForThisCollectionBegin { nullptr };
     LargeAllocation** m_largeAllocationsForThisCollectionEnd { nullptr };
-    unsigned m_largeAllocationsForThisCollectionSize { 0 };
 
     Heap* m_heap;
+    size_t m_capacity { 0 };
     HeapVersion m_markingVersion { initialVersion };
     HeapVersion m_newlyAllocatedVersion { initialVersion };
-    size_t m_capacity;
-    bool m_isIterating;
+    bool m_isIterating { false };
     bool m_isMarking { false };
+    Lock m_directoryLock;
     MarkedBlockSet m_blocks;
 
     SentinelLinkedList<WeakSet, BasicRawSentinelNode<WeakSet>> m_activeWeakSets;
     SentinelLinkedList<WeakSet, BasicRawSentinelNode<WeakSet>> m_newActiveWeakSets;
 
-    Lock m_directoryLock;
     SinglyLinkedListWithTail<BlockDirectory> m_directories;
 
     friend class HeapVerifier;

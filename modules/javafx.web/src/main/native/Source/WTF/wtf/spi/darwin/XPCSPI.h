@@ -35,6 +35,7 @@
 #if OS_OBJECT_USE_OBJC
 OS_OBJECT_DECL(xpc_object);
 typedef xpc_object_t xpc_connection_t;
+typedef xpc_object_t xpc_endpoint_t;
 
 static ALWAYS_INLINE void _xpc_object_validate(xpc_object_t object)
 {
@@ -55,7 +56,7 @@ typedef void* xpc_connection_t;
 
 typedef const struct _xpc_type_s* xpc_type_t;
 
-#if PLATFORM(IOS) && __has_attribute(noescape)
+#if PLATFORM(IOS_FAMILY) && __has_attribute(noescape)
 #define XPC_NOESCAPE __attribute__((__noescape__))
 #endif
 
@@ -68,13 +69,19 @@ typedef void (^xpc_handler_t)(xpc_object_t);
 typedef void (*xpc_connection_handler_t)(xpc_connection_t connection);
 
 #define XPC_ARRAY_APPEND ((size_t)(-1))
+#define XPC_CONNECTION_MACH_SERVICE_LISTENER (1 << 0)
 #define XPC_ERROR_CONNECTION_INVALID XPC_GLOBAL_OBJECT(_xpc_error_connection_invalid)
+#define XPC_ERROR_KEY_DESCRIPTION _xpc_error_key_description
 #define XPC_ERROR_TERMINATION_IMMINENT XPC_GLOBAL_OBJECT(_xpc_error_termination_imminent)
 #define XPC_TYPE_ARRAY (&_xpc_type_array)
 #define XPC_TYPE_BOOL (&_xpc_type_bool)
+#define XPC_TYPE_CONNECTION (&_xpc_type_connection)
 #define XPC_TYPE_DICTIONARY (&_xpc_type_dictionary)
+#define XPC_TYPE_ENDPOINT (&_xpc_type_endpoint)
 #define XPC_TYPE_ERROR (&_xpc_type_error)
 #define XPC_TYPE_STRING (&_xpc_type_string)
+
+extern const char * const _xpc_error_key_description;
 
 #endif // PLATFORM(MAC) || USE(APPLE_INTERNAL_SDK)
 
@@ -97,7 +104,9 @@ extern const struct _xpc_dictionary_s _xpc_error_termination_imminent;
 
 extern const struct _xpc_type_s _xpc_type_array;
 extern const struct _xpc_type_s _xpc_type_bool;
+extern const struct _xpc_type_s _xpc_type_connection;
 extern const struct _xpc_type_s _xpc_type_dictionary;
+extern const struct _xpc_type_s _xpc_type_endpoint;
 extern const struct _xpc_type_s _xpc_type_error;
 extern const struct _xpc_type_s _xpc_type_string;
 
@@ -131,7 +140,7 @@ void xpc_dictionary_set_bool(xpc_object_t, const char* key, bool value);
 void xpc_dictionary_set_fd(xpc_object_t, const char* key, int fd);
 void xpc_dictionary_set_string(xpc_object_t, const char* key, const char* string);
 void xpc_dictionary_set_uint64(xpc_object_t, const char* key, uint64_t value);
-void xpc_dictionary_set_value(xpc_object_t, const char*key, xpc_object_t value);
+void xpc_dictionary_set_value(xpc_object_t, const char* key, xpc_object_t value);
 xpc_type_t xpc_get_type(xpc_object_t);
 void xpc_main(xpc_connection_handler_t);
 const char* xpc_string_get_string_ptr(xpc_object_t);
@@ -147,9 +156,15 @@ void xpc_connection_set_instance(xpc_connection_t, uuid_t);
 mach_port_t xpc_dictionary_copy_mach_send(xpc_object_t, const char*);
 void xpc_dictionary_set_mach_send(xpc_object_t, const char*, mach_port_t);
 
-void xpc_connection_set_bootstrap(xpc_connection_t, xpc_object_t bootstrap);
-xpc_object_t xpc_copy_bootstrap(void);
 void xpc_connection_set_oneshot_instance(xpc_connection_t, uuid_t instance);
+
+void xpc_array_append_value(xpc_object_t xarray, xpc_object_t value);
+xpc_object_t xpc_array_get_value(xpc_object_t xarray, size_t index);
+xpc_object_t xpc_data_create(const void* bytes, size_t length);
+const void * xpc_data_get_bytes_ptr(xpc_object_t xdata);
+size_t xpc_data_get_length(xpc_object_t xdata);
+xpc_object_t xpc_dictionary_get_array(xpc_object_t xdict, const char* key);
+
 
 #if OS_OBJECT_USE_OBJC_RETAIN_RELEASE
 #if !defined(xpc_retain)

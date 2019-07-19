@@ -46,11 +46,9 @@
 #include "TextIterator.h"
 #include "TextPaintStyle.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "SelectionRect.h"
 #endif
-
-using namespace WebCore;
 
 namespace WebCore {
 
@@ -78,10 +76,11 @@ RefPtr<TextIndicator> TextIndicator::createWithRange(const Range& range, TextInd
     Ref<Frame> protector(*frame);
 
     VisibleSelection oldSelection = frame->selection().selection();
-    TemporarySelectionOptions temporarySelectionOptions = TemporarySelectionOptionDefault;
-#if PLATFORM(IOS)
-    temporarySelectionOptions |= TemporarySelectionOptionIgnoreSelectionChanges;
-    temporarySelectionOptions |= TemporarySelectionOptionEnableAppearanceUpdates;
+    OptionSet<TemporarySelectionOption> temporarySelectionOptions;
+    temporarySelectionOptions.add(TemporarySelectionOption::DoNotSetFocus);
+#if PLATFORM(IOS_FAMILY)
+    temporarySelectionOptions.add(TemporarySelectionOption::IgnoreSelectionChanges);
+    temporarySelectionOptions.add(TemporarySelectionOption::EnableAppearanceUpdates);
 #endif
     TemporarySelectionChange selectionChange(*frame, { range }, temporarySelectionOptions);
 
@@ -134,14 +133,16 @@ static bool hasNonInlineOrReplacedElements(const Range& range)
 static SnapshotOptions snapshotOptionsForTextIndicatorOptions(TextIndicatorOptions options)
 {
     SnapshotOptions snapshotOptions = SnapshotOptionsNone;
-    if (!(options & TextIndicatorOptionRespectTextColor))
-        snapshotOptions |= SnapshotOptionsForceBlackText;
 
     if (!(options & TextIndicatorOptionPaintAllContent)) {
         if (options & TextIndicatorOptionPaintBackgrounds)
             snapshotOptions |= SnapshotOptionsPaintSelectionAndBackgroundsOnly;
-        else
+        else {
             snapshotOptions |= SnapshotOptionsPaintSelectionOnly;
+
+            if (!(options & TextIndicatorOptionRespectTextColor))
+                snapshotOptions |= SnapshotOptionsForceBlackText;
+        }
     } else
         snapshotOptions |= SnapshotOptionsExcludeSelectionHighlighting;
 
@@ -181,7 +182,7 @@ static bool takeSnapshots(TextIndicatorData& data, Frame& frame, IntRect snapsho
     return true;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 static void getSelectionRectsForRange(Vector<FloatRect>& resultingRects, const Range& range)
 {
@@ -251,7 +252,7 @@ static Color estimatedBackgroundColorForRange(const Range& range, const Frame& f
             parentRendererBackgroundColors.append(visitedDependentBackgroundColor);
     }
     parentRendererBackgroundColors.reverse();
-    for (auto backgroundColor : parentRendererBackgroundColors)
+    for (const auto& backgroundColor : parentRendererBackgroundColors)
         estimatedBackgroundColor = estimatedBackgroundColor.blend(backgroundColor);
 
     return estimatedBackgroundColor;
@@ -304,7 +305,7 @@ static bool initializeIndicator(TextIndicatorData& data, Frame& frame, const Ran
 
     if ((data.options & TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges) && (hasNonInlineOrReplacedElements(range) || treatRangeAsComplexDueToIllegibleTextColors))
         data.options |= TextIndicatorOptionPaintAllContent;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     else if (data.options & TextIndicatorOptionUseSelectionRectForSizing)
         getSelectionRectsForRange(textRects, range);
 #endif
@@ -324,7 +325,7 @@ static bool initializeIndicator(TextIndicatorData& data, Frame& frame, const Ran
 
     // Use the exposedContentRect/viewExposedRect instead of visibleContentRect to avoid creating a huge indicator for a large view inside a scroll view.
     IntRect contentsClipRect;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     contentsClipRect = enclosingIntRect(frameView->exposedContentRect());
 #else
     if (auto viewExposedRect = frameView->viewExposedRect())

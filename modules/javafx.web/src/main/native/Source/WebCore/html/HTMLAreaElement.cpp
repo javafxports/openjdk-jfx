@@ -31,8 +31,11 @@
 #include "Path.h"
 #include "RenderImage.h"
 #include "RenderView.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLAreaElement);
 
 using namespace HTMLNames;
 
@@ -66,7 +69,7 @@ void HTMLAreaElement::parseAttribute(const QualifiedName& name, const AtomicStri
     } else if (name == coordsAttr) {
         m_coords = parseHTMLListOfOfFloatingPointNumberValues(value.string());
         invalidateCachedRegion();
-    } else if (name == altAttr || name == accesskeyAttr) {
+    } else if (name == altAttr) {
         // Do nothing.
     } else
         HTMLAnchorElement::parseAttribute(name, value);
@@ -194,7 +197,7 @@ HTMLImageElement* HTMLAreaElement::imageElement() const
     return downcast<HTMLMapElement>(*mapElement).imageElement();
 }
 
-bool HTMLAreaElement::isKeyboardFocusable(KeyboardEvent&) const
+bool HTMLAreaElement::isKeyboardFocusable(KeyboardEvent*) const
 {
     return isFocusable();
 }
@@ -207,7 +210,7 @@ bool HTMLAreaElement::isMouseFocusable() const
 bool HTMLAreaElement::isFocusable() const
 {
     RefPtr<HTMLImageElement> image = imageElement();
-    if (!image || !image->renderer() || image->renderer()->style().visibility() != VISIBLE)
+    if (!image || !image->renderer() || image->renderer()->style().visibility() != Visibility::Visible)
         return false;
 
     return supportsFocus() && Element::tabIndex() >= 0;

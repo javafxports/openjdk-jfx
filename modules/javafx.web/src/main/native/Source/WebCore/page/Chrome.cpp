@@ -30,6 +30,7 @@
 #include "FileIconLoader.h"
 #include "FileList.h"
 #include "FloatRect.h"
+#include "Frame.h"
 #include "FrameLoaderClient.h"
 #include "FrameTree.h"
 #include "Geolocation.h"
@@ -39,13 +40,13 @@
 #include "HitTestResult.h"
 #include "Icon.h"
 #include "InspectorInstrumentation.h"
-#include "MainFrame.h"
 #include "Page.h"
 #include "PageGroupLoadDeferrer.h"
 #include "PopupOpeningObserver.h"
 #include "RenderObject.h"
 #include "ResourceHandle.h"
 #include "Settings.h"
+#include "ShareData.h"
 #include "StorageNamespace.h"
 #include "WindowFeatures.h"
 #include <JavaScriptCore/VM.h>
@@ -54,6 +55,14 @@
 
 #if ENABLE(INPUT_TYPE_COLOR)
 #include "ColorChooser.h"
+#endif
+
+#if ENABLE(DATALIST_ELEMENT)
+#include "DataListSuggestionPicker.h"
+#endif
+
+#if PLATFORM(MAC) && ENABLE(GRAPHICS_CONTEXT_3D)
+#include "GraphicsContext3DManager.h"
 #endif
 
 namespace WebCore {
@@ -92,13 +101,6 @@ void Chrome::scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, con
     InspectorInstrumentation::didScroll(m_page);
 }
 
-#if USE(COORDINATED_GRAPHICS)
-void Chrome::delegatedScrollRequested(const IntPoint& scrollPoint)
-{
-    m_client.delegatedScrollRequested(scrollPoint);
-}
-#endif
-
 IntPoint Chrome::screenToRootView(const IntPoint& point) const
 {
     return m_client.screenToRootView(point);
@@ -109,7 +111,7 @@ IntRect Chrome::rootViewToScreen(const IntRect& rect) const
     return m_client.rootViewToScreen(rect);
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 IntPoint Chrome::accessibilityScreenToRootView(const IntPoint& point) const
 {
@@ -331,7 +333,7 @@ void Chrome::setStatusbarText(Frame& frame, const String& status)
 void Chrome::mouseDidMoveOverElement(const HitTestResult& result, unsigned modifierFlags)
 {
     if (result.innerNode() && result.innerNode()->document().isDNSPrefetchEnabled())
-        m_page.mainFrame().loader().client().prefetchDNS(result.absoluteLinkURL().host());
+        m_page.mainFrame().loader().client().prefetchDNS(result.absoluteLinkURL().host().toString());
     m_client.mouseDidMoveOverElement(result, modifierFlags);
 
     InspectorInstrumentation::mouseDidMoveOverElement(m_page, result, modifierFlags);
@@ -355,7 +357,7 @@ void Chrome::setToolTip(const HitTestResult& result)
                         if (form->renderer())
                             toolTipDirection = form->renderer()->style().direction();
                         else
-                            toolTipDirection = LTR;
+                            toolTipDirection = TextDirection::LTR;
                     }
                 }
             }
@@ -366,7 +368,7 @@ void Chrome::setToolTip(const HitTestResult& result)
             // FIXME: Need to pass this URL through userVisibleString once that's in WebCore
             toolTip = result.absoluteLinkURL().string();
             // URL always display as LTR.
-            toolTipDirection = LTR;
+            toolTipDirection = TextDirection::LTR;
         }
     }
 
@@ -388,7 +390,7 @@ void Chrome::setToolTip(const HitTestResult& result)
                 // implementations don't use text direction information for
                 // ChromeClient::setToolTip. We'll work on tooltip text
                 // direction during bidi cleanup in form inputs.
-                toolTipDirection = LTR;
+                toolTipDirection = TextDirection::LTR;
             }
         }
     }
@@ -423,8 +425,21 @@ void Chrome::disableSuddenTermination()
 
 std::unique_ptr<ColorChooser> Chrome::createColorChooser(ColorChooserClient& client, const Color& initialColor)
 {
+#if PLATFORM(IOS_FAMILY)
+    return nullptr;
+#endif
     notifyPopupOpeningObservers();
     return m_client.createColorChooser(client, initialColor);
+}
+
+#endif
+
+#if ENABLE(DATALIST_ELEMENT)
+
+std::unique_ptr<DataListSuggestionPicker> Chrome::createDataListSuggestionPicker(DataListSuggestionsClient& client)
+{
+    notifyPopupOpeningObservers();
+    return m_client.createDataListSuggestionPicker(client);
 }
 
 #endif
@@ -433,6 +448,11 @@ void Chrome::runOpenPanel(Frame& frame, FileChooser& fileChooser)
 {
     notifyPopupOpeningObservers();
     m_client.runOpenPanel(frame, fileChooser);
+}
+
+void Chrome::showShareSheet(ShareDataWithParsedURL& shareData, CompletionHandler<void(bool)>&& callback)
+{
+    m_client.showShareSheet(shareData, WTFMove(callback));
 }
 
 void Chrome::loadIconForFiles(const Vector<String>& filenames, FileIconLoader& loader)
@@ -450,9 +470,19 @@ FloatSize Chrome::availableScreenSize() const
     return m_client.availableScreenSize();
 }
 
+FloatSize Chrome::overrideScreenSize() const
+{
+    return m_client.overrideScreenSize();
+}
+
+void Chrome::dispatchDisabledAdaptationsDidChange(const OptionSet<DisabledAdaptations>& disabledAdaptations) const
+{
+    m_client.dispatchDisabledAdaptationsDidChange(disabledAdaptations);
+}
+
 void Chrome::dispatchViewportPropertiesDidChange(const ViewportArguments& arguments) const
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (m_isDispatchViewportDataDidChangeSuppressed)
         return;
 #endif
@@ -493,9 +523,11 @@ void Chrome::windowScreenDidChange(PlatformDisplayID displayID)
         if (frame->document())
             frame->document()->windowScreenDidChange(displayID);
     }
-}
 
-// --------
+#if PLATFORM(MAC) && ENABLE(GRAPHICS_CONTEXT_3D)
+    GraphicsContext3DManager::sharedManager().screenDidChange(displayID, this);
+#endif
+}
 
 #if ENABLE(DASHBOARD_SUPPORT)
 void ChromeClient::annotatedRegionsChanged()
@@ -543,7 +575,7 @@ bool Chrome::requiresFullscreenForVideoPlayback()
 
 void Chrome::didReceiveDocType(Frame& frame)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     UNUSED_PARAM(frame);
 #else
     if (!frame.isMainFrame())

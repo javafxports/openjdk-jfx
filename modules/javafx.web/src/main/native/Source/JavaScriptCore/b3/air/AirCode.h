@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,18 +38,19 @@
 #include "RegisterAtOffsetList.h"
 #include "StackAlignment.h"
 #include <wtf/IndexMap.h>
+#include <wtf/WeakRandom.h>
 
 namespace JSC { namespace B3 {
 
 class Procedure;
 
-#if COMPILER(GCC) && ASSERT_DISABLED
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-type"
-#endif // COMPILER(GCC) && ASSERT_DISABLED
+#if ASSERT_DISABLED
+IGNORE_RETURN_TYPE_WARNINGS_BEGIN
+#endif
 
 namespace Air {
 
+class GenerateAndAllocateRegisters;
 class BlockInsertionSet;
 class CCallSpecial;
 class CFG;
@@ -170,7 +171,7 @@ public:
     const FrequentedBlock& entrypoint(unsigned index) const { return m_entrypoints[index]; }
     bool isEntrypoint(BasicBlock*) const;
     // Note: It is only valid to call this function after LowerEntrySwitch.
-    std::optional<unsigned> entrypointIndex(BasicBlock*) const;
+    Optional<unsigned> entrypointIndex(BasicBlock*) const;
 
     // Note: We allow this to be called even before we set m_entrypoints just for convenience to users of this API.
     // However, if you call this before setNumEntrypoints, setNumEntrypoints will overwrite this value.
@@ -334,6 +335,12 @@ public:
     RegisterSet mutableFPRs();
     RegisterSet pinnedRegisters() const { return m_pinnedRegs; }
 
+    WeakRandom& weakRandom() { return m_weakRandom; }
+
+    void emitDefaultPrologue(CCallHelpers&);
+
+    std::unique_ptr<GenerateAndAllocateRegisters> m_generateAndAllocateRegisters;
+
 private:
     friend class ::JSC::B3::Procedure;
     friend class BlockInsertionSet;
@@ -353,6 +360,7 @@ private:
         ASSERT_NOT_REACHED();
     }
 
+    WeakRandom m_weakRandom;
     Procedure& m_proc; // Some meta-data, like byproducts, is stored in the Procedure.
     Vector<Reg> m_gpRegsInPriorityOrder;
     Vector<Reg> m_fpRegsInPriorityOrder;
@@ -384,8 +392,8 @@ private:
 
 } } } // namespace JSC::B3::Air
 
-#if COMPILER(GCC) && ASSERT_DISABLED
-#pragma GCC diagnostic pop
-#endif // COMPILER(GCC) && ASSERT_DISABLED
+#if ASSERT_DISABLED
+IGNORE_RETURN_TYPE_WARNINGS_END
+#endif
 
 #endif // ENABLE(B3_JIT)

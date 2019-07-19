@@ -33,17 +33,17 @@ namespace JSC {
 
 class BlockDirectory;
 class GCDeferralContext;
-class ThreadLocalCache;
 
 class LocalAllocator : public BasicRawSentinelNode<LocalAllocator> {
     WTF_MAKE_NONCOPYABLE(LocalAllocator);
 
 public:
-    LocalAllocator(ThreadLocalCache*, BlockDirectory*);
-    LocalAllocator(LocalAllocator&&);
+    LocalAllocator(BlockDirectory*);
     ~LocalAllocator();
 
     void* allocate(GCDeferralContext*, AllocationFailureMode);
+
+    unsigned cellSize() const { return m_freeList.cellSize(); }
 
     void stopAllocating();
     void prepareForAllocation();
@@ -54,8 +54,6 @@ public:
     static ptrdiff_t offsetOfCellSize();
 
     bool isFreeListedCell(const void*) const;
-
-    ThreadLocalCache* tlc() const { return m_tlc; }
 
 private:
     friend class BlockDirectory;
@@ -68,10 +66,9 @@ private:
     void* allocateIn(MarkedBlock::Handle*);
     ALWAYS_INLINE void doTestCollectionsIfNeeded(GCDeferralContext*);
 
-    ThreadLocalCache* m_tlc;
     BlockDirectory* m_directory;
-    unsigned m_cellSize;
     FreeList m_freeList;
+
     MarkedBlock::Handle* m_currentBlock { nullptr };
     MarkedBlock::Handle* m_lastActiveBlock { nullptr };
 
@@ -87,7 +84,7 @@ inline ptrdiff_t LocalAllocator::offsetOfFreeList()
 
 inline ptrdiff_t LocalAllocator::offsetOfCellSize()
 {
-    return OBJECT_OFFSETOF(LocalAllocator, m_cellSize);
+    return OBJECT_OFFSETOF(LocalAllocator, m_freeList) + FreeList::offsetOfCellSize();
 }
 
 } // namespace JSC

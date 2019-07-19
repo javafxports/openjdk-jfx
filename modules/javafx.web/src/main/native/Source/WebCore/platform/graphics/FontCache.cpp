@@ -33,6 +33,7 @@
 #include "FontCascade.h"
 #include "FontPlatformData.h"
 #include "FontSelector.h"
+#include "Logging.h"
 #include "WebKitFontFamilyNames.h"
 #include <wtf/HashMap.h>
 #include <wtf/MemoryPressureHandler.h>
@@ -49,14 +50,13 @@
 #include <dwrite.h>
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include <wtf/Lock.h>
 #include <wtf/RecursiveLockAdapter.h>
 
-using RecursiveStaticLock = WTF::RecursiveLockAdapter<StaticLock>;
-static RecursiveStaticLock fontLock;
+static RecursiveLock fontLock;
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 
 namespace WebCore {
@@ -206,7 +206,7 @@ const AtomicString& FontCache::alternateFamilyName(const AtomicString& familyNam
 FontPlatformData* FontCache::getCachedFontPlatformData(const FontDescription& fontDescription, const AtomicString& passedFamilyName,
     const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities, bool checkingAlternateName)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     auto locker = holdLock(fontLock);
 #endif
 
@@ -283,7 +283,7 @@ struct FontDataCacheKeyTraits : WTF::GenericHashTraits<FontPlatformData> {
     }
 };
 
-typedef HashMap<FontPlatformData, RefPtr<Font>, FontDataCacheKeyHash, FontDataCacheKeyTraits> FontDataCache;
+typedef HashMap<FontPlatformData, Ref<Font>, FontDataCacheKeyHash, FontDataCacheKeyTraits> FontDataCache;
 
 static FontDataCache& cachedFonts()
 {
@@ -309,7 +309,7 @@ RefPtr<OpenTypeVerticalData> FontCache::verticalData(const FontPlatformData& pla
 }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 const unsigned cMaxInactiveFontData = 120;
 const unsigned cTargetInactiveFontData = 100;
 #else
@@ -325,32 +325,33 @@ RefPtr<Font> FontCache::fontForFamily(const FontDescription& fontDescription, co
     if (!m_purgeTimer.isActive())
         m_purgeTimer.startOneShot(0_s);
 
-    FontPlatformData* platformData = getCachedFontPlatformData(fontDescription, family, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities, checkingAlternateName);
-    if (!platformData)
-        return nullptr;
+    if (auto* platformData = getCachedFontPlatformData(fontDescription, family, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities, checkingAlternateName))
+        return fontForPlatformData(*platformData);
 
-    return fontForPlatformData(*platformData);
+    return nullptr;
 }
 
 Ref<Font> FontCache::fontForPlatformData(const FontPlatformData& platformData)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     auto locker = holdLock(fontLock);
 #endif
 
-    auto addResult = cachedFonts().add(platformData, nullptr);
-    if (addResult.isNewEntry)
-        addResult.iterator->value = Font::create(platformData);
+    auto addResult = cachedFonts().ensure(platformData, [&] {
+        return Font::create(platformData);
+    });
 
     ASSERT(addResult.iterator->value->platformData() == platformData);
 
-    return *addResult.iterator->value;
+    return addResult.iterator->value.copyRef();
 }
 
 void FontCache::purgeInactiveFontDataIfNeeded()
 {
     bool underMemoryPressure = MemoryPressureHandler::singleton().isUnderMemoryPressure();
     unsigned inactiveFontDataLimit = underMemoryPressure ? cMaxUnderMemoryPressureInactiveFontData : cMaxInactiveFontData;
+
+    LOG(Fonts, "FontCache::purgeInactiveFontDataIfNeeded() - underMemoryPressure %d, inactiveFontDataLimit %u", underMemoryPressure, inactiveFontDataLimit);
 
     if (cachedFonts().size() < inactiveFontDataLimit)
         return;
@@ -364,19 +365,22 @@ void FontCache::purgeInactiveFontDataIfNeeded()
 
 void FontCache::purgeInactiveFontData(unsigned purgeCount)
 {
+    LOG(Fonts, "FontCache::purgeInactiveFontData(%u)", purgeCount);
+
     pruneUnreferencedEntriesFromFontCascadeCache();
     pruneSystemFallbackFonts();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     auto locker = holdLock(fontLock);
 #endif
 
     while (purgeCount) {
-        Vector<RefPtr<Font>, 20> fontsToDelete;
+        Vector<Ref<Font>, 20> fontsToDelete;
         for (auto& font : cachedFonts().values()) {
+            LOG(Fonts, " trying to purge font %s (has one ref %d)", font->platformData().description().utf8().data(), font->hasOneRef());
             if (!font->hasOneRef())
                 continue;
-            fontsToDelete.append(WTFMove(font));
+            fontsToDelete.append(font.copyRef());
             if (!--purgeCount)
                 break;
         }
@@ -398,6 +402,9 @@ void FontCache::purgeInactiveFontData(unsigned purgeCount)
         if (entry.value && !cachedFonts().contains(*entry.value))
             keysToRemove.uncheckedAppend(entry.key);
     }
+
+    LOG(Fonts, " removing %lu keys", keysToRemove.size());
+
     for (auto& key : keysToRemove)
         fontPlatformDataCache().remove(key);
 
@@ -411,7 +418,7 @@ size_t FontCache::fontCount()
 
 size_t FontCache::inactiveFontCount()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     auto locker = holdLock(fontLock);
 #endif
     unsigned count = 0;
@@ -475,6 +482,16 @@ void FontCache::invalidate()
 }
 
 #if !PLATFORM(COCOA)
+
+FontCache::PrewarmInformation FontCache::collectPrewarmInformation() const
+{
+    return { };
+}
+
+void FontCache::prewarm(const PrewarmInformation&)
+{
+}
+
 RefPtr<Font> FontCache::similarFont(const FontDescription&, const AtomicString&)
 {
     return nullptr;

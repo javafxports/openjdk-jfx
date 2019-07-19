@@ -43,6 +43,7 @@ class HeapCell {
 public:
     enum Kind : int8_t {
         JSCell,
+        JSCellWithInteriorPointers,
         Auxiliary
     };
 
@@ -76,7 +77,7 @@ public:
     // Call use() after the last point where you need `this` pointer to be kept alive. You usually don't
     // need to use this, but it might be necessary if you're otherwise referring to an object's innards
     // but not the object itself.
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
     void use() const
     {
         asm volatile ("" : : "r"(this) : "memory");
@@ -85,6 +86,16 @@ public:
     void use() const;
 #endif
 };
+
+inline bool isJSCellKind(HeapCell::Kind kind)
+{
+    return kind == HeapCell::JSCell || kind == HeapCell::JSCellWithInteriorPointers;
+}
+
+inline bool hasInteriorPointers(HeapCell::Kind kind)
+{
+    return kind == HeapCell::Auxiliary || kind == HeapCell::JSCellWithInteriorPointers;
+}
 
 } // namespace JSC
 

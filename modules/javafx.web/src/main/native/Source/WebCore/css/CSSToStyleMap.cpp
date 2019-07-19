@@ -29,7 +29,6 @@
 #include "CSSToStyleMap.h"
 
 #include "Animation.h"
-#include "CSSAnimationTriggerScrollValue.h"
 #include "CSSBorderImageSliceValue.h"
 #include "CSSImageGeneratorValue.h"
 #include "CSSImageSetValue.h"
@@ -83,13 +82,13 @@ void CSSToStyleMap::mapFillAttachment(CSSPropertyID propertyID, FillLayer& layer
 
     switch (downcast<CSSPrimitiveValue>(value).valueID()) {
     case CSSValueFixed:
-        layer.setAttachment(FixedBackgroundAttachment);
+        layer.setAttachment(FillAttachment::FixedBackground);
         break;
     case CSSValueScroll:
-        layer.setAttachment(ScrollBackgroundAttachment);
+        layer.setAttachment(FillAttachment::ScrollBackground);
         break;
     case CSSValueLocal:
-        layer.setAttachment(LocalBackgroundAttachment);
+        layer.setAttachment(FillAttachment::LocalBackground);
         break;
     default:
         return;
@@ -208,13 +207,13 @@ void CSSToStyleMap::mapFillSize(CSSPropertyID propertyID, FillLayer& layer, cons
     FillSize fillSize;
     switch (primitiveValue.valueID()) {
     case CSSValueContain:
-        fillSize.type = Contain;
+        fillSize.type = FillSizeType::Contain;
         break;
     case CSSValueCover:
-        fillSize.type = Cover;
+        fillSize.type = FillSizeType::Cover;
         break;
     default:
-        ASSERT(fillSize.type == SizeLength);
+        ASSERT(fillSize.type == FillSizeType::Size);
         if (!convertToLengthSize(primitiveValue, m_resolver->state().cssToLengthConversionData(), fillSize.size))
             return;
         break;
@@ -272,7 +271,7 @@ void CSSToStyleMap::mapFillYPosition(CSSPropertyID propertyID, FillLayer& layer,
 
 void CSSToStyleMap::mapFillMaskSourceType(CSSPropertyID propertyID, FillLayer& layer, const CSSValue& value)
 {
-    EMaskSourceType type = FillLayer::initialFillMaskSourceType(layer.type());
+    MaskSourceType type = FillLayer::initialFillMaskSourceType(layer.type());
     if (value.treatAsInitialValue(propertyID)) {
         layer.setMaskSourceType(type);
         return;
@@ -283,10 +282,10 @@ void CSSToStyleMap::mapFillMaskSourceType(CSSPropertyID propertyID, FillLayer& l
 
     switch (downcast<CSSPrimitiveValue>(value).valueID()) {
     case CSSValueAlpha:
-        type = EMaskSourceType::MaskAlpha;
+        type = MaskSourceType::Alpha;
         break;
     case CSSValueLuminance:
-        type = EMaskSourceType::MaskLuminance;
+        type = MaskSourceType::Luminance;
         break;
     case CSSValueAuto:
         break;
@@ -363,16 +362,16 @@ void CSSToStyleMap::mapAnimationFillMode(Animation& layer, const CSSValue& value
 
     switch (downcast<CSSPrimitiveValue>(value).valueID()) {
     case CSSValueNone:
-        layer.setFillMode(AnimationFillModeNone);
+        layer.setFillMode(AnimationFillMode::None);
         break;
     case CSSValueForwards:
-        layer.setFillMode(AnimationFillModeForwards);
+        layer.setFillMode(AnimationFillMode::Forwards);
         break;
     case CSSValueBackwards:
-        layer.setFillMode(AnimationFillModeBackwards);
+        layer.setFillMode(AnimationFillMode::Backwards);
         break;
     case CSSValueBoth:
-        layer.setFillMode(AnimationFillModeBoth);
+        layer.setFillMode(AnimationFillMode::Both);
         break;
     default:
         break;
@@ -423,7 +422,7 @@ void CSSToStyleMap::mapAnimationPlayState(Animation& layer, const CSSValue& valu
     if (!is<CSSPrimitiveValue>(value))
         return;
 
-    EAnimPlayState playState = (downcast<CSSPrimitiveValue>(value).valueID() == CSSValuePaused) ? AnimPlayStatePaused : AnimPlayStatePlaying;
+    AnimationPlayState playState = (downcast<CSSPrimitiveValue>(value).valueID() == CSSValuePaused) ? AnimationPlayState::Paused : AnimationPlayState::Playing;
     layer.setPlayState(playState);
 }
 
@@ -501,46 +500,11 @@ void CSSToStyleMap::mapAnimationTimingFunction(Animation& animation, const CSSVa
     } else if (is<CSSStepsTimingFunctionValue>(value)) {
         auto& stepsTimingFunction = downcast<CSSStepsTimingFunctionValue>(value);
         animation.setTimingFunction(StepsTimingFunction::create(stepsTimingFunction.numberOfSteps(), stepsTimingFunction.stepAtStart()));
-    } else if (is<CSSFramesTimingFunctionValue>(value)) {
-        auto& framesTimingFunction = downcast<CSSFramesTimingFunctionValue>(value);
-        animation.setTimingFunction(FramesTimingFunction::create(framesTimingFunction.numberOfFrames()));
     } else if (is<CSSSpringTimingFunctionValue>(value)) {
         auto& springTimingFunction = downcast<CSSSpringTimingFunctionValue>(value);
         animation.setTimingFunction(SpringTimingFunction::create(springTimingFunction.mass(), springTimingFunction.stiffness(), springTimingFunction.damping(), springTimingFunction.initialVelocity()));
     }
 }
-
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-void CSSToStyleMap::mapAnimationTrigger(Animation& animation, const CSSValue& value)
-{
-    if (value.treatAsInitialValue(CSSPropertyWebkitAnimationTrigger)) {
-        animation.setTrigger(Animation::initialTrigger());
-        return;
-    }
-
-    if (value.isPrimitiveValue()) {
-        auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
-        if (primitiveValue.valueID() == CSSValueAuto)
-            animation.setTrigger(AutoAnimationTrigger::create());
-        return;
-    }
-
-    if (value.isAnimationTriggerScrollValue()) {
-        auto& scrollTrigger = downcast<CSSAnimationTriggerScrollValue>(value);
-
-        const CSSPrimitiveValue& startValue = downcast<CSSPrimitiveValue>(scrollTrigger.startValue());
-        Length startLength = startValue.computeLength<Length>(m_resolver->state().cssToLengthConversionData());
-
-        Length endLength;
-        if (scrollTrigger.hasEndValue()) {
-            const CSSPrimitiveValue* endValue = downcast<CSSPrimitiveValue>(scrollTrigger.endValue());
-            endLength = endValue->computeLength<Length>(m_resolver->state().cssToLengthConversionData());
-        }
-
-        animation.setTrigger(ScrollAnimationTrigger::create(startLength, endLength));
-    }
-}
-#endif
 
 void CSSToStyleMap::mapNinePieceImage(CSSPropertyID property, CSSValue* value, NinePieceImage& image)
 {

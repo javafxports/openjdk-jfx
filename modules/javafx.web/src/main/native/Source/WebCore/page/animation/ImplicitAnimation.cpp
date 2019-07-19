@@ -61,12 +61,12 @@ bool ImplicitAnimation::shouldSendEventForListener(Document::ListenerType inList
     return element()->document().hasListenerType(inListenerType);
 }
 
-bool ImplicitAnimation::animate(CompositeAnimation& compositeAnimation, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& animatedStyle, bool& didBlendStyle)
+OptionSet<AnimateChange> ImplicitAnimation::animate(CompositeAnimation& compositeAnimation, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& animatedStyle)
 {
     // If we get this far and the animation is done, it means we are cleaning up a just finished animation.
     // So just return. Everything is already all cleaned up.
     if (postActive())
-        return false;
+        return { };
 
     AnimationState oldState = state();
 
@@ -86,8 +86,14 @@ bool ImplicitAnimation::animate(CompositeAnimation& compositeAnimation, const Re
     // Fire the start timeout if needed
     fireAnimationEventsIfNeeded();
 
-    didBlendStyle = true;
-    return state() != oldState;
+    OptionSet<AnimateChange> change(AnimateChange::StyleBlended);
+    if (state() != oldState)
+        change.add(AnimateChange::StateChange);
+
+    if ((isPausedState(oldState) || isRunningState(oldState)) != (isPausedState(state()) || isRunningState(state())))
+        change.add(AnimateChange::RunningStateChange);
+
+    return change;
 }
 
 void ImplicitAnimation::getAnimatedStyle(std::unique_ptr<RenderStyle>& animatedStyle)
@@ -131,6 +137,11 @@ bool ImplicitAnimation::computeExtentOfTransformAnimation(LayoutRect& bounds) co
     return true;
 }
 
+bool ImplicitAnimation::affectsAcceleratedProperty() const
+{
+    return CSSPropertyAnimation::animationOfPropertyIsAccelerated(m_animatingProperty);
+}
+
 bool ImplicitAnimation::startAnimation(double timeOffset)
 {
     if (auto* renderer = compositedRenderer())
@@ -147,7 +158,7 @@ void ImplicitAnimation::pauseAnimation(double timeOffset)
         setNeedsStyleRecalc(element());
 }
 
-void ImplicitAnimation::endAnimation()
+void ImplicitAnimation::endAnimation(bool)
 {
     if (auto* renderer = compositedRenderer())
         renderer->transitionFinished(m_animatingProperty);
@@ -215,6 +226,7 @@ void ImplicitAnimation::reset(const RenderStyle& to, CompositeAnimation& composi
 #if ENABLE(FILTERS_LEVEL_2)
     checkForMatchingBackdropFilterFunctionLists();
 #endif
+    checkForMatchingColorFilterFunctionLists();
 }
 
 void ImplicitAnimation::setOverridden(bool b)
@@ -311,9 +323,19 @@ void ImplicitAnimation::checkForMatchingBackdropFilterFunctionLists()
 }
 #endif
 
-std::optional<Seconds> ImplicitAnimation::timeToNextService()
+void ImplicitAnimation::checkForMatchingColorFilterFunctionLists()
 {
-    std::optional<Seconds> t = AnimationBase::timeToNextService();
+    m_filterFunctionListsMatch = false;
+
+    if (!m_fromStyle || !m_toStyle)
+        return;
+
+    m_colorFilterFunctionListsMatch = filterOperationsMatch(&m_fromStyle->appleColorFilter(), m_toStyle->appleColorFilter());
+}
+
+Optional<Seconds> ImplicitAnimation::timeToNextService()
+{
+    Optional<Seconds> t = AnimationBase::timeToNextService();
     if (!t || t.value() != 0_s || preActive())
         return t;
 

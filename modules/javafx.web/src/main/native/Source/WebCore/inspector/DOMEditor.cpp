@@ -212,7 +212,7 @@ public:
 private:
     ExceptionOr<void> perform() final
     {
-        m_oldHTML = createMarkup(m_node.get());
+        m_oldHTML = serializeFragment(m_node.get(), SerializedNodes::SubtreeIncludingNode);
         auto result = DOMPatchSupport { m_domEditor, m_node->document() }.patchNode(m_node, m_html);
         if (result.hasException())
             return result.releaseException();
@@ -266,7 +266,7 @@ private:
 
     ExceptionOr<void> redo() final
     {
-        auto result = m_element->insertAdjacentHTML(m_position, m_html, m_addedNodes);
+        auto result = m_element->insertAdjacentHTML(m_position, m_html, &m_addedNodes);
         if (result.hasException())
             return result.releaseException();
         return { };

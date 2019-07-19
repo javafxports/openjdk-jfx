@@ -58,7 +58,7 @@ JSInternalPromise* JSInternalPromise::then(ExecState* exec, JSFunction* onFulfil
     JSObject* function = jsCast<JSObject*>(get(exec, vm.propertyNames->builtinNames().thenPublicName()));
     RETURN_IF_EXCEPTION(scope, nullptr);
     CallData callData;
-    CallType callType = JSC::getCallData(function, callData);
+    CallType callType = JSC::getCallData(vm, function, callData);
     ASSERT(callType != CallType::None);
 
     MarkedArgumentBuffer arguments;
@@ -66,8 +66,7 @@ JSInternalPromise* JSInternalPromise::then(ExecState* exec, JSFunction* onFulfil
     arguments.append(onRejected ? onRejected : jsUndefined());
     ASSERT(!arguments.hasOverflowed());
 
-    scope.release();
-    return jsCast<JSInternalPromise*>(call(exec, function, callType, callData, this, arguments));
+    RELEASE_AND_RETURN(scope, jsCast<JSInternalPromise*>(call(exec, function, callType, callData, this, arguments)));
 }
 
 } // namespace JSC

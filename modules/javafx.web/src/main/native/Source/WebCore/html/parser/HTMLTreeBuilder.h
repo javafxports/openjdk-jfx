@@ -38,6 +38,8 @@ class HTMLDocumentParser;
 class ScriptElement;
 
 struct CustomElementConstructionData {
+    WTF_MAKE_STRUCT_FAST_ALLOCATED;
+
     CustomElementConstructionData(Ref<JSCustomElementInterface>&&, const AtomicString& name, Vector<Attribute>&&);
     ~CustomElementConstructionData();
 
@@ -66,7 +68,7 @@ public:
     RefPtr<ScriptElement> takeScriptToProcess(TextPosition& scriptStartPosition);
 
     std::unique_ptr<CustomElementConstructionData> takeCustomElementConstructionData() { return WTFMove(m_customElementToConstruct); }
-    void didCreateCustomOrCallbackElement(Ref<Element>&&, CustomElementConstructionData&);
+    void didCreateCustomOrFallbackElement(Ref<Element>&&, CustomElementConstructionData&);
 
     // Done, close any open tags, etc.
     void finished();
@@ -104,7 +106,7 @@ private:
 
     bool isParsingFragmentOrTemplateContents() const;
 
-#if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(IOS)
+#if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(IOS_FAMILY)
     void insertPhoneNumberLink(const String&);
     void linkifyPhoneNumbers(const String&);
 #endif

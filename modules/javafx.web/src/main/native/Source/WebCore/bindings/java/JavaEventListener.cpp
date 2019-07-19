@@ -52,7 +52,7 @@ bool JavaEventListener::operator==(const EventListener& other) const
 
 void JavaEventListener::handleEvent(ScriptExecutionContext& context, Event& event)
 {
-    JNIEnv* env = WebCore_GetJavaEnv();
+    JNIEnv* env = WTF::GetJavaEnv();
 
     //we need to store context for cascade JS EL execution.
     sm_vScriptExecutionContexts.append(&context);
@@ -70,7 +70,7 @@ void JavaEventListener::handleEvent(ScriptExecutionContext& context, Event& even
         ptr_to_jlong(&event));
 
     sm_vScriptExecutionContexts.removeLast();
-    CheckAndClearException(env);
+    WTF::CheckAndClearException(env);
 }
 
 JavaEventListener::~JavaEventListener()
@@ -89,10 +89,6 @@ JavaEventListener::~JavaEventListener()
         midDispose,
         ptr_to_jlong(this));
 }
-
-}; // namespace WebCore
-
-using namespace WebCore;
 
 extern "C" {
 
@@ -122,6 +118,5 @@ JNIEXPORT void JNICALL Java_com_sun_webkit_dom_EventListenerImpl_twkDispatchEven
 }
 
 }
-
-
+}
 

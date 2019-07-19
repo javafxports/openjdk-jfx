@@ -58,6 +58,8 @@ namespace IDBClient {
 class IDBConnectionToServer;
 
 class IDBConnectionProxy {
+    WTF_MAKE_NONCOPYABLE(IDBConnectionProxy);
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     IDBConnectionProxy(IDBConnectionToServer&);
 
@@ -120,6 +122,7 @@ public:
     void unregisterDatabaseConnection(IDBDatabase&);
 
     void forgetActiveOperations(const Vector<RefPtr<TransactionOperation>>&);
+    void forgetTransaction(IDBTransaction&);
     void forgetActivityForCurrentThread();
 
 private:

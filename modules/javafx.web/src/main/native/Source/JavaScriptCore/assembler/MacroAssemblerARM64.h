@@ -53,9 +53,9 @@ public:
 protected:
     static const ARM64Registers::FPRegisterID fpTempRegister = ARM64Registers::q31;
     static const Assembler::SetFlags S = Assembler::S;
-    static const intptr_t maskHalfWord0 = 0xffffl;
-    static const intptr_t maskHalfWord1 = 0xffff0000l;
-    static const intptr_t maskUpperWord = 0xffffffff00000000l;
+    static const int64_t maskHalfWord0 = 0xffffl;
+    static const int64_t maskHalfWord1 = 0xffff0000l;
+    static const int64_t maskUpperWord = 0xffffffff00000000l;
 
     static constexpr size_t INSTRUCTION_SIZE = 4;
 
@@ -79,12 +79,12 @@ public:
     static const Assembler::JumpType DefaultJump = Assembler::JumpNoConditionFixedSize;
 
     Vector<LinkRecord, 0, UnsafeVectorOverflow>& jumpsToLink() { return m_assembler.jumpsToLink(); }
-    void* unlinkedCode() { return m_assembler.unlinkedCode(); }
     static bool canCompact(JumpType jumpType) { return Assembler::canCompact(jumpType); }
     static JumpLinkType computeJumpType(JumpType jumpType, const uint8_t* from, const uint8_t* to) { return Assembler::computeJumpType(jumpType, from, to); }
     static JumpLinkType computeJumpType(LinkRecord& record, const uint8_t* from, const uint8_t* to) { return Assembler::computeJumpType(record, from, to); }
     static int jumpSizeDelta(JumpType jumpType, JumpLinkType jumpLinkType) { return Assembler::jumpSizeDelta(jumpType, jumpLinkType); }
-    static void link(LinkRecord& record, uint8_t* from, const uint8_t* fromInstruction, uint8_t* to) { return Assembler::link(record, from, fromInstruction, to); }
+    template <typename CopyFunction>
+    static void link(LinkRecord& record, uint8_t* from, const uint8_t* fromInstruction, uint8_t* to, CopyFunction copy) { return Assembler::link(record, from, fromInstruction, to, copy); }
 
     static const Scale ScalePtr = TimesEight;
 
@@ -372,6 +372,12 @@ public:
         and32(dataTempRegister, dest);
     }
 
+    void and16(Address src, RegisterID dest)
+    {
+        load16(src, getCachedDataTempRegisterIDAndInvalidate());
+        and32(dataTempRegister, dest);
+    }
+
     void and64(RegisterID src1, RegisterID src2, RegisterID dest)
     {
         m_assembler.and_<64>(dest, src1, src2);
@@ -443,6 +449,22 @@ public:
         // Arm does not have a count trailing zeros only a count leading zeros.
         m_assembler.rbit<64>(dest, src);
         m_assembler.clz<64>(dest, dest);
+    }
+
+    void byteSwap16(RegisterID dst)
+    {
+        m_assembler.rev16<32>(dst, dst);
+        zeroExtend16To32(dst, dst);
+    }
+
+    void byteSwap32(RegisterID dst)
+    {
+        m_assembler.rev<32>(dst, dst);
+    }
+
+    void byteSwap64(RegisterID dst)
+    {
+        m_assembler.rev<64>(dst, dst);
     }
 
     // Only used for testing purposes.
@@ -1023,6 +1045,11 @@ public:
         xor64(dataTempRegister, dest);
     }
 
+    void not32(RegisterID srcDest)
+    {
+        m_assembler.mvn<32>(srcDest, srcDest);
+    }
+
     void not32(RegisterID src, RegisterID dest)
     {
         m_assembler.mvn<32>(dest, src);
@@ -1195,6 +1222,14 @@ public:
         signExtend32ToPtr(TrustedImm32(address.offset), getCachedMemoryTempRegisterIDAndInvalidate());
         m_assembler.add<64>(memoryTempRegister, memoryTempRegister, address.index, Assembler::UXTX, address.scale);
         m_assembler.ldrh(dest, address.base, memoryTempRegister);
+    }
+
+    void load16(ExtendedAddress address, RegisterID dest)
+    {
+        moveToCachedReg(TrustedImmPtr(reinterpret_cast<void*>(address.offset)), cachedMemoryTempRegister());
+        m_assembler.ldrh(dest, memoryTempRegister, address.base, Assembler::UXTX, 1);
+        if (dest == memoryTempRegister)
+            cachedMemoryTempRegister().invalidate();
     }
 
     void load16Unaligned(ImplicitAddress address, RegisterID dest)
@@ -1505,6 +1540,16 @@ public:
         m_assembler.strh(src, address.base, memoryTempRegister);
     }
 
+    void storeZero16(ImplicitAddress address)
+    {
+        store16(ARM64Registers::zr, address);
+    }
+
+    void storeZero16(BaseIndex address)
+    {
+        store16(ARM64Registers::zr, address);
+    }
+
     void store8(RegisterID src, BaseIndex address)
     {
         if (!address.offset && !address.scale) {
@@ -1575,6 +1620,7 @@ public:
     static bool supportsFloatingPointSqrt() { return true; }
     static bool supportsFloatingPointAbs() { return true; }
     static bool supportsFloatingPointRounding() { return true; }
+    static bool supportsCountPopulation() { return false; }
 
     enum BranchTruncateType { BranchIfTruncateFailed, BranchIfTruncateSuccessful };
 
@@ -1688,6 +1734,20 @@ public:
     {
         m_assembler.fcmp<32>(left, right);
         return jumpAfterFloatingPointCompare(cond);
+    }
+
+    void compareDouble(DoubleCondition cond, FPRegisterID left, FPRegisterID right, RegisterID dest)
+    {
+        floatingPointCompare(cond, left, right, dest, [this] (FPRegisterID arg1, FPRegisterID arg2) {
+            m_assembler.fcmp<64>(arg1, arg2);
+        });
+    }
+
+    void compareFloat(DoubleCondition cond, FPRegisterID left, FPRegisterID right, RegisterID dest)
+    {
+        floatingPointCompare(cond, left, right, dest, [this] (FPRegisterID arg1, FPRegisterID arg2) {
+            m_assembler.fcmp<32>(arg1, arg2);
+        });
     }
 
     Jump branchDoubleNonZero(FPRegisterID reg, FPRegisterID)
@@ -1840,6 +1900,12 @@ public:
         signExtend32ToPtr(TrustedImm32(address.offset), getCachedMemoryTempRegisterIDAndInvalidate());
         m_assembler.add<64>(memoryTempRegister, memoryTempRegister, address.index, Assembler::UXTX, address.scale);
         m_assembler.ldr<32>(dest, address.base, memoryTempRegister);
+    }
+
+    void loadFloat(TrustedImmPtr address, FPRegisterID dest)
+    {
+        moveToCachedReg(address, cachedMemoryTempRegister());
+        m_assembler.ldr<32>(dest, memoryTempRegister, ARM64Registers::zr);
     }
 
     void moveDouble(FPRegisterID src, FPRegisterID dest)
@@ -2272,6 +2338,13 @@ public:
         move(reg1, getCachedDataTempRegisterIDAndInvalidate());
         move(reg2, reg1);
         move(dataTempRegister, reg2);
+    }
+
+    void swap(FPRegisterID reg1, FPRegisterID reg2)
+    {
+        moveDouble(reg1, fpTempRegister);
+        moveDouble(reg2, reg1);
+        moveDouble(fpTempRegister, reg2);
     }
 
     void signExtend32ToPtr(TrustedImm32 imm, RegisterID dest)
@@ -3077,7 +3150,7 @@ public:
 
     // Jumps, calls, returns
 
-    ALWAYS_INLINE Call call()
+    ALWAYS_INLINE Call call(PtrTag)
     {
         AssemblerLabel pointerLabel = m_assembler.label();
         moveWithFixedWidth(TrustedImmPtr(nullptr), getCachedDataTempRegisterIDAndInvalidate());
@@ -3088,18 +3161,22 @@ public:
         return Call(callLabel, Call::Linkable);
     }
 
-    ALWAYS_INLINE Call call(RegisterID target)
+    ALWAYS_INLINE Call call(RegisterID target, PtrTag)
     {
         invalidateAllTempRegisters();
         m_assembler.blr(target);
         return Call(m_assembler.label(), Call::None);
     }
 
-    ALWAYS_INLINE Call call(Address address)
+    ALWAYS_INLINE Call call(Address address, PtrTag tag)
     {
         load64(address, getCachedDataTempRegisterIDAndInvalidate());
-        return call(dataTempRegister);
+        return call(dataTempRegister, tag);
     }
+
+    ALWAYS_INLINE Call call(RegisterID callTag) { return UNUSED_PARAM(callTag), call(NoPtrTag); }
+    ALWAYS_INLINE Call call(RegisterID target, RegisterID callTag) { return UNUSED_PARAM(callTag), call(target, NoPtrTag); }
+    ALWAYS_INLINE Call call(Address address, RegisterID callTag) { return UNUSED_PARAM(callTag), call(address, NoPtrTag); }
 
     ALWAYS_INLINE Jump jump()
     {
@@ -3108,29 +3185,34 @@ public:
         return Jump(label, m_makeJumpPatchable ? Assembler::JumpNoConditionFixedSize : Assembler::JumpNoCondition);
     }
 
-    void jump(RegisterID target)
+    void jump(RegisterID target, PtrTag)
     {
         m_assembler.br(target);
     }
 
-    void jump(Address address)
+    void jump(Address address, PtrTag)
     {
         load64(address, getCachedDataTempRegisterIDAndInvalidate());
         m_assembler.br(dataTempRegister);
     }
 
-    void jump(BaseIndex address)
+    void jump(BaseIndex address, PtrTag)
     {
         load64(address, getCachedDataTempRegisterIDAndInvalidate());
         m_assembler.br(dataTempRegister);
     }
 
-    void jump(AbsoluteAddress address)
+    void jump(AbsoluteAddress address, PtrTag)
     {
         move(TrustedImmPtr(address.m_ptr), getCachedDataTempRegisterIDAndInvalidate());
         load64(Address(dataTempRegister), dataTempRegister);
         m_assembler.br(dataTempRegister);
     }
+
+    ALWAYS_INLINE void jump(RegisterID target, RegisterID jumpTag) { UNUSED_PARAM(jumpTag), jump(target, NoPtrTag); }
+    ALWAYS_INLINE void jump(Address address, RegisterID jumpTag) { UNUSED_PARAM(jumpTag), jump(address, NoPtrTag); }
+    ALWAYS_INLINE void jump(BaseIndex address, RegisterID jumpTag) { UNUSED_PARAM(jumpTag), jump(address, NoPtrTag); }
+    ALWAYS_INLINE void jump(AbsoluteAddress address, RegisterID jumpTag) { UNUSED_PARAM(jumpTag), jump(address, NoPtrTag); }
 
     ALWAYS_INLINE Call makeTailRecursiveCall(Jump oldJump)
     {
@@ -3325,6 +3407,14 @@ public:
     {
         m_makeJumpPatchable = true;
         Jump result = branch64(cond, left, TrustedImm64(right));
+        m_makeJumpPatchable = false;
+        return PatchableJump(result);
+    }
+
+    PatchableJump patchableBranch8(RelationalCondition cond, Address left, TrustedImm32 imm)
+    {
+        m_makeJumpPatchable = true;
+        Jump result = branch8(cond, left, imm);
         m_makeJumpPatchable = false;
         return PatchableJump(result);
     }
@@ -3684,6 +3774,23 @@ public:
         m_assembler.eor<64>(dest, src, src);
     }
 
+    ALWAYS_INLINE static bool supportsDoubleToInt32ConversionUsingJavaScriptSemantics()
+    {
+#if HAVE(FJCVTZS_INSTRUCTION)
+        return true;
+#else
+        if (s_jscvtCheckState == CPUIDCheckState::NotChecked)
+            collectCPUFeatures();
+
+        return s_jscvtCheckState == CPUIDCheckState::Set;
+#endif
+    }
+
+    void convertDoubleToInt32UsingJavaScriptSemantics(FPRegisterID src, RegisterID dest)
+    {
+        m_assembler.fjcvtzs(dest, src); // This zero extends.
+    }
+
 #if ENABLE(FAST_TLS_JIT)
     // This will use scratch registers if the offset is not legal.
 
@@ -3738,7 +3845,7 @@ public:
         return static_cast<RelationalCondition>(Assembler::invert(static_cast<Assembler::Condition>(cond)));
     }
 
-    static std::optional<ResultCondition> commuteCompareToZeroIntoTest(RelationalCondition cond)
+    static Optional<ResultCondition> commuteCompareToZeroIntoTest(RelationalCondition cond)
     {
         switch (cond) {
         case Equal:
@@ -3751,21 +3858,24 @@ public:
             return PositiveOrZero;
             break;
         default:
-            return std::nullopt;
+            return WTF::nullopt;
         }
     }
 
-    static FunctionPtr readCallTarget(CodeLocationCall call)
+    template<PtrTag resultTag, PtrTag locationTag>
+    static FunctionPtr<resultTag> readCallTarget(CodeLocationCall<locationTag> call)
     {
-        return FunctionPtr(reinterpret_cast<void(*)()>(Assembler::readCallTarget(call.dataLocation())));
+        return FunctionPtr<resultTag>(MacroAssemblerCodePtr<resultTag>(Assembler::readCallTarget(call.dataLocation())));
     }
 
-    static void replaceWithVMHalt(CodeLocationLabel instructionStart)
+    template<PtrTag tag>
+    static void replaceWithVMHalt(CodeLocationLabel<tag> instructionStart)
     {
-        Assembler::replaceWithVMHalt(instructionStart.executableAddress());
+        Assembler::replaceWithVMHalt(instructionStart.dataLocation());
     }
 
-    static void replaceWithJump(CodeLocationLabel instructionStart, CodeLocationLabel destination)
+    template<PtrTag startTag, PtrTag destTag>
+    static void replaceWithJump(CodeLocationLabel<startTag> instructionStart, CodeLocationLabel<destTag> destination)
     {
         Assembler::replaceWithJump(instructionStart.dataLocation(), destination.dataLocation());
     }
@@ -3790,44 +3900,52 @@ public:
     static bool canJumpReplacePatchableBranchPtrWithPatch() { return false; }
     static bool canJumpReplacePatchableBranch32WithPatch() { return false; }
 
-    static CodeLocationLabel startOfBranchPtrWithPatchOnRegister(CodeLocationDataLabelPtr label)
+    template<PtrTag tag>
+    static CodeLocationLabel<tag> startOfBranchPtrWithPatchOnRegister(CodeLocationDataLabelPtr<tag> label)
     {
         return label.labelAtOffset(0);
     }
 
-    static CodeLocationLabel startOfPatchableBranchPtrWithPatchOnAddress(CodeLocationDataLabelPtr)
+    template<PtrTag tag>
+    static CodeLocationLabel<tag> startOfPatchableBranchPtrWithPatchOnAddress(CodeLocationDataLabelPtr<tag>)
     {
         UNREACHABLE_FOR_PLATFORM();
-        return CodeLocationLabel();
+        return CodeLocationLabel<tag>();
     }
 
-    static CodeLocationLabel startOfPatchableBranch32WithPatchOnAddress(CodeLocationDataLabel32)
+    template<PtrTag tag>
+    static CodeLocationLabel<tag> startOfPatchableBranch32WithPatchOnAddress(CodeLocationDataLabel32<tag>)
     {
         UNREACHABLE_FOR_PLATFORM();
-        return CodeLocationLabel();
+        return CodeLocationLabel<tag>();
     }
 
-    static void revertJumpReplacementToBranchPtrWithPatch(CodeLocationLabel instructionStart, RegisterID, void* initialValue)
+    template<PtrTag tag>
+    static void revertJumpReplacementToBranchPtrWithPatch(CodeLocationLabel<tag> instructionStart, RegisterID, void* initialValue)
     {
         reemitInitialMoveWithPatch(instructionStart.dataLocation(), initialValue);
     }
 
-    static void revertJumpReplacementToPatchableBranchPtrWithPatch(CodeLocationLabel, Address, void*)
+    template<PtrTag tag>
+    static void revertJumpReplacementToPatchableBranchPtrWithPatch(CodeLocationLabel<tag>, Address, void*)
     {
         UNREACHABLE_FOR_PLATFORM();
     }
 
-    static void revertJumpReplacementToPatchableBranch32WithPatch(CodeLocationLabel, Address, int32_t)
+    template<PtrTag tag>
+    static void revertJumpReplacementToPatchableBranch32WithPatch(CodeLocationLabel<tag>, Address, int32_t)
     {
         UNREACHABLE_FOR_PLATFORM();
     }
 
-    static void repatchCall(CodeLocationCall call, CodeLocationLabel destination)
+    template<PtrTag callTag, PtrTag destTag>
+    static void repatchCall(CodeLocationCall<callTag> call, CodeLocationLabel<destTag> destination)
     {
         Assembler::repatchPointer(call.dataLabelPtrAtOffset(REPATCH_OFFSET_CALL_TO_POINTER).dataLocation(), destination.executableAddress());
     }
 
-    static void repatchCall(CodeLocationCall call, FunctionPtr destination)
+    template<PtrTag callTag, PtrTag destTag>
+    static void repatchCall(CodeLocationCall<callTag> call, FunctionPtr<destTag> destination)
     {
         Assembler::repatchPointer(call.dataLabelPtrAtOffset(REPATCH_OFFSET_CALL_TO_POINTER).dataLocation(), destination.executableAddress());
     }
@@ -3904,11 +4022,6 @@ protected:
     {
         RELEASE_ASSERT(m_allowScratchRegister);
         return m_cachedMemoryTempRegister;
-    }
-
-    ALWAYS_INLINE bool isInIntRange(intptr_t value)
-    {
-        return value == ((value << 32) >> 32);
     }
 
     template<typename ImmediateType, typename rawType>
@@ -4045,7 +4158,7 @@ protected:
             if (dest == memoryTempRegister)
                 cachedMemoryTempRegister().invalidate();
 
-            if (isInIntRange(addressDelta)) {
+            if (isInt<32>(addressDelta)) {
                 if (Assembler::canEncodeSImmOffset(addressDelta)) {
                     m_assembler.ldur<datasize>(dest,  memoryTempRegister, addressDelta);
                     return;
@@ -4082,7 +4195,7 @@ protected:
             intptr_t addressAsInt = reinterpret_cast<intptr_t>(address);
             intptr_t addressDelta = addressAsInt - currentRegisterContents;
 
-            if (isInIntRange(addressDelta)) {
+            if (isInt<32>(addressDelta)) {
                 if (Assembler::canEncodeSImmOffset(addressDelta)) {
                     m_assembler.stur<datasize>(src, memoryTempRegister, addressDelta);
                     return;
@@ -4419,17 +4532,47 @@ protected:
         return makeBranch(cond);
     }
 
+    template<typename Function>
+    void floatingPointCompare(DoubleCondition cond, FPRegisterID left, FPRegisterID right, RegisterID dest, Function compare)
+    {
+        if (cond == DoubleNotEqual) {
+            // ConditionNE sets 1 if NotEqual *or* unordered - force the unordered cases not to set 1.
+            move(TrustedImm32(0), dest);
+            compare(left, right);
+            Jump unordered = makeBranch(Assembler::ConditionVS);
+            m_assembler.cset<32>(dest, Assembler::ConditionNE);
+            unordered.link(this);
+            return;
+        }
+        if (cond == DoubleEqualOrUnordered) {
+            // ConditionEQ sets 1 only if Equal - force the unordered cases to set 1 too.
+            move(TrustedImm32(1), dest);
+            compare(left, right);
+            Jump unordered = makeBranch(Assembler::ConditionVS);
+            m_assembler.cset<32>(dest, Assembler::ConditionEQ);
+            unordered.link(this);
+            return;
+        }
+        compare(left, right);
+        m_assembler.cset<32>(dest, ARM64Condition(cond));
+    }
+
     friend class LinkBuffer;
 
-    static void linkCall(void* code, Call call, FunctionPtr function)
+    template<PtrTag tag>
+    static void linkCall(void* code, Call call, FunctionPtr<tag> function)
     {
         if (!call.isFlagSet(Call::Near))
-            Assembler::linkPointer(code, call.m_label.labelAtOffset(REPATCH_OFFSET_CALL_TO_POINTER), function.value());
+            Assembler::linkPointer(code, call.m_label.labelAtOffset(REPATCH_OFFSET_CALL_TO_POINTER), function.executableAddress());
         else if (call.isFlagSet(Call::Tail))
-            Assembler::linkJump(code, call.m_label, function.value());
+            Assembler::linkJump(code, call.m_label, function.template retaggedExecutableAddress<NoPtrTag>());
         else
-            Assembler::linkCall(code, call.m_label, function.value());
+            Assembler::linkCall(code, call.m_label, function.template retaggedExecutableAddress<NoPtrTag>());
     }
+
+    JS_EXPORT_PRIVATE static void collectCPUFeatures();
+
+    JS_EXPORT_PRIVATE static CPUIDCheckState s_jscvtCheckState;
 
     CachedTempRegister m_dataMemoryTempRegister;
     CachedTempRegister m_cachedMemoryTempRegister;

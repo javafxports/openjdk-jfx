@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -399,6 +399,12 @@ public abstract class TableViewBehaviorBase<C extends Control, T, TC extends Tab
     private Runnable onSelectLeftCell;
     public void setOnSelectLeftCell(Runnable r) { onSelectLeftCell = r; }
 
+    private Runnable onFocusRightCell;
+    public void setOnFocusRightCell(Runnable r) { onFocusRightCell = r; }
+
+    private Runnable onFocusLeftCell;
+    public void setOnFocusLeftCell(Runnable r) { onFocusLeftCell = r; }
+
     public void mousePressed(MouseEvent e) {
 //        // FIXME can't assume (yet) cells.get(0) is necessarily the lead cell
 //        ObservableList<? extends TablePositionBase> cells = getSelectedCells();
@@ -522,7 +528,7 @@ public abstract class TableViewBehaviorBase<C extends Control, T, TC extends Tab
         if (fm == null) return;
 
         fm.focusLeftCell();
-        if (onFocusPreviousRow != null) onFocusPreviousRow.run();
+        if (onFocusLeftCell != null) onFocusLeftCell.run();
     }
 
     protected void focusRightCell() {
@@ -533,7 +539,7 @@ public abstract class TableViewBehaviorBase<C extends Control, T, TC extends Tab
         if (fm == null) return;
 
         fm.focusRightCell();
-        if (onFocusNextRow != null) onFocusNextRow.run();
+        if (onFocusRightCell != null) onFocusRightCell.run();
     }
 
     protected void focusPageUp() {
@@ -854,8 +860,7 @@ public abstract class TableViewBehaviorBase<C extends Control, T, TC extends Tab
         int currentRow = focusedCell.getRow();
         int currentColumn = getVisibleLeafIndex(focusedCell.getTableColumn());
 
-        if (rowDiff < 0 && currentRow <= 0) return;
-        else if (rowDiff > 0 && currentRow >= getItemCount() - 1) return;
+        if (rowDiff > 0 && currentRow >= getItemCount() - 1) return;
         else if (columnDiff < 0 && currentColumn <= 0) return;
         else if (columnDiff > 0 && currentColumn >= getVisibleLeafColumns().size() - 1) return;
         else if (columnDiff > 0 && currentColumn == -1) return;
@@ -863,7 +868,10 @@ public abstract class TableViewBehaviorBase<C extends Control, T, TC extends Tab
         TableColumnBase tc = focusedCell.getTableColumn();
         tc = getColumn(tc, columnDiff);
 
-        int row = focusedCell.getRow() + rowDiff;
+        //JDK-8222214: Moved this "if" here because the first row might be focused and not selected, so
+        // this makes sure it gets selected when the users presses UP. If not it ends calling
+        // VirtualFlow.scrollTo(-1) at and the content of the TableView disappears.
+        int row = (currentRow <= 0 && rowDiff <= 0) ? 0 : focusedCell.getRow() + rowDiff;
         sm.clearAndSelect(row, tc);
         setAnchor(row, tc);
     }

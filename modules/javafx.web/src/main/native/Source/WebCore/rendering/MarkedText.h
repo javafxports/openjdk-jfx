@@ -40,23 +40,13 @@ struct MarkedText {
         SpellingError,
         TextMatch,
         DictationAlternatives,
-#if PLATFORM(IOS)
-        // FIXME: See <rdar://problem/8933352>. Also, remove the PLATFORM(IOS)-guard.
+#if PLATFORM(IOS_FAMILY)
+        // FIXME: See <rdar://problem/8933352>. Also, remove the PLATFORM(IOS_FAMILY)-guard.
         DictationPhraseWithAlternatives,
 #endif
         Selection,
         DraggedContent,
     };
-#if !COMPILER_SUPPORTS(NSDMI_FOR_AGGREGATES)
-    MarkedText() = default;
-    MarkedText(unsigned startOffset, unsigned endOffset, Type type, const RenderedDocumentMarker* marker = nullptr)
-        : startOffset { startOffset }
-        , endOffset { endOffset }
-        , type { type }
-        , marker { marker }
-    {
-    }
-#endif
     unsigned startOffset;
     unsigned endOffset;
     Type type;

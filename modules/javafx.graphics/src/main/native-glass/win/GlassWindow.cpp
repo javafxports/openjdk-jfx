@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -291,12 +291,15 @@ char *StringForMsg(UINT msg) {
         case WM_LBUTTONDOWN: return "WM_LBUTTONDOWN";
         case WM_RBUTTONDOWN: return "WM_RBUTTONDOWN";
         case WM_MBUTTONDOWN: return "WM_MBUTTONDOWN";
+        case WM_XBUTTONDOWN: return "WM_XBUTTONDOWN";
         case WM_LBUTTONUP: return "WM_LBUTTONUP";
         case WM_LBUTTONDBLCLK: return "WM_LBUTTONDBLCLK";
         case WM_RBUTTONUP: return "WM_RBUTTONUP";
         case WM_RBUTTONDBLCLK: return "WM_RBUTTONDBLCLK";
         case WM_MBUTTONUP: return "WM_MBUTTONUP";
         case WM_MBUTTONDBLCLK: return "WM_MBUTTONDBLCLK";
+        case WM_XBUTTONUP: return "WM_XBUTTONUP";
+        case WM_XBUTTONDBLCLK: return "WM_XBUTTONDBLCLK";
         case WM_MOUSEWHEEL: return "WM_MOUSEWHEEL";
         case WM_MOUSEHWHEEL: return "WM_MOUSEHWHEEL";
         case WM_MOUSELEAVE: return "WM_MOUSELEAVE";
@@ -499,6 +502,7 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_LBUTTONDOWN:
         case WM_RBUTTONDOWN:
         case WM_MBUTTONDOWN:
+        case WM_XBUTTONDOWN:
             CheckUngrab(); // check if other owned windows hierarchy holds the grab
             if (IsChild() && !IsFocused() && IsFocusable()) {
                 RequestFocus(com_sun_glass_events_WindowEvent_FOCUS_GAINED);
@@ -510,6 +514,8 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_RBUTTONDBLCLK:
         case WM_MBUTTONUP:
         case WM_MBUTTONDBLCLK:
+        case WM_XBUTTONUP:
+        case WM_XBUTTONDBLCLK:
         case WM_MOUSEWHEEL:
         case WM_MOUSEHWHEEL:
         case WM_MOUSELEAVE:
@@ -538,6 +544,9 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_CAPTURECHANGED:
             ViewContainer::NotifyCaptureChanged(GetHWND(), (HWND)lParam);
             break;
+        case WM_MENUCHAR:
+            // Stop the beep when missing mnemonic or accelerator key JDK-8089986
+            return MNC_CLOSE << 16;
         case WM_SYSKEYDOWN:
         case WM_SYSKEYUP:
         case WM_KEYDOWN:
@@ -1239,6 +1248,10 @@ JNIEXPORT jlong JNICALL Java_com_sun_glass_ui_win_WinWindow__1createWindow
         } else {
             dwExStyle = 0;
             dwStyle |= WS_POPUP;
+            // if undecorated or transparent and not modal, enable taskbar iconification toggling
+            if (!(mask & com_sun_glass_ui_Window_MODAL)) {
+                dwStyle |= WS_MINIMIZEBOX;
+            }
         }
 
         if (mask & com_sun_glass_ui_Window_TRANSPARENT) {

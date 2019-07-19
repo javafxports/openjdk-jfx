@@ -27,10 +27,15 @@
 #include "HTMLPictureElement.h"
 
 #include "ElementChildIterator.h"
+#include "HTMLAnchorElement.h"
 #include "HTMLImageElement.h"
 #include "Logging.h"
+#include "RuntimeEnabledFeatures.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLPictureElement);
 
 HTMLPictureElement::HTMLPictureElement(const QualifiedName& tagName, Document& document)
     : HTMLElement(tagName, document)
@@ -40,11 +45,13 @@ HTMLPictureElement::HTMLPictureElement(const QualifiedName& tagName, Document& d
 HTMLPictureElement::~HTMLPictureElement()
 {
     document().removeViewportDependentPicture(*this);
+    document().removeAppearanceDependentPicture(*this);
 }
 
 void HTMLPictureElement::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
 {
     oldDocument.removeViewportDependentPicture(*this);
+    oldDocument.removeAppearanceDependentPicture(*this);
     HTMLElement::didMoveToNewDocument(oldDocument, newDocument);
     sourcesChanged();
 }
@@ -71,6 +78,31 @@ bool HTMLPictureElement::viewportChangeAffectedPicture() const
     }
     return false;
 }
+
+bool HTMLPictureElement::appearanceChangeAffectedPicture() const
+{
+    auto documentElement = makeRefPtr(document().documentElement());
+    MediaQueryEvaluator evaluator { document().printing() ? "print" : "screen", document(), documentElement ? documentElement->computedStyle() : nullptr };
+    for (auto& result : m_appearanceDependentMediaQueryResults) {
+        LOG(MediaQueries, "HTMLPictureElement %p appearanceChangeAffectedPicture evaluating media queries", this);
+        if (evaluator.evaluate(result.expression) != result.result)
+            return true;
+    }
+    return false;
+}
+
+#if USE(SYSTEM_PREVIEW)
+bool HTMLPictureElement::isSystemPreviewImage() const
+{
+    if (!RuntimeEnabledFeatures::sharedFeatures().systemPreviewEnabled())
+        return false;
+
+    const auto* parent = parentElement();
+    if (!is<HTMLAnchorElement>(parent))
+        return false;
+    return downcast<HTMLAnchorElement>(parent)->isSystemPreviewLink();
+}
+#endif
 
 }
 

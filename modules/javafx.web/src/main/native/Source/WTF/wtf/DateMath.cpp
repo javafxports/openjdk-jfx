@@ -70,19 +70,17 @@
  */
 
 #include "config.h"
-#include "DateMath.h"
-
-#include "Assertions.h"
-#include "ASCIICType.h"
-#include "CurrentTime.h"
-#include "MathExtras.h"
-#include "StdLibExtras.h"
+#include <wtf/DateMath.h>
 
 #include <algorithm>
 #include <limits.h>
 #include <limits>
 #include <stdint.h>
 #include <time.h>
+#include <wtf/Assertions.h>
+#include <wtf/ASCIICType.h>
+#include <wtf/MathExtras.h>
+#include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
 
 #if OS(WINDOWS)
@@ -124,16 +122,16 @@ static const int firstDayOfMonth[2][12] = {
     {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335}
 };
 
+#if !OS(WINDOWS) || HAVE(TM_GMTOFF)
 static inline void getLocalTime(const time_t* localTime, struct tm* localTM)
 {
-#if COMPILER(MSVC)
-    localtime_s(localTM, localTime);
-#elif HAVE(LOCALTIME_R)
+#if HAVE(LOCALTIME_R)
     localtime_r(localTime, localTM);
 #else
     localtime_s(localTime, localTM);
 #endif
 }
+#endif
 
 bool isLeapYear(int year)
 {
@@ -465,6 +463,13 @@ static void UnixTimeToFileTime(time_t t, LPFILETIME pft)
  */
 static double calculateDSTOffset(time_t localTime, double utcOffset)
 {
+    // input is UTC so we have to shift back to local time to determine DST thus the + getUTCOffset()
+    double offsetTime = (localTime * msPerSecond) + utcOffset;
+
+    // Offset from UTC but doesn't include DST obviously
+    int offsetHour =  msToHours(offsetTime);
+    int offsetMinute =  msToMinutes(offsetTime);
+
 #if OS(WINDOWS)
     FILETIME utcFileTime;
     UnixTimeToFileTime(localTime, &utcFileTime);
@@ -474,39 +479,18 @@ static double calculateDSTOffset(time_t localTime, double utcOffset)
     if (!::SystemTimeToTzSpecificLocalTime(nullptr, &utcSystemTime, &localSystemTime))
         return 0;
 
-    double offsetTime = (localTime * msPerSecond) + utcOffset;
-
-    // Offset from UTC but doesn't include DST obviously
-    int offsetHour =  msToHours(offsetTime);
-    int offsetMinute =  msToMinutes(offsetTime);
-
     double diff = ((localSystemTime.wHour - offsetHour) * secondsPerHour) + ((localSystemTime.wMinute - offsetMinute) * 60);
-
-// See: https://bugs.webkit.org/show_bug.cgi?id=137003
-#if PLATFORM(JAVA)
-    if (diff < 0)
-        diff += secondsPerDay;
-#endif
-
-    return diff * msPerSecond;
 #else
-    //input is UTC so we have to shift back to local time to determine DST thus the + getUTCOffset()
-    double offsetTime = (localTime * msPerSecond) + utcOffset;
-
-    // Offset from UTC but doesn't include DST obviously
-    int offsetHour =  msToHours(offsetTime);
-    int offsetMinute =  msToMinutes(offsetTime);
-
     tm localTM;
     getLocalTime(&localTime, &localTM);
 
     double diff = ((localTM.tm_hour - offsetHour) * secondsPerHour) + ((localTM.tm_min - offsetMinute) * 60);
+#endif
 
     if (diff < 0)
         diff += secondsPerDay;
 
     return (diff * msPerSecond);
-#endif
 }
 
 #endif
@@ -572,7 +556,14 @@ static inline double ymdhmsToSeconds(int year, long mon, long day, long hour, lo
     int mday = firstDayOfMonth[isLeapYear(year)][mon - 1];
     double ydays = daysFrom1970ToYear(year);
 
-    return (second + minute * secondsPerMinute + hour * secondsPerHour + (mday + day - 1 + ydays) * secondsPerDay);
+    double dateSeconds = second + minute * secondsPerMinute + hour * secondsPerHour + (mday + day - 1 + ydays) * secondsPerDay;
+
+    // Clamp to EcmaScript standard (ecma262/#sec-time-values-and-time-range) of
+    //  +/- 100,000,000 days from 01 January, 1970.
+    if (dateSeconds < -8640000000000.0 || dateSeconds > 8640000000000.0)
+        return std::numeric_limits<double>::quiet_NaN();
+
+    return dateSeconds;
 }
 
 // We follow the recommendation of RFC 2822 to consider all
@@ -793,7 +784,7 @@ static char* parseES5TimePortion(char* currentPosition, long& hours, long& minut
 
 double parseES5DateFromNullTerminatedCharacters(const char* dateString)
 {
-    // This parses a date of the form defined in ECMA-262-5, section 15.9.1.15
+    // This parses a date of the form defined in ecma262/#sec-date-time-string-format
     // (similar to RFC 3339 / ISO 8601: YYYY-MM-DDTHH:mm:ss[.sss]Z).
     // In most cases it is intentionally strict (e.g. correct field widths, no stray whitespace).
 
@@ -903,7 +894,7 @@ double parseDateFromNullTerminatedCharacters(const char* dateString, bool& haveT
     if (day < 0)
         return std::numeric_limits<double>::quiet_NaN();
 
-    std::optional<int> year;
+    Optional<int> year;
     if (day > 31) {
         // ### where is the boundary and what happens below?
         if (*dateString != '/')
@@ -986,7 +977,7 @@ double parseDateFromNullTerminatedCharacters(const char* dateString, bool& haveT
             if (*newPosStr != ':')
                 return std::numeric_limits<double>::quiet_NaN();
             // There was no year; the number was the hour.
-            year = std::nullopt;
+            year = WTF::nullopt;
         } else {
             // in the normal case (we parsed the year), advance to the next number
             dateString = ++newPosStr;
@@ -1170,11 +1161,9 @@ double parseDateFromNullTerminatedCharacters(const char* dateString)
 
 double timeClip(double t)
 {
-    if (!std::isfinite(t))
+    if (std::abs(t) > maxECMAScriptTime)
         return std::numeric_limits<double>::quiet_NaN();
-    if (fabs(t) > maxECMAScriptTime)
-        return std::numeric_limits<double>::quiet_NaN();
-    return trunc(t);
+    return std::trunc(t) + 0.0;
 }
 
 // See http://tools.ietf.org/html/rfc2822#section-3.3 for more information.

@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -59,11 +59,15 @@
 #include "SVGUseElement.h"
 #include "ScriptDisallowedScope.h"
 #include "SelectorQuery.h"
+#include "SlotAssignment.h"
 #include "TemplateContentDocumentFragment.h"
 #include <algorithm>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/Variant.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(ContainerNode);
 
 static void dispatchChildInsertionEvents(Node&);
 static void dispatchChildRemovalEvents(Ref<Node>&);
@@ -100,6 +104,9 @@ ALWAYS_INLINE NodeVector ContainerNode::removeAllChildrenWithScriptAssertion(Chi
 
     WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
     ScriptDisallowedScope::InMainThread scriptDisallowedScope;
+
+    if (UNLIKELY(isShadowRoot() || isInShadowTree()))
+        containingShadowRoot()->willRemoveAllChildren(*this);
 
     document().nodeChildrenWillBeRemoved(*this);
 
@@ -147,6 +154,9 @@ ALWAYS_INLINE bool ContainerNode::removeNodeWithScriptAssertion(Node& childToRem
         WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
         ScriptDisallowedScope::InMainThread scriptDisallowedScope;
 
+        if (UNLIKELY(isShadowRoot() || isInShadowTree()))
+            containingShadowRoot()->resolveSlotsBeforeNodeInsertionOrRemoval();
+
         document().nodeWillBeRemoved(childToRemove);
 
         ASSERT_WITH_SECURITY_IMPLICATION(childToRemove.parentNode() == this);
@@ -178,6 +188,10 @@ static ALWAYS_INLINE void executeNodeInsertionWithScriptAssertion(ContainerNode&
     NodeVector postInsertionNotificationTargets;
     {
         ScriptDisallowedScope::InMainThread scriptDisallowedScope;
+
+        if (UNLIKELY(containerNode.isShadowRoot() || containerNode.isInShadowTree()))
+            containerNode.containingShadowRoot()->resolveSlotsBeforeNodeInsertionOrRemoval();
+
         doNodeInsertion();
         ChildListMutationScope(containerNode).childAdded(child);
         postInsertionNotificationTargets = notifyChildNodeInserted(containerNode, child);
@@ -278,27 +292,34 @@ static inline bool isChildTypeAllowed(ContainerNode& newParent, Node& child)
     return true;
 }
 
-static inline bool isInTemplateContent(const Node* node)
+static bool containsIncludingHostElements(const Node& possibleAncestor, const Node& node)
 {
-    Document& document = node->document();
-    return &document == document.templateDocument();
-}
+    const Node* currentNode = &node;
+    do {
+        if (currentNode == &possibleAncestor)
+            return true;
+        const ContainerNode* parent = currentNode->parentNode();
+        if (!parent) {
+            if (is<ShadowRoot>(currentNode))
+                parent = downcast<ShadowRoot>(currentNode)->host();
+            else if (is<DocumentFragment>(*currentNode) && downcast<DocumentFragment>(*currentNode).isTemplateContent())
+                parent = static_cast<const TemplateContentDocumentFragment*>(currentNode)->host();
+        }
+        currentNode = parent;
+    } while (currentNode);
 
-static inline bool containsConsideringHostElements(const Node& newChild, const Node& newParent)
-{
-    return (newParent.isInShadowTree() || isInTemplateContent(&newParent))
-        ? newChild.containsIncludingHostElements(&newParent)
-        : newChild.contains(&newParent);
+    return false;
 }
 
 static inline ExceptionOr<void> checkAcceptChild(ContainerNode& newParent, Node& newChild, const Node* refChild, Document::AcceptChildOperation operation)
 {
+    if (containsIncludingHostElements(newChild, newParent))
+        return Exception { HierarchyRequestError };
+
     // Use common case fast path if possible.
     if ((newChild.isElementNode() || newChild.isTextNode()) && newParent.isElementNode()) {
         ASSERT(!newParent.isDocumentTypeNode());
         ASSERT(isChildTypeAllowed(newParent, newChild));
-        if (containsConsideringHostElements(newChild, newParent))
-            return Exception { HierarchyRequestError };
         if (operation == Document::AcceptChildOperation::InsertOrAdd && refChild && refChild->parentNode() != &newParent)
             return Exception { NotFoundError };
         return { };
@@ -307,9 +328,6 @@ static inline ExceptionOr<void> checkAcceptChild(ContainerNode& newParent, Node&
     // This should never happen, but also protect release builds from tree corruption.
     ASSERT(!newChild.isPseudoElement());
     if (newChild.isPseudoElement())
-        return Exception { HierarchyRequestError };
-
-    if (containsConsideringHostElements(newChild, newParent))
         return Exception { HierarchyRequestError };
 
     if (operation == Document::AcceptChildOperation::InsertOrAdd && refChild && refChild->parentNode() != &newParent)
@@ -328,7 +346,7 @@ static inline ExceptionOr<void> checkAcceptChildGuaranteedNodeTypes(ContainerNod
 {
     ASSERT(!newParent.isDocumentTypeNode());
     ASSERT(isChildTypeAllowed(newParent, newChild));
-    if (newChild.contains(&newParent))
+    if (containsIncludingHostElements(newChild, newParent))
         return Exception { HierarchyRequestError };
     return { };
 }
@@ -374,9 +392,11 @@ ExceptionOr<void> ContainerNode::insertBefore(Node& newChild, Node* refChild)
         return { };
 
     // We need this extra check because collectChildrenAndRemoveFromOldParent() can fire mutation events.
-    auto checkAcceptResult = checkAcceptChildGuaranteedNodeTypes(*this, newChild);
+    for (auto& child : targets) {
+        auto checkAcceptResult = checkAcceptChildGuaranteedNodeTypes(*this, child);
     if (checkAcceptResult.hasException())
         return checkAcceptResult.releaseException();
+    }
 
     InspectorInstrumentation::willInsertDOMNode(document(), *this);
 
@@ -490,9 +510,11 @@ ExceptionOr<void> ContainerNode::replaceChild(Node& newChild, Node& oldChild)
     }
 
     // Do this one more time because collectChildrenAndRemoveFromOldParent() fires a MutationEvent.
-    validityResult = checkPreReplacementValidity(*this, newChild, oldChild);
+    for (auto& child : targets) {
+        validityResult = checkPreReplacementValidity(*this, child, oldChild);
     if (validityResult.hasException())
         return validityResult.releaseException();
+    }
 
     // Remove the node we're replacing.
     Ref<Node> protectOldChild(oldChild);
@@ -506,9 +528,11 @@ ExceptionOr<void> ContainerNode::replaceChild(Node& newChild, Node& oldChild)
             return removeResult.releaseException();
 
         // Does this one more time because removeChild() fires a MutationEvent.
-        validityResult = checkPreReplacementValidity(*this, newChild, oldChild);
+        for (auto& child : targets) {
+            validityResult = checkPreReplacementValidity(*this, child, oldChild);
         if (validityResult.hasException())
             return validityResult.releaseException();
+    }
     }
 
     InspectorInstrumentation::willInsertDOMNode(document(), *this);
@@ -685,9 +709,11 @@ ExceptionOr<void> ContainerNode::appendChildWithoutPreInsertionValidityCheck(Nod
         return { };
 
     // We need this extra check because collectChildrenAndRemoveFromOldParent() can fire mutation events.
-    auto nodeTypeResult = checkAcceptChildGuaranteedNodeTypes(*this, newChild);
+    for (auto& child : targets) {
+        auto nodeTypeResult = checkAcceptChildGuaranteedNodeTypes(*this, child);
     if (nodeTypeResult.hasException())
         return nodeTypeResult.releaseException();
+    }
 
     InspectorInstrumentation::willInsertDOMNode(document(), *this);
 
@@ -727,11 +753,38 @@ void ContainerNode::parserAppendChild(Node& newChild)
     });
 }
 
+static bool affectsElements(const ContainerNode::ChildChange& change)
+{
+    switch (change.type) {
+    case ContainerNode::ElementInserted:
+    case ContainerNode::ElementRemoved:
+    case ContainerNode::AllChildrenRemoved:
+    case ContainerNode::AllChildrenReplaced:
+        return true;
+    case ContainerNode::TextInserted:
+    case ContainerNode::TextRemoved:
+    case ContainerNode::TextChanged:
+    case ContainerNode::NonContentsChildInserted:
+    case ContainerNode::NonContentsChildRemoved:
+        return false;
+    }
+    ASSERT_NOT_REACHED();
+    return false;
+}
+
 void ContainerNode::childrenChanged(const ChildChange& change)
 {
     document().incDOMTreeVersion();
+
+    if (affectsElements(change))
+        document().invalidateAccessKeyCache();
+
+    // FIXME: Unclear why it's always safe to skip this when parser is adding children.
+    // FIXME: Seems like it's equally safe to skip for TextInserted and TextRemoved as for TextChanged.
+    // FIXME: Should use switch for change type so we remember to update when adding new types.
     if (change.source == ChildChangeSource::API && change.type != TextChanged)
         document().updateRangesAfterChildrenChanged(*this);
+
     invalidateNodeListAndCollectionCachesInAncestors();
 }
 
@@ -772,12 +825,12 @@ static void dispatchChildInsertionEvents(Node& child)
     Ref<Document> document(child.document());
 
     if (c->parentNode() && document->hasListenerType(Document::DOMNODEINSERTED_LISTENER))
-        c->dispatchScopedEvent(MutationEvent::create(eventNames().DOMNodeInsertedEvent, true, c->parentNode()));
+        c->dispatchScopedEvent(MutationEvent::create(eventNames().DOMNodeInsertedEvent, Event::CanBubble::Yes, c->parentNode()));
 
     // dispatch the DOMNodeInsertedIntoDocument event to all descendants
     if (c->isConnected() && document->hasListenerType(Document::DOMNODEINSERTEDINTODOCUMENT_LISTENER)) {
         for (; c; c = NodeTraversal::next(*c, &child))
-            c->dispatchScopedEvent(MutationEvent::create(eventNames().DOMNodeInsertedIntoDocumentEvent, false));
+            c->dispatchScopedEvent(MutationEvent::create(eventNames().DOMNodeInsertedIntoDocumentEvent, Event::CanBubble::No));
     }
 }
 
@@ -797,12 +850,12 @@ static void dispatchChildRemovalEvents(Ref<Node>& child)
 
     // dispatch pre-removal mutation events
     if (child->parentNode() && document->hasListenerType(Document::DOMNODEREMOVED_LISTENER))
-        child->dispatchScopedEvent(MutationEvent::create(eventNames().DOMNodeRemovedEvent, true, child->parentNode()));
+        child->dispatchScopedEvent(MutationEvent::create(eventNames().DOMNodeRemovedEvent, Event::CanBubble::Yes, child->parentNode()));
 
     // dispatch the DOMNodeRemovedFromDocument event to all descendants
     if (child->isConnected() && document->hasListenerType(Document::DOMNODEREMOVEDFROMDOCUMENT_LISTENER)) {
         for (RefPtr<Node> currentNode = child.copyRef(); currentNode; currentNode = NodeTraversal::next(*currentNode, child.ptr()))
-            currentNode->dispatchScopedEvent(MutationEvent::create(eventNames().DOMNodeRemovedFromDocumentEvent, false));
+            currentNode->dispatchScopedEvent(MutationEvent::create(eventNames().DOMNodeRemovedFromDocumentEvent, Event::CanBubble::No));
     }
 }
 

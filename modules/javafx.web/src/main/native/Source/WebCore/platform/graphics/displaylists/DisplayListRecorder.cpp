@@ -36,12 +36,12 @@
 namespace WebCore {
 namespace DisplayList {
 
-Recorder::Recorder(GraphicsContext& context, DisplayList& displayList, const FloatRect& initialClip, const AffineTransform& baseCTM)
+Recorder::Recorder(GraphicsContext& context, DisplayList& displayList, const GraphicsContextState& state, const FloatRect& initialClip, const AffineTransform& baseCTM)
     : GraphicsContextImpl(context, initialClip, baseCTM)
     , m_displayList(displayList)
 {
     LOG_WITH_STREAM(DisplayLists, stream << "\nRecording with clip " << initialClip);
-    m_stateStack.append(ContextState(baseCTM, initialClip));
+    m_stateStack.append(ContextState(state, baseCTM, initialClip));
 }
 
 Recorder::~Recorder()
@@ -230,15 +230,15 @@ void Recorder::drawLine(const FloatPoint& point1, const FloatPoint& point2)
     updateItemExtent(newItem);
 }
 
-void Recorder::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing, bool doubleLines, float strokeThickness)
+void Recorder::drawLinesForText(const FloatPoint& point, float thickness, const DashArray& widths, bool printing, bool doubleLines)
 {
-    DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawLinesForText::create(FloatPoint(), toFloatSize(point), widths, printing, doubleLines, strokeThickness)));
+    DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawLinesForText::create(FloatPoint(), toFloatSize(point), thickness, widths, printing, doubleLines)));
     updateItemExtent(newItem);
 }
 
-void Recorder::drawLineForDocumentMarker(const FloatPoint& point, float width, GraphicsContext::DocumentMarkerLineStyle style)
+void Recorder::drawDotsForDocumentMarker(const FloatRect& rect, DocumentMarkerLineStyle style)
 {
-    DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawLineForDocumentMarker::create(point, width, style)));
+    DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawDotsForDocumentMarker::create(rect, style)));
     updateItemExtent(newItem);
 }
 
@@ -378,6 +378,11 @@ IntRect Recorder::clipBounds()
     return IntRect(-2048, -2048, 4096, 4096);
 }
 
+void Recorder::clipToImageBuffer(ImageBuffer&, const FloatRect&)
+{
+    WTFLogAlways("GraphicsContext::clipToImageBuffer is not compatible with DisplayList::Recorder.");
+}
+
 void Recorder::applyDeviceScaleFactor(float deviceScaleFactor)
 {
     // FIXME: this changes the baseCTM, which will invalidate all of our cached extents.
@@ -399,7 +404,7 @@ Item& Recorder::appendItem(Ref<Item>&& item)
 
 void Recorder::updateItemExtent(DrawingItem& item) const
 {
-    if (std::optional<FloatRect> rect = item.localBounds(graphicsContext()))
+    if (Optional<FloatRect> rect = item.localBounds(graphicsContext()))
         item.setExtent(extentFromLocalBounds(rect.value()));
 }
 
@@ -468,7 +473,7 @@ void Recorder::ContextState::rotate(float angleInRadians)
     AffineTransform rotation;
     rotation.rotate(angleInDegrees);
 
-    if (std::optional<AffineTransform> inverse = rotation.inverse())
+    if (Optional<AffineTransform> inverse = rotation.inverse())
         clipBounds = inverse.value().mapRect(clipBounds);
 }
 
@@ -482,7 +487,7 @@ void Recorder::ContextState::concatCTM(const AffineTransform& matrix)
 {
     ctm *= matrix;
 
-    if (std::optional<AffineTransform> inverse = matrix.inverse())
+    if (Optional<AffineTransform> inverse = matrix.inverse())
         clipBounds = inverse.value().mapRect(clipBounds);
 }
 

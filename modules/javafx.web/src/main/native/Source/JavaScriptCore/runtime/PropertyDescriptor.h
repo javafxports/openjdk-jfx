@@ -82,7 +82,7 @@ public:
     unsigned attributesOverridingCurrent(const PropertyDescriptor& current) const;
 
 private:
-    JS_EXPORTDATA static unsigned defaultAttributes;
+    JS_EXPORT_PRIVATE static unsigned defaultAttributes;
     bool operator==(const PropertyDescriptor&) { return false; }
     enum { WritablePresent = 1, EnumerablePresent = 2, ConfigurablePresent = 4};
     // May be a getter/setter
@@ -98,16 +98,16 @@ inline PropertyDescriptor toPropertyDescriptor(JSValue value, JSValue getter, JS
     // We assume that validation is already done.
     PropertyDescriptor desc;
 
-    if (std::optional<bool> enumerable = attributes.enumerable())
+    if (Optional<bool> enumerable = attributes.enumerable())
         desc.setEnumerable(enumerable.value());
 
-    if (std::optional<bool> configurable = attributes.configurable())
+    if (Optional<bool> configurable = attributes.configurable())
         desc.setConfigurable(configurable.value());
 
     if (attributes.hasValue())
         desc.setValue(value);
 
-    if (std::optional<bool> writable = attributes.writable())
+    if (Optional<bool> writable = attributes.writable())
         desc.setWritable(writable.value());
 
     if (attributes.hasGet())

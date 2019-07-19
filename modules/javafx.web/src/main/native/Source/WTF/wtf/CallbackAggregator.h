@@ -25,9 +25,9 @@
 
 #pragma once
 
-#include "CompletionHandler.h"
-#include "MainThread.h"
-#include "ThreadSafeRefCounted.h"
+#include <wtf/CompletionHandler.h>
+#include <wtf/MainThread.h>
+#include <wtf/ThreadSafeRefCounted.h>
 
 namespace WTF {
 
@@ -37,24 +37,24 @@ public:
 
     ~CallbackAggregator()
     {
-        if (!m_callback)
-            return;
-        if (isMainThread()) {
+        ASSERT(m_wasConstructedOnMainThread == isMainThread());
+        if (m_callback)
             m_callback();
-            return;
-        }
-        callOnMainThread([callback = WTFMove(m_callback)] () mutable {
-            callback();
-        });
     }
 
 private:
     explicit CallbackAggregator(CompletionHandler<void()>&& callback)
         : m_callback(WTFMove(callback))
+#if !ASSERT_DISABLED
+        , m_wasConstructedOnMainThread(isMainThread())
+#endif
     {
     }
 
     CompletionHandler<void()> m_callback;
+#if !ASSERT_DISABLED
+    bool m_wasConstructedOnMainThread;
+#endif
 };
 
 } // namespace WTF

@@ -28,8 +28,11 @@
 #include "CSSValuePool.h"
 #include "HTMLNames.h"
 #include "StyleProperties.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLHRElement);
 
 using namespace HTMLNames;
 
@@ -51,7 +54,7 @@ Ref<HTMLHRElement> HTMLHRElement::create(const QualifiedName& tagName, Document&
 
 bool HTMLHRElement::isPresentationAttribute(const QualifiedName& name) const
 {
-    if (name == alignAttr || name == widthAttr || name == colorAttr || name == noshadeAttr || name == sizeAttr)
+    if (name == widthAttr || name == colorAttr || name == noshadeAttr || name == sizeAttr)
         return true;
     return HTMLElement::isPresentationAttribute(name);
 }

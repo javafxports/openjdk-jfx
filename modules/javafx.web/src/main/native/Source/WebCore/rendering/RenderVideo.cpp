@@ -64,6 +64,7 @@ RenderVideo::~RenderVideo()
 
 void RenderVideo::willBeDestroyed()
 {
+    visibleInViewportStateChanged();
     if (auto player = videoElement().player())
         player->setVisible(false);
 
@@ -157,6 +158,10 @@ void RenderVideo::imageChanged(WrappedImagePtr newImage, const IntRect* rect)
 
 IntRect RenderVideo::videoBox() const
 {
+    auto mediaPlayer = videoElement().player();
+    if (mediaPlayer && mediaPlayer->shouldIgnoreIntrinsicSize())
+        return snappedIntRect(contentBoxRect());
+
     LayoutSize intrinsicSize = this->intrinsicSize();
 
     if (videoElement().shouldDisplayPosterImage())
@@ -176,20 +181,20 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
     bool displayingPoster = videoElement().shouldDisplayPosterImage();
 
     if (!displayingPoster && !mediaPlayer) {
-        if (paintInfo.phase == PaintPhaseForeground)
+        if (paintInfo.phase == PaintPhase::Foreground)
             page().addRelevantUnpaintedObject(this, visualOverflowRect());
         return;
     }
 
     LayoutRect rect = videoBox();
     if (rect.isEmpty()) {
-        if (paintInfo.phase == PaintPhaseForeground)
+        if (paintInfo.phase == PaintPhase::Foreground)
             page().addRelevantUnpaintedObject(this, visualOverflowRect());
         return;
     }
     rect.moveBy(paintOffset);
 
-    if (paintInfo.phase == PaintPhaseForeground)
+    if (paintInfo.phase == PaintPhase::Foreground)
         page().addRelevantRepaintedObject(this, rect);
 
     LayoutRect contentRect = contentBoxRect();
@@ -203,7 +208,7 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
     if (displayingPoster)
         paintIntoRect(paintInfo, rect);
     else if (!videoElement().isFullscreen() || !mediaPlayer->supportsAcceleratedRendering()) {
-        if (paintInfo.paintBehavior & PaintBehaviorFlattenCompositingLayers)
+        if (paintInfo.paintBehavior.contains(PaintBehavior::FlattenCompositingLayers))
             mediaPlayer->paintCurrentFrameInContext(context, rect);
         else
             mediaPlayer->paint(context, rect);
@@ -252,7 +257,7 @@ void RenderVideo::updatePlayer()
     IntRect videoBounds = videoBox();
     mediaPlayer->setSize(IntSize(videoBounds.width(), videoBounds.height()));
     mediaPlayer->setVisible(!videoElement().elementIsHidden());
-    mediaPlayer->setShouldMaintainAspectRatio(style().objectFit() != ObjectFitFill);
+    mediaPlayer->setShouldMaintainAspectRatio(style().objectFit() != ObjectFit::Fill);
 }
 
 LayoutUnit RenderVideo::computeReplacedLogicalWidth(ShouldComputePreferred shouldComputePreferred) const

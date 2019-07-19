@@ -27,6 +27,7 @@
 #define PlatformMediaSession_h
 
 #include "Timer.h"
+#include <wtf/LoggerHelper.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
 
@@ -44,7 +45,11 @@ class PlatformMediaSession
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     : public MediaPlaybackTargetClient
 #endif
+#if !RELEASE_LOG_DISABLED
+    , private LoggerHelper
+#endif
 {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     static std::unique_ptr<PlatformMediaSession> create(PlatformMediaSessionClient&);
 
@@ -80,6 +85,7 @@ public:
         SuspendedUnderLock,
         InvisibleAutoplay,
         ProcessInactive,
+        PlaybackSuspended,
     };
     InterruptionType interruptionType() const { return m_interruptionType; }
 
@@ -101,16 +107,15 @@ public:
     void beginInterruption(InterruptionType);
     void endInterruption(EndInterruptionFlags);
 
-    void clientWillBeginAutoplaying();
-    bool clientWillBeginPlayback();
-    bool clientWillPausePlayback();
+    virtual void clientWillBeginAutoplaying();
+    virtual bool clientWillBeginPlayback();
+    virtual bool clientWillPausePlayback();
 
     void pauseSession();
     void stopSession();
 
-    void visibilityChanged();
-
 #if ENABLE(VIDEO)
+    uint64_t uniqueIdentifier() const;
     String title() const;
     double duration() const;
     double currentTime() const;
@@ -148,7 +153,6 @@ public:
 
     bool shouldOverrideBackgroundLoadingRestriction() const;
 
-    virtual bool canPlayToWirelessPlaybackTarget() const { return false; }
     virtual bool isPlayingToWirelessPlaybackTarget() const { return m_isPlayingToWirelessPlaybackTarget; }
     void isPlayingToWirelessPlaybackTargetChanged(bool);
 
@@ -159,7 +163,7 @@ public:
     void setShouldPlayToPlaybackTarget(bool) override { }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual bool requiresPlaybackTargetRouteMonitoring() const { return false; }
 #endif
 
@@ -167,27 +171,38 @@ public:
     bool canProduceAudio() const;
     void canProduceAudioChanged();
 
-    void scheduleClientDataBufferingCheck();
     virtual void resetPlaybackSessionState() { }
     String sourceApplicationIdentifier() const;
 
     virtual bool allowsNowPlayingControlsVisibility() const { return false; }
 
+    bool hasPlayedSinceLastInterruption() const { return m_hasPlayedSinceLastInterruption; }
+    void clearHasPlayedSinceLastInterruption() { m_hasPlayedSinceLastInterruption = false; }
+
 protected:
     PlatformMediaSessionClient& client() const { return m_client; }
 
-private:
-    void clientDataBufferingTimerFired();
-    void updateClientDataBuffering();
+#if !RELEASE_LOG_DISABLED
+    const Logger& logger() const final { return m_logger.get(); }
+    const void* logIdentifier() const override { return reinterpret_cast<const void*>(m_logIdentifier); }
+    const char* logClassName() const override { return "PlatformMediaSession"; }
+    WTFLogChannel& logChannel() const final;
+#endif
 
+private:
     PlatformMediaSessionClient& m_client;
-    Timer m_clientDataBufferingTimer;
     State m_state;
     State m_stateToRestore;
     InterruptionType m_interruptionType { NoInterruption };
     int m_interruptionCount { 0 };
     bool m_notifyingClient;
     bool m_isPlayingToWirelessPlaybackTarget { false };
+    bool m_hasPlayedSinceLastInterruption { false };
+
+#if !RELEASE_LOG_DISABLED
+    Ref<const Logger> m_logger;
+    uint64_t m_logIdentifier;
+#endif
 
     friend class PlatformMediaSessionManager;
 };
@@ -207,6 +222,7 @@ public:
     virtual void suspendPlayback() = 0;
 
 #if ENABLE(VIDEO)
+    virtual uint64_t mediaSessionUniqueIdentifier() const;
     virtual String mediaSessionTitle() const;
     virtual double mediaSessionDuration() const;
     virtual double mediaSessionCurrentTime() const;
@@ -216,8 +232,6 @@ public:
     virtual void didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType, const PlatformMediaSession::RemoteCommandArgument*) = 0;
     virtual bool supportsSeeking() const = 0;
 
-    virtual void setShouldBufferData(bool) { }
-    virtual bool elementIsHidden() const { return false; }
     virtual bool canProduceAudio() const { return false; }
     virtual bool isSuspended() const { return false; };
 
@@ -226,11 +240,12 @@ public:
 
     virtual void wirelessRoutesAvailableDidChange() { }
     virtual void setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&&) { }
-    virtual bool canPlayToWirelessPlaybackTarget() const { return false; }
     virtual bool isPlayingToWirelessPlaybackTarget() const { return false; }
     virtual void setShouldPlayToPlaybackTarget(bool) { }
 
-    virtual const Document* hostingDocument() const = 0;
+    virtual bool isPlayingOnSecondScreen() const { return false; }
+
+    virtual Document* hostingDocument() const = 0;
     virtual String sourceApplicationIdentifier() const = 0;
 
     virtual bool processingUserGestureForMedia() const = 0;
@@ -239,6 +254,40 @@ protected:
     virtual ~PlatformMediaSessionClient() = default;
 };
 
+String convertEnumerationToString(PlatformMediaSession::State);
+String convertEnumerationToString(PlatformMediaSession::InterruptionType);
+String convertEnumerationToString(PlatformMediaSession::RemoteControlCommandType);
 }
+
+namespace WTF {
+
+template<typename Type>
+struct LogArgument;
+
+template <>
+struct LogArgument<WebCore::PlatformMediaSession::State> {
+    static String toString(const WebCore::PlatformMediaSession::State state)
+    {
+        return convertEnumerationToString(state);
+    }
+};
+
+template <>
+struct LogArgument<WebCore::PlatformMediaSession::InterruptionType> {
+    static String toString(const WebCore::PlatformMediaSession::InterruptionType state)
+    {
+        return convertEnumerationToString(state);
+    }
+};
+
+template <>
+struct LogArgument<WebCore::PlatformMediaSession::RemoteControlCommandType> {
+    static String toString(const WebCore::PlatformMediaSession::RemoteControlCommandType command)
+    {
+        return convertEnumerationToString(command);
+    }
+};
+
+} // namespace WTF
 
 #endif // PlatformMediaSession_h

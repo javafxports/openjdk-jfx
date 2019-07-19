@@ -31,7 +31,7 @@
 #include <wtf/RefPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include <wtf/Threading.h>
 #endif
 
@@ -61,7 +61,7 @@ public:
     void databaseExceededQuota(const String& name, DatabaseDetails);
 
     using ActiveDOMObject::scriptExecutionContext;
-    SecurityOriginData securityOrigin() const;
+    const SecurityOriginData& securityOrigin() const;
 
     bool isContextThread() const;
 

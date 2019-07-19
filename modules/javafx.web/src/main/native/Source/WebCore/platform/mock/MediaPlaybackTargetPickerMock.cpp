@@ -26,14 +26,12 @@
 #include "config.h"
 #include "MediaPlaybackTargetPickerMock.h"
 
-#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)
 
 #include "FloatRect.h"
 #include "Logging.h"
 #include "MediaPlaybackTargetMock.h"
 #include "WebMediaSessionManager.h"
-
-using namespace WebCore;
 
 namespace WebCore {
 
@@ -70,15 +68,16 @@ void MediaPlaybackTargetPickerMock::timerFired()
     currentDeviceDidChange();
 }
 
-void MediaPlaybackTargetPickerMock::showPlaybackTargetPicker(const FloatRect&, bool checkActiveRoute)
+void MediaPlaybackTargetPickerMock::showPlaybackTargetPicker(const FloatRect&, bool checkActiveRoute, bool useDarkAppearance)
 {
     if (!client() || m_showingMenu)
         return;
 
 #if LOG_DISABLED
     UNUSED_PARAM(checkActiveRoute);
+    UNUSED_PARAM(useDarkAppearance);
 #endif
-    LOG(Media, "MediaPlaybackTargetPickerMock::showPlaybackTargetPicker - checkActiveRoute = %i", (int)checkActiveRoute);
+    LOG(Media, "MediaPlaybackTargetPickerMock::showPlaybackTargetPicker - checkActiveRoute = %i, useDarkAppearance = %i", (int)checkActiveRoute, (int)useDarkAppearance);
 
     m_showingMenu = true;
     m_timer.startOneShot(timerInterval);
@@ -123,4 +122,4 @@ void MediaPlaybackTargetPickerMock::setState(const String& deviceName, MediaPlay
 
 } // namespace WebCore
 
-#endif // ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#endif // ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)

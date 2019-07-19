@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,11 +38,11 @@ namespace JSC { namespace FTL {
 
 using namespace DFG;
 
-RefPtr<PatchpointExceptionHandle> PatchpointExceptionHandle::create(
+Ref<PatchpointExceptionHandle> PatchpointExceptionHandle::create(
     State& state, OSRExitDescriptor* descriptor, NodeOrigin origin, unsigned offset,
     const HandlerInfo& handler)
 {
-    return adoptRef(new PatchpointExceptionHandle(state, descriptor, origin, offset, handler));
+    return adoptRef(*new PatchpointExceptionHandle(state, descriptor, origin, offset, handler));
 }
 
 RefPtr<PatchpointExceptionHandle> PatchpointExceptionHandle::defaultHandle(State& state)
@@ -91,7 +91,7 @@ void PatchpointExceptionHandle::scheduleExitCreationForUnwind(
                     HandlerInfo newHandler = handler;
                     newHandler.start = callSiteIndex.bits();
                     newHandler.end = callSiteIndex.bits() + 1;
-                    newHandler.nativeCode = linkBuffer.locationOf(handle->label);
+                    newHandler.nativeCode = linkBuffer.locationOf<ExceptionHandlerPtrTag>(handle->label);
                     codeBlock->appendExceptionHandler(newHandler);
                 });
         });
@@ -108,7 +108,7 @@ PatchpointExceptionHandle::PatchpointExceptionHandle(
 {
 }
 
-RefPtr<OSRExitHandle> PatchpointExceptionHandle::createHandle(
+Ref<OSRExitHandle> PatchpointExceptionHandle::createHandle(
     ExitKind kind, const B3::StackmapGenerationParams& params)
 {
     return m_descriptor->emitOSRExitLater(

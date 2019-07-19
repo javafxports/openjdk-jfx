@@ -31,7 +31,7 @@ namespace JSC {
 class JSArray;
 class LLIntOffsetsExtractor;
 
-extern const char* const LengthExceededTheMaximumArrayLengthError;
+extern const ASCIILiteral LengthExceededTheMaximumArrayLengthError;
 
 class JSArray : public JSNonFinalObject {
     friend class LLIntOffsetsExtractor;
@@ -80,6 +80,8 @@ public:
         return tryCreateUninitializedRestricted(scope, nullptr, structure, initialLength);
     }
 
+    static void eagerlyInitializeButterfly(ObjectInitializationScope&, JSArray*, unsigned initialLength);
+
     JS_EXPORT_PRIVATE static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool throwException);
 
     JS_EXPORT_PRIVATE static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
@@ -99,6 +101,7 @@ public:
     JSArray* fastSlice(ExecState&, unsigned startIndex, unsigned count);
 
     bool canFastCopy(VM&, JSArray* otherArray);
+    bool canDoFastIndexedAccess(VM&);
     // This function returns NonArray if the indexing types are not compatable for copying.
     IndexingType mergeIndexingTypeForCopying(IndexingType other);
     bool appendMemcpy(ExecState*, VM&, unsigned startIndex, JSArray* otherArray);
@@ -203,7 +206,7 @@ private:
     void setLengthWritable(ExecState*, bool writable);
 };
 
-inline Butterfly* tryCreateArrayButterfly(VM& vm, JSCell* intendedOwner, unsigned initialLength)
+inline Butterfly* tryCreateArrayButterfly(VM& vm, JSObject* intendedOwner, unsigned initialLength)
 {
     Butterfly* butterfly = Butterfly::tryCreate(
         vm, intendedOwner, 0, 0, true, baseIndexingHeaderForArrayStorage(initialLength),
@@ -216,9 +219,6 @@ inline Butterfly* tryCreateArrayButterfly(VM& vm, JSCell* intendedOwner, unsigne
     storage->m_numValuesInVector = 0;
     return butterfly;
 }
-
-Butterfly* createArrayButterflyInDictionaryIndexingMode(
-    VM&, JSCell* intendedOwner, unsigned initialLength);
 
 inline JSArray* JSArray::tryCreate(VM& vm, Structure* structure, unsigned initialLength, unsigned vectorLengthHint)
 {
@@ -289,7 +289,7 @@ JSArray* asArray(JSValue);
 
 inline JSArray* asArray(JSCell* cell)
 {
-    ASSERT(cell->inherits(*cell->vm(), JSArray::info()));
+    ASSERT(cell->inherits<JSArray>(*cell->vm()));
     return jsCast<JSArray*>(cell);
 }
 
@@ -306,56 +306,8 @@ inline bool isJSArray(JSCell* cell)
 
 inline bool isJSArray(JSValue v) { return v.isCell() && isJSArray(v.asCell()); }
 
-inline JSArray* constructArray(ExecState* exec, Structure* arrayStructure, const ArgList& values)
-{
-    VM& vm = exec->vm();
-    unsigned length = values.size();
-    ObjectInitializationScope scope(vm);
-    JSArray* array = JSArray::tryCreateUninitializedRestricted(scope, arrayStructure, length);
-
-    // FIXME: we should probably throw an out of memory error here, but
-    // when making this change we should check that all clients of this
-    // function will correctly handle an exception being thrown from here.
-    // https://bugs.webkit.org/show_bug.cgi?id=169786
-    RELEASE_ASSERT(array);
-
-    for (unsigned i = 0; i < length; ++i)
-        array->initializeIndex(scope, i, values.at(i));
-    return array;
-}
-
-inline JSArray* constructArray(ExecState* exec, Structure* arrayStructure, const JSValue* values, unsigned length)
-{
-    VM& vm = exec->vm();
-    ObjectInitializationScope scope(vm);
-    JSArray* array = JSArray::tryCreateUninitializedRestricted(scope, arrayStructure, length);
-
-    // FIXME: we should probably throw an out of memory error here, but
-    // when making this change we should check that all clients of this
-    // function will correctly handle an exception being thrown from here.
-    // https://bugs.webkit.org/show_bug.cgi?id=169786
-    RELEASE_ASSERT(array);
-
-    for (unsigned i = 0; i < length; ++i)
-        array->initializeIndex(scope, i, values[i]);
-    return array;
-}
-
-inline JSArray* constructArrayNegativeIndexed(ExecState* exec, Structure* arrayStructure, const JSValue* values, unsigned length)
-{
-    VM& vm = exec->vm();
-    ObjectInitializationScope scope(vm);
-    JSArray* array = JSArray::tryCreateUninitializedRestricted(scope, arrayStructure, length);
-
-    // FIXME: we should probably throw an out of memory error here, but
-    // when making this change we should check that all clients of this
-    // function will correctly handle an exception being thrown from here.
-    // https://bugs.webkit.org/show_bug.cgi?id=169786
-    RELEASE_ASSERT(array);
-
-    for (int i = 0; i < static_cast<int>(length); ++i)
-        array->initializeIndex(scope, i, values[-i]);
-    return array;
-}
+JS_EXPORT_PRIVATE JSArray* constructArray(ExecState*, Structure*, const ArgList& values);
+JS_EXPORT_PRIVATE JSArray* constructArray(ExecState*, Structure*, const JSValue* values, unsigned length);
+JS_EXPORT_PRIVATE JSArray* constructArrayNegativeIndexed(ExecState*, Structure*, const JSValue* values, unsigned length);
 
 } // namespace JSC

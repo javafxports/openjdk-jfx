@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,10 +41,8 @@
 namespace JSC {
 
 GCAwareJITStubRoutine::GCAwareJITStubRoutine(
-    const MacroAssemblerCodeRef& code, VM& vm)
+    const MacroAssemblerCodeRef<JITStubRoutinePtrTag>& code, VM& vm)
     : JITStubRoutine(code)
-    , m_mayBeExecuting(false)
-    , m_isJettisoned(false)
 {
     vm.heap.m_jitStubRoutines->add(this);
 }
@@ -82,7 +80,7 @@ void GCAwareJITStubRoutine::markRequiredObjectsInternal(SlotVisitor&)
 }
 
 MarkingGCAwareJITStubRoutine::MarkingGCAwareJITStubRoutine(
-    const MacroAssemblerCodeRef& code, VM& vm, const JSCell* owner,
+    const MacroAssemblerCodeRef<JITStubRoutinePtrTag>& code, VM& vm, const JSCell* owner,
     const Vector<JSCell*>& cells)
     : GCAwareJITStubRoutine(code, vm)
     , m_cells(cells.size())
@@ -103,8 +101,8 @@ void MarkingGCAwareJITStubRoutine::markRequiredObjectsInternal(SlotVisitor& visi
 
 
 GCAwareJITStubRoutineWithExceptionHandler::GCAwareJITStubRoutineWithExceptionHandler(
-    const MacroAssemblerCodeRef& code, VM& vm,  const JSCell* owner, const Vector<JSCell*>& cells,
-    CodeBlock* codeBlockForExceptionHandlers, CallSiteIndex exceptionHandlerCallSiteIndex)
+    const MacroAssemblerCodeRef<JITStubRoutinePtrTag>& code, VM& vm,  const JSCell* owner, const Vector<JSCell*>& cells,
+    CodeBlock* codeBlockForExceptionHandlers, DisposableCallSiteIndex exceptionHandlerCallSiteIndex)
     : MarkingGCAwareJITStubRoutine(code, vm, owner, cells)
     , m_codeBlockWithExceptionHandler(codeBlockForExceptionHandlers)
     , m_exceptionHandlerCallSiteIndex(exceptionHandlerCallSiteIndex)
@@ -122,7 +120,7 @@ void GCAwareJITStubRoutineWithExceptionHandler::observeZeroRefCount()
 {
 #if ENABLE(DFG_JIT)
     if (m_codeBlockWithExceptionHandler) {
-        m_codeBlockWithExceptionHandler->jitCode()->dfgCommon()->removeCallSiteIndex(m_exceptionHandlerCallSiteIndex);
+        m_codeBlockWithExceptionHandler->jitCode()->dfgCommon()->removeDisposableCallSiteIndex(m_exceptionHandlerCallSiteIndex);
         m_codeBlockWithExceptionHandler->removeExceptionHandlerForCallSite(m_exceptionHandlerCallSiteIndex);
         m_codeBlockWithExceptionHandler = nullptr;
     }
@@ -133,13 +131,13 @@ void GCAwareJITStubRoutineWithExceptionHandler::observeZeroRefCount()
 
 
 Ref<JITStubRoutine> createJITStubRoutine(
-    const MacroAssemblerCodeRef& code,
+    const MacroAssemblerCodeRef<JITStubRoutinePtrTag>& code,
     VM& vm,
     const JSCell* owner,
     bool makesCalls,
     const Vector<JSCell*>& cells,
     CodeBlock* codeBlockForExceptionHandlers,
-    CallSiteIndex exceptionHandlerCallSiteIndex)
+    DisposableCallSiteIndex exceptionHandlerCallSiteIndex)
 {
     if (!makesCalls)
         return adoptRef(*new JITStubRoutine(code));

@@ -27,6 +27,7 @@
 
 #include "ThemeTypes.h"
 #include <wtf/Forward.h>
+#include <wtf/Optional.h>
 
 namespace WebCore {
 
@@ -51,7 +52,7 @@ public:
     virtual int baselinePositionAdjustment(ControlPart) const;
 
     // The font description result should have a zoomed font size.
-    virtual std::optional<FontCascadeDescription> controlFont(ControlPart, const FontCascade&, float zoomFactor) const;
+    virtual Optional<FontCascadeDescription> controlFont(ControlPart, const FontCascade&, float zoomFactor) const;
 
     // The size here is in zoomed coordinates already. If a new size is returned, it also needs to be in zoomed coordinates.
     virtual LengthSize controlSize(ControlPart, const FontCascade&, const LengthSize& zoomedSize, float zoomFactor) const;
@@ -67,7 +68,7 @@ public:
     virtual bool controlRequiresPreWhiteSpace(ControlPart) const;
 
     // Method for painting a control. The rect is in zoomed coordinates.
-    virtual void paint(ControlPart, ControlStates&, GraphicsContext&, const FloatRect& zoomedRect, float zoomFactor, ScrollView*, float deviceScaleFactor, float pageScaleFactor);
+    virtual void paint(ControlPart, ControlStates&, GraphicsContext&, const FloatRect& zoomedRect, float zoomFactor, ScrollView*, float deviceScaleFactor, float pageScaleFactor, bool useSystemAppearance, bool useDarkAppearance);
 
     // Some controls may spill out of their containers (e.g., the check on an OS X checkbox).  When these controls repaint,
     // the theme needs to communicate this inflated rect to the engine so that it can invalidate the whole control.

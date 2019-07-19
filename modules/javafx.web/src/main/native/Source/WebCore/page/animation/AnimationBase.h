@@ -44,6 +44,12 @@ class RenderElement;
 class RenderStyle;
 class TimingFunction;
 
+enum class AnimateChange {
+    StyleBlended            = 1 << 0, // Style was changed.
+    StateChange             = 1 << 1, // Animation state() changed.
+    RunningStateChange      = 1 << 2, // Animation "running or paused" changed.
+};
+
 class AnimationBase : public RefCounted<AnimationBase>
     , public CSSPropertyBlendingClient {
     friend class CompositeAnimation;
@@ -66,7 +72,7 @@ public:
     // If so, we stay in this state until that response is received (and it returns the start time).
     // Otherwise, we use the current time as the start time and go immediately to AnimationState::Looping
     // or AnimationState::Ending.
-    enum class AnimationState {
+    enum class AnimationState : uint8_t {
         New,                        // animation just created, animation not running yet
         StartWaitTimer,             // start timer running, waiting for fire
         StartWaitStyleAvailable,    // waiting for style setup so we can start animations
@@ -82,7 +88,7 @@ public:
         FillingForwards             // animation has ended and is retaining its final value
     };
 
-    enum class AnimationStateInput {
+    enum class AnimationStateInput : uint8_t {
         MakeNew,           // reset back to new from any state
         StartAnimation,    // animation requests a start
         RestartAnimation,  // force a restart from any state
@@ -102,13 +108,13 @@ public:
     void updateStateMachine(AnimationStateInput, double param);
 
     // Animation has actually started, at passed time
-    void onAnimationStartResponse(double startTime)
+    void onAnimationStartResponse(MonotonicTime startTime)
     {
-        updateStateMachine(AnimationStateInput::StartTimeSet, startTime);
+        updateStateMachine(AnimationStateInput::StartTimeSet, startTime.secondsSinceEpoch().seconds());
     }
 
     // Called to change to or from paused state
-    void updatePlayState(EAnimPlayState);
+    void updatePlayState(AnimationPlayState);
     bool playStatePlaying() const;
 
     bool waitingToStart() const { return m_animationState == AnimationState::New || m_animationState == AnimationState::StartWaitTimer || m_animationState == AnimationState::PausedNew; }
@@ -122,14 +128,20 @@ public:
     bool active() const { return !postActive() && !preActive(); }
     bool running() const { return !isNew() && !postActive(); }
     bool paused() const { return m_pauseTime || m_animationState == AnimationState::PausedNew; }
-    bool inPausedState() const { return m_animationState >= AnimationState::PausedNew && m_animationState <= AnimationState::PausedRun; }
+
+    static bool isPausedState(AnimationState state) { return state >= AnimationState::PausedNew && state <= AnimationState::PausedRun; }
+    static bool isRunningState(AnimationState state) { return state >= AnimationState::StartWaitStyleAvailable && state < AnimationState::Done; }
+
+    bool inPausedState() const { return isPausedState(m_animationState); }
+    bool inRunningState() const { return isRunningState(m_animationState); }
+
     bool isNew() const { return m_animationState == AnimationState::New || m_animationState == AnimationState::PausedNew; }
     bool waitingForStartTime() const { return m_animationState == AnimationState::StartWaitResponse; }
     bool waitingForStyleAvailable() const { return m_animationState == AnimationState::StartWaitStyleAvailable; }
 
     bool isAccelerated() const override { return m_isAccelerated; }
 
-    virtual std::optional<Seconds> timeToNextService();
+    virtual Optional<Seconds> timeToNextService();
 
     double progress(double scale = 1, double offset = 0, const TimingFunction* = nullptr) const;
 
@@ -155,13 +167,7 @@ public:
     // Does this animation/transition involve the given property?
     virtual bool affectsProperty(CSSPropertyID /*property*/) const { return false; }
 
-    enum RunningStates {
-        Delaying = 1 << 0,
-        Paused = 1 << 1,
-        Running = 1 << 2,
-    };
-    typedef unsigned RunningState;
-    bool isAnimatingProperty(CSSPropertyID property, bool acceleratedOnly, RunningState runningState) const
+    bool isAnimatingProperty(CSSPropertyID property, bool acceleratedOnly) const
     {
         if (acceleratedOnly && !m_isAccelerated)
             return false;
@@ -169,16 +175,7 @@ public:
         if (!affectsProperty(property))
             return false;
 
-        if ((runningState & Delaying) && preActive())
-            return true;
-
-        if ((runningState & Paused) && inPausedState())
-            return true;
-
-        if ((runningState & Running) && !inPausedState() && (m_animationState >= AnimationState::StartWaitStyleAvailable && m_animationState < AnimationState::Done))
-            return true;
-
-        return false;
+        return inRunningState() || inPausedState();
     }
 
     bool transformFunctionListsMatch() const override { return m_transformFunctionListsMatch; }
@@ -186,6 +183,7 @@ public:
 #if ENABLE(FILTERS_LEVEL_2)
     bool backdropFilterFunctionListsMatch() const override { return m_backdropFilterFunctionListsMatch; }
 #endif
+    bool colorFilterFunctionListsMatch() const override { return m_colorFilterFunctionListsMatch; }
 
     // Freeze the animation; used by DumpRenderTree.
     void freezeAtTime(double t);
@@ -222,7 +220,7 @@ protected:
     virtual bool startAnimation(double /*timeOffset*/) { return false; }
     // timeOffset is the time at which the animation is being paused.
     virtual void pauseAnimation(double /*timeOffset*/) { }
-    virtual void endAnimation() { }
+    virtual void endAnimation(bool /*fillingForwards*/ = false) { }
 
     virtual const RenderStyle& unanimatedStyle() const = 0;
 
@@ -240,6 +238,14 @@ protected:
     bool computeTransformedExtentViaTransformList(const FloatRect& rendererBox, const RenderStyle&, LayoutRect& bounds) const;
     bool computeTransformedExtentViaMatrix(const FloatRect& rendererBox, const RenderStyle&, LayoutRect& bounds) const;
 
+protected:
+    bool m_isAccelerated { false };
+    bool m_transformFunctionListsMatch { false };
+    bool m_filterFunctionListsMatch { false };
+#if ENABLE(FILTERS_LEVEL_2)
+    bool m_backdropFilterFunctionListsMatch { false };
+#endif
+
 private:
     RefPtr<Element> m_element;
 
@@ -247,19 +253,14 @@ protected:
     CompositeAnimation* m_compositeAnimation; // Ideally this would be a reference, but it has to be cleared if an animation is destroyed inside an event callback.
     Ref<Animation> m_animation;
 
-    std::optional<double> m_startTime;
-    std::optional<double> m_pauseTime;
+    Optional<double> m_startTime;
+    Optional<double> m_pauseTime;
     double m_requestedStartTime { 0 };
-    std::optional<double> m_totalDuration;
-    std::optional<double> m_nextIterationDuration;
+    Optional<double> m_totalDuration;
+    Optional<double> m_nextIterationDuration;
 
     AnimationState m_animationState { AnimationState::New };
-    bool m_isAccelerated { false };
-    bool m_transformFunctionListsMatch { false };
-    bool m_filterFunctionListsMatch { false };
-#if ENABLE(FILTERS_LEVEL_2)
-    bool m_backdropFilterFunctionListsMatch { false };
-#endif
+    bool m_colorFilterFunctionListsMatch { false };
 };
 
 } // namespace WebCore

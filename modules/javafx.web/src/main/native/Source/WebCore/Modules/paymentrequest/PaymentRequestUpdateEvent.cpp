@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,19 +28,21 @@
 
 #if ENABLE(PAYMENT_REQUEST)
 
+#include "EventNames.h"
 #include "PaymentRequest.h"
 
 namespace WebCore {
 
-PaymentRequestUpdateEvent::PaymentRequestUpdateEvent(const AtomicString& type, PaymentRequestUpdateEventInit&& eventInit)
-    : Event { type, WTFMove(eventInit), IsTrusted::No }
+PaymentRequestUpdateEvent::PaymentRequestUpdateEvent(const AtomicString& type, const PaymentRequestUpdateEventInit& eventInit)
+    : Event { type, eventInit, IsTrusted::No }
 {
+    ASSERT(!isTrusted());
 }
 
-PaymentRequestUpdateEvent::PaymentRequestUpdateEvent(const AtomicString& type, PaymentRequest& paymentRequest)
-    : Event { type, false, false }
-    , m_paymentRequest { &paymentRequest }
+PaymentRequestUpdateEvent::PaymentRequestUpdateEvent(const AtomicString& type)
+    : Event { type, CanBubble::No, IsCancelable::No }
 {
+    ASSERT(isTrusted());
 }
 
 PaymentRequestUpdateEvent::~PaymentRequestUpdateEvent() = default;
@@ -53,7 +55,22 @@ ExceptionOr<void> PaymentRequestUpdateEvent::updateWith(Ref<DOMPromise>&& detail
     if (m_waitForUpdate)
         return Exception { InvalidStateError };
 
-    auto exception = m_paymentRequest->updateWith(*this, WTFMove(detailsPromise));
+    stopPropagation();
+    stopImmediatePropagation();
+
+    PaymentRequest::UpdateReason reason;
+    if (type() == eventNames().shippingaddresschangeEvent)
+        reason = PaymentRequest::UpdateReason::ShippingAddressChanged;
+    else if (type() == eventNames().shippingoptionchangeEvent)
+        reason = PaymentRequest::UpdateReason::ShippingOptionChanged;
+    else if (type() == eventNames().paymentmethodchangeEvent)
+        reason = PaymentRequest::UpdateReason::PaymentMethodChanged;
+    else {
+        ASSERT_NOT_REACHED();
+        return Exception { TypeError };
+    }
+
+    auto exception = downcast<PaymentRequest>(target())->updateWith(reason, WTFMove(detailsPromise));
     if (exception.hasException())
         return exception.releaseException();
 

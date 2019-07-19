@@ -32,8 +32,11 @@
 #include "SVGElement.h"
 #include "SVGNames.h"
 #include "StyleProperties.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGAnimateElementBase);
 
 SVGAnimateElementBase::SVGAnimateElementBase(const QualifiedName& tagName, Document& document)
     : SVGAnimationElement(tagName, document)
@@ -88,6 +91,12 @@ void SVGAnimateElementBase::calculateAnimatedValue(float percentage, unsigned re
     if (!targetElement)
         return;
 
+    const QualifiedName& attributeName = this->attributeName();
+    ShouldApplyAnimation shouldApply = shouldApplyAnimation(targetElement.get(), attributeName);
+
+    if (shouldApply == DontApplyAnimation)
+        return;
+
     ASSERT(m_animatedPropertyType == determineAnimatedPropertyType(*targetElement));
 
     ASSERT(percentage >= 0 && percentage <= 1);
@@ -98,6 +107,12 @@ void SVGAnimateElementBase::calculateAnimatedValue(float percentage, unsigned re
     ASSERT(m_fromType);
     ASSERT(m_fromType->type() == m_animatedPropertyType);
     ASSERT(m_toType);
+
+    if (shouldApply == ApplyXMLAnimation || shouldApply == ApplyXMLandCSSAnimation) {
+        // SVG DOM animVal animation code-path.
+        if (m_animator->findAnimatedPropertiesForAttributeName(*targetElement, attributeName).isEmpty())
+            return;
+    }
 
     SVGAnimateElementBase& resultAnimationElement = downcast<SVGAnimateElementBase>(*resultElement);
     ASSERT(resultAnimationElement.m_animatedType);
@@ -234,14 +249,14 @@ static inline void applyCSSPropertyToTarget(SVGElement& targetElement, CSSProper
     if (!targetElement.ensureAnimatedSMILStyleProperties().setProperty(id, value, false))
         return;
 
-    targetElement.invalidateStyleAndLayerComposition();
+    targetElement.invalidateStyle();
 }
 
 static inline void removeCSSPropertyFromTarget(SVGElement& targetElement, CSSPropertyID id)
 {
     ASSERT(!targetElement.m_deletionHasBegun);
     targetElement.ensureAnimatedSMILStyleProperties().removeProperty(id);
-    targetElement.invalidateStyleAndLayerComposition();
+    targetElement.invalidateStyle();
 }
 
 static inline void applyCSSPropertyToTargetAndInstances(SVGElement& targetElement, const QualifiedName& attributeName, const String& valueAsString)
@@ -299,6 +314,11 @@ void SVGAnimateElementBase::clearAnimatedType(SVGElement* targetElement)
 {
     if (!m_animatedType)
         return;
+
+    // If the SVGAnimatedType is a list type, e.g. SVGLengthListValues, the wrappers of the
+    // animated properties have to be detached from the items in the list before it's deleted.
+    if (!m_animatedProperties.isEmpty())
+        m_animator->animValWillChange(m_animatedProperties);
 
     if (!targetElement) {
         m_animatedType = nullptr;

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -46,17 +46,13 @@ using namespace HTMLNames;
 
 SearchInputType::SearchInputType(HTMLInputElement& element)
     : BaseTextInputType(element)
-    , m_resultsButton(nullptr)
-    , m_cancelButton(nullptr)
     , m_searchEventTimer(*this, &SearchInputType::searchEventTimerFired)
 {
 }
 
-SearchInputType::~SearchInputType() = default;
-
 void SearchInputType::addSearchResult()
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // Normally we've got the correct renderer by the time we get here. However when the input type changes
     // we don't update the associated renderers until after the next tree update, so we could actually end up here
     // with a mismatched renderer (e.g. through form submission).
@@ -72,16 +68,19 @@ static void updateResultButtonPseudoType(SearchFieldResultsButtonElement& result
         resultButton.setPseudo(AtomicString("-webkit-search-results-decoration", AtomicString::ConstructFromLiteral));
     else if (maxResults < 0)
         resultButton.setPseudo(AtomicString("-webkit-search-decoration", AtomicString::ConstructFromLiteral));
-    else if (maxResults > 0)
+    else
         resultButton.setPseudo(AtomicString("-webkit-search-results-button", AtomicString::ConstructFromLiteral));
 }
 
-void SearchInputType::maxResultsAttributeChanged()
+void SearchInputType::attributeChanged(const QualifiedName& name)
 {
-    if (m_resultsButton) {
-        if (auto* element = this->element())
-            updateResultButtonPseudoType(*m_resultsButton, element->maxResults());
+    if (name == resultsAttr) {
+        if (m_resultsButton) {
+            if (auto* element = this->element())
+                updateResultButtonPseudoType(*m_resultsButton, element->maxResults());
+        }
     }
+    BaseTextInputType::attributeChanged(name);
 }
 
 RenderPtr<RenderElement> SearchInputType::createInputRenderer(RenderStyle&& style)

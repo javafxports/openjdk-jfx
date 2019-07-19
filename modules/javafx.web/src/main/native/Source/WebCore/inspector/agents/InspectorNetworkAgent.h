@@ -58,7 +58,6 @@ class ResourceLoader;
 class ResourceRequest;
 class ResourceResponse;
 class TextResourceDecoder;
-class URL;
 class WebSocket;
 
 struct WebSocketFrame;
@@ -74,7 +73,7 @@ public:
 
     static bool shouldTreatAsText(const String& mimeType);
     static Ref<TextResourceDecoder> createTextDecoder(const String& mimeType, const String& textEncodingName);
-    static std::optional<String> textContentForCachedResource(CachedResource&);
+    static Optional<String> textContentForCachedResource(CachedResource&);
     static bool cachedResourceContent(CachedResource&, String* result, bool* base64Encoded);
 
     void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
@@ -115,8 +114,9 @@ public:
     void setExtraHTTPHeaders(ErrorString&, const JSON::Object& headers) final;
     void getResponseBody(ErrorString&, const String& requestId, String* content, bool* base64Encoded) final;
     void setResourceCachingDisabled(ErrorString&, bool disabled) final;
-    void loadResource(ErrorString&, const String& frameId, const String& url, Ref<LoadResourceCallback>&&) final;
-    void resolveWebSocket(ErrorString&, const String& requestId, const String* const objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>&) final;
+    void loadResource(const String& frameId, const String& url, Ref<LoadResourceCallback>&&) final;
+    void getSerializedCertificate(ErrorString&, const String& requestId, String* serializedCertificate) final;
+    void resolveWebSocket(ErrorString&, const String& requestId, const String* objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>&) final;
 
     virtual String loaderIdentifier(DocumentLoader*) = 0;
     virtual String frameIdentifier(DocumentLoader*) = 0;
@@ -132,7 +132,7 @@ private:
 
     WebSocket* webSocketForRequestId(const String& requestId);
 
-    RefPtr<Inspector::Protocol::Network::Initiator> buildInitiatorObject(Document*);
+    RefPtr<Inspector::Protocol::Network::Initiator> buildInitiatorObject(Document*, Optional<const ResourceRequest&> = WTF::nullopt);
     Ref<Inspector::Protocol::Network::ResourceTiming> buildObjectForTiming(const NetworkLoadMetrics&, ResourceLoader&);
     Ref<Inspector::Protocol::Network::Metrics> buildObjectForMetrics(const NetworkLoadMetrics&);
     RefPtr<Inspector::Protocol::Network::Response> buildObjectForResourceResponse(const ResourceResponse&, ResourceLoader*);

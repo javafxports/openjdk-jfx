@@ -316,7 +316,8 @@ void IDBConnectionProxy::didStartTransaction(const IDBResourceIdentifier& transa
         transaction = m_pendingTransactions.take(transactionIdentifier);
     }
 
-    ASSERT(transaction);
+    if (!transaction)
+        return;
 
     transaction->performCallbackOnOriginThread(*transaction, &IDBTransaction::didStart, error);
 }
@@ -514,6 +515,15 @@ void IDBConnectionProxy::forgetActiveOperations(const Vector<RefPtr<TransactionO
 
     for (auto& operation : operations)
         m_activeOperations.remove(operation->identifier());
+}
+
+void IDBConnectionProxy::forgetTransaction(IDBTransaction& transaction)
+{
+    Locker<Lock> locker(m_transactionMapLock);
+
+    m_pendingTransactions.remove(transaction.info().identifier());
+    m_committingTransactions.remove(transaction.info().identifier());
+    m_abortingTransactions.remove(transaction.info().identifier());
 }
 
 template<typename KeyType, typename ValueType>

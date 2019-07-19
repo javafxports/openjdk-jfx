@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <wtf/MathExtras.h>
+#include <wtf/Variant.h>
 #include <wtf/Vector.h>
 
 #include "AffineTransform.h"
@@ -42,7 +43,7 @@
 #include "GraphicsContextJava.h"
 #include "Gradient.h"
 #include "IntRect.h"
-#include <wtf/java/JavaEnv.h>
+#include "PlatformJavaClasses.h"
 #include "Logging.h"
 #include "NotImplemented.h"
 #include "Path.h"
@@ -81,8 +82,14 @@ static void setGradient(Gradient &gradient, PlatformGraphicsContext* context, ji
                 p1 = data.point1;
                 startRadius = data.startRadius;
                 endRadius = data.endRadius;
+            },
+            [&] (const Gradient::ConicData&) -> void {
+                notImplemented();
             }
     );
+
+    p0 = gt.mapPoint(p0);
+    p1 = gt.mapPoint(p1);
 
     context->rq().freeSpace(4 * 11 + 8 * nStops)
     << id
@@ -256,7 +263,11 @@ void GraphicsContext::clipToImageBuffer(ImageBuffer&, const FloatRect&)
 IntRect GraphicsContext::clipBounds() const
 {
     // Transformation has inverse effect on clip bounds.
-    return enclosingIntRect(m_state.transform.inverse()->mapRect(m_state.clipBounds));
+    return enclosingIntRect(m_state
+                                .transform
+                                .inverse()
+                                .valueOr(AffineTransform())
+                                .mapRect(m_state.clipBounds));
 }
 
 void GraphicsContext::drawFocusRing(const Path&, float, float, const Color&)
@@ -309,32 +320,28 @@ void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float, float
     }
 }
 
-void GraphicsContext::updateDocumentMarkerResources()
-{
-  //    NotImplemented(); // todo tav implement
-}
+void GraphicsContext::drawLinesForText(const FloatPoint& origin, float thickness, const DashArray& widths, bool, bool, StrokeStyle stroke) {
 
-void GraphicsContext::drawLinesForText(const FloatPoint& origin, const DashArray& widths, bool printing, bool doubleLines, StrokeStyle stroke) {
+    if (paintingDisabled())
+        return;
+
     for (const auto& width : widths) {
-        drawLineForText(origin, width, printing, doubleLines, stroke);
+        // This is a workaround for http://bugs.webkit.org/show_bug.cgi?id=15659
+        StrokeStyle savedStrokeStyle = strokeStyle();
+        setStrokeStyle(stroke);
+
+        FloatPoint endPoint = origin + FloatPoint(width, thickness);
+        drawLine(
+            IntPoint(origin.x(), origin.y()),
+            IntPoint(endPoint.x(), endPoint.y()));
+
+        setStrokeStyle(savedStrokeStyle);
     }
 }
 
-void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool, bool, StrokeStyle stroke)
+void GraphicsContext::drawLineForText(const FloatRect& rect, bool printing, bool doubleLines, StrokeStyle stroke)
 {
-    if (paintingDisabled() || width <= 0)
-        return;
-
-    // This is a workaround for http://bugs.webkit.org/show_bug.cgi?id=15659
-    StrokeStyle savedStrokeStyle = strokeStyle();
-    setStrokeStyle(stroke);
-
-    FloatPoint endPoint = origin + FloatPoint(width, 0);
-    drawLine(
-        IntPoint(origin.x(), origin.y()),
-        IntPoint(endPoint.x(), endPoint.y()));
-
-    setStrokeStyle(savedStrokeStyle);
+    drawLinesForText(rect.location(), rect.height(), { rect.width() }, printing, doubleLines, stroke);
 }
 
 static inline void drawLineTo(GraphicsContext &gc, IntPoint &curPos, double x, double y)
@@ -415,17 +422,17 @@ static inline void drawErrorUnderline(GraphicsContext &gc, double x, double y, d
     }
 }
 
-void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& origin, float width, DocumentMarkerLineStyle style)
+void GraphicsContext::drawDotsForDocumentMarker(const FloatRect& rect, DocumentMarkerLineStyle style)
 {
     savePlatformState(); //fake stroke
-    switch (style) { // TODO-java: DocumentMarkerAutocorrectionReplacementLineStyle not handled in switch
-    case DocumentMarkerSpellingLineStyle:
+    switch (style.mode) { // TODO-java: DocumentMarkerAutocorrectionReplacementLineStyle not handled in switch
+        case DocumentMarkerLineStyle::Mode::Spelling:
         {
             static Color red(255, 0, 0);
             setStrokeColor(red);
         }
         break;
-    case DocumentMarkerGrammarLineStyle:
+        case DocumentMarkerLineStyle::Mode::Grammar:
         {
             static Color green(0, 255, 0);
             setStrokeColor(green);
@@ -435,7 +442,7 @@ void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& origin, float 
         {
         }
     }
-    drawErrorUnderline(*this, origin.x(), origin.y(), width, cMisspellingLineThickness);
+    drawErrorUnderline(*this, rect.x(), rect.y(), rect.width(), rect.height());
     restorePlatformState(); //fake stroke
 }
 
@@ -550,7 +557,7 @@ void GraphicsContext::concatCTM(const AffineTransform& at)
 //    path.addEllipse(rect);
 //    rect.inflate(-thickness);
 //    path.addEllipse(rect);
-//    clipPath(path, RULE_EVENODD);
+//    clipPath(path, WindRule::EvenOdd);
 //}
 
 void GraphicsContext::setPlatformShadow(const FloatSize& s, float blur, const Color& color)
@@ -642,8 +649,10 @@ void GraphicsContext::setLineDash(const DashArray& dashes, float dashOffset)
 
     for (size_t i = 0; i < size; i++) {
         platformContext()->rq()
-        << dashes.at(i);
+        << (float) dashes.at(i);
     }
+
+    platformContext()->setLineDash(dashes, dashOffset);
 }
 
 void GraphicsContext::setLineCap(LineCap cap)
@@ -655,6 +664,8 @@ void GraphicsContext::setLineCap(LineCap cap)
     platformContext()->rq().freeSpace(8)
     << (jint)com_sun_webkit_graphics_GraphicsDecoder_SET_LINE_CAP
     << (jint)cap;
+
+    platformContext()->setLineCap(cap);
 }
 
 void GraphicsContext::setLineJoin(LineJoin join)
@@ -665,6 +676,8 @@ void GraphicsContext::setLineJoin(LineJoin join)
     platformContext()->rq().freeSpace(8)
     << (jint)com_sun_webkit_graphics_GraphicsDecoder_SET_LINE_JOIN
     << (jint)join;
+
+    platformContext()->setLineJoin(join);
 }
 
 void GraphicsContext::setMiterLimit(float limit)
@@ -675,6 +688,8 @@ void GraphicsContext::setMiterLimit(float limit)
     platformContext()->rq().freeSpace(8)
     << (jint)com_sun_webkit_graphics_GraphicsDecoder_SET_MITER_LIMIT
     << (jfloat)limit;
+
+    platformContext()->setMiterLimit(limit);
 }
 
 void GraphicsContext::setPlatformAlpha(float alpha)
@@ -727,7 +742,7 @@ static void setClipPath(
     gc.platformContext()->rq().freeSpace(16)
     << jint(com_sun_webkit_graphics_GraphicsDecoder_CLIP_PATH)
     << copyPath(path.platformPath())
-    << jint(wrule == RULE_EVENODD
+    << jint(wrule == WindRule::EvenOdd
        ? com_sun_webkit_graphics_WCPath_RULE_EVENODD
        : com_sun_webkit_graphics_WCPath_RULE_NONZERO)
     << jint(isOut);
@@ -745,7 +760,7 @@ void GraphicsContext::clipPath(const Path &path, WindRule wrule)
 
 void GraphicsContext::clipOut(const Path& path)
 {
-    setClipPath(*this, m_state, path, RULE_EVENODD, true);
+    setClipPath(*this, m_state, path, WindRule::EvenOdd, true);
 }
 
 void GraphicsContext::clipOut(const FloatRect& rect)
@@ -765,7 +780,7 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& destRect, const
         return;
     }
 
-    JNIEnv* env = WebCore_GetJavaEnv();
+    JNIEnv* env = WTF::GetJavaEnv();
 
     if (srcRect.isEmpty()) {
         return;
@@ -785,7 +800,7 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& destRect, const
     JLObject transform(env->CallObjectMethod(PL_GetGraphicsManager(env), mid,
                 tm.a(), tm.b(), tm.c(), tm.d(), tm.e(), tm.f()));
     ASSERT(transform);
-    CheckAndClearException(env);
+    WTF::CheckAndClearException(env);
 
     platformContext()->rq().freeSpace(13 * 4)
         << (jint)com_sun_webkit_graphics_GraphicsDecoder_DRAWPATTERN
@@ -892,7 +907,7 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& frect, const Floa
     WindRule oldFillRule = fillRule();
     Color oldFillColor = fillColor();
 
-    setFillRule(RULE_EVENODD);
+    setFillRule(WindRule::EvenOdd);
     setFillColor(color);
 
     fillPath(path);

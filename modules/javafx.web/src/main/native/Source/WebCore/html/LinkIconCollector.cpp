@@ -95,7 +95,7 @@ auto LinkIconCollector::iconsOfTypes(OptionSet<LinkIconType> iconTypes) -> Vecto
         // This icon size parsing is a little wonky - it only parses the first
         // part of the size, "60x70" becomes "60". This is for compatibility reasons
         // and is probably good enough for now.
-        std::optional<unsigned> iconSize;
+        Optional<unsigned> iconSize;
 
         if (linkElement.sizes().length()) {
             bool ok;
@@ -104,7 +104,14 @@ auto LinkIconCollector::iconsOfTypes(OptionSet<LinkIconType> iconTypes) -> Vecto
                 iconSize = size;
         }
 
-        icons.append({ url, iconType, linkElement.type(), iconSize });
+        Vector<std::pair<String, String>> attributes;
+        if (linkElement.hasAttributes()) {
+            attributes.reserveCapacity(linkElement.attributeCount());
+            for (const Attribute& attribute : linkElement.attributesIterator())
+                attributes.uncheckedAppend({ attribute.localName(), attribute.value() });
+        }
+
+        icons.append({ url, iconType, linkElement.type(), iconSize, WTFMove(attributes) });
     }
 
     std::sort(icons.begin(), icons.end(), [](auto& a, auto& b) {

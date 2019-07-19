@@ -211,10 +211,10 @@ static void writeStyle(TextStream& ts, const RenderElement& renderer)
             writeSVGPaintingResource(ts, fillPaintingResource);
 
             writeIfNotDefault(ts, "opacity", svgStyle.fillOpacity(), 1.0f);
-            writeIfNotDefault(ts, "fill rule", svgStyle.fillRule(), RULE_NONZERO);
+            writeIfNotDefault(ts, "fill rule", svgStyle.fillRule(), WindRule::NonZero);
             ts << "}]";
         }
-        writeIfNotDefault(ts, "clip rule", svgStyle.clipRule(), RULE_NONZERO);
+        writeIfNotDefault(ts, "clip rule", svgStyle.clipRule(), WindRule::NonZero);
     }
 
     writeIfNotEmpty(ts, "start marker", svgStyle.markerStartResource());
@@ -319,14 +319,14 @@ static inline void writeSVGInlineTextBox(TextStream& ts, SVGInlineTextBox* textB
 
         // FIXME: Remove this hack, once the new text layout engine is completly landed. We want to preserve the old layout test results for now.
         ts << "chunk 1 ";
-        ETextAnchor anchor = svgStyle.textAnchor();
+        TextAnchor anchor = svgStyle.textAnchor();
         bool isVerticalText = textBox->renderer().style().isVerticalWritingMode();
-        if (anchor == TA_MIDDLE) {
+        if (anchor == TextAnchor::Middle) {
             ts << "(middle anchor";
             if (isVerticalText)
                 ts << ", vertical";
             ts << ") ";
-        } else if (anchor == TA_END) {
+        } else if (anchor == TextAnchor::End) {
             ts << "(end anchor";
             if (isVerticalText)
                 ts << ", vertical";
@@ -423,8 +423,8 @@ void writeSVGResourceContainer(TextStream& ts, const RenderSVGResourceContainer&
         ts << "\n";
         // Creating a placeholder filter which is passed to the builder.
         FloatRect dummyRect;
-        RefPtr<SVGFilter> dummyFilter = SVGFilter::create(AffineTransform(), dummyRect, dummyRect, dummyRect, true);
-        if (auto builder = filter.buildPrimitives(*dummyFilter)) {
+        auto dummyFilter = SVGFilter::create(AffineTransform(), dummyRect, dummyRect, dummyRect, true);
+        if (auto builder = filter.buildPrimitives(dummyFilter.get())) {
             TextStream::IndentScope indentScope(ts);
 
             if (FilterEffect* lastEffect = builder->lastEffect())

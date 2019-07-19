@@ -47,6 +47,28 @@ void InlineAccess::dumpCacheSizesAndCrash()
 #else
     JSValueRegs regs(base);
 #endif
+    {
+        CCallHelpers jit;
+
+        GPRReg scratchGPR = value;
+        jit.patchableBranch8(
+            CCallHelpers::NotEqual,
+            CCallHelpers::Address(base, JSCell::typeInfoTypeOffset()),
+            CCallHelpers::TrustedImm32(StringType));
+
+        jit.loadPtr(CCallHelpers::Address(base, JSString::offsetOfValue()), scratchGPR);
+        auto isRope = jit.branchIfRopeStringImpl(scratchGPR);
+        jit.load32(CCallHelpers::Address(scratchGPR, StringImpl::lengthMemoryOffset()), regs.payloadGPR());
+        auto done = jit.jump();
+
+        isRope.link(&jit);
+        jit.load32(CCallHelpers::Address(base, JSRopeString::offsetOfLength()), regs.payloadGPR());
+
+        done.link(&jit);
+        jit.boxInt32(regs.payloadGPR(), regs);
+
+        dataLog("string length size: ", jit.m_assembler.buffer().codeSize(), "\n");
+    }
 
     {
         CCallHelpers jit;
@@ -130,12 +152,12 @@ void InlineAccess::dumpCacheSizesAndCrash()
 template <typename Function>
 ALWAYS_INLINE static bool linkCodeInline(const char* name, CCallHelpers& jit, StructureStubInfo& stubInfo, const Function& function)
 {
-    if (jit.m_assembler.buffer().codeSize() <= stubInfo.patch.inlineSize) {
-        bool needsBranchCompaction = false;
-        LinkBuffer linkBuffer(jit, stubInfo.patch.start.dataLocation(), stubInfo.patch.inlineSize, JITCompilationMustSucceed, needsBranchCompaction);
+    if (jit.m_assembler.buffer().codeSize() <= stubInfo.patch.inlineSize()) {
+        bool needsBranchCompaction = true;
+        LinkBuffer linkBuffer(jit, stubInfo.patch.start, stubInfo.patch.inlineSize(), JITCompilationMustSucceed, needsBranchCompaction);
         ASSERT(linkBuffer.isValid());
         function(linkBuffer);
-        FINALIZE_CODE(linkBuffer, "InlineAccessType: '%s'", name);
+        FINALIZE_CODE(linkBuffer, NoPtrTag, "InlineAccessType: '%s'", name);
         return true;
     }
 
@@ -144,10 +166,10 @@ ALWAYS_INLINE static bool linkCodeInline(const char* name, CCallHelpers& jit, St
     // there may be variability in the length of the code we generate just because
     // of randomness. It's helpful to flip this on when running tests or browsing
     // the web just to see how often it fails. You don't want an IC size that always fails.
-    const bool failIfCantInline = false;
+    constexpr bool failIfCantInline = false;
     if (failIfCantInline) {
         dataLog("Failure for: ", name, "\n");
-        dataLog("real size: ", jit.m_assembler.buffer().codeSize(), " inline size:", stubInfo.patch.inlineSize, "\n");
+        dataLog("real size: ", jit.m_assembler.buffer().codeSize(), " inline size:", stubInfo.patch.inlineSize(), "\n");
         CRASH();
     }
 
@@ -158,7 +180,7 @@ bool InlineAccess::generateSelfPropertyAccess(StructureStubInfo& stubInfo, Struc
 {
     CCallHelpers jit;
 
-    GPRReg base = static_cast<GPRReg>(stubInfo.patch.baseGPR);
+    GPRReg base = stubInfo.baseGPR();
     JSValueRegs value = stubInfo.valueRegs();
 
     auto branchToSlowPath = jit.patchableBranch32(
@@ -185,11 +207,11 @@ bool InlineAccess::generateSelfPropertyAccess(StructureStubInfo& stubInfo, Struc
 ALWAYS_INLINE static GPRReg getScratchRegister(StructureStubInfo& stubInfo)
 {
     ScratchRegisterAllocator allocator(stubInfo.patch.usedRegisters);
-    allocator.lock(static_cast<GPRReg>(stubInfo.patch.baseGPR));
-    allocator.lock(static_cast<GPRReg>(stubInfo.patch.valueGPR));
+    allocator.lock(stubInfo.baseGPR());
+    allocator.lock(stubInfo.patch.valueGPR);
 #if USE(JSVALUE32_64)
-    allocator.lock(static_cast<GPRReg>(stubInfo.patch.baseTagGPR));
-    allocator.lock(static_cast<GPRReg>(stubInfo.patch.valueTagGPR));
+    allocator.lock(stubInfo.patch.baseTagGPR);
+    allocator.lock(stubInfo.patch.valueTagGPR);
 #endif
     GPRReg scratch = allocator.allocateScratchGPR();
     if (allocator.didReuseRegisters())
@@ -216,7 +238,7 @@ bool InlineAccess::generateSelfPropertyReplace(StructureStubInfo& stubInfo, Stru
 
     CCallHelpers jit;
 
-    GPRReg base = static_cast<GPRReg>(stubInfo.patch.baseGPR);
+    GPRReg base = stubInfo.baseGPR();
     JSValueRegs value = stubInfo.valueRegs();
 
     auto branchToSlowPath = jit.patchableBranch32(
@@ -249,9 +271,7 @@ bool InlineAccess::isCacheableArrayLength(StructureStubInfo& stubInfo, JSArray* 
     if (!hasFreeRegister(stubInfo))
         return false;
 
-    return array->indexingType() == ArrayWithInt32
-        || array->indexingType() == ArrayWithDouble
-        || array->indexingType() == ArrayWithContiguous;
+    return !hasAnyArrayStorage(array->indexingType()) && array->indexingType() != ArrayClass;
 }
 
 bool InlineAccess::generateArrayLength(StructureStubInfo& stubInfo, JSArray* array)
@@ -260,12 +280,12 @@ bool InlineAccess::generateArrayLength(StructureStubInfo& stubInfo, JSArray* arr
 
     CCallHelpers jit;
 
-    GPRReg base = static_cast<GPRReg>(stubInfo.patch.baseGPR);
+    GPRReg base = stubInfo.baseGPR();
     JSValueRegs value = stubInfo.valueRegs();
     GPRReg scratch = getScratchRegister(stubInfo);
 
     jit.load8(CCallHelpers::Address(base, JSCell::indexingTypeAndMiscOffset()), scratch);
-    jit.and32(CCallHelpers::TrustedImm32(IsArray | IndexingShapeMask), scratch);
+    jit.and32(CCallHelpers::TrustedImm32(IndexingTypeMask), scratch);
     auto branchToSlowPath = jit.patchableBranch32(
         CCallHelpers::NotEqual, scratch, CCallHelpers::TrustedImm32(array->indexingType()));
     jit.loadPtr(CCallHelpers::Address(base, JSObject::butterflyOffset()), value.payloadGPR());
@@ -278,7 +298,64 @@ bool InlineAccess::generateArrayLength(StructureStubInfo& stubInfo, JSArray* arr
     return linkedCodeInline;
 }
 
-void InlineAccess::rewireStubAsJump(StructureStubInfo& stubInfo, CodeLocationLabel target)
+bool InlineAccess::isCacheableStringLength(StructureStubInfo& stubInfo)
+{
+    return hasFreeRegister(stubInfo);
+}
+
+bool InlineAccess::generateStringLength(StructureStubInfo& stubInfo)
+{
+    ASSERT(isCacheableStringLength(stubInfo));
+
+    CCallHelpers jit;
+
+    GPRReg base = stubInfo.baseGPR();
+    JSValueRegs value = stubInfo.valueRegs();
+    GPRReg scratch = getScratchRegister(stubInfo);
+
+    auto branchToSlowPath = jit.patchableBranch8(
+        CCallHelpers::NotEqual,
+        CCallHelpers::Address(base, JSCell::typeInfoTypeOffset()),
+        CCallHelpers::TrustedImm32(StringType));
+
+    jit.loadPtr(CCallHelpers::Address(base, JSString::offsetOfValue()), scratch);
+    auto isRope = jit.branchIfRopeStringImpl(scratch);
+    jit.load32(CCallHelpers::Address(scratch, StringImpl::lengthMemoryOffset()), value.payloadGPR());
+    auto done = jit.jump();
+
+    isRope.link(&jit);
+    jit.load32(CCallHelpers::Address(base, JSRopeString::offsetOfLength()), value.payloadGPR());
+
+    done.link(&jit);
+    jit.boxInt32(value.payloadGPR(), value);
+
+    bool linkedCodeInline = linkCodeInline("string length", jit, stubInfo, [&] (LinkBuffer& linkBuffer) {
+        linkBuffer.link(branchToSlowPath, stubInfo.slowPathStartLocation());
+    });
+    return linkedCodeInline;
+}
+
+
+bool InlineAccess::generateSelfInAccess(StructureStubInfo& stubInfo, Structure* structure)
+{
+    CCallHelpers jit;
+
+    GPRReg base = stubInfo.baseGPR();
+    JSValueRegs value = stubInfo.valueRegs();
+
+    auto branchToSlowPath = jit.patchableBranch32(
+        MacroAssembler::NotEqual,
+        MacroAssembler::Address(base, JSCell::structureIDOffset()),
+        MacroAssembler::TrustedImm32(bitwise_cast<uint32_t>(structure->id())));
+    jit.boxBoolean(true, value);
+
+    bool linkedCodeInline = linkCodeInline("in access", jit, stubInfo, [&] (LinkBuffer& linkBuffer) {
+        linkBuffer.link(branchToSlowPath, stubInfo.slowPathStartLocation());
+    });
+    return linkedCodeInline;
+}
+
+void InlineAccess::rewireStubAsJump(StructureStubInfo& stubInfo, CodeLocationLabel<JITStubRoutinePtrTag> target)
 {
     CCallHelpers jit;
 
@@ -286,11 +363,11 @@ void InlineAccess::rewireStubAsJump(StructureStubInfo& stubInfo, CodeLocationLab
 
     // We don't need a nop sled here because nobody should be jumping into the middle of an IC.
     bool needsBranchCompaction = false;
-    LinkBuffer linkBuffer(jit, stubInfo.patch.start.dataLocation(), jit.m_assembler.buffer().codeSize(), JITCompilationMustSucceed, needsBranchCompaction);
+    LinkBuffer linkBuffer(jit, stubInfo.patch.start, jit.m_assembler.buffer().codeSize(), JITCompilationMustSucceed, needsBranchCompaction);
     RELEASE_ASSERT(linkBuffer.isValid());
     linkBuffer.link(jump, target);
 
-    FINALIZE_CODE(linkBuffer, "InlineAccess: linking constant jump");
+    FINALIZE_CODE(linkBuffer, NoPtrTag, "InlineAccess: linking constant jump");
 }
 
 } // namespace JSC

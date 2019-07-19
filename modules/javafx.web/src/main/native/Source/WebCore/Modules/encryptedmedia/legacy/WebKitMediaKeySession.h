@@ -48,7 +48,7 @@ public:
 
     WebKitMediaKeyError* error() { return m_error.get(); }
     const String& keySystem() const { return m_keySystem; }
-    const String& sessionId() const;
+    const String& sessionId() const { return m_sessionId; }
     ExceptionOr<void> update(Ref<Uint8Array>&& key);
     void close();
 
@@ -76,6 +76,8 @@ private:
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
 
+    void suspend(ReasonForSuspension) final;
+    void resume() final;
     void stop() final;
     bool canSuspendForDocumentSuspension() const final;
     const char* activeDOMObjectName() const final;

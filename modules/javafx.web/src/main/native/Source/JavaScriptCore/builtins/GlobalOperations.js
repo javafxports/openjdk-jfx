@@ -62,19 +62,22 @@ function isDictionary(object)
 @overriddenName="get [Symbol.species]"
 function speciesGetter()
 {
+    "use strict";
     return this;
 }
 
 @globalPrivate
 function speciesConstructor(obj, defaultConstructor)
 {
+    "use strict";
+
     var constructor = obj.constructor;
     if (constructor === @undefined)
         return defaultConstructor;
     if (!@isObject(constructor))
         @throwTypeError("|this|.constructor is not an Object or undefined");
     constructor = constructor.@speciesSymbol;
-    if (constructor == null)
+    if (@isUndefinedOrNull(constructor))
         return defaultConstructor;
     if (@isConstructor(constructor))
         return constructor;
@@ -84,10 +87,12 @@ function speciesConstructor(obj, defaultConstructor)
 @globalPrivate
 function copyDataProperties(target, source, excludedSet)
 {
+    "use strict";
+
     if (!@isObject(target))
         @throwTypeError("target needs to be an object");
 
-    if (source == null) 
+    if (@isUndefinedOrNull(source))
         return target;
 
     let from = @toObject(source);
@@ -109,10 +114,12 @@ function copyDataProperties(target, source, excludedSet)
 @globalPrivate
 function copyDataPropertiesNoExclusions(target, source)
 {
+    "use strict";
+
     if (!@isObject(target))
         @throwTypeError("target needs to be an object");
 
-    if (source == null) 
+    if (@isUndefinedOrNull(source))
         return target;
 
     let from = @toObject(source);

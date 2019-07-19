@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "ArrayPrototype.h"
 #include "Error.h"
 #include "JSArray.h"
 #include "JSCellInlines.h"
@@ -70,17 +71,36 @@ inline bool JSArray::canFastCopy(VM& vm, JSArray* otherArray)
     return true;
 }
 
+inline bool JSArray::canDoFastIndexedAccess(VM& vm)
+{
+    JSGlobalObject* globalObject = this->globalObject();
+    if (!globalObject->arrayPrototypeChainIsSane())
+        return false;
+
+    Structure* structure = this->structure(vm);
+    // This is the fast case. Many arrays will be an original array.
+    if (globalObject->isOriginalArrayStructure(structure))
+        return true;
+
+    if (structure->mayInterceptIndexedAccesses())
+        return false;
+
+    if (getPrototypeDirect(vm) != globalObject->arrayPrototype())
+        return false;
+
+    return true;
+}
+
 ALWAYS_INLINE double toLength(ExecState* exec, JSObject* obj)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    if (isJSArray(obj))
+    if (LIKELY(isJSArray(obj)))
         return jsCast<JSArray*>(obj)->length();
 
     JSValue lengthValue = obj->get(exec, vm.propertyNames->length);
     RETURN_IF_EXCEPTION(scope, PNaN);
-    scope.release();
-    return lengthValue.toLength(exec);
+    RELEASE_AND_RETURN(scope, lengthValue.toLength(exec));
 }
 
 ALWAYS_INLINE void JSArray::pushInline(ExecState* exec, JSValue value)
@@ -88,9 +108,11 @@ ALWAYS_INLINE void JSArray::pushInline(ExecState* exec, JSValue value)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
+    ensureWritable(vm);
+
     Butterfly* butterfly = this->butterfly();
 
-    switch (indexingType()) {
+    switch (indexingMode()) {
     case ArrayClass: {
         createInitialUndecided(vm, 0);
         FALLTHROUGH;
@@ -122,7 +144,7 @@ ALWAYS_INLINE void JSArray::pushInline(ExecState* exec, JSValue value)
         if (UNLIKELY(length > MAX_ARRAY_INDEX)) {
             methodTable(vm)->putByIndex(this, exec, length, value, true);
             if (!scope.exception())
-                throwException(exec, scope, createRangeError(exec, ASCIILiteral(LengthExceededTheMaximumArrayLengthError)));
+                throwException(exec, scope, createRangeError(exec, LengthExceededTheMaximumArrayLengthError));
             return;
         }
 
@@ -143,7 +165,7 @@ ALWAYS_INLINE void JSArray::pushInline(ExecState* exec, JSValue value)
         if (UNLIKELY(length > MAX_ARRAY_INDEX)) {
             methodTable(vm)->putByIndex(this, exec, length, value, true);
             if (!scope.exception())
-                throwException(exec, scope, createRangeError(exec, ASCIILiteral(LengthExceededTheMaximumArrayLengthError)));
+                throwException(exec, scope, createRangeError(exec, LengthExceededTheMaximumArrayLengthError));
             return;
         }
 
@@ -178,7 +200,7 @@ ALWAYS_INLINE void JSArray::pushInline(ExecState* exec, JSValue value)
         if (UNLIKELY(length > MAX_ARRAY_INDEX)) {
             methodTable(vm)->putByIndex(this, exec, length, value, true);
             if (!scope.exception())
-                throwException(exec, scope, createRangeError(exec, ASCIILiteral(LengthExceededTheMaximumArrayLengthError)));
+                throwException(exec, scope, createRangeError(exec, LengthExceededTheMaximumArrayLengthError));
             return;
         }
 
@@ -217,7 +239,7 @@ ALWAYS_INLINE void JSArray::pushInline(ExecState* exec, JSValue value)
             methodTable(vm)->putByIndex(this, exec, storage->length(), value, true);
             // Per ES5.1 15.4.4.7 step 6 & 15.4.5.1 step 3.d.
             if (!scope.exception())
-                throwException(exec, scope, createRangeError(exec, ASCIILiteral(LengthExceededTheMaximumArrayLengthError)));
+                throwException(exec, scope, createRangeError(exec, LengthExceededTheMaximumArrayLengthError));
             return;
         }
 

@@ -29,11 +29,11 @@
 
 namespace JSC {
 
-class MapPrototype : public JSNonFinalObject {
+class MapPrototype final : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
 
-    static const unsigned StructureFlags = HasStaticPropertyTable | Base::StructureFlags;
+    static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
 
     static MapPrototype* create(VM& vm, JSGlobalObject* globalObject, Structure* structure)
     {

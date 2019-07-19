@@ -42,13 +42,6 @@
 #endif
 
 #if OS(WINDOWS)
-
-#if !USE(CURL)
-#ifndef _WINSOCKAPI_
-#define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h
-#endif
-#endif
-
 #undef WEBCORE_EXPORT
 #if PLATFORM(JAVA)
 #undef WEBCORE_TESTSUPPORT_EXPORT
@@ -127,19 +120,19 @@
 #endif
 #include <windows.h>
 #else
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 #include <CoreServices/CoreServices.h>
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
 #endif // OS(WINDOWS)
 
 #endif
 
 #ifdef __OBJC__
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <Foundation/Foundation.h>
 #else
 #import <Cocoa/Cocoa.h>
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 #endif
 
 #ifdef __cplusplus

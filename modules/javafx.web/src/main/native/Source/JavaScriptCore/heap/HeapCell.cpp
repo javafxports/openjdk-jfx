@@ -42,7 +42,7 @@ bool HeapCell::isLive()
     return markedBlockHandle.isLive(this);
 }
 
-#if !COMPILER(GCC_OR_CLANG)
+#if !COMPILER(GCC_COMPATIBLE)
 void HeapCell::use() const
 {
 }
@@ -59,6 +59,9 @@ void printInternal(PrintStream& out, HeapCell::Kind kind)
     switch (kind) {
     case HeapCell::JSCell:
         out.print("JSCell");
+        return;
+    case HeapCell::JSCellWithInteriorPointers:
+        out.print("JSCellWithInteriorPointers");
         return;
     case HeapCell::Auxiliary:
         out.print("Auxiliary");

@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2008-2017 Apple Inc. All rights reserved.
+ *  Copyright (C) 2008-2018 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -27,9 +27,9 @@ namespace JSC {
 class ErrorPrototype;
 class GetterSetter;
 
-class ErrorConstructor : public InternalFunction {
+class ErrorConstructor final : public InternalFunction {
 public:
-    typedef InternalFunction Base;
+    using Base = InternalFunction;
 
     static ErrorConstructor* create(VM& vm, Structure* structure, ErrorPrototype* errorPrototype, GetterSetter*)
     {
@@ -45,8 +45,6 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
     }
 
-    std::optional<unsigned> stackTraceLimit() const { return m_stackTraceLimit; }
-
 protected:
     void finishCreation(VM&, ErrorPrototype*);
 
@@ -56,7 +54,8 @@ protected:
 private:
     ErrorConstructor(VM&, Structure*);
 
-    std::optional<unsigned> m_stackTraceLimit;
 };
+
+static_assert(sizeof(ErrorConstructor) == sizeof(InternalFunction), "");
 
 } // namespace JSC

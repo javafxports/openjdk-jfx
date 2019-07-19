@@ -27,6 +27,7 @@
 #include "config.h"
 #include "NavigatorBase.h"
 
+#include "Document.h"
 #include "ServiceWorkerContainer.h"
 #include <mutex>
 #include <wtf/Language.h>
@@ -39,34 +40,34 @@
 #include <wtf/StdLibExtras.h>
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "Device.h"
 #endif
 
 #ifndef WEBCORE_NAVIGATOR_PLATFORM
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #define WEBCORE_NAVIGATOR_PLATFORM deviceName()
 #elif OS(MAC_OS_X) && (CPU(PPC) || CPU(PPC64))
-#define WEBCORE_NAVIGATOR_PLATFORM ASCIILiteral("MacPPC")
+#define WEBCORE_NAVIGATOR_PLATFORM "MacPPC"_s
 #elif OS(MAC_OS_X) && (CPU(X86) || CPU(X86_64))
-#define WEBCORE_NAVIGATOR_PLATFORM ASCIILiteral("MacIntel")
+#define WEBCORE_NAVIGATOR_PLATFORM "MacIntel"_s
 #elif OS(WINDOWS)
-#define WEBCORE_NAVIGATOR_PLATFORM ASCIILiteral("Win32")
+#define WEBCORE_NAVIGATOR_PLATFORM "Win32"_s
 #else
 #define WEBCORE_NAVIGATOR_PLATFORM emptyString()
 #endif
 #endif // ifndef WEBCORE_NAVIGATOR_PLATFORM
 
 #ifndef WEBCORE_NAVIGATOR_PRODUCT
-#define WEBCORE_NAVIGATOR_PRODUCT ASCIILiteral("Gecko")
+#define WEBCORE_NAVIGATOR_PRODUCT "Gecko"_s
 #endif // ifndef WEBCORE_NAVIGATOR_PRODUCT
 
 #ifndef WEBCORE_NAVIGATOR_PRODUCT_SUB
-#define WEBCORE_NAVIGATOR_PRODUCT_SUB ASCIILiteral("20030107")
+#define WEBCORE_NAVIGATOR_PRODUCT_SUB "20030107"_s
 #endif // ifndef WEBCORE_NAVIGATOR_PRODUCT_SUB
 
 #ifndef WEBCORE_NAVIGATOR_VENDOR
-#define WEBCORE_NAVIGATOR_VENDOR ASCIILiteral("Apple Computer, Inc.")
+#define WEBCORE_NAVIGATOR_VENDOR "Apple Computer, Inc."_s
 #endif // ifndef WEBCORE_NAVIGATOR_VENDOR
 
 #ifndef WEBCORE_NAVIGATOR_VENDOR_SUB
@@ -75,7 +76,7 @@
 
 namespace WebCore {
 
-NavigatorBase::NavigatorBase(ScriptExecutionContext& context)
+NavigatorBase::NavigatorBase(ScriptExecutionContext* context)
 #if ENABLE(SERVICE_WORKER)
     : m_serviceWorkerContainer(makeUniqueRef<ServiceWorkerContainer>(context, *this))
 #endif
@@ -89,7 +90,7 @@ NavigatorBase::~NavigatorBase() = default;
 
 String NavigatorBase::appName()
 {
-    return ASCIILiteral("Netscape");
+    return "Netscape"_s;
 }
 
 String NavigatorBase::appVersion() const
@@ -99,22 +100,23 @@ String NavigatorBase::appVersion() const
     return agent.substring(agent.find('/') + 1);
 }
 
-String NavigatorBase::platform()
+const String& NavigatorBase::platform() const
 {
+    static NeverDestroyed<String> defaultPlatform = WEBCORE_NAVIGATOR_PLATFORM;
 #if OS(LINUX)
     if (!String(WEBCORE_NAVIGATOR_PLATFORM).isEmpty())
-        return WEBCORE_NAVIGATOR_PLATFORM;
+        return defaultPlatform;
     struct utsname osname;
-    static NeverDestroyed<String> platformName(uname(&osname) >= 0 ? String(osname.sysname) + String(" ") + String(osname.machine) : emptyString());
+    static NeverDestroyed<String> platformName(uname(&osname) >= 0 ? String(osname.sysname) + " "_str + String(osname.machine) : emptyString());
     return platformName;
 #else
-    return WEBCORE_NAVIGATOR_PLATFORM;
+    return defaultPlatform;
 #endif
 }
 
 String NavigatorBase::appCodeName()
 {
-    return ASCIILiteral("Mozilla");
+    return "Mozilla"_s;
 }
 
 String NavigatorBase::product()

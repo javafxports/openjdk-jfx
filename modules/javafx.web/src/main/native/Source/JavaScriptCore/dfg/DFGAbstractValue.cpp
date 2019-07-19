@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,8 +40,8 @@ void AbstractValue::observeTransitions(const TransitionVector& vector)
         m_structure.observeTransitions(vector);
         ArrayModes newModes = 0;
         for (unsigned i = vector.size(); i--;) {
-            if (m_arrayModes & asArrayModes(vector[i].previous->indexingType()))
-                newModes |= asArrayModes(vector[i].next->indexingType());
+            if (m_arrayModes & arrayModesFromStructure(vector[i].previous.get()))
+                newModes |= arrayModesFromStructure(vector[i].next.get());
         }
         m_arrayModes |= newModes;
     }
@@ -53,14 +53,14 @@ void AbstractValue::set(Graph& graph, const FrozenValue& value, StructureClobber
     if (!!value && value.value().isCell()) {
         Structure* structure = value.structure();
         StructureRegistrationResult result;
-        RegisteredStructure RegisteredStructure = graph.registerStructure(structure, result);
+        RegisteredStructure registeredStructure = graph.registerStructure(structure, result);
         if (result == StructureRegisteredAndWatched) {
-            m_structure = RegisteredStructure;
+            m_structure = registeredStructure;
             if (clobberState == StructuresAreClobbered) {
                 m_arrayModes = ALL_ARRAY_MODES;
                 m_structure.clobber();
             } else
-                m_arrayModes = asArrayModes(structure->indexingType());
+                m_arrayModes = arrayModesFromStructure(structure);
         } else {
             m_structure.makeTop();
             m_arrayModes = ALL_ARRAY_MODES;
@@ -87,7 +87,7 @@ void AbstractValue::set(Graph& graph, RegisteredStructure structure)
     RELEASE_ASSERT(structure);
 
     m_structure = structure;
-    m_arrayModes = asArrayModes(structure->indexingType());
+    m_arrayModes = arrayModesFromStructure(structure.get());
     m_type = speculationFromStructure(structure.get());
     m_value = JSValue();
 
@@ -126,64 +126,11 @@ void AbstractValue::setType(Graph& graph, SpeculatedType type)
     checkConsistency();
 }
 
-void AbstractValue::set(Graph& graph, const InferredType::Descriptor& descriptor)
-{
-    switch (descriptor.kind()) {
-    case InferredType::Bottom:
-        clear();
-        return;
-    case InferredType::Boolean:
-        setType(SpecBoolean);
-        return;
-    case InferredType::Other:
-        setType(SpecOther);
-        return;
-    case InferredType::Int32:
-        setType(SpecInt32Only);
-        return;
-    case InferredType::Number:
-        setType(SpecBytecodeNumber);
-        return;
-    case InferredType::String:
-        set(graph, graph.m_vm.stringStructure.get());
-        return;
-    case InferredType::Symbol:
-        set(graph, graph.m_vm.symbolStructure.get());
-        return;
-    case InferredType::ObjectWithStructure:
-        set(graph, descriptor.structure());
-        return;
-    case InferredType::ObjectWithStructureOrOther:
-        set(graph, descriptor.structure());
-        merge(SpecOther);
-        return;
-    case InferredType::Object:
-        setType(graph, SpecObject);
-        return;
-    case InferredType::ObjectOrOther:
-        setType(graph, SpecObject | SpecOther);
-        return;
-    case InferredType::Top:
-        makeHeapTop();
-        return;
-    }
-
-    RELEASE_ASSERT_NOT_REACHED();
-}
-
-void AbstractValue::set(
-    Graph& graph, const InferredType::Descriptor& descriptor, StructureClobberState clobberState)
-{
-    set(graph, descriptor);
-    if (clobberState == StructuresAreClobbered)
-        clobberStructures();
-}
-
 void AbstractValue::fixTypeForRepresentation(Graph& graph, NodeFlags representation, Node* node)
 {
     if (representation == NodeResultDouble) {
         if (m_value) {
-            ASSERT(m_value.isNumber());
+            DFG_ASSERT(graph, node, m_value.isNumber());
             if (m_value.isInt32())
                 m_value = jsDoubleNumber(m_value.asNumber());
         }
@@ -225,7 +172,7 @@ bool AbstractValue::mergeOSREntryValue(Graph& graph, JSValue value)
         FrozenValue* frozenValue = graph.freeze(value);
         if (frozenValue->pointsToHeap()) {
             m_structure = graph.registerStructure(frozenValue->structure());
-            m_arrayModes = asArrayModes(frozenValue->structure()->indexingType());
+            m_arrayModes = arrayModesFromStructure(frozenValue->structure());
         } else {
             m_structure.clear();
             m_arrayModes = 0;
@@ -236,8 +183,8 @@ bool AbstractValue::mergeOSREntryValue(Graph& graph, JSValue value)
     } else {
         mergeSpeculation(m_type, speculationFromValue(value));
         if (!!value && value.isCell()) {
-            RegisteredStructure structure = graph.registerStructure(value.asCell()->structure());
-            mergeArrayModes(m_arrayModes, asArrayModes(structure->indexingType()));
+            RegisteredStructure structure = graph.registerStructure(value.asCell()->structure(graph.m_vm));
+            mergeArrayModes(m_arrayModes, arrayModesFromStructure(structure.get()));
             m_structure.merge(RegisteredStructureSet(structure));
         }
         if (m_value != value)
@@ -248,17 +195,6 @@ bool AbstractValue::mergeOSREntryValue(Graph& graph, JSValue value)
     assertIsRegistered(graph);
 
     return oldMe != *this;
-}
-
-bool AbstractValue::isType(Graph& graph, const InferredType::Descriptor& inferredType) const
-{
-    AbstractValue typeValue;
-    typeValue.set(graph, inferredType);
-
-    AbstractValue mergedValue = *this;
-    mergedValue.merge(typeValue);
-
-    return mergedValue == typeValue;
 }
 
 FiltrationResult AbstractValue::filter(
@@ -329,24 +265,8 @@ FiltrationResult AbstractValue::filterClassInfo(Graph& graph, const ClassInfo* c
     return normalizeClarity(graph);
 }
 
-FiltrationResult AbstractValue::filter(SpeculatedType type)
+FiltrationResult AbstractValue::filterSlow(SpeculatedType type)
 {
-    if ((m_type & type) == m_type)
-        return FiltrationOK;
-
-    // Fast path for the case that we don't even have a cell.
-    if (!(m_type & SpecCell)) {
-        m_type &= type;
-        FiltrationResult result;
-        if (m_type == SpecNone) {
-            clear();
-            result = Contradiction;
-        } else
-            result = FiltrationOK;
-        checkConsistency();
-        return result;
-    }
-
     m_type &= type;
 
     // It's possible that prior to this filter() call we had, say, (Final, TOP), and
@@ -357,6 +277,14 @@ FiltrationResult AbstractValue::filter(SpeculatedType type)
     filterArrayModesByType();
     filterValueByType();
     return normalizeClarity();
+}
+
+FiltrationResult AbstractValue::fastForwardToAndFilterSlow(AbstractValueClobberEpoch newEpoch, SpeculatedType type)
+{
+    if (newEpoch != m_effectEpoch)
+        fastForwardToSlow(newEpoch);
+
+    return filterSlow(type);
 }
 
 FiltrationResult AbstractValue::filterByValue(const FrozenValue& value)
@@ -370,7 +298,7 @@ FiltrationResult AbstractValue::filterByValue(const FrozenValue& value)
 bool AbstractValue::contains(RegisteredStructure structure) const
 {
     return couldBeType(speculationFromStructure(structure.get()))
-        && (m_arrayModes & arrayModeFromStructure(structure.get()))
+        && (m_arrayModes & arrayModesFromStructure(structure.get()))
         && m_structure.contains(structure);
 }
 
@@ -405,13 +333,6 @@ FiltrationResult AbstractValue::filter(const AbstractValue& other)
     // We both proved there to be a specific value but they are different.
     clear();
     return Contradiction;
-}
-
-FiltrationResult AbstractValue::filter(Graph& graph, const InferredType::Descriptor& descriptor)
-{
-    AbstractValue filterValue;
-    filterValue.set(graph, descriptor);
-    return filter(filterValue);
 }
 
 void AbstractValue::filterValueByType()
@@ -553,6 +474,7 @@ void AbstractValue::dumpInContext(PrintStream& out, DumpContext* context) const
     }
     if (!!m_value)
         out.print(", ", inContext(m_value, context));
+    out.print(", ", m_effectEpoch);
     out.print(")");
 }
 
@@ -570,6 +492,20 @@ void AbstractValue::ensureCanInitializeWithZeros()
     ASSERT(*this == *static_cast<AbstractValue*>(static_cast<void*>(&zeroFilledStorage)));
 }
 #endif
+
+void AbstractValue::fastForwardToSlow(AbstractValueClobberEpoch newEpoch)
+{
+    ASSERT(newEpoch != m_effectEpoch);
+
+    if (newEpoch.clobberEpoch() != m_effectEpoch.clobberEpoch())
+        clobberStructures();
+    if (newEpoch.structureClobberState() == StructuresAreWatched)
+        m_structure.observeInvalidationPoint();
+
+    m_effectEpoch = newEpoch;
+
+    checkConsistency();
+}
 
 } } // namespace JSC::DFG
 

@@ -177,13 +177,13 @@ Frame* HitTestResult::innerNodeFrame() const
 Frame* HitTestResult::targetFrame() const
 {
     if (!m_innerURLElement)
-        return 0;
+        return nullptr;
 
     Frame* frame = m_innerURLElement->document().frame();
     if (!frame)
-        return 0;
+        return nullptr;
 
-    return frame->tree().find(m_innerURLElement->target());
+    return frame->tree().find(m_innerURLElement->target(), *frame);
 }
 
 bool HitTestResult::isSelected() const
@@ -220,7 +220,7 @@ String HitTestResult::selectedText() const
 
 String HitTestResult::spellingToolTip(TextDirection& dir) const
 {
-    dir = LTR;
+    dir = TextDirection::LTR;
     // Return the tool tip string associated with this point, if any. Only markers associated with bad grammar
     // currently supply strings, but maybe someday markers associated with misspelled words will also.
     if (!m_innerNonSharedNode)
@@ -251,7 +251,7 @@ String HitTestResult::replacedString() const
 
 String HitTestResult::title(TextDirection& dir) const
 {
-    dir = LTR;
+    dir = TextDirection::LTR;
     // Find the title in the nearest enclosing DOM node.
     // For <area> tags in image maps, walk the tree for the <area>, not the <img> using it.
     for (Node* titleNode = m_innerNode.get(); titleNode; titleNode = titleNode->parentInComposedTree()) {
@@ -277,7 +277,7 @@ String HitTestResult::innerTextIfTruncated(TextDirection& dir) const
         if (auto renderer = downcast<Element>(*truncatedNode).renderer()) {
             if (is<RenderBlockFlow>(*renderer)) {
                 RenderBlockFlow& block = downcast<RenderBlockFlow>(*renderer);
-                if (block.style().textOverflow()) {
+                if (block.style().textOverflow() == TextOverflow::Ellipsis) {
                     for (RootInlineBox* line = block.firstRootBox(); line; line = line->nextRootBox()) {
                         if (line->hasEllipsisBox()) {
                             dir = block.style().direction();
@@ -290,7 +290,7 @@ String HitTestResult::innerTextIfTruncated(TextDirection& dir) const
         }
     }
 
-    dir = LTR;
+    dir = TextDirection::LTR;
     return String();
 }
 
@@ -682,7 +682,7 @@ void HitTestResult::append(const HitTestResult& other, const HitTestRequest& req
 
     if (other.m_listBasedTestResult) {
         NodeSet& set = mutableListBasedTestResult();
-        for (auto node : *other.m_listBasedTestResult)
+        for (const auto& node : *other.m_listBasedTestResult)
             set.add(node.get());
     }
 }

@@ -7,7 +7,7 @@ list(APPEND WTF_INCLUDE_DIRECTORIES
     "${JAVA_INCLUDE_PATH2}"
 )
 
-list(APPEND WTF_HEADERS
+list(APPEND WTF_PUBLIC_HEADERS
     java/JavaEnv.h
     java/JavaRef.h
     java/DbgUtils.h
@@ -15,9 +15,10 @@ list(APPEND WTF_HEADERS
 )
 
 list(APPEND WTF_SOURCES
-    java/StringJava.cpp
-    java/MainThreadJava.cpp
+    java/FileSystemJava.cpp
     java/JavaEnv.cpp
+    java/MainThreadJava.cpp
+    java/StringJava.cpp
     java/TextBreakIteratorInternalICUJava.cpp
 )
 
@@ -48,7 +49,7 @@ if (APPLE)
         ${DERIVED_SOURCES_WTF_DIR}/mach_excUser.c
     )
 
-    list(APPEND WTF_HEADERS
+    list(APPEND WTF_PUBLIC_HEADERS
         cf/TypeCastsCF.h
     )
 
@@ -59,17 +60,17 @@ if (APPLE)
     )
 
     list(APPEND WTF_SOURCES
-        cf/RunLoopCF.cpp
+        BlockObjCExceptions.mm
         cf/LanguageCF.cpp
-        cocoa/CPUTimeCocoa.mm
+        cf/RunLoopCF.cpp
+        cocoa/CPUTimeCocoa.cpp
+        cocoa/MachSendRight.cpp
         cocoa/MemoryFootprintCocoa.cpp
         cocoa/MemoryPressureHandlerCocoa.mm
         cocoa/WorkQueueCocoa.cpp
-        text/cf/StringImplCF.cpp
         text/cf/StringCF.cpp
-        text/mac/StringMac.mm
-        text/mac/StringImplMac.mm
-        BlockObjCExceptions.mm
+        text/cf/StringImplCF.cpp
+        text/cocoa/StringImplCocoa.mm
     )
 
     find_library(COCOA_LIBRARY Cocoa)
@@ -92,21 +93,37 @@ elseif (UNIX)
 elseif (WIN32)
     list(APPEND WTF_SOURCES
         win/CPUTimeWin.cpp
+        win/DbgHelperWin.cpp
         win/LanguageWin.cpp
         win/MemoryFootprintWin.cpp
         win/MemoryPressureHandlerWin.cpp
+        win/OSAllocatorWin.cpp
         win/RunLoopWin.cpp
+        win/ThreadSpecificWin.cpp
+        win/ThreadingWin.cpp
         win/WorkQueueWin.cpp
-        win/WorkItemContext.cpp
     )
 
-    list(APPEND WTF_HEADERS
+    list(APPEND WTF_PUBLIC_HEADERS
         text/win/WCharStringExtras.h
         win/Win32Handle.h
     )
 
     list(APPEND WTF_LIBRARIES
         winmm
+    )
+endif ()
+
+if (${CMAKE_BUILD_TYPE} MATCHES "Debug" AND WIN32)
+    list(APPEND WTF_LIBRARIES
+        dbghelp
+    )
+endif ()
+
+if (UNIX)
+    list(APPEND WTF_SOURCES
+        posix/OSAllocatorPOSIX.cpp
+        posix/ThreadingPOSIX.cpp
     )
 endif ()
 

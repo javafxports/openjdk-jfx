@@ -28,7 +28,7 @@ function next()
 {
     "use strict";
 
-    if (this == null)
+    if (@isUndefinedOrNull(this))
         @throwTypeError("%ArrayIteratorPrototype%.next requires that |this| not be null or undefined");
 
     let next = @getByIdDirectPrivate(this, "arrayIteratorNext");
@@ -49,16 +49,16 @@ function arrayIteratorValueNext()
     if (!@getByIdDirectPrivate(this, "arrayIteratorIsDone")) {
         var index = @getByIdDirectPrivate(this, "arrayIteratorNextIndex");
         var length = array.length >>> 0;
-        if (index >= length) {
-            this.@arrayIteratorIsDone = true;
-        } else {
-            this.@arrayIteratorNextIndex = index + 1;
+        if (index >= length)
+            @putByIdDirectPrivate(this, "arrayIteratorIsDone", true);
+        else {
+            @putByIdDirectPrivate(this, "arrayIteratorNextIndex", index + 1);
             done = false;
             value = array[index];
         }
     }
 
-    return { done, value };
+    return { value, done };
 }
 
 @globalPrivate
@@ -72,16 +72,16 @@ function arrayIteratorKeyNext()
     if (!@getByIdDirectPrivate(this, "arrayIteratorIsDone")) {
         var index = @getByIdDirectPrivate(this, "arrayIteratorNextIndex");
         var length = array.length >>> 0;
-        if (index >= length) {
-            this.@arrayIteratorIsDone = true;
-        } else {
-            this.@arrayIteratorNextIndex = index + 1;
+        if (index >= length)
+            @putByIdDirectPrivate(this, "arrayIteratorIsDone", true);
+        else {
+            @putByIdDirectPrivate(this, "arrayIteratorNextIndex", index + 1);
             done = false;
             value = index;
         }
     }
 
-    return { done, value };
+    return { value, done };
 }
 
 @globalPrivate
@@ -95,14 +95,14 @@ function arrayIteratorKeyValueNext()
     if (!@getByIdDirectPrivate(this, "arrayIteratorIsDone")) {
         var index = @getByIdDirectPrivate(this, "arrayIteratorNextIndex");
         var length = array.length >>> 0;
-        if (index >= length) {
-            this.@arrayIteratorIsDone = true;
-        } else {
-            this.@arrayIteratorNextIndex = index + 1;
+        if (index >= length)
+            @putByIdDirectPrivate(this, "arrayIteratorIsDone", true);
+        else {
+            @putByIdDirectPrivate(this, "arrayIteratorNextIndex", index + 1);
             done = false;
             value = [ index, array[index] ];
         }
     }
 
-    return { done, value };
+    return { value, done };
 }

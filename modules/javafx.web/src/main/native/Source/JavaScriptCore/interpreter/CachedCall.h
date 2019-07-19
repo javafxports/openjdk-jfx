@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,7 +49,7 @@ namespace JSC {
             auto scope = DECLARE_THROW_SCOPE(vm);
 
             ASSERT(!function->isHostFunctionNonInline());
-            if (UNLIKELY(vm.isSafeToRecurseSoft())) {
+            if (LIKELY(vm.isSafeToRecurseSoft())) {
                 m_arguments.ensureCapacity(argumentCount);
                 if (LIKELY(!m_arguments.hasOverflowed()))
                     m_closure = m_interpreter->prepareForRepeatCall(function->jsExecutable(), callFrame, &m_protoCallFrame, function, argumentCount + 1, function->scope(), m_arguments);
@@ -60,7 +60,7 @@ namespace JSC {
             m_valid = !scope.exception();
         }
 
-        JSValue call()
+        ALWAYS_INLINE JSValue call()
         {
             ASSERT(m_valid);
             ASSERT(m_arguments.size() == static_cast<size_t>(m_protoCallFrame.argumentCount()));

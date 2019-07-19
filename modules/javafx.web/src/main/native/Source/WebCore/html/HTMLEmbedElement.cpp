@@ -37,9 +37,12 @@
 #include "RenderWidget.h"
 #include "Settings.h"
 #include "SubframeLoader.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLEmbedElement);
 
 using namespace HTMLNames;
 
@@ -85,13 +88,6 @@ RenderWidget* HTMLEmbedElement::renderWidgetLoadingPlugin() const
         document().updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks::Synchronously);
     }
     return findWidgetRenderer(this);
-}
-
-bool HTMLEmbedElement::isPresentationAttribute(const QualifiedName& name) const
-{
-    if (name == hiddenAttr)
-        return true;
-    return HTMLPlugInImageElement::isPresentationAttribute(name);
 }
 
 void HTMLEmbedElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)

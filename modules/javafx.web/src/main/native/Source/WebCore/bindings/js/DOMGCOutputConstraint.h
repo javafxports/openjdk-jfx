@@ -29,11 +29,16 @@
 #include <wtf/SharedTask.h>
 #include <wtf/Vector.h>
 
+namespace JSC {
+class VM;
+} // namespace JSC
+
 namespace WebCore {
 
 class JSVMClientData;
 
 class DOMGCOutputConstraint : public JSC::MarkingConstraint {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     DOMGCOutputConstraint(JSC::VM&, JSVMClientData&);
     ~DOMGCOutputConstraint();

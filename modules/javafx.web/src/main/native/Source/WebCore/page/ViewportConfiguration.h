@@ -25,19 +25,18 @@
 
 #pragma once
 
+#include "DisabledAdaptations.h"
 #include "FloatSize.h"
 #include "IntSize.h"
 #include "ViewportArguments.h"
 #include <wtf/Noncopyable.h>
+#include <wtf/OptionSet.h>
 
 namespace WTF {
 class TextStream;
 }
 
 namespace WebCore {
-
-static const double forceAlwaysUserScalableMaximumScale = 5.0;
-static const double forceAlwaysUserScalableMinimumScale = 1.0;
 
 class ViewportConfiguration {
     WTF_MAKE_NONCOPYABLE(ViewportConfiguration); WTF_MAKE_FAST_ALLOCATED;
@@ -47,6 +46,7 @@ public:
         double width { 0 };
         double height { 0 };
         double initialScale { 0 };
+        double initialScaleIgnoringLayoutScaleFactor { 0 };
         double minimumScale { 0 };
         double maximumScale { 0 };
         bool allowsUserScaling { false };
@@ -60,7 +60,7 @@ public:
         bool operator==(const Parameters& other) const
         {
             return width == other.width && height == other.height
-                && initialScale == other.initialScale && minimumScale == other.minimumScale && maximumScale == other.maximumScale
+                && initialScale == other.initialScale && initialScaleIgnoringLayoutScaleFactor == other.initialScaleIgnoringLayoutScaleFactor && minimumScale == other.minimumScale && maximumScale == other.maximumScale
                 && allowsUserScaling == other.allowsUserScaling && allowsShrinkToFit == other.allowsShrinkToFit && avoidsUnsafeArea == other.avoidsUnsafeArea
                 && widthIsSet == other.widthIsSet && heightIsSet == other.heightIsSet && initialScaleIsSet == other.initialScaleIsSet;
         }
@@ -74,8 +74,13 @@ public:
     const IntSize& contentsSize() const { return m_contentSize; }
     WEBCORE_EXPORT bool setContentsSize(const IntSize&);
 
+    const FloatSize& viewLayoutSize() const { return m_viewLayoutSize; }
+
     const FloatSize& minimumLayoutSize() const { return m_minimumLayoutSize; }
-    WEBCORE_EXPORT bool setMinimumLayoutSize(const FloatSize&);
+    WEBCORE_EXPORT bool setViewLayoutSize(const FloatSize&, Optional<double>&& scaleFactor = WTF::nullopt, Optional<double>&& effectiveWidth = WTF::nullopt);
+
+    const OptionSet<DisabledAdaptations>& disabledAdaptations() const { return m_disabledAdaptations; }
+    WEBCORE_EXPORT bool setDisabledAdaptations(const OptionSet<DisabledAdaptations>&);
 
     const ViewportArguments& viewportArguments() const { return m_viewportArguments; }
     WEBCORE_EXPORT bool setViewportArguments(const ViewportArguments&);
@@ -83,17 +88,22 @@ public:
     WEBCORE_EXPORT bool setCanIgnoreScalingConstraints(bool);
     void setForceAlwaysUserScalable(bool forceAlwaysUserScalable) { m_forceAlwaysUserScalable = forceAlwaysUserScalable; }
 
+    double layoutSizeScaleFactor() const { return m_layoutSizeScaleFactor; }
+
     WEBCORE_EXPORT IntSize layoutSize() const;
     WEBCORE_EXPORT double initialScale() const;
     WEBCORE_EXPORT double initialScaleIgnoringContentSize() const;
     WEBCORE_EXPORT double minimumScale() const;
-    double maximumScale() const { return m_forceAlwaysUserScalable ? forceAlwaysUserScalableMaximumScale : m_configuration.maximumScale; }
+    double maximumScale() const { return m_forceAlwaysUserScalable ? forceAlwaysUserScalableMaximumScale() : m_configuration.maximumScale; }
     double maximumScaleIgnoringAlwaysScalable() const { return m_configuration.maximumScale; }
     WEBCORE_EXPORT bool allowsUserScaling() const;
     WEBCORE_EXPORT bool allowsUserScalingIgnoringAlwaysScalable() const;
     bool allowsShrinkToFit() const;
     bool avoidsUnsafeArea() const { return m_configuration.avoidsUnsafeArea; }
 
+    // Matches a width=device-width, initial-scale=1 viewport.
+    WEBCORE_EXPORT static Parameters nativeWebpageParameters();
+    static Parameters scalableNativeWebpageParameters();
     WEBCORE_EXPORT static Parameters webpageParameters();
     WEBCORE_EXPORT static Parameters textDocumentParameters();
     WEBCORE_EXPORT static Parameters imageDocumentParameters();
@@ -112,16 +122,66 @@ private:
     int layoutWidth() const;
     int layoutHeight() const;
 
+    bool shouldOverrideDeviceWidthAndShrinkToFit() const;
+    bool shouldIgnoreScalingConstraintsRegardlessOfContentSize() const;
     bool shouldIgnoreScalingConstraints() const;
     bool shouldIgnoreVerticalScalingConstraints() const;
     bool shouldIgnoreHorizontalScalingConstraints() const;
+    void updateDefaultConfiguration();
+    bool canOverrideConfigurationParameters() const;
+
+    constexpr bool shouldIgnoreMinimumEffectiveDeviceWidth() const
+    {
+        if (m_canIgnoreScalingConstraints)
+            return true;
+
+        if (m_viewportArguments == ViewportArguments())
+            return false;
+
+        if (m_viewportArguments.width == ViewportArguments::ValueDeviceWidth || m_viewportArguments.zoom == 1.)
+            return true;
+
+        return false;
+    }
+
+    constexpr double minimumEffectiveDeviceWidth() const
+    {
+        if (shouldIgnoreMinimumEffectiveDeviceWidth())
+            return 0;
+        return m_minimumEffectiveDeviceWidth;
+    }
+
+    constexpr double forceAlwaysUserScalableMaximumScale() const
+    {
+        const double forceAlwaysUserScalableMaximumScaleIgnoringLayoutScaleFactor = 5;
+        return forceAlwaysUserScalableMaximumScaleIgnoringLayoutScaleFactor * effectiveLayoutSizeScaleFactor();
+    }
+
+    constexpr double forceAlwaysUserScalableMinimumScale() const
+    {
+        const double forceAlwaysUserScalableMinimumScaleIgnoringLayoutScaleFactor = 1;
+        return forceAlwaysUserScalableMinimumScaleIgnoringLayoutScaleFactor * effectiveLayoutSizeScaleFactor();
+    }
+
+    constexpr double effectiveLayoutSizeScaleFactor() const
+    {
+        if (!m_viewLayoutSize.width() || !minimumEffectiveDeviceWidth())
+            return m_layoutSizeScaleFactor;
+        return m_layoutSizeScaleFactor * m_viewLayoutSize.width() / std::max<double>(minimumEffectiveDeviceWidth(), m_viewLayoutSize.width());
+    }
+
+    void updateMinimumLayoutSize();
 
     Parameters m_configuration;
     Parameters m_defaultConfiguration;
     IntSize m_contentSize;
     FloatSize m_minimumLayoutSize;
+    FloatSize m_viewLayoutSize;
     ViewportArguments m_viewportArguments;
+    OptionSet<DisabledAdaptations> m_disabledAdaptations;
 
+    double m_layoutSizeScaleFactor { 1 };
+    double m_minimumEffectiveDeviceWidth { 0 };
     bool m_canIgnoreScalingConstraints;
     bool m_forceAlwaysUserScalable;
 };

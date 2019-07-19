@@ -50,11 +50,11 @@ public:
 
     bool avoidsFloats() const final { return true; }
     bool canDropAnonymousBlockChild() const final { return false; }
-    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) final;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0_lu) final;
 
     int baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const override;
-    std::optional<int> firstLineBaseline() const override;
-    std::optional<int> inlineBlockBaseline(LineDirectionMode) const override;
+    Optional<int> firstLineBaseline() const override;
+    Optional<int> inlineBlockBaseline(LineDirectionMode) const override;
 
     void styleDidChange(StyleDifference, const RenderStyle*) override;
     void paintChildren(PaintInfo& forSelf, const LayoutPoint&, PaintInfo& forChild, bool usePrintRect) override;
@@ -68,9 +68,9 @@ public:
 
     virtual bool isFlexibleBoxImpl() const { return false; };
 
-    std::optional<LayoutUnit> crossSizeForPercentageResolution(const RenderBox&);
-    std::optional<LayoutUnit> mainSizeForPercentageResolution(const RenderBox&);
-    std::optional<LayoutUnit> childLogicalHeightForPercentageResolution(const RenderBox&);
+    Optional<LayoutUnit> crossSizeForPercentageResolution(const RenderBox&);
+    Optional<LayoutUnit> mainSizeForPercentageResolution(const RenderBox&);
+    Optional<LayoutUnit> childLogicalHeightForPercentageResolution(const RenderBox&);
 
     void clearCachedMainSizeForChild(const RenderBox& child);
 
@@ -122,7 +122,7 @@ private:
     LayoutUnit mainAxisExtent() const;
     LayoutUnit crossAxisContentExtent() const;
     LayoutUnit mainAxisContentExtent(LayoutUnit contentLogicalHeight);
-    std::optional<LayoutUnit> computeMainAxisExtentForChild(const RenderBox& child, SizeType, const Length& size);
+    Optional<LayoutUnit> computeMainAxisExtentForChild(const RenderBox& child, SizeType, const Length& size);
     WritingMode transformedWritingMode() const;
     LayoutUnit flowAwareBorderStart() const;
     LayoutUnit flowAwareBorderEnd() const;
@@ -149,8 +149,8 @@ private:
     bool crossAxisLengthIsDefinite(const RenderBox& child, const Length& flexBasis) const;
     bool needToStretchChildLogicalHeight(const RenderBox& child) const;
     bool childHasIntrinsicMainAxisSize(const RenderBox& child) const;
-    EOverflow mainAxisOverflowForChild(const RenderBox& child) const;
-    EOverflow crossAxisOverflowForChild(const RenderBox& child) const;
+    Overflow mainAxisOverflowForChild(const RenderBox& child) const;
+    Overflow crossAxisOverflowForChild(const RenderBox& child) const;
     void cacheChildMainSize(const RenderBox& child);
 
     void layoutFlexItems(bool relayoutChildren);

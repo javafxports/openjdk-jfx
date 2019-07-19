@@ -40,7 +40,7 @@ struct MessageWithMessagePorts {
     TransferredMessagePortArray transferredPorts;
 
     template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static std::optional<MessageWithMessagePorts> decode(Decoder&);
+    template<class Decoder> static Optional<MessageWithMessagePorts> decode(Decoder&);
 };
 
 
@@ -48,22 +48,21 @@ template<class Encoder>
 void MessageWithMessagePorts::encode(Encoder& encoder) const
 {
     ASSERT(message);
-    encoder << message->toWireBytes() << transferredPorts;
+    encoder << *message << transferredPorts;
 }
 
 template<class Decoder>
-std::optional<MessageWithMessagePorts> MessageWithMessagePorts::decode(Decoder& decoder)
+Optional<MessageWithMessagePorts> MessageWithMessagePorts::decode(Decoder& decoder)
 {
     MessageWithMessagePorts result;
 
-    Vector<uint8_t> wireBytes;
-    if (!decoder.decode(wireBytes))
-        return std::nullopt;
+    result.message = SerializedScriptValue::decode(decoder);
+    if (!result.message)
+        return WTF::nullopt;
 
     if (!decoder.decode(result.transferredPorts))
-        return std::nullopt;
+        return WTF::nullopt;
 
-    result.message = SerializedScriptValue::createFromWireBytes(WTFMove(wireBytes));
     return result;
 }
 

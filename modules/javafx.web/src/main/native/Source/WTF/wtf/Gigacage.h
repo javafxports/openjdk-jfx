@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,30 +26,33 @@
 #pragma once
 
 #include <wtf/FastMalloc.h>
+#include <wtf/StdLibExtras.h>
 
 #if defined(USE_SYSTEM_MALLOC) && USE_SYSTEM_MALLOC
 #define GIGACAGE_ENABLED 0
-#define PRIMITIVE_GIGACAGE_MASK 0
-#define JSVALUE_GIGACAGE_MASK 0
-#define GIGACAGE_BASE_PTRS_SIZE 8192
-
-extern "C" {
-alignas(void*) extern WTF_EXPORTDATA char g_gigacageBasePtrs[GIGACAGE_BASE_PTRS_SIZE];
-}
 
 namespace Gigacage {
 
+const size_t primitiveGigacageMask = 0;
+const size_t jsValueGigacageMask = 0;
+const size_t gigacageBasePtrsSize = 8 * KB;
+
+extern "C" alignas(void*) WTF_EXPORT_PRIVATE char g_gigacageBasePtrs[gigacageBasePtrsSize];
+
 struct BasePtrs {
+    uintptr_t reservedForFlags;
     void* primitive;
     void* jsValue;
-    void* string;
 };
 
 enum Kind {
+    ReservedForFlagsAndNotABasePtr = 0,
     Primitive,
     JSValue,
-    String
 };
+
+static_assert(offsetof(BasePtrs, primitive) == Kind::Primitive * sizeof(void*), "");
+static_assert(offsetof(BasePtrs, jsValue) == Kind::JSValue * sizeof(void*), "");
 
 inline void ensureGigacage() { }
 inline void disablePrimitiveGigacage() { }
@@ -67,12 +70,12 @@ inline bool canPrimitiveGigacageBeDisabled() { return true; }
 ALWAYS_INLINE const char* name(Kind kind)
 {
     switch (kind) {
+    case ReservedForFlagsAndNotABasePtr:
+        RELEASE_ASSERT_NOT_REACHED();
     case Primitive:
         return "Primitive";
     case JSValue:
         return "JSValue";
-    case String:
-        return "String";
     }
     RELEASE_ASSERT_NOT_REACHED();
     return nullptr;
@@ -81,12 +84,12 @@ ALWAYS_INLINE const char* name(Kind kind)
 ALWAYS_INLINE void*& basePtr(BasePtrs& basePtrs, Kind kind)
 {
     switch (kind) {
+    case ReservedForFlagsAndNotABasePtr:
+        RELEASE_ASSERT_NOT_REACHED();
     case Primitive:
         return basePtrs.primitive;
     case JSValue:
         return basePtrs.jsValue;
-    case String:
-        return basePtrs.string;
     }
     RELEASE_ASSERT_NOT_REACHED();
     return basePtrs.primitive;

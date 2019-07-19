@@ -26,6 +26,7 @@
 #pragma once
 
 #include "CodeBlock.h"
+#include <wtf/UniqueArray.h>
 
 namespace JSC {
 
@@ -39,41 +40,11 @@ public:
     {
     }
 
-    // By convention, we say that non-local operands are never killed.
-    bool operandIsKilled(unsigned bytecodeIndex, int operand) const
-    {
-        ASSERT_WITH_SECURITY_IMPLICATION(bytecodeIndex < m_codeBlock->instructions().size());
-        VirtualRegister reg(operand);
-        if (reg.isLocal())
-            return m_killSets[bytecodeIndex].contains(operand);
-        return false;
-    }
-
-    bool operandIsKilled(Instruction* instruction, int operand) const
-    {
-        return operandIsKilled(instruction - m_codeBlock->instructions().begin(), operand);
-    }
-
-    template<typename Functor>
-    void forEachOperandKilledAt(unsigned bytecodeIndex, const Functor& functor) const
-    {
-        ASSERT_WITH_SECURITY_IMPLICATION(bytecodeIndex < m_codeBlock->instructions().size());
-        m_killSets[bytecodeIndex].forEachLocal(
-            [&] (unsigned local) {
-                functor(virtualRegisterForLocal(local));
-            });
-    }
-
-    template<typename Functor>
-    void forEachOperandKilledAt(Instruction* pc, const Functor& functor) const
-    {
-        forEachOperandKilledAt(pc - m_codeBlock->instructions().begin(), functor);
-    }
-
 private:
     friend class BytecodeLivenessAnalysis;
 
     class KillSet {
+        WTF_MAKE_FAST_ALLOCATED;
     public:
         KillSet()
             : m_word(0)
@@ -170,7 +141,7 @@ private:
     };
 
     CodeBlock* m_codeBlock;
-    std::unique_ptr<KillSet[]> m_killSets;
+    UniqueArray<KillSet> m_killSets;
 };
 
 } // namespace JSC

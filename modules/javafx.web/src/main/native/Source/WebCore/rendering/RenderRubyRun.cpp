@@ -43,8 +43,6 @@
 
 namespace WebCore {
 
-using namespace std;
-
 WTF_MAKE_ISO_ALLOCATED_IMPL(RenderRubyRun);
 
 RenderRubyRun::RenderRubyRun(Document& document, RenderStyle&& style)
@@ -99,8 +97,8 @@ bool RenderRubyRun::isChildAllowed(const RenderObject& child, const RenderStyle&
 
 RenderPtr<RenderRubyBase> RenderRubyRun::createRubyBase() const
 {
-    auto newStyle = RenderStyle::createAnonymousStyleWithDisplay(style(), BLOCK);
-    newStyle.setTextAlign(CENTER); // FIXME: use WEBKIT_CENTER?
+    auto newStyle = RenderStyle::createAnonymousStyleWithDisplay(style(), DisplayType::Block);
+    newStyle.setTextAlign(TextAlignMode::Center); // FIXME: use TextAlignMode::WebKitCenter?
     auto renderer = createRenderer<RenderRubyBase>(document(), WTFMove(newStyle));
     renderer->initializeStyle();
     return renderer;
@@ -109,7 +107,7 @@ RenderPtr<RenderRubyBase> RenderRubyRun::createRubyBase() const
 RenderPtr<RenderRubyRun> RenderRubyRun::staticCreateRubyRun(const RenderObject* parentRuby)
 {
     ASSERT(isRuby(parentRuby));
-    auto renderer = createRenderer<RenderRubyRun>(parentRuby->document(), RenderStyle::createAnonymousStyleWithDisplay(parentRuby->style(), INLINE_BLOCK));
+    auto renderer = createRenderer<RenderRubyRun>(parentRuby->document(), RenderStyle::createAnonymousStyleWithDisplay(parentRuby->style(), DisplayType::InlineBlock));
     renderer->initializeStyle();
     return renderer;
 }
@@ -142,7 +140,7 @@ void RenderRubyRun::layoutBlock(bool relayoutChildren, LayoutUnit pageHeight)
         // Since the extra relayout in RenderBlockFlow::updateRubyForJustifiedText() causes the size of the RenderRubyText/RenderRubyBase
         // dependent on the line's current expansion, whenever we relayout the RenderRubyRun, we need to relayout the RenderRubyBase/RenderRubyText as well.
         // FIXME: We should take the expansion opportunities into account if possible.
-        relayoutChildren = style().textAlign() == JUSTIFY;
+        relayoutChildren = style().textAlign() == TextAlignMode::Justify;
     }
 
     RenderBlockFlow::layoutBlock(relayoutChildren, pageHeight);
@@ -155,7 +153,7 @@ void RenderRubyRun::layoutBlock(bool relayoutChildren, LayoutUnit pageHeight)
 
     // Place the RenderRubyText such that its bottom is flush with the lineTop of the first line of the RenderRubyBase.
     LayoutUnit lastLineRubyTextBottom = rt->logicalHeight();
-    LayoutUnit firstLineRubyTextTop = 0;
+    LayoutUnit firstLineRubyTextTop;
     RootInlineBox* rootBox = rt->lastRootBox();
     if (rootBox) {
         // In order to align, we have to ignore negative leading.
@@ -163,14 +161,14 @@ void RenderRubyRun::layoutBlock(bool relayoutChildren, LayoutUnit pageHeight)
         lastLineRubyTextBottom = rootBox->logicalBottomLayoutOverflow();
     }
 
-    if (isHorizontalWritingMode() && rt->style().rubyPosition() == RubyPositionInterCharacter) {
+    if (isHorizontalWritingMode() && rt->style().rubyPosition() == RubyPosition::InterCharacter) {
         // Bopomofo. We need to move the RenderRubyText over to the right side and center it
         // vertically relative to the base.
         const FontCascade& font = style().fontCascade();
-        float distanceBetweenBase = max(font.letterSpacing(), 2.0f * rt->style().fontCascade().fontMetrics().height());
+        float distanceBetweenBase = std::max(font.letterSpacing(), 2.0f * rt->style().fontCascade().fontMetrics().height());
         setWidth(width() + distanceBetweenBase - font.letterSpacing());
         if (RenderRubyBase* rb = rubyBase()) {
-            LayoutUnit firstLineTop = 0;
+            LayoutUnit firstLineTop;
             LayoutUnit lastLineBottom = logicalHeight();
             RootInlineBox* rootBox = rb->firstRootBox();
             if (rootBox)
@@ -183,8 +181,8 @@ void RenderRubyRun::layoutBlock(bool relayoutChildren, LayoutUnit pageHeight)
             LayoutUnit extent = lastLineBottom - firstLineTop;
             rt->setY(firstLineTop + (extent - rt->height()) / 2);
         }
-    } else if (style().isFlippedLinesWritingMode() == (style().rubyPosition() == RubyPositionAfter)) {
-        LayoutUnit firstLineTop = 0;
+    } else if (style().isFlippedLinesWritingMode() == (style().rubyPosition() == RubyPosition::After)) {
+        LayoutUnit firstLineTop;
         if (RenderRubyBase* rb = rubyBase()) {
             RootInlineBox* rootBox = rb->firstRootBox();
             if (rootBox)

@@ -41,14 +41,14 @@ namespace JSC {
 // Commonly used for inferring singletons - in that case each allocation does notifyWrite(). But you
 // can use it for other things as well.
 
-class InferredValue : public JSCell {
+class InferredValue final : public JSCell {
 public:
     typedef JSCell Base;
 
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess mode>
     static IsoSubspace* subspaceFor(VM& vm)
     {
-        return &vm.inferredValueSpace;
+        return vm.inferredValueSpace<mode>();
     }
 
     static InferredValue* create(VM&);
@@ -101,7 +101,7 @@ public:
         m_set.invalidate(vm, detail);
     }
 
-    static const unsigned StructureFlags = StructureIsImmortal | Base::StructureFlags;
+    static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
     void finalizeUnconditionally(VM&);
 

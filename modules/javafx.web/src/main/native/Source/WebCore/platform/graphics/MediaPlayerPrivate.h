@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,22 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaPlayerPrivate_h
-#define MediaPlayerPrivate_h
+#pragma once
 
 #if ENABLE(VIDEO)
 
 #include "MediaPlayer.h"
 #include "PlatformTimeRanges.h"
-#include <wtf/Function.h>
-#include <wtf/Forward.h>
 
 namespace WebCore {
-
-class IntRect;
-class IntSize;
-class MediaPlaybackTarget;
-class PlatformTextTrack;
 
 class MediaPlayerPrivateInterface {
     WTF_MAKE_NONCOPYABLE(MediaPlayerPrivateInterface); WTF_MAKE_FAST_ALLOCATED;
@@ -56,17 +48,18 @@ public:
     virtual void cancelLoad() = 0;
 
     virtual void prepareToPlay() { }
-    virtual PlatformMedia platformMedia() const { return NoPlatformMedia; }
     virtual PlatformLayer* platformLayer() const { return 0; }
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     virtual void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler) { completionHandler(); }
+    virtual void updateVideoFullscreenInlineImage() { }
     virtual void setVideoFullscreenFrame(FloatRect) { }
     virtual void setVideoFullscreenGravity(MediaPlayer::VideoGravity) { }
     virtual void setVideoFullscreenMode(MediaPlayer::VideoFullscreenMode) { }
+    virtual void videoFullscreenStandbyChanged() { }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual NSArray *timedMetadata() const { return 0; }
     virtual String accessLog() const { return emptyString(); }
     virtual String errorLog() const { return emptyString(); }
@@ -121,7 +114,7 @@ public:
 
     virtual void setVolume(float) { }
     virtual void setVolumeDouble(double volume) { return setVolume(volume); }
-#if PLATFORM(IOS) || USE(GSTREAMER)
+#if PLATFORM(IOS_FAMILY) || USE(GSTREAMER)
     virtual float volume() const { return 1; }
 #endif
 
@@ -197,8 +190,8 @@ public:
     virtual void setShouldMaintainAspectRatio(bool) { }
 
     virtual bool hasSingleSecurityOrigin() const { return false; }
-
     virtual bool didPassCORSAccessCheck() const { return false; }
+    virtual Optional<bool> wouldTaintOrigin(const SecurityOrigin&) const { return WTF::nullopt; }
 
     virtual MediaPlayer::MovieLoadType movieLoadType() const { return MediaPlayer::Unknown; }
 
@@ -240,6 +233,7 @@ public:
     virtual void cdmInstanceAttached(CDMInstance&) { }
     virtual void cdmInstanceDetached(CDMInstance&) { }
     virtual void attemptToDecryptWithInstance(CDMInstance&) { }
+    virtual bool waitingForKey() const { return false; }
 #endif
 
 #if ENABLE(VIDEO_TRACK)
@@ -252,6 +246,9 @@ public:
 #if USE(GSTREAMER)
     virtual void simulateAudioInterruption() { }
 #endif
+
+    virtual void beginSimulatedHDCPError() { }
+    virtual void endSimulatedHDCPError() { }
 
     virtual String languageOfPrimaryAudioTrack() const { return emptyString(); }
 
@@ -269,9 +266,7 @@ public:
 
     virtual bool ended() const { return false; }
 
-#if ENABLE(MEDIA_SOURCE)
-    virtual std::optional<PlatformVideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() { return std::nullopt; }
-#endif
+    virtual Optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() { return WTF::nullopt; }
 
 #if ENABLE(AVF_CAPTIONS)
     virtual void notifyTrackModeChanged() { }
@@ -283,9 +278,16 @@ public:
 
     virtual void applicationWillResignActive() { }
     virtual void applicationDidBecomeActive() { }
+
+#if USE(AVFOUNDATION)
+    virtual AVPlayer *objCAVFoundationAVPlayer() const { return nullptr; }
+#endif
+
+    virtual bool performTaskAtMediaTime(WTF::Function<void()>&&, MediaTime) { return false; }
+
+    virtual bool shouldIgnoreIntrinsicSize() { return false; }
 };
 
 }
 
-#endif
 #endif

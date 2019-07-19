@@ -28,7 +28,7 @@
 
 #include "config.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "AccessibilityMediaObject.h"
 
 #include "HTMLMediaElement.h"
@@ -107,11 +107,15 @@ void AccessibilityMediaObject::toggleMute()
 
 void AccessibilityMediaObject::increment()
 {
+    if (dispatchAccessibilityEventWithType(AccessibilityEventType::Increment))
+        return;
     mediaSeek(AXSeekForward);
 }
 
 void AccessibilityMediaObject::decrement()
 {
+    if (dispatchAccessibilityEventWithType(AccessibilityEventType::Decrement))
+        return;
     mediaSeek(AXSeekBackward);
 }
 
@@ -169,7 +173,7 @@ bool AccessibilityMediaObject::isPlayingInline() const
     if (!element)
         return false;
 
-    return !element->mediaSession().requiresFullscreenForVideoPlayback(*element);
+    return !element->mediaSession().requiresFullscreenForVideoPlayback();
 }
 
 void AccessibilityMediaObject::enterFullscreen() const
@@ -184,4 +188,4 @@ void AccessibilityMediaObject::enterFullscreen() const
 
 } // namespace WebCore
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

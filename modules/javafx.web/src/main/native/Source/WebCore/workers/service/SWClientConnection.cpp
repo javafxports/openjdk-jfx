@@ -59,7 +59,7 @@ void SWClientConnection::failedFetchingScript(ServiceWorkerJobIdentifier jobIden
 {
     ASSERT(isMainThread());
 
-    finishFetchingScriptInServer({ { serverConnectionIdentifier(), jobIdentifier }, registrationKey, { }, { }, error });
+    finishFetchingScriptInServer({ { serverConnectionIdentifier(), jobIdentifier }, registrationKey, { }, { }, { },  error });
 }
 
 bool SWClientConnection::postTaskForJob(ServiceWorkerJobIdentifier jobIdentifier, IsJobComplete isJobComplete, WTF::Function<void(ServiceWorkerJob&)>&& task)
@@ -131,11 +131,11 @@ void SWClientConnection::postMessageToServiceWorkerClient(DocumentIdentifier des
 
     MessageEventSource source = RefPtr<ServiceWorker> { ServiceWorker::getOrCreate(*destinationDocument, WTFMove(sourceData)) };
 
-    auto messageEvent = MessageEvent::create(MessagePort::entanglePorts(*destinationDocument, WTFMove(message.transferredPorts)), WTFMove(message.message), sourceOrigin, { }, WTFMove(source));
+    auto messageEvent = MessageEvent::create(MessagePort::entanglePorts(*destinationDocument, WTFMove(message.transferredPorts)), message.message.releaseNonNull(), sourceOrigin, { }, WTFMove(source));
     container->dispatchEvent(messageEvent);
 }
 
-void SWClientConnection::updateRegistrationState(ServiceWorkerRegistrationIdentifier identifier, ServiceWorkerRegistrationState state, const std::optional<ServiceWorkerData>& serviceWorkerData)
+void SWClientConnection::updateRegistrationState(ServiceWorkerRegistrationIdentifier identifier, ServiceWorkerRegistrationState state, const Optional<ServiceWorkerData>& serviceWorkerData)
 {
     ASSERT(isMainThread());
 
@@ -255,7 +255,7 @@ void SWClientConnection::clearPendingJobs()
         ScriptExecutionContext::postTaskTo(keyValue.value, [identifier = keyValue.key] (auto& context) {
             if (auto* container = context.serviceWorkerContainer()) {
                 if (auto* job = container->job(identifier))
-                    job->failedWithException(Exception { TypeError, ASCIILiteral("Internal error") });
+                    job->failedWithException(Exception { TypeError, "Internal error"_s });
             }
         });
     }

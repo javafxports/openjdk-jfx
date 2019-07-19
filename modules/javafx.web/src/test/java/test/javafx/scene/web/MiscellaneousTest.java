@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,13 @@
 
 package test.javafx.scene.web;
 
+import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import static java.lang.String.format;
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,14 +46,21 @@ import javafx.concurrent.Worker.State;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import netscape.javascript.JSObject;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.fail;
 import org.junit.Test;
 import org.w3c.dom.Document;
+
+import static java.lang.String.format;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import javafx.scene.web.WebEngineShim;
+import com.sun.webkit.WebPage;
+import com.sun.webkit.WebPageShim;
+import com.sun.webkit.graphics.WCGraphicsContext;
 
 public class MiscellaneousTest extends TestBase {
 
@@ -217,46 +225,6 @@ public class MiscellaneousTest extends TestBase {
             assertTrue(msg,
                     (stat.firedTime - stat.createdTime) <= (stat.interval + 1000));
         }
-    }
-
-    /**
-     * @test
-     * @bug 8163582
-     * summary svg.path.getTotalLength
-     * Load a simple SVG, Replace its path and get its path's totalLength using pat.getTotalLength
-     */
-    @Test(timeout = 30000) public void testSvgGetTotalLength() throws Exception {
-        final String svgStub = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'>" +
-                " <path id='pathId' d='M150 0 L75 200 L225 200 Z' /> <svg>";
-
-        // <Path, [Expected, Error Tolerance]>
-        final HashMap<String, Double[]> svgPaths = new HashMap<>();
-        svgPaths.put("'M 0 0 L 100 0 L 100 100 L 0 100 Z'",
-                new Double[] {400.0, 0.000001});
-        svgPaths.put("'M 0 0 l 100 0 l 0 100 l -100 0 Z'",
-                new Double[] {400.0, 0.000001});
-        svgPaths.put("'M 0 0 t 0 100'",
-                new Double[] {100.0, 0.1});
-        svgPaths.put("'M 0 0 Q 55 50 100 100'",
-                new Double[] {141.4803314, 0.001});
-        svgPaths.put("'M 778.4191616766467 375.19086364081954 C 781.239563 " +
-                        "375.1908569 786.8525244750526 346.60170830052556 786.8802395209582 346.87991373394766'",
-                new Double[] {29.86020, 0.1});
-        svgPaths.put("'M 0 0 C 0.00001 0.00001 0.00002 0.00001 0.00003 0'",
-                new Double[] {0.0000344338, 0.0001});
-
-        loadContent(svgStub);
-
-        svgPaths.forEach((pathData, expected) -> {
-            executeScript("document.getElementById('pathId').setAttribute('d' , " + pathData + ");");
-            // Get svg path's total length
-            Double totalLength = ((Number) executeScript("document.getElementById('pathId').getTotalLength();")).doubleValue();
-            final String msg = String.format(
-                    "svg.path.getTotalLength() for %s",
-                    pathData);
-            assertEquals(msg,
-                    expected[0], totalLength, expected[1]);
-        });
     }
 
     // This test case will be removed once we implement Websql feature.
@@ -451,6 +419,48 @@ public class MiscellaneousTest extends TestBase {
             } catch (IOException ex){
                 throw new AssertionError(ex);
             }
+        });
+    }
+
+    @Test public void testShadowDOMWithLoadContent() {
+        loadContent("<html>\n" +
+                    "  <body>\n" +
+                    "    <template id='element-details-template'>\n" +
+                    "      <style>\n" +
+                    "        p { font-weight: bold; }\n" +
+                    "      </style>\n" +
+                    "    </template>\n" +
+                    "    <element-details>\n" +
+                    "    </element-details>\n" +
+                    "    <script>\n" +
+                    "    customElements.define('element-details',\n" +
+                    "      class extends HTMLElement {\n" +
+                    "        constructor() {\n" +
+                    "          super();\n" +
+                    "          const template = document\n" +
+                    "            .getElementById('element-details-template')\n" +
+                    "            .content;\n" +
+                    "          const shadowRoot = this.attachShadow({mode: 'open'})\n" +
+                    "            .appendChild(template.cloneNode(true));\n" +
+                    "        }\n" +
+                    "      })\n" +
+                    "    </script>\n" +
+                    "  </body>\n" +
+                    "</html>");
+    }
+
+    @Test public void testWindows1251EncodingWithXML() {
+        loadContent(
+            "<script>\n" +
+            "const text = '<?xml version=\"1.0\" encoding=\"windows-1251\"?><test/>';\n" +
+            "const parser = new DOMParser();\n" +
+            "window.xmlDoc = parser.parseFromString(text, 'text/xml');\n" +
+            "</script>"
+        );
+        submit(() -> {
+            // WebKit injects error message into body incase of encoding error, otherwise
+            // body should be null.
+            assertNull(getEngine().executeScript("window.xmlDoc.body"));
         });
     }
 }

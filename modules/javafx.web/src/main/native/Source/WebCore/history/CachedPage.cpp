@@ -29,22 +29,21 @@
 #include "Document.h"
 #include "Element.h"
 #include "FocusController.h"
+#include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
 #include "HistoryController.h"
 #include "HistoryItem.h"
-#include "MainFrame.h"
 #include "Node.h"
 #include "Page.h"
 #include "PageTransitionEvent.h"
 #include "ScriptDisallowedScope.h"
 #include "Settings.h"
 #include "VisitedLinkState.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "FrameSelection.h"
 #endif
 
@@ -56,7 +55,7 @@ DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, cachedPageCounter, ("Cached
 
 CachedPage::CachedPage(Page& page)
     : m_page(page)
-    , m_expirationTime(monotonicallyIncreasingTime() + page.settings().backForwardCacheExpirationInterval())
+    , m_expirationTime(MonotonicTime::now() + Seconds(page.settings().backForwardCacheExpirationInterval()))
     , m_cachedMainFrame(std::make_unique<CachedFrame>(page.mainFrame()))
 {
 #ifndef NDEBUG
@@ -129,7 +128,7 @@ void CachedPage::restore(Page& page)
     // FIXME: Right now we don't support pages w/ frames in the b/f cache.  This may need to be tweaked when we add support for that.
     Document* focusedDocument = page.focusController().focusedOrMainFrame().document();
     if (Element* element = focusedDocument->focusedElement()) {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         // We don't want focused nodes changing scroll position when restoring from the cache
         // as it can cause ugly jumps before we manage to restore the cached position.
         page.mainFrame().selection().suppressScrolling();
@@ -142,7 +141,7 @@ void CachedPage::restore(Page& page)
         }
 #endif
         element->updateFocusAppearance(SelectionRestorationMode::Restore);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         if (frameView)
             frameView->setProhibitsScrolling(hadProhibitsScrolling);
         page.mainFrame().selection().restoreScrolling();
@@ -183,7 +182,7 @@ void CachedPage::clear()
 
 bool CachedPage::hasExpired() const
 {
-    return monotonicallyIncreasingTime() > m_expirationTime;
+    return MonotonicTime::now() > m_expirationTime;
 }
 
 } // namespace WebCore

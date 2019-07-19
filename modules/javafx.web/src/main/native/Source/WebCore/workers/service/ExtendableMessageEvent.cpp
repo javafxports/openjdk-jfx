@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-Ref<ExtendableMessageEvent> ExtendableMessageEvent::create(Vector<RefPtr<MessagePort>>&& ports, RefPtr<SerializedScriptValue>&& data, const String& origin, const String& lastEventId, std::optional<ExtendableMessageEventSource>&& source)
+Ref<ExtendableMessageEvent> ExtendableMessageEvent::create(Vector<RefPtr<MessagePort>>&& ports, RefPtr<SerializedScriptValue>&& data, const String& origin, const String& lastEventId, Optional<ExtendableMessageEventSource>&& source)
 {
     return adoptRef(*new ExtendableMessageEvent(WTFMove(data), origin, lastEventId, WTFMove(source), WTFMove(ports)));
 }
@@ -47,8 +47,8 @@ ExtendableMessageEvent::ExtendableMessageEvent(JSC::ExecState& state, const Atom
 {
 }
 
-ExtendableMessageEvent::ExtendableMessageEvent(RefPtr<SerializedScriptValue>&& data, const String& origin, const String& lastEventId, std::optional<ExtendableMessageEventSource>&& source, Vector<RefPtr<MessagePort>>&& ports)
-    : ExtendableEvent(eventNames().messageEvent, false, false)
+ExtendableMessageEvent::ExtendableMessageEvent(RefPtr<SerializedScriptValue>&& data, const String& origin, const String& lastEventId, Optional<ExtendableMessageEventSource>&& source, Vector<RefPtr<MessagePort>>&& ports)
+    : ExtendableEvent(eventNames().messageEvent, CanBubble::No, IsCancelable::No)
     , m_data(WTFMove(data))
     , m_origin(origin)
     , m_lastEventId(lastEventId)

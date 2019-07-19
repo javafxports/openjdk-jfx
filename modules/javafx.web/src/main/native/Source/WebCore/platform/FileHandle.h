@@ -28,9 +28,8 @@
 
 #pragma once
 
-#include "FileSystem.h"
-
 #include <wtf/Assertions.h>
+#include <wtf/FileSystem.h>
 
 namespace WebCore {
 
@@ -38,6 +37,7 @@ class WEBCORE_EXPORT FileHandle final {
 public:
     FileHandle() = default;
     FileHandle(const String& path, FileSystem::FileOpenMode);
+    FileHandle(const String& path, FileSystem::FileOpenMode, OptionSet<FileSystem::FileLockMode>);
     FileHandle(const FileHandle& other) = delete;
     FileHandle(FileHandle&& other);
 
@@ -59,6 +59,8 @@ private:
     String m_path;
     FileSystem::FileOpenMode m_mode { FileSystem::FileOpenMode::Read };
     FileSystem::PlatformFileHandle m_fileHandle { FileSystem::invalidPlatformFileHandle };
+    OptionSet<FileSystem::FileLockMode> m_lockMode;
+    bool m_shouldLock { false };
 };
 
 } // namespace WebCore

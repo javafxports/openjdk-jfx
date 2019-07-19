@@ -29,22 +29,25 @@
 
 #if USE(LIBWEBRTC)
 
+namespace webrtc {
+class VideoDecoderFactory;
+class VideoEncoderFactory;
+}
+
 namespace WebCore {
 
-class VideoToolboxVideoDecoderFactory;
-class VideoToolboxVideoEncoderFactory;
-
 class WEBCORE_EXPORT LibWebRTCProviderCocoa : public LibWebRTCProvider {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     LibWebRTCProviderCocoa() = default;
+    ~LibWebRTCProviderCocoa();
 
 private:
     void setActive(bool) final;
-    std::unique_ptr<cricket::WebRtcVideoDecoderFactory> createDecoderFactory() final;
-    std::unique_ptr<cricket::WebRtcVideoEncoderFactory> createEncoderFactory() final;
+    std::unique_ptr<webrtc::VideoDecoderFactory> createDecoderFactory() final;
+    std::unique_ptr<webrtc::VideoEncoderFactory> createEncoderFactory() final;
 
-    VideoToolboxVideoDecoderFactory* m_decoderFactory { nullptr };
-    VideoToolboxVideoEncoderFactory* m_encoderFactory { nullptr };
+    void setH264HardwareEncoderAllowed(bool allowed) final;
 };
 
 } // namespace WebCore

@@ -73,7 +73,7 @@ EncodedJSValue JSC_HOST_CALL webAssemblyModuleCustomSections(ExecState* exec)
 
     JSWebAssemblyModule* module = jsDynamicCast<JSWebAssemblyModule*>(vm, exec->argument(0));
     if (!module)
-        return JSValue::encode(throwException(exec, throwScope, createTypeError(exec, ASCIILiteral("WebAssembly.Module.customSections called with non WebAssembly.Module argument"))));
+        return JSValue::encode(throwException(exec, throwScope, createTypeError(exec, "WebAssembly.Module.customSections called with non WebAssembly.Module argument"_s)));
 
     const String sectionNameString = exec->argument(1).getString(exec);
     RETURN_IF_EXCEPTION(throwScope, { });
@@ -104,7 +104,7 @@ EncodedJSValue JSC_HOST_CALL webAssemblyModuleImports(ExecState* exec)
 
     JSWebAssemblyModule* module = jsDynamicCast<JSWebAssemblyModule*>(vm, exec->argument(0));
     if (!module)
-        return JSValue::encode(throwException(exec, throwScope, createTypeError(exec, ASCIILiteral("WebAssembly.Module.imports called with non WebAssembly.Module argument"))));
+        return JSValue::encode(throwException(exec, throwScope, createTypeError(exec, "WebAssembly.Module.imports called with non WebAssembly.Module argument"_s)));
 
     JSArray* result = constructEmptyArray(exec, nullptr, globalObject);
     RETURN_IF_EXCEPTION(throwScope, { });
@@ -136,7 +136,7 @@ EncodedJSValue JSC_HOST_CALL webAssemblyModuleExports(ExecState* exec)
 
     JSWebAssemblyModule* module = jsDynamicCast<JSWebAssemblyModule*>(vm, exec->argument(0));
     if (!module)
-        return JSValue::encode(throwException(exec, throwScope, createTypeError(exec, ASCIILiteral("WebAssembly.Module.exports called with non WebAssembly.Module argument"))));
+        return JSValue::encode(throwException(exec, throwScope, createTypeError(exec, "WebAssembly.Module.exports called with non WebAssembly.Module argument"_s)));
 
     JSArray* result = constructEmptyArray(exec, nullptr, globalObject);
     RETURN_IF_EXCEPTION(throwScope, { });
@@ -166,8 +166,7 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyModule(ExecState* exec
     Vector<uint8_t> source = createSourceBufferFromValue(vm, exec, exec->argument(0));
     RETURN_IF_EXCEPTION(scope, { });
 
-    scope.release();
-    return JSValue::encode(WebAssemblyModuleConstructor::createModule(exec, WTFMove(source)));
+    RELEASE_AND_RETURN(scope, JSValue::encode(WebAssemblyModuleConstructor::createModule(exec, WTFMove(source))));
 }
 
 static EncodedJSValue JSC_HOST_CALL callJSWebAssemblyModule(ExecState* exec)
@@ -185,8 +184,7 @@ JSWebAssemblyModule* WebAssemblyModuleConstructor::createModule(ExecState* exec,
     auto* structure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), exec->lexicalGlobalObject()->WebAssemblyModuleStructure());
     RETURN_IF_EXCEPTION(scope, nullptr);
 
-    scope.release();
-    return JSWebAssemblyModule::createStub(vm, exec, structure, Wasm::Module::validateSync(&vm.wasmContext, WTFMove(buffer)));
+    RELEASE_AND_RETURN(scope, JSWebAssemblyModule::createStub(vm, exec, structure, Wasm::Module::validateSync(&vm.wasmContext, WTFMove(buffer))));
 }
 
 WebAssemblyModuleConstructor* WebAssemblyModuleConstructor::create(VM& vm, Structure* structure, WebAssemblyModulePrototype* thisPrototype)
@@ -203,7 +201,7 @@ Structure* WebAssemblyModuleConstructor::createStructure(VM& vm, JSGlobalObject*
 
 void WebAssemblyModuleConstructor::finishCreation(VM& vm, WebAssemblyModulePrototype* prototype)
 {
-    Base::finishCreation(vm, ASCIILiteral("Module"));
+    Base::finishCreation(vm, "Module"_s);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum | PropertyAttribute::DontDelete);
 }

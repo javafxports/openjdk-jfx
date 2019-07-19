@@ -27,15 +27,16 @@
 #pragma once
 
 #include "ContentSecurityPolicyResponseHeaders.h"
+#include "FetchOptions.h"
 #include "ResourceError.h"
 #include "ResourceRequest.h"
 #include "ThreadableLoader.h"
 #include "ThreadableLoaderClient.h"
-#include "URL.h"
 #include <memory>
 #include <wtf/FastMalloc.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/URL.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -53,13 +54,14 @@ public:
         return adoptRef(*new WorkerScriptLoader);
     }
 
-    void loadSynchronously(ScriptExecutionContext*, const URL&, FetchOptions::Mode, FetchOptions::Cache, ContentSecurityPolicyEnforcement, const String& initiatorIdentifier);
-    void loadAsynchronously(ScriptExecutionContext&, ResourceRequest&&, FetchOptions::Mode, FetchOptions::Cache, FetchOptions::Redirect, ContentSecurityPolicyEnforcement, WorkerScriptLoaderClient&);
+    Optional<Exception> loadSynchronously(ScriptExecutionContext*, const URL&, FetchOptions::Mode, FetchOptions::Cache, ContentSecurityPolicyEnforcement, const String& initiatorIdentifier);
+    void loadAsynchronously(ScriptExecutionContext&, ResourceRequest&&, FetchOptions&&, ContentSecurityPolicyEnforcement, ServiceWorkersMode, WorkerScriptLoaderClient&);
 
     void notifyError();
 
     String script();
     const ContentSecurityPolicyResponseHeaders& contentSecurityPolicy() const { return m_contentSecurityPolicy; }
+    const String& referrerPolicy() const { return m_referrerPolicy; }
     const URL& url() const { return m_url; }
     const URL& responseURL() const;
     const String& responseMIMEType() const { return m_responseMIMEType; }
@@ -91,7 +93,9 @@ private:
     URL m_url;
     URL m_responseURL;
     String m_responseMIMEType;
+    FetchOptions::Destination m_destination;
     ContentSecurityPolicyResponseHeaders m_contentSecurityPolicy;
+    String m_referrerPolicy;
     unsigned long m_identifier { 0 };
     bool m_failed { false };
     bool m_finishing { false };

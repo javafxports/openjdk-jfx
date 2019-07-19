@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 
 #if ENABLE(B3_JIT)
 
+#include "AirAllocateRegistersAndStackAndGenerateCode.h"
 #include "AirCCallSpecial.h"
 #include "AirCFG.h"
 #include "AllowMacroScratchRegisterUsageIf.h"
@@ -35,6 +36,7 @@
 #include "B3Procedure.h"
 #include "B3StackSlot.h"
 #include <wtf/ListDump.h>
+#include <wtf/MathExtras.h>
 
 namespace JSC { namespace B3 { namespace Air {
 
@@ -43,7 +45,9 @@ static void defaultPrologueGenerator(CCallHelpers& jit, Code& code)
     jit.emitFunctionPrologue();
     if (code.frameSize()) {
         AllowMacroScratchRegisterUsageIf allowScratch(jit, isARM64());
-        jit.addPtr(CCallHelpers::TrustedImm32(-code.frameSize()), MacroAssembler::stackPointerRegister);
+        jit.addPtr(MacroAssembler::TrustedImm32(-code.frameSize()), MacroAssembler::framePointerRegister,  MacroAssembler::stackPointerRegister);
+        if (Options::zeroStackFrame())
+            jit.clearStackFrame(MacroAssembler::framePointerRegister, MacroAssembler::stackPointerRegister, GPRInfo::nonArgGPR0, code.frameSize());
     }
 
     jit.emitSave(code.calleeSaveRegisterAtOffsetList());
@@ -58,7 +62,8 @@ Code::Code(Procedure& proc)
     // Come up with initial orderings of registers. The user may replace this with something else.
     forEachBank(
         [&] (Bank bank) {
-            Vector<Reg> result;
+            Vector<Reg> volatileRegs;
+            Vector<Reg> calleeSaveRegs;
             RegisterSet all = bank == GP ? RegisterSet::allGPRs() : RegisterSet::allFPRs();
             all.exclude(RegisterSet::stackRegisters());
             all.exclude(RegisterSet::reservedHardwareRegisters());
@@ -66,13 +71,20 @@ Code::Code(Procedure& proc)
             all.forEach(
                 [&] (Reg reg) {
                     if (!calleeSave.get(reg))
-                        result.append(reg);
+                        volatileRegs.append(reg);
                 });
             all.forEach(
                 [&] (Reg reg) {
                     if (calleeSave.get(reg))
-                        result.append(reg);
+                        calleeSaveRegs.append(reg);
                 });
+            if (Options::airRandomizeRegs()) {
+                shuffleVector(volatileRegs, [&] (unsigned limit) { return m_weakRandom.getUint32(limit); });
+                shuffleVector(calleeSaveRegs, [&] (unsigned limit) { return m_weakRandom.getUint32(limit); });
+            }
+            Vector<Reg> result;
+            result.appendVector(volatileRegs);
+            result.appendVector(calleeSaveRegs);
             setRegsInPriorityOrder(bank, result);
         });
 
@@ -84,6 +96,11 @@ Code::Code(Procedure& proc)
 
 Code::~Code()
 {
+}
+
+void Code::emitDefaultPrologue(CCallHelpers& jit)
+{
+    defaultPrologueGenerator(jit, *this);
 }
 
 void Code::setRegsInPriorityOrder(Bank bank, const Vector<Reg>& regs)
@@ -181,14 +198,14 @@ bool Code::isEntrypoint(BasicBlock* block) const
     return false;
 }
 
-std::optional<unsigned> Code::entrypointIndex(BasicBlock* block) const
+Optional<unsigned> Code::entrypointIndex(BasicBlock* block) const
 {
     RELEASE_ASSERT(m_entrypoints.size());
     for (unsigned i = 0; i < m_entrypoints.size(); ++i) {
         if (m_entrypoints[i].block() == block)
             return i;
     }
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 void Code::setCalleeSaveRegisterAtOffsetList(RegisterAtOffsetList&& registerAtOffsetList, StackSlot* slot)

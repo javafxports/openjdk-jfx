@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Andy VanWagoner (thetalecrafter@gmail.com)
+ * Copyright (C) 2015 Andy VanWagoner (andy@vanwagoner.family)
  * Copyright (C) 2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -57,10 +57,10 @@ const ClassInfo IntlNumberFormatConstructor::s_info = { "Function", &Base::s_inf
 @end
 */
 
-IntlNumberFormatConstructor* IntlNumberFormatConstructor::create(VM& vm, Structure* structure, IntlNumberFormatPrototype* numberFormatPrototype, Structure* numberFormatStructure)
+IntlNumberFormatConstructor* IntlNumberFormatConstructor::create(VM& vm, Structure* structure, IntlNumberFormatPrototype* numberFormatPrototype)
 {
     IntlNumberFormatConstructor* constructor = new (NotNull, allocateCell<IntlNumberFormatConstructor>(vm.heap)) IntlNumberFormatConstructor(vm, structure);
-    constructor->finishCreation(vm, numberFormatPrototype, numberFormatStructure);
+    constructor->finishCreation(vm, numberFormatPrototype);
     return constructor;
 }
 
@@ -77,12 +77,12 @@ IntlNumberFormatConstructor::IntlNumberFormatConstructor(VM& vm, Structure* stru
 {
 }
 
-void IntlNumberFormatConstructor::finishCreation(VM& vm, IntlNumberFormatPrototype* numberFormatPrototype, Structure* numberFormatStructure)
+void IntlNumberFormatConstructor::finishCreation(VM& vm, IntlNumberFormatPrototype* numberFormatPrototype)
 {
-    Base::finishCreation(vm, ASCIILiteral("NumberFormat"));
+    Base::finishCreation(vm, "NumberFormat"_s);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, numberFormatPrototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum | PropertyAttribute::DontDelete);
-    m_numberFormatStructure.set(vm, this, numberFormatStructure);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
+    numberFormatPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, this, static_cast<unsigned>(PropertyAttribute::DontEnum));
 }
 
 static EncodedJSValue JSC_HOST_CALL constructIntlNumberFormat(ExecState* state)
@@ -93,7 +93,7 @@ static EncodedJSValue JSC_HOST_CALL constructIntlNumberFormat(ExecState* state)
     // 1. If NewTarget is undefined, let newTarget be the active function object, else let newTarget be NewTarget.
     // 2. Let numberFormat be OrdinaryCreateFromConstructor(newTarget, %NumberFormatPrototype%).
     // 3. ReturnIfAbrupt(numberFormat).
-    Structure* structure = InternalFunction::createSubclassStructure(state, state->newTarget(), jsCast<IntlNumberFormatConstructor*>(state->jsCallee())->numberFormatStructure());
+    Structure* structure = InternalFunction::createSubclassStructure(state, state->newTarget(), jsCast<IntlNumberFormatConstructor*>(state->jsCallee())->numberFormatStructure(vm));
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     IntlNumberFormat* numberFormat = IntlNumberFormat::create(vm, structure);
     ASSERT(numberFormat);
@@ -117,7 +117,7 @@ static EncodedJSValue JSC_HOST_CALL callIntlNumberFormat(ExecState* state)
     return JSValue::encode(constructIntlInstanceWithWorkaroundForLegacyIntlConstructor<IntlNumberFormat>(*state, state->thisValue(), callee, [&] (VM& vm) {
         // 2. Let numberFormat be OrdinaryCreateFromConstructor(newTarget, %NumberFormatPrototype%).
         // 3. ReturnIfAbrupt(numberFormat).
-        IntlNumberFormat* numberFormat = IntlNumberFormat::create(vm, callee->numberFormatStructure());
+        IntlNumberFormat* numberFormat = IntlNumberFormat::create(vm, callee->numberFormatStructure(vm));
         ASSERT(numberFormat);
 
         // 4. Return InitializeNumberFormat(numberFormat, locales, options).
@@ -133,7 +133,7 @@ EncodedJSValue JSC_HOST_CALL IntlNumberFormatConstructorFuncSupportedLocalesOf(E
     // 11.2.2 Intl.NumberFormat.supportedLocalesOf(locales [, options]) (ECMA-402 2.0)
 
     // 1. Let availableLocales be %NumberFormat%.[[availableLocales]].
-    JSGlobalObject* globalObject = state->jsCallee()->globalObject();
+    JSGlobalObject* globalObject = state->jsCallee()->globalObject(vm);
     const HashSet<String> availableLocales = globalObject->intlNumberFormatAvailableLocales();
 
     // 2. Let requestedLocales be CanonicalizeLocaleList(locales).
@@ -141,18 +141,7 @@ EncodedJSValue JSC_HOST_CALL IntlNumberFormatConstructorFuncSupportedLocalesOf(E
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     // 3. Return SupportedLocales(availableLocales, requestedLocales, options).
-    scope.release();
-    return JSValue::encode(supportedLocales(*state, availableLocales, requestedLocales, state->argument(1)));
-}
-
-void IntlNumberFormatConstructor::visitChildren(JSCell* cell, SlotVisitor& visitor)
-{
-    IntlNumberFormatConstructor* thisObject = jsCast<IntlNumberFormatConstructor*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-
-    Base::visitChildren(thisObject, visitor);
-
-    visitor.append(thisObject->m_numberFormatStructure);
+    RELEASE_AND_RETURN(scope, JSValue::encode(supportedLocales(*state, availableLocales, requestedLocales, state->argument(1))));
 }
 
 } // namespace JSC

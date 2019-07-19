@@ -50,14 +50,6 @@ public:
     bool isFiringEventListeners { false };
 };
 
-enum EventTargetInterface {
-
-#define DOM_EVENT_INTERFACE_DECLARE(name) name##EventTargetInterfaceType,
-DOM_EVENT_TARGET_INTERFACES_FOR_EACH(DOM_EVENT_INTERFACE_DECLARE)
-#undef DOM_EVENT_INTERFACE_DECLARE
-
-};
-
 class EventTarget : public ScriptWrappable {
 public:
     void ref() { refEventTarget(); }
@@ -67,6 +59,7 @@ public:
     virtual ScriptExecutionContext* scriptExecutionContext() const = 0;
 
     virtual bool isNode() const;
+    virtual bool isPaymentRequest() const;
 
     struct ListenerOptions {
         ListenerOptions(bool capture = false)
@@ -77,13 +70,13 @@ public:
     };
 
     struct AddEventListenerOptions : ListenerOptions {
-        AddEventListenerOptions(bool capture = false, std::optional<bool> passive = std::nullopt, bool once = false)
+        AddEventListenerOptions(bool capture = false, Optional<bool> passive = WTF::nullopt, bool once = false)
             : ListenerOptions(capture)
             , passive(passive)
             , once(once)
         { }
 
-        std::optional<bool> passive;
+        Optional<bool> passive;
         bool once { false };
     };
 
@@ -110,7 +103,8 @@ public:
     bool hasActiveEventListeners(const AtomicString& eventType) const;
     const EventListenerVector& eventListeners(const AtomicString& eventType);
 
-    void fireEventListeners(Event&);
+    enum class EventInvokePhase { Capturing, Bubbling };
+    void fireEventListeners(Event&, EventInvokePhase);
     bool isFiringEventListeners() const;
 
     void visitJSEventListeners(JSC::SlotVisitor&);
@@ -128,7 +122,7 @@ private:
     virtual void refEventTarget() = 0;
     virtual void derefEventTarget() = 0;
 
-    void fireEventListeners(Event&, EventListenerVector);
+    void innerInvokeEventListeners(Event&, EventListenerVector, EventInvokePhase);
 
     friend class EventListenerIterator;
 };

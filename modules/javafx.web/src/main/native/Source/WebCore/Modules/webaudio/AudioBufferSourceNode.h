@@ -26,6 +26,7 @@
 
 #include "AudioScheduledSourceNode.h"
 #include <wtf/Lock.h>
+#include <wtf/UniqueArray.h>
 
 namespace WebCore {
 
@@ -55,7 +56,7 @@ public:
     unsigned numberOfChannels();
 
     // Play-state
-    ExceptionOr<void> start(double when, double grainOffset, std::optional<double> grainDuration);
+    ExceptionOr<void> start(double when, double grainOffset, Optional<double> grainDuration);
 
     // Note: the attribute was originally exposed as .looping, but to be more consistent in naming with <audio>
     // and with how it's described in the specification, the proper attribute name is .loop
@@ -109,8 +110,8 @@ private:
     RefPtr<AudioBuffer> m_buffer;
 
     // Pointers for the buffer and destination.
-    std::unique_ptr<const float*[]> m_sourceChannels;
-    std::unique_ptr<float*[]> m_destinationChannels;
+    UniqueArray<const float*> m_sourceChannels;
+    UniqueArray<float*> m_destinationChannels;
 
     // Used for the "gain" and "playbackRate" attributes.
     RefPtr<AudioParam> m_gain;

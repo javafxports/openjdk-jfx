@@ -118,7 +118,7 @@ private:
 
     static void destroy(JSC::JSCell*);
 
-    std::optional<typename DOMWrapped::Iterator> m_iterator;
+    Optional<typename DOMWrapped::Iterator> m_iterator;
     IterationKind m_kind;
 };
 
@@ -206,9 +206,9 @@ template<typename JSIterator> JSC::JSValue iteratorForEach(JSC::ExecState& state
     JSC::JSValue thisValue = state.argument(1);
 
     JSC::CallData callData;
-    JSC::CallType callType = JSC::getCallData(callback, callData);
+    JSC::CallType callType = JSC::getCallData(state.vm(), callback, callData);
     if (callType == JSC::CallType::None)
-        return throwTypeError(&state, scope, ASCIILiteral("Cannot call callback"));
+        return throwTypeError(&state, scope, "Cannot call callback"_s);
 
     auto iterator = thisObject.wrapped().createIterator();
     while (auto value = iterator.next()) {
@@ -240,7 +240,7 @@ JSC::JSValue JSDOMIterator<JSWrapper, IteratorTraits>::next(JSC::ExecState& stat
         auto iteratorValue = m_iterator->next();
         if (iteratorValue)
             return createIteratorResultObject(&state, asJS(state, iteratorValue), false);
-        m_iterator = std::nullopt;
+        m_iterator = WTF::nullopt;
     }
     return createIteratorResultObject(&state, JSC::jsUndefined(), true);
 }
@@ -251,9 +251,9 @@ JSC::EncodedJSValue JSC_HOST_CALL JSDOMIteratorPrototype<JSWrapper, IteratorTrai
     JSC::VM& vm = state->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    auto iterator = jsDynamicDowncast<JSDOMIterator<JSWrapper, IteratorTraits>*>(vm, state->thisValue());
+    auto iterator = JSC::jsDynamicCast<JSDOMIterator<JSWrapper, IteratorTraits>*>(vm, state->thisValue());
     if (!iterator)
-        return JSC::JSValue::encode(throwTypeError(state, scope, ASCIILiteral("Cannot call next() on a non-Iterator object")));
+        return JSC::JSValue::encode(throwTypeError(state, scope, "Cannot call next() on a non-Iterator object"_s));
 
     return JSC::JSValue::encode(iterator->next(*state));
 }

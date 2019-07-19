@@ -42,6 +42,9 @@ inline bool isInWebProcess() { return true; }
 
 bool isInWebProcess();
 
+WEBCORE_EXPORT void setApplicationSDKVersion(uint32_t);
+uint32_t applicationSDKVersion();
+
 WEBCORE_EXPORT void setApplicationBundleIdentifier(const String&);
 String applicationBundleIdentifier();
 
@@ -69,25 +72,29 @@ WEBCORE_EXPORT bool isIAdProducer();
 
 #endif // PLATFORM(MAC)
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 namespace IOSApplication {
 
 WEBCORE_EXPORT bool isMobileMail();
 WEBCORE_EXPORT bool isMobileSafari();
 WEBCORE_EXPORT bool isWebBookmarksD();
-bool isDumpRenderTree();
+WEBCORE_EXPORT bool isDumpRenderTree();
 bool isMobileStore();
+bool isSpringBoard();
 WEBCORE_EXPORT bool isWebApp();
 WEBCORE_EXPORT bool isWebProcess();
-bool isIBooks();
+WEBCORE_EXPORT bool isIBooks();
 bool isIBooksStorytime();
 WEBCORE_EXPORT bool isTheSecretSocietyHiddenMystery();
 WEBCORE_EXPORT bool isCardiogram();
+WEBCORE_EXPORT bool isNike();
+bool isMoviStarPlus();
+WEBCORE_EXPORT bool isFirefox();
 
 } // IOSApplication
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 #endif // PLATFORM(COCOA)
 

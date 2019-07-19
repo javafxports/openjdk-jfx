@@ -78,9 +78,7 @@ public:
     void removeStyleSheetCandidateNode(Node&);
 
     String preferredStylesheetSetName() const { return m_preferredStylesheetSetName; }
-    String selectedStylesheetSetName() const { return m_selectedStylesheetSetName; }
     void setPreferredStylesheetSetName(const String&);
-    void setSelectedStylesheetSetName(const String&);
 
     void addPendingSheet(const Element&);
     void removePendingSheet(const Element&);
@@ -99,6 +97,7 @@ public:
 
     void evaluateMediaQueriesForViewportChange();
     void evaluateMediaQueriesForAccessibilitySettingsChange();
+    void evaluateMediaQueriesForAppearanceChange();
 
     // This is called when some stylesheet becomes newly enabled or disabled.
     void didChangeActiveStyleSheetCandidates();
@@ -172,13 +171,12 @@ private:
     HashSet<const Element*> m_elementsInHeadWithPendingSheets;
     HashSet<const Element*> m_elementsInBodyWithPendingSheets;
 
-    std::optional<UpdateType> m_pendingUpdate;
+    Optional<UpdateType> m_pendingUpdate;
     bool m_hasDescendantWithPendingUpdate { false };
 
     ListHashSet<Node*> m_styleSheetCandidateNodes;
 
     String m_preferredStylesheetSetName;
-    String m_selectedStylesheetSetName;
 
     bool m_usesStyleBasedEditability { false };
     bool m_isUpdatingStyleResolver { false };

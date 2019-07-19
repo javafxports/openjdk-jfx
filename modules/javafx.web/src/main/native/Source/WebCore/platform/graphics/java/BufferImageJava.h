@@ -28,7 +28,7 @@
 #include "GraphicsContext.h"
 #include "Image.h"
 #include "IntSize.h"
-#include <wtf/java/JavaEnv.h>
+#include "PlatformJavaClasses.h"
 
 namespace WebCore {
 
@@ -58,7 +58,7 @@ public:
               const FloatRect& srcRect, CompositeOperator op, BlendMode bm, DecodingMode dm, ImageOrientationDescription) override;
 
     void drawPattern(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform,
-        const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendModeNormal) override;
+        const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendMode::Normal) override;
 
     NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext* = nullptr) override;
 

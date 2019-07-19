@@ -42,15 +42,12 @@ enum class LinkIconType;
 
 struct LinkRelAttribute {
     bool isStyleSheet { false };
-    std::optional<LinkIconType> iconType;
+    Optional<LinkIconType> iconType;
     bool isAlternate { false };
     bool isDNSPrefetch { false };
     bool isLinkPreload { false };
     bool isLinkPreconnect { false };
-#if ENABLE(LINK_PREFETCH)
     bool isLinkPrefetch { false };
-    bool isLinkSubresource { false };
-#endif
 #if ENABLE(APPLICATION_MANIFEST)
     bool isApplicationManifest { false };
 #endif

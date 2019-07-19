@@ -36,6 +36,7 @@ namespace WebCore {
 class HTMLMediaElement;
 
 class HTMLTrackElement final : public HTMLElement, public TextTrackClient {
+    WTF_MAKE_ISO_ALLOCATED(HTMLTrackElement);
 public:
     static Ref<HTMLTrackElement> create(const QualifiedName&, Document&);
 
@@ -57,6 +58,7 @@ public:
     enum LoadStatus { Failure, Success };
     void didCompleteLoad(LoadStatus);
 
+    RefPtr<HTMLMediaElement> mediaElement() const;
     const AtomicString& mediaElementCrossOriginAttribute() const;
 
 private:
@@ -71,8 +73,6 @@ private:
     bool isURLAttribute(const Attribute&) const final;
 
     void loadTimerFired();
-
-    RefPtr<HTMLMediaElement> mediaElement() const;
 
     // TextTrackClient
     void textTrackModeChanged(TextTrack&) final;

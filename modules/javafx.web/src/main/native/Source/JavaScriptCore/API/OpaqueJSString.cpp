@@ -34,12 +34,20 @@
 
 using namespace JSC;
 
-RefPtr<OpaqueJSString> OpaqueJSString::create(const String& string)
+RefPtr<OpaqueJSString> OpaqueJSString::tryCreate(const String& string)
 {
     if (string.isNull())
         return nullptr;
 
     return adoptRef(new OpaqueJSString(string));
+}
+
+RefPtr<OpaqueJSString> OpaqueJSString::tryCreate(String&& string)
+{
+    if (string.isNull())
+        return nullptr;
+
+    return adoptRef(new OpaqueJSString(WTFMove(string)));
 }
 
 OpaqueJSString::~OpaqueJSString()

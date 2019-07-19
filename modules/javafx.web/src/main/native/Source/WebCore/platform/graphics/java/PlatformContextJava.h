@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,11 +26,11 @@
 #pragma once
 
 #include "GraphicsContext.h"
-#include "wtf/Noncopyable.h"
-#include "RenderingQueue.h"
 #include "Path.h"
+#include "RenderingQueue.h"
 #include "com_sun_webkit_graphics_WCRenderQueue.h"
 #include <jni.h>
+#include <wtf/Noncopyable.h>
 
 namespace WebCore {
 
@@ -69,23 +69,66 @@ namespace WebCore {
         }
 
         void addPath(PlatformPathPtr pPath) {
-            JNIEnv* env = WebCore_GetJavaEnv();
+            JNIEnv* env = WTF::GetJavaEnv();
 
             static jmethodID mid = env->GetMethodID(PG_GetPathClass(env),
                 "addPath", "(Lcom/sun/webkit/graphics/WCPath;)V");
             ASSERT(mid);
 
             env->CallVoidMethod((jobject)*m_path.platformPath(), mid, (jobject)*pPath);
-            CheckAndClearException(env);
+            WTF::CheckAndClearException(env);
         }
 
         PlatformPathPtr platformPath() {
             return m_path.platformPath();
         }
 
+        const DashArray& dashArray() const {
+            return m_dashArray;
+        }
+
+        float dashOffset() const {
+            return m_dashOffset;
+        }
+
+        void setLineDash(const DashArray& dashArray, float dashOffset) {
+            m_dashArray = dashArray;
+            m_dashOffset = dashOffset;
+        }
+
+        LineCap lineCap() const {
+            return m_lineCap;
+        }
+
+        void setLineCap(LineCap lineCap) {
+            m_lineCap = lineCap;
+        }
+
+        LineJoin lineJoin() const {
+            return m_lineJoin;
+        }
+
+        void setLineJoin(LineJoin lineJoin) {
+            m_lineJoin = lineJoin;
+        }
+
+        float miterLimit() const {
+            return m_miterLimit;
+        }
+
+        void setMiterLimit(float miterLimit) {
+            m_miterLimit = miterLimit;
+        }
     private:
         RefPtr<RenderingQueue> m_rq;
         RefPtr<RQRef> m_jRenderTheme;
         Path m_path;
+        // Buffer the last set stroke styles on the native side to make them
+        // acessible outside the java graphics context
+        DashArray m_dashArray;
+        float m_dashOffset { };
+        LineCap m_lineCap { };
+        LineJoin m_lineJoin { };
+        float m_miterLimit { };
     };
 }

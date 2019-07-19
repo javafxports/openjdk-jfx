@@ -73,6 +73,8 @@ static ALWAYS_INLINE int missingSymbolMarker() { return std::numeric_limits<int>
 // copy:     SymbolTableEntry --> FatEntry -----^
 
 struct SymbolTableEntry {
+    friend class CachedSymbolTableEntry;
+
 private:
     static VarOffset varOffsetFromBits(intptr_t bits)
     {
@@ -227,7 +229,7 @@ public:
 
     bool isWatchable() const
     {
-        return (m_bits & KindBitsMask) == ScopeKindBits;
+        return (m_bits & KindBitsMask) == ScopeKindBits && VM::canUseJIT();
     }
 
     // Asserts if the offset is anything but a scope offset. This structures the assertions
@@ -289,8 +291,6 @@ public:
 
     void prepareToWatch();
 
-    void addWatchpoint(Watchpoint*);
-
     // This watchpoint set is initialized clear, and goes through the following state transitions:
     //
     // First write to this var, in any scope that has this symbol table: Clear->IsWatched.
@@ -310,10 +310,12 @@ public:
     // initializes that var in just one of them. This means that a compilation could constant-fold to one
     // of the scopes that still has an undefined value for this variable. That's fine, because at that
     // point any write to any of the instances of that variable would fire the watchpoint.
+    //
+    // Note that watchpointSet() returns nullptr if JIT is disabled.
     WatchpointSet* watchpointSet()
     {
         if (!isFat())
-            return 0;
+            return nullptr;
         return fatEntry()->m_watchpoints.get();
     }
 
@@ -436,6 +438,8 @@ struct SymbolTableIndexHashTraits : HashTraits<SymbolTableEntry> {
 };
 
 class SymbolTable final : public JSCell {
+    friend class CachedSymbolTable;
+
 public:
     typedef JSCell Base;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
@@ -696,6 +700,12 @@ private:
 
     Map m_map;
     ScopeOffset m_maxScopeOffset;
+public:
+    mutable ConcurrentJSLock m_lock;
+private:
+    unsigned m_usesNonStrictEval : 1;
+    unsigned m_nestedLexicalScope : 1; // Non-function LexicalScope.
+    unsigned m_scopeType : 3; // ScopeType
 
     struct SymbolTableRareData {
         UniqueIDMap m_uniqueIDMap;
@@ -705,17 +715,10 @@ private:
     };
     std::unique_ptr<SymbolTableRareData> m_rareData;
 
-    bool m_usesNonStrictEval : 1;
-    bool m_nestedLexicalScope : 1; // Non-function LexicalScope.
-    unsigned m_scopeType : 3; // ScopeType
-
     WriteBarrier<ScopedArgumentsTable> m_arguments;
     WriteBarrier<InferredValue> m_singletonScope;
 
     std::unique_ptr<LocalToEntryVec> m_localToEntry;
-
-public:
-    mutable ConcurrentJSLock m_lock;
 };
 
 } // namespace JSC

@@ -40,17 +40,17 @@ class Instance;
 
 class Table : public ThreadSafeRefCounted<Table> {
 public:
-    static RefPtr<Table> create(uint32_t initial, std::optional<uint32_t> maximum);
+    static RefPtr<Table> tryCreate(uint32_t initial, Optional<uint32_t> maximum);
 
     JS_EXPORT_PRIVATE ~Table();
 
-    std::optional<uint32_t> maximum() const { return m_maximum; }
+    Optional<uint32_t> maximum() const { return m_maximum; }
     uint32_t length() const { return m_length; }
-    std::optional<uint32_t> grow(uint32_t delta) WARN_UNUSED_RETURN;
+    Optional<uint32_t> grow(uint32_t delta) WARN_UNUSED_RETURN;
     void clearFunction(uint32_t);
-    void setFunction(uint32_t, CallableFunction, Instance*);
+    void setFunction(uint32_t, WasmToWasmImportableFunction, Instance*);
 
-    static ptrdiff_t offsetOfFunctions() { return OBJECT_OFFSETOF(Table, m_functions); }
+    static ptrdiff_t offsetOfFunctions() { return OBJECT_OFFSETOF(Table, m_importableFunctions); }
     static ptrdiff_t offsetOfInstances() { return OBJECT_OFFSETOF(Table, m_instances); }
     static ptrdiff_t offsetOfLength() { return OBJECT_OFFSETOF(Table, m_length); }
     static ptrdiff_t offsetOfMask() { return OBJECT_OFFSETOF(Table, m_mask); }
@@ -60,16 +60,16 @@ public:
     static bool isValidLength(uint32_t length) { return length < maxTableEntries; }
 
 private:
-    Table(uint32_t initial, std::optional<uint32_t> maximum);
+    Table(uint32_t initial, Optional<uint32_t> maximum);
 
     void setLength(uint32_t);
 
-    MallocPtr<CallableFunction> m_functions;
+    MallocPtr<WasmToWasmImportableFunction> m_importableFunctions;
     // call_indirect needs to do an Instance check to potentially context switch when calling a function to another instance. We can hold raw pointers to Instance here because the embedder ensures that Table keeps all the instances alive. We couldn't hold a Ref here because it would cause cycles.
     MallocPtr<Instance*> m_instances;
     uint32_t m_length;
     uint32_t m_mask;
-    std::optional<uint32_t> m_maximum;
+    Optional<uint32_t> m_maximum;
 };
 
 } } // namespace JSC::Wasm

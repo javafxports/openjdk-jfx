@@ -26,16 +26,15 @@
 #pragma once
 
 #include "JSCJSValue.h"
+#include "MacroAssemblerCodeRef.h"
 #include "Opcode.h"
-#include <array>
-#include <wtf/PointerPreparations.h>
 
 namespace JSC {
 
 class VM;
 struct Instruction;
 
-#if !ENABLE(JIT)
+#if ENABLE(C_LOOP)
 typedef OpcodeID LLIntCode;
 #else
 typedef void (*LLIntCode)();
@@ -43,77 +42,114 @@ typedef void (*LLIntCode)();
 
 namespace LLInt {
 
-struct OpcodeStats {
-    OpcodeID id;
-    size_t count { 0 };
-    size_t slowPathCount { 0 };
-};
-typedef std::array<OpcodeStats, numOpcodeIDs> OpcodeStatsArray;
+extern "C" JS_EXPORT_PRIVATE Opcode g_opcodeMap[numOpcodeIDs];
+extern "C" JS_EXPORT_PRIVATE Opcode g_opcodeMapWide[numOpcodeIDs];
 
 class Data {
+
 public:
-
     static void performAssertions(VM&);
-    static OpcodeStats& opcodeStats(OpcodeID id) { return (*s_opcodeStatsArray)[id]; }
-
-    JS_EXPORT_PRIVATE static void finalizeStats();
-
-    static void dumpStats();
-    static void loadStats();
 
 private:
-    static void ensureStats();
-    static void resetStats();
-    static void saveStats();
-
-    static Instruction* s_exceptionInstructions;
-    static Opcode s_opcodeMap[numOpcodeIDs];
-    static OpcodeStatsArray* s_opcodeStatsArray;
+    static uint8_t s_exceptionInstructions[maxOpcodeLength + 1];
 
     friend void initialize();
 
     friend Instruction* exceptionInstructions();
     friend Opcode* opcodeMap();
+    friend Opcode* opcodeMapWide();
     friend Opcode getOpcode(OpcodeID);
-    friend void* getCodePtr(OpcodeID);
+    friend Opcode getOpcodeWide(OpcodeID);
+    template<PtrTag tag> friend MacroAssemblerCodePtr<tag> getCodePtr(OpcodeID);
+    template<PtrTag tag> friend MacroAssemblerCodePtr<tag> getWideCodePtr(OpcodeID);
+    template<PtrTag tag> friend MacroAssemblerCodeRef<tag> getCodeRef(OpcodeID);
 };
 
 void initialize();
 
 inline Instruction* exceptionInstructions()
 {
-    return Data::s_exceptionInstructions;
+    return reinterpret_cast<Instruction*>(Data::s_exceptionInstructions);
 }
 
 inline Opcode* opcodeMap()
 {
-    return Data::s_opcodeMap;
+    return g_opcodeMap;
+}
+
+inline Opcode* opcodeMapWide()
+{
+    return g_opcodeMapWide;
 }
 
 inline Opcode getOpcode(OpcodeID id)
 {
 #if ENABLE(COMPUTED_GOTO_OPCODES)
-    return Data::s_opcodeMap[id];
+    return g_opcodeMap[id];
 #else
     return static_cast<Opcode>(id);
 #endif
 }
 
+inline Opcode getOpcodeWide(OpcodeID id)
+{
+#if ENABLE(COMPUTED_GOTO_OPCODES)
+    return g_opcodeMapWide[id];
+#else
+    UNUSED_PARAM(id);
+    RELEASE_ASSERT_NOT_REACHED();
+#endif
+}
+
+template<PtrTag tag>
+ALWAYS_INLINE MacroAssemblerCodePtr<tag> getCodePtr(OpcodeID opcodeID)
+{
+    void* address = reinterpret_cast<void*>(getOpcode(opcodeID));
+    address = retagCodePtr<BytecodePtrTag, tag>(address);
+    return MacroAssemblerCodePtr<tag>::createFromExecutableAddress(address);
+}
+
+template<PtrTag tag>
+ALWAYS_INLINE MacroAssemblerCodePtr<tag> getWideCodePtr(OpcodeID opcodeID)
+{
+    void* address = reinterpret_cast<void*>(getOpcodeWide(opcodeID));
+    address = retagCodePtr<BytecodePtrTag, tag>(address);
+    return MacroAssemblerCodePtr<tag>::createFromExecutableAddress(address);
+}
+
+template<PtrTag tag>
+ALWAYS_INLINE MacroAssemblerCodeRef<tag> getCodeRef(OpcodeID opcodeID)
+{
+    return MacroAssemblerCodeRef<tag>::createSelfManagedCodeRef(getCodePtr<tag>(opcodeID));
+}
+
+#if ENABLE(JIT)
+template<PtrTag tag>
+ALWAYS_INLINE LLIntCode getCodeFunctionPtr(OpcodeID opcodeID)
+{
+    ASSERT(opcodeID >= NUMBER_OF_BYTECODE_IDS);
+#if COMPILER(MSVC)
+    return reinterpret_cast<LLIntCode>(getCodePtr<tag>(opcodeID).executableAddress());
+#else
+    return reinterpret_cast<LLIntCode>(getCodePtr<tag>(opcodeID).template executableAddress());
+#endif
+}
+
+#else
 ALWAYS_INLINE void* getCodePtr(OpcodeID id)
 {
     return reinterpret_cast<void*>(getOpcode(id));
 }
 
-#if ENABLE(JIT)
-ALWAYS_INLINE LLIntCode getCodeFunctionPtr(OpcodeID codeId)
+ALWAYS_INLINE void* getWideCodePtr(OpcodeID id)
 {
-    return reinterpret_cast<LLIntCode>(getCodePtr(codeId));
+    return reinterpret_cast<void*>(getOpcodeWide(id));
 }
 #endif
 
 ALWAYS_INLINE void* getCodePtr(JSC::EncodedJSValue glueHelper())
 {
-    return WTF_PREPARE_FUNCTION_POINTER_FOR_EXECUTION(glueHelper);
+    return bitwise_cast<void*>(glueHelper);
 }
 
 } } // namespace JSC::LLInt

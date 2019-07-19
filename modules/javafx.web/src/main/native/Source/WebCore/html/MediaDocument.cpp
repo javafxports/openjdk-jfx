@@ -51,9 +51,12 @@
 #include "ScriptController.h"
 #include "ShadowRoot.h"
 #include "TypedElementDescendantIterator.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(MediaDocument);
 
 using namespace HTMLNames;
 
@@ -91,7 +94,7 @@ void MediaDocumentParser::createDocumentStructure()
     if (document.frame())
         document.frame()->injectUserScripts(InjectAtDocumentStart);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     auto headElement = HTMLHeadElement::create(document);
     rootElement->appendChild(headElement);
 
@@ -115,7 +118,7 @@ void MediaDocumentParser::createDocumentStructure()
     if (!RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled()) {
         StringBuilder elementStyle;
         elementStyle.appendLiteral("max-width: 100%; max-height: 100%;");
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         elementStyle.appendLiteral("width: 100%; height: auto;");
 #endif
         videoElement->setAttribute(styleAttr, elementStyle.toString());
@@ -127,7 +130,7 @@ void MediaDocumentParser::createDocumentStructure()
     if (!frame)
         return;
 
-    frame->loader().activeDocumentLoader()->setMainResourceDataBufferingPolicy(DoNotBufferData);
+    frame->loader().activeDocumentLoader()->setMainResourceDataBufferingPolicy(DataBufferingPolicy::DoNotBufferData);
     frame->loader().setOutgoingReferrer(document.completeURL(m_outgoingReferrer));
 }
 

@@ -122,22 +122,22 @@ inline JSPropertyNameEnumerator* propertyNameEnumerator(ExecState* exec, JSObjec
         numberStructureProperties = propertyNames.size();
 
         base->methodTable(vm)->getGenericPropertyNames(base, exec, propertyNames, EnumerationMode());
-        scope.assertNoException();
     } else {
         // Generic property names vector contains all indexed property names.
         // So disable indexed property enumeration phase by setting |indexedLength| to 0.
         indexedLength = 0;
         base->methodTable(vm)->getPropertyNames(base, exec, propertyNames, EnumerationMode());
-        RETURN_IF_EXCEPTION(scope, nullptr);
     }
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
     ASSERT(propertyNames.size() < UINT32_MAX);
 
     bool sawPolyProto;
     bool successfullyNormalizedChain = normalizePrototypeChain(exec, base, sawPolyProto) != InvalidPrototypeChain;
 
-    enumerator = JSPropertyNameEnumerator::create(vm, structure, indexedLength, numberStructureProperties, WTFMove(propertyNames));
-    if (!indexedLength && successfullyNormalizedChain && base->structure(vm) == structure) {
+    Structure* structureAfterGettingPropertyNames = base->structure(vm);
+    enumerator = JSPropertyNameEnumerator::create(vm, structureAfterGettingPropertyNames, indexedLength, numberStructureProperties, WTFMove(propertyNames));
+    if (!indexedLength && successfullyNormalizedChain && structureAfterGettingPropertyNames == structure) {
         enumerator->setCachedPrototypeChain(vm, structure->prototypeChain(exec, base));
         if (structure->canCachePropertyNameEnumerator())
             structure->setCachedPropertyNameEnumerator(vm, enumerator);

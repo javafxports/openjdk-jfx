@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,10 +36,10 @@ public:
     typedef ScriptExecutable Base;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess>
     static IsoSubspace* subspaceFor(VM& vm)
     {
-        return &vm.programExecutableSpace;
+        return &vm.programExecutableSpace.space;
     }
 
     static ProgramExecutable* create(ExecState* exec, const SourceCode& source)
@@ -58,8 +58,6 @@ public:
     {
         return bitwise_cast<ProgramCodeBlock*>(ExecutableToCodeBlockEdge::unwrap(m_programCodeBlock.get()));
     }
-
-    JSObject* checkSyntax(ExecState*);
 
     Ref<JITCode> generatedJITCode()
     {

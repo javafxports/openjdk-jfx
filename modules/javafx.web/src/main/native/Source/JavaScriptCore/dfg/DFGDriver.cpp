@@ -70,7 +70,7 @@ static FunctionWhitelist& ensureGlobalDFGWhitelist()
 
 static CompilationResult compileImpl(
     VM& vm, CodeBlock* codeBlock, CodeBlock* profiledDFGCodeBlock, CompilationMode mode,
-    unsigned osrEntryBytecodeIndex, const Operands<JSValue>& mustHandleValues,
+    unsigned osrEntryBytecodeIndex, const Operands<Optional<JSValue>>& mustHandleValues,
     Ref<DeferredCompilationCallback>&& callback)
 {
     if (!Options::bytecodeRangeToDFGCompile().isInRange(codeBlock->instructionCount())
@@ -89,6 +89,7 @@ static CompilationResult compileImpl(
 
     // Make sure that any stubs that the DFG is going to use are initialized. We want to
     // make sure that all JIT code generation does finalization on the main thread.
+    vm.getCTIStub(arityFixupGenerator);
     vm.getCTIStub(osrExitThunkGenerator);
     vm.getCTIStub(osrExitGenerationThunkGenerator);
     vm.getCTIStub(throwExceptionFromCallSlowPathGenerator);
@@ -96,12 +97,12 @@ static CompilationResult compileImpl(
     vm.getCTIStub(linkPolymorphicCallThunkGenerator);
 
     if (vm.typeProfiler())
-        vm.typeProfilerLog()->processLogEntries(ASCIILiteral("Preparing for DFG compilation."));
+        vm.typeProfilerLog()->processLogEntries(vm, "Preparing for DFG compilation."_s);
 
     Ref<Plan> plan = adoptRef(
         *new Plan(codeBlock, profiledDFGCodeBlock, mode, osrEntryBytecodeIndex, mustHandleValues));
 
-    plan->callback = WTFMove(callback);
+    plan->setCallback(WTFMove(callback));
     if (Options::useConcurrentJIT()) {
         Worklist& worklist = ensureGlobalWorklistFor(mode);
         if (logCompilationChanges(mode))
@@ -115,7 +116,7 @@ static CompilationResult compileImpl(
 }
 #else // ENABLE(DFG_JIT)
 static CompilationResult compileImpl(
-    VM&, CodeBlock*, CodeBlock*, CompilationMode, unsigned, const Operands<JSValue>&,
+    VM&, CodeBlock*, CodeBlock*, CompilationMode, unsigned, const Operands<Optional<JSValue>>&,
     Ref<DeferredCompilationCallback>&&)
 {
     return CompilationFailed;
@@ -124,7 +125,7 @@ static CompilationResult compileImpl(
 
 CompilationResult compile(
     VM& vm, CodeBlock* codeBlock, CodeBlock* profiledDFGCodeBlock, CompilationMode mode,
-    unsigned osrEntryBytecodeIndex, const Operands<JSValue>& mustHandleValues,
+    unsigned osrEntryBytecodeIndex, const Operands<Optional<JSValue>>& mustHandleValues,
     Ref<DeferredCompilationCallback>&& callback)
 {
     CompilationResult result = compileImpl(

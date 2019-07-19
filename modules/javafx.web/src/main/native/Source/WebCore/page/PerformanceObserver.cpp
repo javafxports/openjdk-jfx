@@ -28,6 +28,7 @@
 
 #include "DOMWindow.h"
 #include "Document.h"
+#include "InspectorInstrumentation.h"
 #include "Performance.h"
 #include "PerformanceObserverEntryList.h"
 #include "WorkerGlobalScope.h"
@@ -40,7 +41,7 @@ PerformanceObserver::PerformanceObserver(ScriptExecutionContext& scriptExecution
     if (is<Document>(scriptExecutionContext)) {
         auto& document = downcast<Document>(scriptExecutionContext);
         if (DOMWindow* window = document.domWindow())
-            m_performance = window->performance();
+            m_performance = &window->performance();
     } else if (is<WorkerGlobalScope>(scriptExecutionContext)) {
         auto& workerGlobalScope = downcast<WorkerGlobalScope>(scriptExecutionContext);
         m_performance = &workerGlobalScope.performance();
@@ -51,6 +52,7 @@ PerformanceObserver::PerformanceObserver(ScriptExecutionContext& scriptExecution
 void PerformanceObserver::disassociate()
 {
     m_performance = nullptr;
+    m_registered = false;
 }
 
 ExceptionOr<void> PerformanceObserver::observe(Init&& init)
@@ -59,16 +61,16 @@ ExceptionOr<void> PerformanceObserver::observe(Init&& init)
         return Exception { TypeError };
 
     if (init.entryTypes.isEmpty())
-        return Exception { TypeError, ASCIILiteral("entryTypes cannot be an empty list") };
+        return Exception { TypeError, "entryTypes cannot be an empty list"_s };
 
     OptionSet<PerformanceEntry::Type> filter;
     for (const String& entryType : init.entryTypes) {
         if (auto type = PerformanceEntry::parseEntryTypeString(entryType))
-            filter |= *type;
+            filter.add(*type);
     }
 
     if (filter.isEmpty())
-        return Exception { TypeError, ASCIILiteral("entryTypes contained only unsupported types") };
+        return Exception { TypeError, "entryTypes contained only unsupported types"_s };
 
     m_typeFilter = filter;
 
@@ -99,9 +101,27 @@ void PerformanceObserver::deliver()
     if (m_entriesToDeliver.isEmpty())
         return;
 
+    auto* context = m_callback->scriptExecutionContext();
+    if (!context)
+        return;
+
     Vector<RefPtr<PerformanceEntry>> entries = WTFMove(m_entriesToDeliver);
     auto list = PerformanceObserverEntryList::create(WTFMove(entries));
+
+    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willFireObserverCallback(*context, "PerformanceObserver"_s);
     m_callback->handleEvent(list, *this);
+    InspectorInstrumentation::didFireObserverCallback(cookie);
+}
+
+Vector<String> PerformanceObserver::supportedEntryTypes()
+{
+    return {
+        // FIXME: <https://webkit.org/b/184363> Add support for Navigation Timing Level 2
+        // "navigation"_s,
+        "mark"_s,
+        "measure"_s,
+        "resource"_s
+    };
 }
 
 } // namespace WebCore

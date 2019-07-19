@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003-2018 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *  Copyright (C) 2007 Maks Orlovich
  *
@@ -24,7 +24,6 @@
 #pragma once
 
 #include "CodeSpecializationKind.h"
-#include "JSCPoison.h"
 #include "JSDestructibleObject.h"
 
 namespace JSC {
@@ -36,7 +35,14 @@ class InternalFunction : public JSDestructibleObject {
     friend class LLIntOffsetsExtractor;
 public:
     typedef JSDestructibleObject Base;
-    static const unsigned StructureFlags = Base::StructureFlags | ImplementsHasInstance | ImplementsDefaultHasInstance | TypeOfShouldCallGetCallData;
+    static const unsigned StructureFlags = Base::StructureFlags | ImplementsHasInstance | ImplementsDefaultHasInstance | OverridesGetCallData;
+
+    template<typename CellType, SubspaceAccess>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        static_assert(sizeof(CellType) == sizeof(InternalFunction), "InternalFunction subclasses that add fields need to override subspaceFor<>()");
+        return &vm.internalFunctionSpace;
+    }
 
     DECLARE_EXPORT_INFO;
 
@@ -53,12 +59,12 @@ public:
 
     static Structure* createSubclassStructure(ExecState*, JSValue newTarget, Structure*);
 
-    NativeFunction nativeFunctionFor(CodeSpecializationKind kind)
+    TaggedNativeFunction nativeFunctionFor(CodeSpecializationKind kind)
     {
         if (kind == CodeForCall)
-            return m_functionForCall.unpoisoned();
+            return m_functionForCall;
         ASSERT(kind == CodeForConstruct);
-        return m_functionForConstruct.unpoisoned();
+        return m_functionForConstruct;
     }
 
     static ptrdiff_t offsetOfNativeFunctionFor(CodeSpecializationKind kind)
@@ -70,8 +76,6 @@ public:
     }
 
 protected:
-    using PoisonedNativeFunction = Poisoned<NativeCodePoison, NativeFunction>;
-
     JS_EXPORT_PRIVATE InternalFunction(VM&, Structure*, NativeFunction functionForCall, NativeFunction functionForConstruct);
 
     enum class NameVisibility { Visible, Anonymous };
@@ -82,24 +86,16 @@ protected:
     JS_EXPORT_PRIVATE static ConstructType getConstructData(JSCell*, ConstructData&);
     JS_EXPORT_PRIVATE static CallType getCallData(JSCell*, CallData&);
 
-    PoisonedNativeFunction m_functionForCall;
-    PoisonedNativeFunction m_functionForConstruct;
+    TaggedNativeFunction m_functionForCall;
+    TaggedNativeFunction m_functionForConstruct;
     WriteBarrier<JSString> m_originalName;
 };
-
-InternalFunction* asInternalFunction(JSValue);
-
-inline InternalFunction* asInternalFunction(JSValue value)
-{
-    ASSERT(asObject(value)->inherits(*value.getObject()->vm(), InternalFunction::info()));
-    return static_cast<InternalFunction*>(asObject(value));
-}
 
 ALWAYS_INLINE Structure* InternalFunction::createSubclassStructure(ExecState* exec, JSValue newTarget, Structure* baseClass)
 {
     // We allow newTarget == JSValue() because the API needs to be able to create classes without having a real JS frame.
     // Since we don't allow subclassing in the API we just treat newTarget == JSValue() as newTarget == exec->jsCallee()
-    ASSERT(!newTarget || newTarget.isConstructor());
+    ASSERT(!newTarget || newTarget.isConstructor(exec->vm()));
 
     if (newTarget && newTarget != exec->jsCallee())
         return createSubclassStructureSlow(exec, newTarget, baseClass);

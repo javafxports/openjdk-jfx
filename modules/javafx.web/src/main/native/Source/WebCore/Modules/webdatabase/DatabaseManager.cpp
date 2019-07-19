@@ -59,7 +59,7 @@ private:
 DatabaseManager::ProposedDatabase::ProposedDatabase(DatabaseManager& manager, SecurityOrigin& origin, const String& name, const String& displayName, unsigned long estimatedSize)
     : m_manager(manager)
     , m_origin(origin.isolatedCopy())
-    , m_details(name.isolatedCopy(), displayName.isolatedCopy(), estimatedSize, 0, 0, 0)
+    , m_details(name.isolatedCopy(), displayName.isolatedCopy(), estimatedSize, 0, WTF::nullopt, WTF::nullopt)
 {
     m_manager.addProposedDatabase(*this);
 }
@@ -77,6 +77,7 @@ DatabaseManager& DatabaseManager::singleton()
 
 void DatabaseManager::initialize(const String& databasePath)
 {
+    platformInitialize(databasePath);
     DatabaseTracker::initializeTracker(databasePath);
 }
 
@@ -248,7 +249,7 @@ String DatabaseManager::fullPathForDatabase(SecurityOrigin& origin, const String
                 return String();
         }
     }
-    return DatabaseTracker::singleton().fullPathForDatabase(SecurityOriginData::fromSecurityOrigin(origin), name, createIfDoesNotExist);
+    return DatabaseTracker::singleton().fullPathForDatabase(origin.data(), name, createIfDoesNotExist);
 }
 
 DatabaseDetails DatabaseManager::detailsForNameAndOrigin(const String& name, SecurityOrigin& origin)
@@ -263,12 +264,19 @@ DatabaseDetails DatabaseManager::detailsForNameAndOrigin(const String& name, Sec
         }
     }
 
-    return DatabaseTracker::singleton().detailsForNameAndOrigin(name, SecurityOriginData::fromSecurityOrigin(origin));
+    return DatabaseTracker::singleton().detailsForNameAndOrigin(name, origin.data());
 }
 
 void DatabaseManager::logErrorMessage(ScriptExecutionContext& context, const String& message)
 {
     context.addConsoleMessage(MessageSource::Storage, MessageLevel::Error, message);
 }
+
+#if !PLATFORM(COCOA)
+void DatabaseManager::platformInitialize(const String& databasePath)
+{
+    UNUSED_PARAM(databasePath);
+}
+#endif
 
 } // namespace WebCore

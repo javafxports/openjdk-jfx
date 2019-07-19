@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,59 +10,53 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #pragma once
 
 #if ENABLE(WEBGPU)
 
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
 
-#if PLATFORM(COCOA)
-OBJC_CLASS MTLTexture;
-#endif
+OBJC_PROTOCOL(MTLTexture);
 
 namespace WebCore {
 
 class GPUDevice;
-class GPUDrawable;
-class GPUTextureDescriptor;
+
+struct GPUTextureDescriptor;
+
+using PlatformTexture = MTLTexture;
+using PlatformTextureSmartPtr = RetainPtr<MTLTexture>;
 
 class GPUTexture : public RefCounted<GPUTexture> {
 public:
-    static RefPtr<GPUTexture> create(GPUDevice*, GPUTextureDescriptor*);
-    static RefPtr<GPUTexture> createFromDrawable(GPUDrawable*);
+    static RefPtr<GPUTexture> tryCreate(const GPUDevice&, GPUTextureDescriptor&&);
+    static Ref<GPUTexture> create(PlatformTextureSmartPtr&&);
 
-    WEBCORE_EXPORT ~GPUTexture();
+    PlatformTexture *platformTexture() const { return m_platformTexture.get(); }
 
-    WEBCORE_EXPORT unsigned long width() const;
-    WEBCORE_EXPORT unsigned long height() const;
-
-#if PLATFORM(COCOA)
-    WEBCORE_EXPORT MTLTexture *platformTexture();
-#endif
+    RefPtr<GPUTexture> createDefaultTextureView();
 
 private:
-    GPUTexture(GPUDevice*, GPUTextureDescriptor*);
-    GPUTexture(GPUDrawable*);
+    explicit GPUTexture(PlatformTextureSmartPtr&&);
 
-#if PLATFORM(COCOA)
-    RetainPtr<MTLTexture> m_texture;
-#endif
+    PlatformTextureSmartPtr m_platformTexture;
 };
 
 } // namespace WebCore
-#endif
+
+#endif // ENABLE(WEBGPU)

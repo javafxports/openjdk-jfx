@@ -65,12 +65,12 @@ public:
     }
 
     Vector<LinkRecord, 0, UnsafeVectorOverflow>& jumpsToLink() { return m_assembler.jumpsToLink(); }
-    void* unlinkedCode() { return m_assembler.unlinkedCode(); }
     static bool canCompact(JumpType jumpType) { return ARMv7Assembler::canCompact(jumpType); }
     static JumpLinkType computeJumpType(JumpType jumpType, const uint8_t* from, const uint8_t* to) { return ARMv7Assembler::computeJumpType(jumpType, from, to); }
     static JumpLinkType computeJumpType(LinkRecord& record, const uint8_t* from, const uint8_t* to) { return ARMv7Assembler::computeJumpType(record, from, to); }
     static int jumpSizeDelta(JumpType jumpType, JumpLinkType jumpLinkType) { return ARMv7Assembler::jumpSizeDelta(jumpType, jumpLinkType); }
-    static void link(LinkRecord& record, uint8_t* from, const uint8_t* fromInstruction, uint8_t* to) { return ARMv7Assembler::link(record, from, fromInstruction, to); }
+    template <typename CopyFunction>
+    static void link(LinkRecord& record, uint8_t* from, const uint8_t* fromInstruction, uint8_t* to, CopyFunction copy) { return ARMv7Assembler::link(record, from, fromInstruction, to, copy); }
 
     struct ArmAddress {
         enum AddressType {
@@ -177,14 +177,14 @@ public:
 
     void add32(TrustedImm32 imm, RegisterID src, RegisterID dest)
     {
-        ARMThumbImmediate armImm = ARMThumbImmediate::makeUInt12OrEncodedImm(imm.m_value);
-
-        // For adds with stack pointer destination, moving the src first to sp is
-        // needed to avoid unpredictable instruction
+        // For adds with stack pointer destination avoid unpredictable instruction
         if (dest == ARMRegisters::sp && src != dest) {
-            move(src, ARMRegisters::sp);
-            src = ARMRegisters::sp;
+            add32(imm, src, dataTempRegister);
+            move(dataTempRegister, dest);
+            return;
         }
+
+        ARMThumbImmediate armImm = ARMThumbImmediate::makeUInt12OrEncodedImm(imm.m_value);
 
         if (armImm.isValid())
             m_assembler.add(dest, src, armImm);
@@ -265,6 +265,12 @@ public:
         m_assembler.ldr(dataTempRegister, addressTempRegister, ARMThumbImmediate::makeUInt12(4));
         m_assembler.adc(dataTempRegister, dataTempRegister, ARMThumbImmediate::makeEncodedImm(imm.m_value >> 31));
         m_assembler.str(dataTempRegister, addressTempRegister, ARMThumbImmediate::makeUInt12(4));
+    }
+
+    void and16(Address src, RegisterID dest)
+    {
+        load16(src, dataTempRegister);
+        and32(dataTempRegister, dest);
     }
 
     void and32(RegisterID op1, RegisterID op2, RegisterID dest)
@@ -572,6 +578,10 @@ public:
             xor32(imm, dest, dest);
     }
 
+    void not32(RegisterID srcDest)
+    {
+        m_assembler.mvn(srcDest, srcDest);
+    }
 
     // Memory access operations:
     //
@@ -869,6 +879,11 @@ public:
         store8(dataTempRegister, address);
     }
 
+    void store16(RegisterID src, ImplicitAddress address)
+    {
+        store16(src, setupArmAddress(address));
+    }
+
     void store16(RegisterID src, BaseIndex address)
     {
         store16(src, setupArmAddress(address));
@@ -962,6 +977,11 @@ public:
     {
         if (src != dest)
             m_assembler.vmov(dest, src);
+    }
+
+    void moveDouble(FPRegisterID src, RegisterID dest)
+    {
+        m_assembler.vmov(dest, RegisterID(dest + 1), src);
     }
 
     void moveZeroToDouble(FPRegisterID reg)
@@ -1232,9 +1252,13 @@ public:
         m_assembler.vcvt_signedToFloatingPoint(fpTempRegister, fpTempRegisterAsSingle());
         failureCases.append(branchDouble(DoubleNotEqualOrUnordered, src, fpTempRegister));
 
-        // If the result is zero, it might have been -0.0, and the double comparison won't catch this!
-        if (negZeroCheck)
-            failureCases.append(branchTest32(Zero, dest));
+        // Test for negative zero.
+        if (negZeroCheck) {
+            Jump valueIsNonZero = branchTest32(NonZero, dest);
+            m_assembler.vmov(dataTempRegister, ARMRegisters::asSingleUpper(src));
+            failureCases.append(branch32(LessThan, dataTempRegister, TrustedImm32(0)));
+            valueIsNonZero.link(this);
+        }
     }
 
     Jump branchDoubleNonZero(FPRegisterID reg, FPRegisterID)
@@ -1339,6 +1363,13 @@ public:
         move(dataTempRegister, reg2);
     }
 
+    void swap(FPRegisterID fr1, FPRegisterID fr2)
+    {
+        moveDouble(fr1, fpTempRegister);
+        moveDouble(fr2, fr1);
+        moveDouble(fpTempRegister, fr2);
+    }
+
     void signExtend32ToPtr(RegisterID src, RegisterID dest)
     {
         move(src, dest);
@@ -1370,7 +1401,8 @@ public:
         m_assembler.dmbISHST();
     }
 
-    static void replaceWithJump(CodeLocationLabel instructionStart, CodeLocationLabel destination)
+    template<PtrTag startTag, PtrTag destTag>
+    static void replaceWithJump(CodeLocationLabel<startTag> instructionStart, CodeLocationLabel<destTag> destination)
     {
         ARMv7Assembler::replaceWithJump(instructionStart.dataLocation(), destination.dataLocation());
     }
@@ -1599,25 +1631,28 @@ public:
         return branchTest32(cond, addressTempRegister, mask8);
     }
 
-    void jump(RegisterID target)
+    void jump(RegisterID target, PtrTag)
     {
         m_assembler.bx(target);
     }
 
     // Address is a memory location containing the address to jump to
-    void jump(Address address)
+    void jump(Address address, PtrTag)
     {
         load32(address, dataTempRegister);
         m_assembler.bx(dataTempRegister);
     }
 
-    void jump(AbsoluteAddress address)
+    void jump(AbsoluteAddress address, PtrTag)
     {
         move(TrustedImmPtr(address.m_ptr), dataTempRegister);
         load32(Address(dataTempRegister), dataTempRegister);
         m_assembler.bx(dataTempRegister);
     }
 
+    ALWAYS_INLINE void jump(RegisterID target, RegisterID jumpTag) { UNUSED_PARAM(jumpTag), jump(target, NoPtrTag); }
+    ALWAYS_INLINE void jump(Address address, RegisterID jumpTag) { UNUSED_PARAM(jumpTag), jump(address, NoPtrTag); }
+    ALWAYS_INLINE void jump(AbsoluteAddress address, RegisterID jumpTag) { UNUSED_PARAM(jumpTag), jump(address, NoPtrTag); }
 
     // Arithmetic control flow operations:
     //
@@ -1763,7 +1798,7 @@ public:
 
         ShiftTypeAndAmount shift(SRType_LSL, scale);
         m_assembler.add(dataTempRegister, dataTempRegister, index, shift);
-        jump(dataTempRegister);
+        jump(dataTempRegister, NoPtrTag);
     }
 
     // Miscellaneous operations:
@@ -1787,22 +1822,26 @@ public:
         return Call(m_assembler.bx(dataTempRegister), Call::LinkableNearTail);
     }
 
-    ALWAYS_INLINE Call call()
+    ALWAYS_INLINE Call call(PtrTag)
     {
         moveFixedWidthEncoding(TrustedImm32(0), dataTempRegister);
         return Call(m_assembler.blx(dataTempRegister), Call::Linkable);
     }
 
-    ALWAYS_INLINE Call call(RegisterID target)
+    ALWAYS_INLINE Call call(RegisterID target, PtrTag)
     {
         return Call(m_assembler.blx(target), Call::None);
     }
 
-    ALWAYS_INLINE Call call(Address address)
+    ALWAYS_INLINE Call call(Address address, PtrTag)
     {
         load32(address, dataTempRegister);
         return Call(m_assembler.blx(dataTempRegister), Call::None);
     }
+
+    ALWAYS_INLINE Call call(RegisterID callTag) { return UNUSED_PARAM(callTag), call(NoPtrTag); }
+    ALWAYS_INLINE Call call(RegisterID target, RegisterID callTag) { return UNUSED_PARAM(callTag), call(target, NoPtrTag); }
+    ALWAYS_INLINE Call call(Address address, RegisterID callTag) { return UNUSED_PARAM(callTag), call(address, NoPtrTag); }
 
     ALWAYS_INLINE void ret()
     {
@@ -1911,6 +1950,14 @@ public:
         return PatchableJump(result);
     }
 
+    PatchableJump patchableBranch8(RelationalCondition cond, Address left, TrustedImm32 imm)
+    {
+        m_makeJumpPatchable = true;
+        Jump result = branch8(cond, left, imm);
+        m_makeJumpPatchable = false;
+        return PatchableJump(result);
+    }
+
     PatchableJump patchableBranch32(RelationalCondition cond, RegisterID reg, TrustedImm32 imm)
     {
         m_makeJumpPatchable = true;
@@ -1974,22 +2021,24 @@ public:
         return tailRecursiveCall();
     }
 
-
-    static FunctionPtr readCallTarget(CodeLocationCall call)
+    template<PtrTag resultTag, PtrTag locationTag>
+    static FunctionPtr<resultTag> readCallTarget(CodeLocationCall<locationTag> call)
     {
-        return FunctionPtr(reinterpret_cast<void(*)()>(ARMv7Assembler::readCallTarget(call.dataLocation())));
+        return FunctionPtr<resultTag>(reinterpret_cast<void(*)()>(ARMv7Assembler::readCallTarget(call.dataLocation())));
     }
 
     static bool canJumpReplacePatchableBranchPtrWithPatch() { return false; }
     static bool canJumpReplacePatchableBranch32WithPatch() { return false; }
 
-    static CodeLocationLabel startOfBranchPtrWithPatchOnRegister(CodeLocationDataLabelPtr label)
+    template<PtrTag tag>
+    static CodeLocationLabel<tag> startOfBranchPtrWithPatchOnRegister(CodeLocationDataLabelPtr<tag> label)
     {
         const unsigned twoWordOpSize = 4;
         return label.labelAtOffset(-twoWordOpSize * 2);
     }
 
-    static void revertJumpReplacementToBranchPtrWithPatch(CodeLocationLabel instructionStart, RegisterID rd, void* initialValue)
+    template<PtrTag tag>
+    static void revertJumpReplacementToBranchPtrWithPatch(CodeLocationLabel<tag> instructionStart, RegisterID rd, void* initialValue)
     {
 #if OS(LINUX)
         ARMv7Assembler::revertJumpTo_movT3movtcmpT2(instructionStart.dataLocation(), rd, dataTempRegister, reinterpret_cast<uintptr_t>(initialValue));
@@ -1999,34 +2048,40 @@ public:
 #endif
     }
 
-    static CodeLocationLabel startOfPatchableBranchPtrWithPatchOnAddress(CodeLocationDataLabelPtr)
+    template<PtrTag tag>
+    static CodeLocationLabel<tag> startOfPatchableBranchPtrWithPatchOnAddress(CodeLocationDataLabelPtr<tag>)
     {
         UNREACHABLE_FOR_PLATFORM();
-        return CodeLocationLabel();
+        return CodeLocationLabel<tag>();
     }
 
-    static CodeLocationLabel startOfPatchableBranch32WithPatchOnAddress(CodeLocationDataLabel32)
+    template<PtrTag tag>
+    static CodeLocationLabel<tag> startOfPatchableBranch32WithPatchOnAddress(CodeLocationDataLabel32<tag>)
     {
         UNREACHABLE_FOR_PLATFORM();
-        return CodeLocationLabel();
+        return CodeLocationLabel<tag>();
     }
 
-    static void revertJumpReplacementToPatchableBranchPtrWithPatch(CodeLocationLabel, Address, void*)
-    {
-        UNREACHABLE_FOR_PLATFORM();
-    }
-
-    static void revertJumpReplacementToPatchableBranch32WithPatch(CodeLocationLabel, Address, int32_t)
+    template<PtrTag tag>
+    static void revertJumpReplacementToPatchableBranchPtrWithPatch(CodeLocationLabel<tag>, Address, void*)
     {
         UNREACHABLE_FOR_PLATFORM();
     }
 
-    static void repatchCall(CodeLocationCall call, CodeLocationLabel destination)
+    template<PtrTag tag>
+    static void revertJumpReplacementToPatchableBranch32WithPatch(CodeLocationLabel<tag>, Address, int32_t)
+    {
+        UNREACHABLE_FOR_PLATFORM();
+    }
+
+    template<PtrTag callTag, PtrTag destTag>
+    static void repatchCall(CodeLocationCall<callTag> call, CodeLocationLabel<destTag> destination)
     {
         ARMv7Assembler::relinkCall(call.dataLocation(), destination.executableAddress());
     }
 
-    static void repatchCall(CodeLocationCall call, FunctionPtr destination)
+    template<PtrTag callTag, PtrTag destTag>
+    static void repatchCall(CodeLocationCall<callTag> call, FunctionPtr<destTag> destination)
     {
         ARMv7Assembler::relinkCall(call.dataLocation(), destination.executableAddress());
     }
@@ -2125,12 +2180,13 @@ protected:
 private:
     friend class LinkBuffer;
 
-    static void linkCall(void* code, Call call, FunctionPtr function)
+    template<PtrTag tag>
+    static void linkCall(void* code, Call call, FunctionPtr<tag> function)
     {
         if (call.isFlagSet(Call::Tail))
-            ARMv7Assembler::linkJump(code, call.m_label, function.value());
+            ARMv7Assembler::linkJump(code, call.m_label, function.executableAddress());
         else
-            ARMv7Assembler::linkCall(code, call.m_label, function.value());
+            ARMv7Assembler::linkCall(code, call.m_label, function.executableAddress());
     }
 
     bool m_makeJumpPatchable;

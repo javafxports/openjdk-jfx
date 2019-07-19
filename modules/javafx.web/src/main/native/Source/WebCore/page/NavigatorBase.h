@@ -42,8 +42,8 @@ public:
 
     static String appName();
     String appVersion() const;
-    virtual String userAgent() const = 0;
-    static String platform();
+    virtual const String& userAgent() const = 0;
+    virtual const String& platform() const;
 
     static String appCodeName();
     static String product();
@@ -57,7 +57,7 @@ public:
     static Vector<String> languages();
 
 protected:
-    explicit NavigatorBase(ScriptExecutionContext&);
+    explicit NavigatorBase(ScriptExecutionContext*);
 
 #if ENABLE(SERVICE_WORKER)
 public:

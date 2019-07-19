@@ -25,9 +25,9 @@
 
 #pragma once
 
+#include "CPU.h"
 #include "ExceptionHelpers.h"
 #include "JSObject.h"
-#include "ParseInt.h"
 #include <wtf/CagedPtr.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringView.h>
@@ -35,74 +35,160 @@
 
 namespace JSC {
 
-class JSBigInt : public JSCell {
+class JSBigInt final : public JSCell {
     using Base = JSCell;
+    static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal | OverridesToThis;
+    friend class CachedBigInt;
 
 public:
 
-    JSBigInt(VM&, Structure*, int length);
+    JSBigInt(VM&, Structure*, unsigned length);
 
     enum class InitializationType { None, WithZero };
     void initialize(InitializationType);
 
-    static void visitChildren(JSCell*, SlotVisitor&);
-
-    static size_t estimatedSize(JSCell*);
-    static size_t allocationSize(int length);
+    static size_t estimatedSize(JSCell*, VM&);
 
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue prototype);
-
     static JSBigInt* createZero(VM&);
-    static JSBigInt* createWithLength(VM&, int length);
+    static JSBigInt* tryCreateWithLength(ExecState*, unsigned length);
+    static JSBigInt* createWithLengthUnchecked(VM&, unsigned length);
 
     static JSBigInt* createFrom(VM&, int32_t value);
     static JSBigInt* createFrom(VM&, uint32_t value);
     static JSBigInt* createFrom(VM&, int64_t value);
     static JSBigInt* createFrom(VM&, bool value);
 
-    DECLARE_EXPORT_INFO;
+    static size_t offsetOfLength()
+    {
+        return OBJECT_OFFSETOF(JSBigInt, m_length);
+    }
 
-    void finishCreation(VM&);
+    DECLARE_EXPORT_INFO;
 
     JSValue toPrimitive(ExecState*, PreferredPrimitiveType) const;
 
     void setSign(bool sign) { m_sign = sign; }
     bool sign() const { return m_sign; }
 
-    void setLength(int length) { m_length = length; }
-    int length() const { return m_length; }
+    void setLength(unsigned length) { m_length = length; }
+    unsigned length() const { return m_length; }
 
-    static JSBigInt* parseInt(ExecState*, VM&, StringView, uint8_t radix);
-    static JSBigInt* parseInt(ExecState*, StringView);
+    enum class ErrorParseMode {
+        ThrowExceptions,
+        IgnoreExceptions
+    };
 
-    std::optional<uint8_t> singleDigitValueForString();
-    String toString(ExecState&, int radix);
+    enum class ParseIntMode { DisallowEmptyString, AllowEmptyString };
+    enum class ParseIntSign { Unsigned, Signed };
+
+    static JSBigInt* parseInt(ExecState*, VM&, StringView, uint8_t radix, ErrorParseMode = ErrorParseMode::ThrowExceptions, ParseIntSign = ParseIntSign::Unsigned);
+    static JSBigInt* parseInt(ExecState*, StringView, ErrorParseMode = ErrorParseMode::ThrowExceptions);
+    static JSBigInt* stringToBigInt(ExecState*, StringView);
+
+    Optional<uint8_t> singleDigitValueForString();
+    String toString(ExecState*, unsigned radix);
+
+    enum class ComparisonMode {
+        LessThan,
+        LessThanOrEqual
+    };
+
+    enum class ComparisonResult {
+        Equal,
+        Undefined,
+        GreaterThan,
+        LessThan
+    };
 
     JS_EXPORT_PRIVATE static bool equals(JSBigInt*, JSBigInt*);
+    bool equalsToNumber(JSValue);
+    static ComparisonResult compare(JSBigInt* x, JSBigInt* y);
 
     bool getPrimitiveNumber(ExecState*, double& number, JSValue& result) const;
     double toNumber(ExecState*) const;
 
     JSObject* toObject(ExecState*, JSGlobalObject*) const;
+    inline bool toBoolean() const { return !isZero(); }
+
+    static JSBigInt* multiply(ExecState*, JSBigInt* x, JSBigInt* y);
+
+    ComparisonResult static compareToDouble(JSBigInt* x, double y);
+
+    static JSBigInt* add(ExecState*, JSBigInt* x, JSBigInt* y);
+    static JSBigInt* sub(ExecState*, JSBigInt* x, JSBigInt* y);
+    static JSBigInt* divide(ExecState*, JSBigInt* x, JSBigInt* y);
+    static JSBigInt* remainder(ExecState*, JSBigInt* x, JSBigInt* y);
+    static JSBigInt* unaryMinus(VM&, JSBigInt* x);
+
+    static JSBigInt* bitwiseAnd(ExecState*, JSBigInt* x, JSBigInt* y);
+    static JSBigInt* bitwiseOr(ExecState*, JSBigInt* x, JSBigInt* y);
+    static JSBigInt* bitwiseXor(ExecState*, JSBigInt* x, JSBigInt* y);
+
+    static JSBigInt* leftShift(ExecState*, JSBigInt* x, JSBigInt* y);
+    static JSBigInt* signedRightShift(ExecState*, JSBigInt* x, JSBigInt* y);
 
 private:
-    using Digit = uintptr_t;
-    static constexpr const int bitsPerByte = 8;
-    static constexpr const int digitBits = sizeof(Digit) * bitsPerByte;
-    static constexpr const int halfDigitBits = digitBits / 2;
-    static constexpr const Digit halfDigitMask = (1ull << halfDigitBits) - 1;
-    static constexpr const int maxInt = 0x7FFFFFFF;
+
+    using Digit = UCPURegister;
+    static constexpr unsigned bitsPerByte = 8;
+    static constexpr unsigned digitBits = sizeof(Digit) * bitsPerByte;
+    static constexpr unsigned halfDigitBits = digitBits / 2;
+    static constexpr Digit halfDigitMask = (1ull << halfDigitBits) - 1;
+    static constexpr int maxInt = 0x7FFFFFFF;
 
     // The maximum length that the current implementation supports would be
     // maxInt / digitBits. However, we use a lower limit for now, because
     // raising it later is easier than lowering it.
     // Support up to 1 million bits.
-    static const int maxLength = 1024 * 1024 / (sizeof(void*) * bitsPerByte);
+    static constexpr unsigned maxLength = 1024 * 1024 / (sizeof(void*) * bitsPerByte);
+    static constexpr unsigned maxLengthBits = maxInt - sizeof(void*) * bitsPerByte - 1;
 
-    static uint64_t calculateMaximumCharactersRequired(int length, int radix, Digit lastDigit, bool sign);
+    static uint64_t calculateMaximumCharactersRequired(unsigned length, unsigned radix, Digit lastDigit, bool sign);
 
-    static void absoluteDivSmall(ExecState&, JSBigInt* x, Digit divisor, JSBigInt** quotient, Digit& remainder);
-    static void internalMultiplyAdd(JSBigInt* source, Digit factor, Digit summand, int, JSBigInt* result);
+    static ComparisonResult absoluteCompare(JSBigInt* x, JSBigInt* y);
+    static void absoluteDivWithDigitDivisor(VM&, JSBigInt* x, Digit divisor, JSBigInt** quotient, Digit& remainder);
+    static void internalMultiplyAdd(JSBigInt* source, Digit factor, Digit summand, unsigned, JSBigInt* result);
+    static void multiplyAccumulate(JSBigInt* multiplicand, Digit multiplier, JSBigInt* accumulator, unsigned accumulatorIndex);
+    static void absoluteDivWithBigIntDivisor(ExecState*, JSBigInt* dividend, JSBigInt* divisor, JSBigInt** quotient, JSBigInt** remainder);
+
+    enum class LeftShiftMode {
+        SameSizeResult,
+        AlwaysAddOneDigit
+    };
+
+    static JSBigInt* absoluteLeftShiftAlwaysCopy(ExecState*, JSBigInt* x, unsigned shift, LeftShiftMode);
+    static bool productGreaterThan(Digit factor1, Digit factor2, Digit high, Digit low);
+
+    Digit absoluteInplaceAdd(JSBigInt* summand, unsigned startIndex);
+    Digit absoluteInplaceSub(JSBigInt* subtrahend, unsigned startIndex);
+    void inplaceRightShift(unsigned shift);
+
+    enum class ExtraDigitsHandling {
+        Copy,
+        Skip
+    };
+
+    enum class SymmetricOp {
+        Symmetric,
+        NotSymmetric
+    };
+
+    template<typename BitwiseOp>
+    static JSBigInt* absoluteBitwiseOp(VM&, JSBigInt* x, JSBigInt* y, ExtraDigitsHandling, SymmetricOp, BitwiseOp&&);
+
+    static JSBigInt* absoluteAnd(VM&, JSBigInt* x, JSBigInt* y);
+    static JSBigInt* absoluteOr(VM&, JSBigInt* x, JSBigInt* y);
+    static JSBigInt* absoluteAndNot(VM&, JSBigInt* x, JSBigInt* y);
+    static JSBigInt* absoluteXor(VM&, JSBigInt* x, JSBigInt* y);
+
+    enum class SignOption {
+        Signed,
+        Unsigned
+    };
+
+    static JSBigInt* absoluteAddOne(ExecState*, JSBigInt* x, SignOption);
+    static JSBigInt* absoluteSubOne(ExecState*, JSBigInt* x, unsigned resultLength);
 
     // Digit arithmetic helpers.
     static Digit digitAdd(Digit a, Digit b, Digit& carry);
@@ -111,30 +197,53 @@ private:
     static Digit digitDiv(Digit high, Digit low, Digit divisor, Digit& remainder);
     static Digit digitPow(Digit base, Digit exponent);
 
-    static String toStringGeneric(ExecState&, JSBigInt*, int radix);
+    static String toStringBasePowerOfTwo(ExecState*, JSBigInt*, unsigned radix);
+    static String toStringGeneric(ExecState*, JSBigInt*, unsigned radix);
 
-    bool isZero();
+    inline bool isZero() const
+    {
+        ASSERT(length() || !sign());
+        return length() == 0;
+    }
 
     template <typename CharType>
-    static JSBigInt* parseInt(ExecState*, CharType*  data, int length);
+    static JSBigInt* parseInt(ExecState*, CharType*  data, unsigned length, ErrorParseMode);
 
     template <typename CharType>
-    static JSBigInt* parseInt(ExecState*, VM&, CharType* data, int length, int startIndex, int radix, bool allowEmptyString = true);
+    static JSBigInt* parseInt(ExecState*, VM&, CharType* data, unsigned length, unsigned startIndex, unsigned radix, ErrorParseMode, ParseIntSign = ParseIntSign::Signed, ParseIntMode = ParseIntMode::AllowEmptyString);
 
-    static JSBigInt* allocateFor(ExecState*, VM&, int radix, int charcount);
+    static JSBigInt* allocateFor(ExecState*, VM&, unsigned radix, unsigned charcount);
 
+    static JSBigInt* copy(VM&, JSBigInt* x);
     JSBigInt* rightTrim(VM&);
 
     void inplaceMultiplyAdd(Digit multiplier, Digit part);
+    static JSBigInt* absoluteAdd(ExecState*, JSBigInt* x, JSBigInt* y, bool resultSign);
+    static JSBigInt* absoluteSub(VM&, JSBigInt* x, JSBigInt* y, bool resultSign);
 
-    static size_t offsetOfData();
-    Digit* dataStorage();
+    static JSBigInt* leftShiftByAbsolute(ExecState*, JSBigInt* x, JSBigInt* y);
+    static JSBigInt* rightShiftByAbsolute(ExecState*, JSBigInt* x, JSBigInt* y);
 
-    Digit digit(int);
-    void setDigit(int, Digit);
+    static JSBigInt* rightShiftByMaximum(VM&, bool sign);
 
-    int m_length;
-    bool m_sign;
+    static Optional<Digit> toShiftAmount(JSBigInt* x);
+
+    static size_t allocationSize(unsigned length);
+    inline static size_t offsetOfData()
+    {
+        return WTF::roundUpToMultipleOf<sizeof(Digit)>(sizeof(JSBigInt));
+    }
+
+    inline Digit* dataStorage()
+    {
+        return bitwise_cast<Digit*>(reinterpret_cast<char*>(this) + offsetOfData());
+    }
+
+    Digit digit(unsigned);
+    void setDigit(unsigned, Digit);
+
+    unsigned m_length;
+    bool m_sign { false };
 };
 
 inline JSBigInt* asBigInt(JSValue value)

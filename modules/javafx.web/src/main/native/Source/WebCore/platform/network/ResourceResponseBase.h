@@ -31,8 +31,8 @@
 #include "HTTPHeaderMap.h"
 #include "NetworkLoadMetrics.h"
 #include "ParsedContentRange.h"
-#include "URL.h"
-#include <wtf/SHA1.h>
+#include <wtf/Markable.h>
+#include <wtf/URL.h>
 #include <wtf/WallTime.h>
 
 namespace WebCore {
@@ -45,8 +45,8 @@ bool isScriptAllowedByNosniff(const ResourceResponse&);
 class ResourceResponseBase {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    enum class Type { Basic, Cors, Default, Error, Opaque, Opaqueredirect };
-    enum class Tainting { Basic, Cors, Opaque, Opaqueredirect };
+    enum class Type : uint8_t { Basic, Cors, Default, Error, Opaque, Opaqueredirect };
+    enum class Tainting : uint8_t { Basic, Cors, Opaque, Opaqueredirect };
 
     static bool isRedirectionStatusCode(int code) { return code == 301 || code == 302 || code == 303 || code == 307 || code == 308; }
 
@@ -75,7 +75,7 @@ public:
 
     bool isNull() const { return m_isNull; }
     WEBCORE_EXPORT bool isHTTP() const;
-    bool isSuccessful() const;
+    WEBCORE_EXPORT bool isSuccessful() const;
 
     WEBCORE_EXPORT const URL& url() const;
     WEBCORE_EXPORT void setURL(const URL&);
@@ -91,7 +91,7 @@ public:
 
     WEBCORE_EXPORT int httpStatusCode() const;
     WEBCORE_EXPORT void setHTTPStatusCode(int);
-    bool isRedirection() const { return isRedirectionStatusCode(m_httpStatusCode); }
+    WEBCORE_EXPORT bool isRedirection() const;
 
     WEBCORE_EXPORT const String& httpStatusText() const;
     WEBCORE_EXPORT void setHTTPStatusText(const String&);
@@ -103,13 +103,16 @@ public:
     WEBCORE_EXPORT const HTTPHeaderMap& httpHeaderFields() const;
     void setHTTPHeaderFields(HTTPHeaderMap&&);
 
+    enum class SanitizationType { Redirection, RemoveCookies, CrossOriginSafe };
+    WEBCORE_EXPORT void sanitizeHTTPHeaderFields(SanitizationType);
+
     String httpHeaderField(const String& name) const;
     WEBCORE_EXPORT String httpHeaderField(HTTPHeaderName) const;
     WEBCORE_EXPORT void setHTTPHeaderField(const String& name, const String& value);
     WEBCORE_EXPORT void setHTTPHeaderField(HTTPHeaderName, const String& value);
 
-    void addHTTPHeaderField(HTTPHeaderName, const String& value);
-    void addHTTPHeaderField(const String& name, const String& value);
+    WEBCORE_EXPORT void addHTTPHeaderField(HTTPHeaderName, const String& value);
+    WEBCORE_EXPORT void addHTTPHeaderField(const String& name, const String& value);
 
     // Instead of passing a string literal to any of these functions, just use a HTTPHeaderName instead.
     template<size_t length> String httpHeaderField(const char (&)[length]) const = delete;
@@ -124,7 +127,7 @@ public:
     WEBCORE_EXPORT static String sanitizeSuggestedFilename(const String&);
 
     WEBCORE_EXPORT void includeCertificateInfo() const;
-    const std::optional<CertificateInfo>& certificateInfo() const { return m_certificateInfo; };
+    const Optional<CertificateInfo>& certificateInfo() const { return m_certificateInfo; };
 
     // These functions return parsed values of the corresponding response headers.
     WEBCORE_EXPORT bool cacheControlContainsNoCache() const;
@@ -132,19 +135,20 @@ public:
     WEBCORE_EXPORT bool cacheControlContainsMustRevalidate() const;
     WEBCORE_EXPORT bool cacheControlContainsImmutable() const;
     WEBCORE_EXPORT bool hasCacheValidatorFields() const;
-    WEBCORE_EXPORT std::optional<Seconds> cacheControlMaxAge() const;
-    WEBCORE_EXPORT std::optional<WallTime> date() const;
-    WEBCORE_EXPORT std::optional<Seconds> age() const;
-    WEBCORE_EXPORT std::optional<WallTime> expires() const;
-    WEBCORE_EXPORT std::optional<WallTime> lastModified() const;
-    ParsedContentRange& contentRange() const;
+    WEBCORE_EXPORT Optional<Seconds> cacheControlMaxAge() const;
+    WEBCORE_EXPORT Optional<WallTime> date() const;
+    WEBCORE_EXPORT Optional<Seconds> age() const;
+    WEBCORE_EXPORT Optional<WallTime> expires() const;
+    WEBCORE_EXPORT Optional<WallTime> lastModified() const;
+    const ParsedContentRange& contentRange() const;
 
-    enum class Source { Unknown, Network, DiskCache, DiskCacheAfterValidation, MemoryCache, MemoryCacheAfterValidation, ServiceWorker };
+    enum class Source : uint8_t { Unknown, Network, DiskCache, DiskCacheAfterValidation, MemoryCache, MemoryCacheAfterValidation, ServiceWorker, ApplicationCache };
     WEBCORE_EXPORT Source source() const;
-    void setSource(Source source) { m_source = source; }
-
-    const std::optional<SHA1::Digest>& cacheBodyKey() const { return m_cacheBodyKey; }
-    void setCacheBodyKey(const SHA1::Digest& key) { m_cacheBodyKey = key; }
+    void setSource(Source source)
+    {
+        ASSERT(source != Source::Unknown);
+        m_source = source;
+    }
 
     // FIXME: This should be eliminated from ResourceResponse.
     // Network loading metrics should be delivered via didFinishLoad
@@ -168,6 +172,8 @@ public:
     Tainting tainting() const { return m_tainting; }
 
     static ResourceResponse filter(const ResourceResponse&);
+
+    WEBCORE_EXPORT static ResourceResponse syntheticRedirectResponse(const URL& fromURL, const URL& toURL);
 
     static bool compare(const ResourceResponse&, const ResourceResponse&);
 
@@ -196,44 +202,45 @@ protected:
 private:
     void parseCacheControlDirectives() const;
     void updateHeaderParsedState(HTTPHeaderName);
+    void sanitizeHTTPHeaderFieldsAccordingToTainting();
 
 protected:
-    bool m_isNull;
     URL m_url;
     AtomicString m_mimeType;
-    long long m_expectedContentLength;
+    long long m_expectedContentLength { 0 };
     AtomicString m_textEncodingName;
     AtomicString m_httpStatusText;
     AtomicString m_httpVersion;
     HTTPHeaderMap m_httpHeaderFields;
     mutable NetworkLoadMetrics m_networkLoadMetrics;
 
-    mutable std::optional<CertificateInfo> m_certificateInfo;
-
-    int m_httpStatusCode;
+    mutable Optional<CertificateInfo> m_certificateInfo;
 
 private:
-    mutable std::optional<Seconds> m_age;
-    mutable std::optional<WallTime> m_date;
-    mutable std::optional<WallTime> m_expires;
-    mutable std::optional<WallTime> m_lastModified;
+    mutable Markable<Seconds, Seconds::MarkableTraits> m_age;
+    mutable Markable<WallTime, WallTime::MarkableTraits> m_date;
+    mutable Markable<WallTime, WallTime::MarkableTraits> m_expires;
+    mutable Markable<WallTime, WallTime::MarkableTraits> m_lastModified;
     mutable ParsedContentRange m_contentRange;
     mutable CacheControlDirectives m_cacheControlDirectives;
 
-    mutable bool m_haveParsedCacheControlHeader { false };
-    mutable bool m_haveParsedAgeHeader { false };
-    mutable bool m_haveParsedDateHeader { false };
-    mutable bool m_haveParsedExpiresHeader { false };
-    mutable bool m_haveParsedLastModifiedHeader { false };
-    mutable bool m_haveParsedContentRangeHeader { false };
+    mutable bool m_haveParsedCacheControlHeader : 1;
+    mutable bool m_haveParsedAgeHeader : 1;
+    mutable bool m_haveParsedDateHeader : 1;
+    mutable bool m_haveParsedExpiresHeader : 1;
+    mutable bool m_haveParsedLastModifiedHeader : 1;
+    mutable bool m_haveParsedContentRangeHeader : 1;
+    bool m_isRedirected : 1;
+protected:
+    bool m_isNull : 1;
 
+private:
     Source m_source { Source::Unknown };
-
-    std::optional<SHA1::Digest> m_cacheBodyKey;
-
     Type m_type { Type::Default };
-    bool m_isRedirected { false };
     Tainting m_tainting { Tainting::Basic };
+
+protected:
+    int m_httpStatusCode { 0 };
 };
 
 inline bool operator==(const ResourceResponse& a, const ResourceResponse& b) { return ResourceResponseBase::compare(a, b); }
@@ -263,7 +270,6 @@ void ResourceResponseBase::encode(Encoder& encoder) const
     encoder << m_httpStatusCode;
     encoder << m_certificateInfo;
     encoder.encodeEnum(m_source);
-    encoder << m_cacheBodyKey;
     encoder.encodeEnum(m_type);
     encoder.encodeEnum(m_tainting);
     encoder << m_isRedirected;
@@ -304,14 +310,14 @@ bool ResourceResponseBase::decode(Decoder& decoder, ResourceResponseBase& respon
         return false;
     if (!decoder.decodeEnum(response.m_source))
         return false;
-    if (!decoder.decode(response.m_cacheBodyKey))
-        return false;
     if (!decoder.decodeEnum(response.m_type))
         return false;
     if (!decoder.decodeEnum(response.m_tainting))
         return false;
-    if (!decoder.decode(response.m_isRedirected))
+    bool isRedirected = false;
+    if (!decoder.decode(isRedirected))
         return false;
+    response.m_isRedirected = isRedirected;
     response.m_isNull = false;
 
     return true;

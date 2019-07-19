@@ -34,7 +34,14 @@
 #include "LibWebRTCMacros.h"
 #include "MediaStreamTrackPrivate.h"
 #include "Timer.h"
+
+ALLOW_UNUSED_PARAMETERS_BEGIN
+
 #include <webrtc/api/mediastreaminterface.h>
+
+ALLOW_UNUSED_PARAMETERS_END
+
+#include <wtf/LoggerHelper.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
 namespace webrtc {
@@ -44,38 +51,66 @@ class AudioTrackSinkInterface;
 
 namespace WebCore {
 
-class RealtimeOutgoingAudioSource : public ThreadSafeRefCounted<RealtimeOutgoingAudioSource>, public webrtc::AudioSourceInterface, private MediaStreamTrackPrivate::Observer {
+class RealtimeOutgoingAudioSource
+    : public ThreadSafeRefCounted<RealtimeOutgoingAudioSource, WTF::DestructionThread::Main>
+    , public webrtc::AudioSourceInterface
+    , private MediaStreamTrackPrivate::Observer
+#if !RELEASE_LOG_DISABLED
+    , private LoggerHelper
+#endif
+{
 public:
     static Ref<RealtimeOutgoingAudioSource> create(Ref<MediaStreamTrackPrivate>&& audioSource);
 
-    ~RealtimeOutgoingAudioSource() { stop(); }
+    ~RealtimeOutgoingAudioSource();
 
-    void stop();
+    void stop() { unobserveSource(); }
 
     bool setSource(Ref<MediaStreamTrackPrivate>&&);
     MediaStreamTrackPrivate& source() const { return m_audioSource.get(); }
 
+#if !RELEASE_LOG_DISABLED
+    void setLogger(Ref<const Logger>&& logger) { m_logger = WTFMove(logger); }
+#endif
+
 protected:
     explicit RealtimeOutgoingAudioSource(Ref<MediaStreamTrackPrivate>&&);
 
-    virtual void handleMutedIfNeeded();
-    virtual void sendSilence() { };
-    virtual void pullAudioData() { };
+    void unobserveSource();
 
-    Vector<webrtc::AudioTrackSinkInterface*> m_sinks;
-    bool m_muted { false };
-    bool m_enabled { true };
+    virtual void pullAudioData() { }
+
+    bool isSilenced() const { return m_muted || !m_enabled; }
+
+    void sendAudioFrames(const void* audioData, int bitsPerSample, int sampleRate, size_t numberOfChannels, size_t numberOfFrames);
+
+#if !RELEASE_LOG_DISABLED
+    // LoggerHelper API
+    const Logger& logger() const final;
+    const void* logIdentifier() const final { return m_logIdentifier; }
+    const char* logClassName() const final { return "RealtimeOutgoingAudioSource"; }
+    WTFLogChannel& logChannel() const final;
+#endif
 
 private:
-    virtual void AddSink(webrtc::AudioTrackSinkInterface* sink) { m_sinks.append(sink); }
-    virtual void RemoveSink(webrtc::AudioTrackSinkInterface* sink) { m_sinks.removeFirst(sink); }
+    // webrtc::AudioSourceInterface API
+    void AddSink(webrtc::AudioTrackSinkInterface*) final;
+    void RemoveSink(webrtc::AudioTrackSinkInterface*) final;
 
-    int AddRef() const final { ref(); return refCount(); }
-    int Release() const final { deref(); return refCount(); }
+    void AddRef() const final { ref(); }
+    rtc::RefCountReleaseStatus Release() const final
+    {
+        auto result = refCount() - 1;
+        deref();
+        return result ? rtc::RefCountReleaseStatus::kOtherRefsRemained : rtc::RefCountReleaseStatus::kDroppedLastRef;
+    }
+
     SourceState state() const final { return kLive; }
     bool remote() const final { return false; }
     void RegisterObserver(webrtc::ObserverInterface*) final { }
     void UnregisterObserver(webrtc::ObserverInterface*) final { }
+
+    void observeSource();
 
     void sourceMutedChanged();
     void sourceEnabledChanged();
@@ -95,8 +130,17 @@ private:
     void initializeConverter();
 
     Ref<MediaStreamTrackPrivate> m_audioSource;
+    bool m_muted { false };
+    bool m_enabled { true };
 
-    Timer m_silenceAudioTimer;
+    mutable RecursiveLock m_sinksLock;
+    HashSet<webrtc::AudioTrackSinkInterface*> m_sinks;
+
+#if !RELEASE_LOG_DISABLED
+    mutable RefPtr<const Logger> m_logger;
+    const void* m_logIdentifier;
+    size_t m_chunksSent { 0 };
+#endif
 };
 
 } // namespace WebCore

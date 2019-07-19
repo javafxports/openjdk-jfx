@@ -32,69 +32,68 @@
 
 namespace WebCore {
 
-int computeUnderlineOffset(TextUnderlinePosition underlinePosition, const FontMetrics& fontMetrics, const InlineTextBox* inlineTextBox, int textDecorationThickness)
+float computeUnderlineOffset(TextUnderlinePosition underlinePosition, TextUnderlineOffset underlineOffset, const FontMetrics& fontMetrics, const InlineTextBox* inlineTextBox, float defaultGap)
 {
     // This represents the gap between the baseline and the closest edge of the underline.
-    int gap = std::max<int>(1, ceilf(textDecorationThickness / 2.0));
+    float gap = std::max<int>(1, std::ceil(defaultGap / 2.0f));
 
     // FIXME: The code for visual overflow detection passes in a null inline text box. This means it is now
     // broken for the case where auto needs to behave like "under".
 
-    // According to the specification TextUnderlinePositionAuto should avoid drawing through glyphs in
+    // According to the specification TextUnderlinePosition::Auto should avoid drawing through glyphs in
     // scripts where it would not be appropriate (e.g., ideographs).
     // Strictly speaking this can occur whenever the line contains ideographs
     // even if it is horizontal, but detecting this has performance implications. For now we only work with
     // vertical text, since we already determined the baseline type to be ideographic in that
     // case.
 
-    TextUnderlinePosition resolvedUnderlinePosition = underlinePosition;
-    if (resolvedUnderlinePosition == TextUnderlinePositionAuto) {
+    auto resolvedUnderlinePosition = underlinePosition;
+    if (resolvedUnderlinePosition == TextUnderlinePosition::Auto && underlineOffset.isAuto()) {
         if (inlineTextBox)
-            resolvedUnderlinePosition = inlineTextBox->root().baselineType() == IdeographicBaseline ? TextUnderlinePositionUnder : TextUnderlinePositionAlphabetic;
+            resolvedUnderlinePosition = inlineTextBox->root().baselineType() == IdeographicBaseline ? TextUnderlinePosition::Under : TextUnderlinePosition::Auto;
         else
-            resolvedUnderlinePosition = TextUnderlinePositionAlphabetic;
+            resolvedUnderlinePosition = TextUnderlinePosition::Auto;
     }
 
     switch (resolvedUnderlinePosition) {
-    case TextUnderlinePositionAlphabetic:
-        return fontMetrics.ascent() + gap;
-    case TextUnderlinePositionUnder: {
+    case TextUnderlinePosition::Auto:
+        if (underlineOffset.isAuto())
+            return fontMetrics.ascent() + gap;
+        return fontMetrics.ascent() + std::max(0.0f, underlineOffset.lengthValue());
+    case TextUnderlinePosition::FromFont:
+        return fontMetrics.ascent() + std::max(0.0f, fontMetrics.underlinePosition() + underlineOffset.lengthOr(0));
+    case TextUnderlinePosition::Under: {
         ASSERT(inlineTextBox);
         // Position underline relative to the bottom edge of the lowest element's content box.
         const RootInlineBox& rootBox = inlineTextBox->root();
-        const RenderElement* decorationRenderer = inlineTextBox->parent()->renderer().enclosingRendererWithTextDecoration(TextDecorationUnderline, inlineTextBox->isFirstLine());
+        const RenderElement* decorationRenderer = inlineTextBox->parent()->renderer().enclosingRendererWithTextDecoration(TextDecoration::Underline, inlineTextBox->isFirstLine());
 
         float offset;
         if (inlineTextBox->renderer().style().isFlippedLinesWritingMode()) {
             offset = inlineTextBox->logicalTop();
-            rootBox.minLogicalTopForTextDecorationLine(offset, decorationRenderer, TextDecorationUnderline);
+            rootBox.minLogicalTopForTextDecorationLine(offset, decorationRenderer, TextDecoration::Underline);
             offset = inlineTextBox->logicalTop() - offset;
         } else {
             offset = inlineTextBox->logicalBottom();
-            rootBox.maxLogicalBottomForTextDecorationLine(offset, decorationRenderer, TextDecorationUnderline);
+            rootBox.maxLogicalBottomForTextDecorationLine(offset, decorationRenderer, TextDecoration::Underline);
             offset -= inlineTextBox->logicalBottom();
         }
-        return inlineTextBox->logicalHeight() + gap + std::max<float>(offset, 0);
+        auto desiredOffset = inlineTextBox->logicalHeight() + gap + std::max(offset, 0.0f) + underlineOffset.lengthOr(0);
+        return std::max<float>(desiredOffset, fontMetrics.ascent());
     }
-    case TextUnderlinePositionAuto:
-        ASSERT_NOT_REACHED();
     }
 
     ASSERT_NOT_REACHED();
     return fontMetrics.ascent() + gap;
 }
 
-void getWavyStrokeParameters(float fontSize, float& controlPointDistance, float& step)
+WavyStrokeParameters getWavyStrokeParameters(float fontSize)
 {
-    // Distance between decoration's axis and Bezier curve's control points.
-    // The height of the curve is based on this distance. Increases the curve's height
-    // as fontSize increases to make the curve look better.
-    controlPointDistance = 0.09375 * fontSize;
-
-    // Increment used to form the diamond shape between start point (p1), control
-    // points and end point (p2) along the axis of the decoration. The curve gets
-    // wider as font size increases.
-    step = fontSize / 4.5;
+    WavyStrokeParameters result;
+    // More information is in the WavyStrokeParameters definition.
+    result.controlPointDistance = fontSize * 1.5 / 16;
+    result.step = fontSize / 4.5;
+    return result;
 }
 
 static inline void extendIntToFloat(int& extendMe, float extendTo)
@@ -106,57 +105,67 @@ GlyphOverflow visualOverflowForDecorations(const RenderStyle& lineStyle, const I
 {
     ASSERT(!inlineTextBox || inlineTextBox->lineStyle() == lineStyle);
 
-    TextDecoration decoration = lineStyle.textDecorationsInEffect();
-    if (decoration == TextDecorationNone)
+    auto decoration = lineStyle.textDecorationsInEffect();
+    if (decoration.isEmpty())
         return GlyphOverflow();
 
-    float strokeThickness = textDecorationStrokeThickness(lineStyle.computedFontPixelSize());
-    float controlPointDistance = 0;
-    float step;
+    float strokeThickness = lineStyle.textDecorationThickness().resolve(lineStyle.computedFontSize(), lineStyle.fontMetrics());
+    WavyStrokeParameters wavyStrokeParameters;
     float wavyOffset = 0;
 
     TextDecorationStyle decorationStyle = lineStyle.textDecorationStyle();
     float height = lineStyle.fontCascade().fontMetrics().floatHeight();
     GlyphOverflow overflowResult;
 
-    if (decorationStyle == TextDecorationStyleWavy) {
-        getWavyStrokeParameters(lineStyle.computedFontPixelSize(), controlPointDistance, step);
+    if (decorationStyle == TextDecorationStyle::Wavy) {
+        wavyStrokeParameters = getWavyStrokeParameters(lineStyle.computedFontPixelSize());
         wavyOffset = wavyOffsetFromDecoration();
         overflowResult.left = strokeThickness;
         overflowResult.right = strokeThickness;
     }
 
     // These metrics must match where underlines get drawn.
-    if (decoration & TextDecorationUnderline) {
+    // FIXME: Share the code in TextDecorationPainter::paintTextDecoration() so we can just query it for the painted geometry.
+    if (decoration & TextDecoration::Underline) {
         // Compensate for the integral ceiling in GraphicsContext::computeLineBoundsAndAntialiasingModeForText()
         int underlineOffset = 1;
-        underlineOffset += computeUnderlineOffset(lineStyle.textUnderlinePosition(), lineStyle.fontMetrics(), inlineTextBox, strokeThickness);
-        if (decorationStyle == TextDecorationStyleWavy) {
-            extendIntToFloat(overflowResult.bottom, underlineOffset + wavyOffset + controlPointDistance + strokeThickness - height);
-            extendIntToFloat(overflowResult.top, -(underlineOffset + wavyOffset - controlPointDistance - strokeThickness));
+        float textDecorationBaseFontSize = 16;
+        auto defaultGap = lineStyle.computedFontSize() / textDecorationBaseFontSize;
+        underlineOffset += computeUnderlineOffset(lineStyle.textUnderlinePosition(), lineStyle.textUnderlineOffset(), lineStyle.fontMetrics(), inlineTextBox, defaultGap);
+        if (decorationStyle == TextDecorationStyle::Wavy) {
+            extendIntToFloat(overflowResult.bottom, underlineOffset + wavyOffset + wavyStrokeParameters.controlPointDistance + strokeThickness - height);
+            extendIntToFloat(overflowResult.top, -(underlineOffset + wavyOffset - wavyStrokeParameters.controlPointDistance - strokeThickness));
         } else {
             extendIntToFloat(overflowResult.bottom, underlineOffset + strokeThickness - height);
             extendIntToFloat(overflowResult.top, -underlineOffset);
         }
     }
-    if (decoration & TextDecorationOverline) {
-        if (decorationStyle == TextDecorationStyleWavy) {
-            extendIntToFloat(overflowResult.bottom, -wavyOffset + controlPointDistance + strokeThickness - height);
-            extendIntToFloat(overflowResult.top, wavyOffset + controlPointDistance + strokeThickness);
-        } else {
-            extendIntToFloat(overflowResult.bottom, strokeThickness - height);
-            // top is untouched
+    if (decoration & TextDecoration::Overline) {
+        FloatRect rect(FloatPoint(), FloatSize(1, strokeThickness));
+        float autoTextDecorationThickness = TextDecorationThickness::createWithAuto().resolve(lineStyle.computedFontSize(), lineStyle.fontMetrics());
+        rect.move(0, autoTextDecorationThickness - strokeThickness - wavyOffset);
+        if (decorationStyle == TextDecorationStyle::Wavy) {
+            FloatBoxExtent wavyExpansion;
+            wavyExpansion.setTop(wavyStrokeParameters.controlPointDistance);
+            wavyExpansion.setBottom(wavyStrokeParameters.controlPointDistance);
+            rect.expand(wavyExpansion);
         }
+        extendIntToFloat(overflowResult.top, -rect.y());
+        extendIntToFloat(overflowResult.bottom, rect.maxY() - height);
     }
-    if (decoration & TextDecorationLineThrough) {
-        float baseline = lineStyle.fontMetrics().floatAscent();
-        if (decorationStyle == TextDecorationStyleWavy) {
-            extendIntToFloat(overflowResult.bottom, 2 * baseline / 3 + controlPointDistance + strokeThickness - height);
-            extendIntToFloat(overflowResult.top, -(2 * baseline / 3 - controlPointDistance - strokeThickness));
-        } else {
-            extendIntToFloat(overflowResult.bottom, 2 * baseline / 3 + strokeThickness - height);
-            extendIntToFloat(overflowResult.top, -(2 * baseline / 3));
+    if (decoration & TextDecoration::LineThrough) {
+        FloatRect rect(FloatPoint(), FloatSize(1, strokeThickness));
+        float autoTextDecorationThickness = TextDecorationThickness::createWithAuto().resolve(lineStyle.computedFontSize(), lineStyle.fontMetrics());
+        auto center = 2 * lineStyle.fontMetrics().floatAscent() / 3 + autoTextDecorationThickness / 2;
+        rect.move(0, center - strokeThickness / 2);
+        if (decorationStyle == TextDecorationStyle::Wavy) {
+            FloatBoxExtent wavyExpansion;
+            wavyExpansion.setTop(wavyStrokeParameters.controlPointDistance);
+            wavyExpansion.setBottom(wavyStrokeParameters.controlPointDistance);
+            rect.expand(wavyExpansion);
         }
+        extendIntToFloat(overflowResult.top, -rect.y());
+        extendIntToFloat(overflowResult.bottom, rect.maxY() - height);
     }
     return overflowResult;
 }

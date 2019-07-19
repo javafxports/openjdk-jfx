@@ -30,7 +30,7 @@
 
 (function (InjectedScriptHost, inspectedWindow, injectedScriptId, injectedScript, RemoteObject, CommandLineAPIHost) {
 
-// FIXME: <https://webkit.org/b/152294> Web Inspector: Parse InjectedScriptSource as a built-in to get guaranteed non-user-overriden built-ins
+// FIXME: <https://webkit.org/b/152294> Web Inspector: Parse InjectedScriptSource as a built-in to get guaranteed non-user-overridden built-ins
 
 function bind(func, thisObject, ...outerArgs)
 {
@@ -57,9 +57,10 @@ function CommandLineAPI(commandLineAPIImpl, callFrame)
         this.__defineGetter__("$" + i, bind(injectedScript._savedResult, injectedScript, i));
 
     // Command Line API methods.
-    for (let member of CommandLineAPI.members_) {
-        this[member] = bind(commandLineAPIImpl[member], commandLineAPIImpl);
-        this[member].toString = function() { return "function " + member + "() { [Command Line API] }" };
+    for (let i = 0; i < CommandLineAPI.methods.length; ++i) {
+        let method = CommandLineAPI.methods[i];
+        this[method] = bind(commandLineAPIImpl[method], commandLineAPIImpl);
+        this[method].toString = function() { return "function " + method + "() { [Command Line API] }" };
     }
 }
 
@@ -67,9 +68,24 @@ function CommandLineAPI(commandLineAPIImpl, callFrame)
  * @type {Array.<string>}
  * @const
  */
-CommandLineAPI.members_ = [
-    "$", "$$", "$x", "dir", "dirxml", "keys", "values", "profile", "profileEnd", "table",
-    "monitorEvents", "unmonitorEvents", "inspect", "copy", "clear", "getEventListeners"
+CommandLineAPI.methods = [
+    "$",
+    "$$",
+    "$x",
+    "clear",
+    "copy",
+    "dir",
+    "dirxml",
+    "getEventListeners",
+    "inspect",
+    "keys",
+    "monitorEvents",
+    "profile",
+    "profileEnd",
+    "queryObjects",
+    "table",
+    "unmonitorEvents",
+    "values",
 ];
 
 /**
@@ -219,6 +235,11 @@ CommandLineAPIImpl.prototype = {
     inspect: function(object)
     {
         return this._inspect(object);
+    },
+
+    queryObjects()
+    {
+        return InjectedScriptHost.queryObjects(...arguments);
     },
 
     copy: function(object)

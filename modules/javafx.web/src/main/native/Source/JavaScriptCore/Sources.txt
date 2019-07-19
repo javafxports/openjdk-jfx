@@ -21,6 +21,8 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
 
+API/JSAPIGlobalObject.cpp
+API/JSAPIValueWrapper.cpp
 API/JSBase.cpp
 API/JSCTestRunnerUtils.cpp
 API/JSCallbackConstructor.cpp
@@ -37,23 +39,24 @@ API/JSStringRef.cpp
 API/JSValueRef.cpp
 API/JSWeakObjectMapRefPrivate.cpp
 API/JSWeakPrivate.cpp
+API/JSWeakValue.cpp
 API/OpaqueJSString.cpp
 
-assembler/ARMAssembler.cpp
 assembler/AbstractMacroAssembler.cpp
 assembler/LinkBuffer.cpp
 assembler/MacroAssembler.cpp
-assembler/MacroAssemblerARM.cpp
 assembler/MacroAssemblerARM64.cpp
 assembler/MacroAssemblerARMv7.cpp
 assembler/MacroAssemblerCodeRef.cpp
 assembler/MacroAssemblerMIPS.cpp
 assembler/MacroAssemblerPrinter.cpp
 assembler/MacroAssemblerX86Common.cpp
+assembler/PerfLog.cpp
 assembler/Printer.cpp
 assembler/ProbeContext.cpp
 assembler/ProbeStack.cpp
 
+b3/air/AirAllocateRegistersAndStackAndGenerateCode.cpp
 b3/air/AirAllocateRegistersAndStackByLinearScan.cpp
 b3/air/AirAllocateRegistersByGraphColoring.cpp
 b3/air/AirAllocateStackByGraphColoring.cpp
@@ -158,7 +161,6 @@ b3/B3StackmapValue.cpp
 b3/B3StackSlot.cpp
 b3/B3SwitchCase.cpp
 b3/B3SwitchValue.cpp
-b3/B3TimingScope.cpp
 b3/B3Type.cpp
 b3/B3UpsilonValue.cpp
 b3/B3UseCounts.cpp
@@ -212,26 +214,38 @@ bytecode/DirectEvalCodeCache.cpp
 bytecode/EvalCodeBlock.cpp
 bytecode/ExecutableToCodeBlockEdge.cpp
 bytecode/ExecutionCounter.cpp
+bytecode/ExitFlag.cpp
 bytecode/ExitKind.cpp
+bytecode/ExitingInlineKind.cpp
 bytecode/ExitingJITType.cpp
 bytecode/FullCodeOrigin.cpp
 bytecode/FunctionCodeBlock.cpp
 bytecode/GetByIdStatus.cpp
 bytecode/GetByIdVariant.cpp
 bytecode/GetterSetterAccessCase.cpp
+bytecode/ICStatusMap.cpp
+bytecode/ICStatusUtils.cpp
+bytecode/InByIdStatus.cpp
+bytecode/InByIdVariant.cpp
 bytecode/InlineAccess.cpp
 bytecode/InlineCallFrame.cpp
 bytecode/InlineCallFrameSet.cpp
+bytecode/InstanceOfAccessCase.cpp
+bytecode/InstanceOfStatus.cpp
+bytecode/InstanceOfVariant.cpp
+bytecode/InstructionStream.cpp
 bytecode/IntrinsicGetterAccessCase.cpp
 bytecode/JumpTable.cpp
 bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp
 bytecode/LazyOperandValueProfile.cpp
+bytecode/MetadataTable.cpp
 bytecode/MethodOfGettingAValueProfile.cpp
 bytecode/ModuleNamespaceAccessCase.cpp
 bytecode/ModuleProgramCodeBlock.cpp
 bytecode/ObjectPropertyCondition.cpp
 bytecode/ObjectPropertyConditionSet.cpp
 bytecode/Opcode.cpp
+bytecode/ParseHash.cpp
 bytecode/PolyProtoAccessChain.cpp
 bytecode/PolymorphicAccess.cpp
 bytecode/PreciseJumpTargets.cpp
@@ -241,12 +255,14 @@ bytecode/ProxyableAccessCase.cpp
 bytecode/PutByIdFlags.cpp
 bytecode/PutByIdStatus.cpp
 bytecode/PutByIdVariant.cpp
+bytecode/RecordedStatuses.cpp
 bytecode/ReduceWhitespace.cpp
 bytecode/SpecialPointer.cpp
 bytecode/SpeculatedType.cpp
 bytecode/StructureSet.cpp
 bytecode/StructureStubClearingWatchpoint.cpp
 bytecode/StructureStubInfo.cpp
+bytecode/StubInfoSummary.cpp
 bytecode/SuperSampler.cpp
 bytecode/ToThisStatus.cpp
 bytecode/TrackedReferences.cpp
@@ -254,7 +270,6 @@ bytecode/UnlinkedCodeBlock.cpp
 bytecode/UnlinkedEvalCodeBlock.cpp
 bytecode/UnlinkedFunctionCodeBlock.cpp
 bytecode/UnlinkedFunctionExecutable.cpp
-bytecode/UnlinkedInstructionStream.cpp
 bytecode/UnlinkedModuleProgramCodeBlock.cpp
 bytecode/UnlinkedProgramCodeBlock.cpp
 bytecode/ValueRecovery.cpp
@@ -264,6 +279,7 @@ bytecode/Watchpoint.cpp
 
 bytecompiler/BytecodeGenerator.cpp
 bytecompiler/NodesCodegen.cpp
+bytecompiler/ProfileTypeBytecodeFlag.cpp
 
 debugger/Debugger.cpp
 debugger/DebuggerCallFrame.cpp
@@ -272,7 +288,9 @@ debugger/DebuggerParseData.cpp
 debugger/DebuggerScope.cpp
 
 dfg/DFGAbstractHeap.cpp
+dfg/DFGAbstractInterpreterClobberState.cpp
 dfg/DFGAbstractValue.cpp
+dfg/DFGAbstractValueClobberEpoch.cpp
 dfg/DFGAdaptiveInferredPropertyValueWatchpoint.cpp
 dfg/DFGAdaptiveStructureWatchpoint.cpp
 dfg/DFGArgumentsEliminationPhase.cpp
@@ -305,6 +323,7 @@ dfg/DFGConstantFoldingPhase.cpp
 dfg/DFGConstantHoistingPhase.cpp
 dfg/DFGCriticalEdgeBreakingPhase.cpp
 dfg/DFGDCEPhase.cpp
+dfg/DFGDesiredGlobalProperties.cpp
 dfg/DFGDesiredIdentifiers.cpp
 dfg/DFGDesiredTransitions.cpp
 dfg/DFGDesiredWatchpoints.cpp
@@ -326,7 +345,6 @@ dfg/DFGGraph.cpp
 dfg/DFGGraphSafepoint.cpp
 dfg/DFGHeapLocation.cpp
 dfg/DFGInPlaceAbstractState.cpp
-dfg/DFGInferredTypeCheck.cpp
 dfg/DFGInsertionSet.cpp
 dfg/DFGIntegerCheckCombiningPhase.cpp
 dfg/DFGIntegerRangeOptimizationPhase.cpp
@@ -378,9 +396,10 @@ dfg/DFGSSAConversionPhase.cpp
 dfg/DFGSSALoweringPhase.cpp
 dfg/DFGSafepoint.cpp
 dfg/DFGSnippetParams.cpp
-dfg/DFGSpeculativeJIT.cpp
-dfg/DFGSpeculativeJIT32_64.cpp
-dfg/DFGSpeculativeJIT64.cpp
+// These files take a long time to compile so we do them individually.
+dfg/DFGSpeculativeJIT.cpp @no-unify
+dfg/DFGSpeculativeJIT32_64.cpp @no-unify
+dfg/DFGSpeculativeJIT64.cpp @no-unify
 dfg/DFGStackLayoutPhase.cpp
 dfg/DFGStaticExecutionCountEstimationPhase.cpp
 dfg/DFGStoreBarrierClusteringPhase.cpp
@@ -409,15 +428,12 @@ dfg/DFGWatchpointCollectionPhase.cpp
 dfg/DFGWorklist.cpp
 
 disassembler/ARM64Disassembler.cpp
-disassembler/ARMLLVMDisassembler.cpp
-disassembler/ARMv7Disassembler.cpp
+disassembler/CapstoneDisassembler.cpp
 disassembler/Disassembler.cpp
 disassembler/UDis86Disassembler.cpp
 disassembler/X86Disassembler.cpp
 
 disassembler/ARM64/A64DOpcode.cpp
-
-disassembler/ARMv7/ARMv7DOpcode.cpp
 
 disassembler/udis86/udis86.c
 disassembler/udis86/udis86_decode.c
@@ -448,7 +464,8 @@ ftl/FTLJITFinalizer.cpp
 ftl/FTLLazySlowPath.cpp
 ftl/FTLLink.cpp
 ftl/FTLLocation.cpp
-ftl/FTLLowerDFGToB3.cpp
+// This file takes a long time to compile so we do it individually.
+ftl/FTLLowerDFGToB3.cpp @no-unify
 ftl/FTLOSREntry.cpp
 ftl/FTLOSRExit.cpp
 ftl/FTLOSRExitCompiler.cpp
@@ -499,6 +516,7 @@ heap/IncrementalSweeper.cpp
 heap/IsoAlignedMemoryAllocator.cpp
 heap/IsoCellSet.cpp
 heap/IsoSubspace.cpp
+heap/IsoSubspacePerVM.cpp
 heap/JITStubRoutineSet.cpp
 heap/LargeAllocation.cpp
 heap/LocalAllocator.cpp
@@ -512,8 +530,6 @@ heap/MarkingConstraintSet.cpp
 heap/MarkingConstraintSolver.cpp
 heap/MutatorScheduler.cpp
 heap/MutatorState.cpp
-heap/SecurityKind.cpp
-heap/SecurityOriginToken.cpp
 heap/SimpleMarkingConstraint.cpp
 heap/SlotVisitor.cpp
 heap/SpaceTimeMutatorScheduler.cpp
@@ -522,8 +538,6 @@ heap/StopIfNecessaryTimer.cpp
 heap/Subspace.cpp
 heap/SynchronousStopTheWorldMutatorScheduler.cpp
 heap/Synchronousness.cpp
-heap/ThreadLocalCache.cpp
-heap/ThreadLocalCacheLayout.cpp
 heap/VisitRaceKey.cpp
 heap/Weak.cpp
 heap/WeakBlock.cpp
@@ -565,11 +579,14 @@ inspector/InspectorFrontendDispatchers.cpp
 inspector/InspectorProtocolObjects.cpp
 
 inspector/agents/InspectorAgent.cpp
+inspector/agents/InspectorAuditAgent.cpp
 inspector/agents/InspectorConsoleAgent.cpp
 inspector/agents/InspectorDebuggerAgent.cpp
 inspector/agents/InspectorHeapAgent.cpp
 inspector/agents/InspectorRuntimeAgent.cpp
 inspector/agents/InspectorScriptProfilerAgent.cpp
+inspector/agents/InspectorTargetAgent.cpp
+inspector/agents/JSGlobalObjectAuditAgent.cpp
 inspector/agents/JSGlobalObjectDebuggerAgent.cpp
 inspector/agents/JSGlobalObjectRuntimeAgent.cpp
 
@@ -577,7 +594,6 @@ interpreter/AbstractPC.cpp
 interpreter/CLoopStack.cpp
 interpreter/CallFrame.cpp
 interpreter/Interpreter.cpp
-interpreter/ProtoCallFrame.cpp
 interpreter/ShadowChicken.cpp
 interpreter/StackVisitor.cpp
 
@@ -698,6 +714,7 @@ runtime/BooleanConstructor.cpp
 runtime/BooleanObject.cpp
 runtime/BooleanPrototype.cpp
 runtime/CallData.cpp
+runtime/CachedTypes.cpp
 runtime/CatchScope.cpp
 runtime/ClassInfo.cpp
 runtime/ClonedArguments.cpp
@@ -705,8 +722,8 @@ runtime/CodeCache.cpp
 runtime/CodeSpecializationKind.cpp
 runtime/CommonIdentifiers.cpp
 runtime/CommonSlowPaths.cpp
-runtime/CommonSlowPathsExceptions.cpp
 runtime/CompilationResult.cpp
+tools/CompilerTimingScope.cpp
 runtime/Completion.cpp
 runtime/ConfigFile.cpp
 runtime/ConsoleClient.cpp
@@ -732,6 +749,7 @@ runtime/ErrorConstructor.cpp
 runtime/ErrorHandlingScope.cpp
 runtime/ErrorInstance.cpp
 runtime/ErrorPrototype.cpp
+runtime/ErrorType.cpp
 runtime/EvalExecutable.cpp
 runtime/Exception.cpp
 runtime/ExceptionEventLocation.cpp
@@ -748,15 +766,12 @@ runtime/FunctionRareData.cpp
 runtime/GeneratorFunctionConstructor.cpp
 runtime/GeneratorFunctionPrototype.cpp
 runtime/GeneratorPrototype.cpp
+runtime/GetPutInfo.cpp
 runtime/GetterSetter.cpp
 runtime/HashMapImpl.cpp
 runtime/Identifier.cpp
 runtime/IndexingType.cpp
 runtime/IndirectEvalExecutable.cpp
-runtime/InferredStructure.cpp
-runtime/InferredStructureWatchpoint.cpp
-runtime/InferredType.cpp
-runtime/InferredTypeTable.cpp
 runtime/InferredValue.cpp
 runtime/InitializeThreading.cpp
 runtime/InspectorInstrumentationObject.cpp
@@ -772,9 +787,11 @@ runtime/IntlNumberFormat.cpp
 runtime/IntlNumberFormatConstructor.cpp
 runtime/IntlNumberFormatPrototype.cpp
 runtime/IntlObject.cpp
+runtime/IntlPluralRules.cpp
+runtime/IntlPluralRulesConstructor.cpp
+runtime/IntlPluralRulesPrototype.cpp
 runtime/IteratorOperations.cpp
 runtime/IteratorPrototype.cpp
-runtime/JSAPIValueWrapper.cpp
 runtime/JSArray.cpp
 runtime/JSArrayBuffer.cpp
 runtime/JSArrayBufferConstructor.cpp
@@ -785,7 +802,6 @@ runtime/JSAsyncGeneratorFunction.cpp
 runtime/JSBigInt.cpp
 runtime/JSBoundFunction.cpp
 runtime/JSCJSValue.cpp
-runtime/JSCPoison.cpp
 runtime/JSCallee.cpp
 runtime/JSCell.cpp
 runtime/JSCustomGetterSetterFunction.cpp
@@ -800,20 +816,22 @@ runtime/JSGlobalLexicalEnvironment.cpp
 runtime/JSGlobalObject.cpp
 runtime/JSGlobalObjectDebuggable.cpp
 runtime/JSGlobalObjectFunctions.cpp
+runtime/JSImmutableButterfly.cpp
 runtime/JSInternalPromise.cpp
 runtime/JSInternalPromiseConstructor.cpp
 runtime/JSInternalPromiseDeferred.cpp
 runtime/JSInternalPromisePrototype.cpp
-runtime/JSJob.cpp
 runtime/JSLexicalEnvironment.cpp
 runtime/JSLock.cpp
 runtime/JSMap.cpp
 runtime/JSMapIterator.cpp
+runtime/JSMicrotask.cpp
 runtime/JSModuleEnvironment.cpp
 runtime/JSModuleLoader.cpp
 runtime/JSModuleNamespaceObject.cpp
 runtime/JSModuleRecord.cpp
 runtime/JSNativeStdFunction.cpp
+runtime/JSNonDestructibleProxy.cpp
 runtime/JSONObject.cpp
 runtime/JSObject.cpp
 runtime/JSPromise.cpp
@@ -837,6 +855,7 @@ runtime/JSStringJoiner.cpp
 runtime/JSStringHeapCellType.cpp
 runtime/JSSymbolTableObject.cpp
 runtime/JSTemplateObjectDescriptor.cpp
+runtime/JSType.cpp
 runtime/JSTypedArrayConstructors.cpp
 runtime/JSTypedArrayPrototypes.cpp
 runtime/JSTypedArrayViewConstructor.cpp
@@ -856,7 +875,6 @@ runtime/MatchResult.cpp
 runtime/MathCommon.cpp
 runtime/MathObject.cpp
 runtime/MemoryStatistics.cpp
-runtime/ModuleLoaderPrototype.cpp
 runtime/ModuleProgramExecutable.cpp
 runtime/NativeErrorConstructor.cpp
 runtime/NativeErrorPrototype.cpp
@@ -885,6 +903,7 @@ runtime/RegExp.cpp
 runtime/RegExpCache.cpp
 runtime/RegExpCachedResult.cpp
 runtime/RegExpConstructor.cpp
+runtime/RegExpGlobalData.cpp
 runtime/RegExpMatchesArray.cpp
 runtime/RegExpObject.cpp
 runtime/RegExpPrototype.cpp
@@ -953,13 +972,13 @@ tools/JSDollarVM.cpp
 tools/SigillCrashAnalyzer.cpp
 tools/VMInspector.cpp
 
+wasm/WasmAirIRGenerator.cpp @no-unify
 wasm/WasmB3IRGenerator.cpp
 wasm/WasmBBQPlan.cpp
 wasm/WasmBinding.cpp
 wasm/WasmCallee.cpp
 wasm/WasmCallingConvention.cpp
 wasm/WasmCodeBlock.cpp
-wasm/WasmContext.cpp
 wasm/WasmEmbedder.h
 wasm/WasmFaultSignalHandler.cpp
 wasm/WasmFormat.cpp
@@ -978,7 +997,9 @@ wasm/WasmOMGPlan.cpp
 wasm/WasmOpcodeOrigin.cpp
 wasm/WasmPageCount.cpp
 wasm/WasmPlan.cpp
+wasm/WasmSectionParser.cpp
 wasm/WasmSignature.cpp
+wasm/WasmStreamingParser.cpp
 wasm/WasmTable.cpp
 wasm/WasmTable.h
 wasm/WasmThunks.cpp
@@ -1022,6 +1043,7 @@ wasm/js/WebAssemblyWrapperFunction.cpp
 
 yarr/RegularExpression.cpp
 yarr/YarrCanonicalizeUCS2.cpp
+yarr/YarrDisassembler.cpp
 yarr/YarrErrorCode.cpp
 yarr/YarrInterpreter.cpp
 yarr/YarrJIT.cpp

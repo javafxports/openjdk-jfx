@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,10 +44,10 @@
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "EventNames.h"
+#include "Frame.h"
 #include "JSDOMPromiseDeferred.h"
 #include "LinkIconCollector.h"
 #include "LinkIconType.h"
-#include "MainFrame.h"
 #include "Page.h"
 #include "PageConsoleClient.h"
 #include "PaymentAuthorizationStatus.h"
@@ -160,7 +160,7 @@ static ExceptionOr<ApplePaySessionPaymentRequest::LineItem> convertAndValidate(A
     return WTFMove(result);
 }
 
-static ExceptionOr<Vector<ApplePaySessionPaymentRequest::LineItem>> convertAndValidate(std::optional<Vector<ApplePayLineItem>>&& lineItems)
+static ExceptionOr<Vector<ApplePaySessionPaymentRequest::LineItem>> convertAndValidate(Optional<Vector<ApplePayLineItem>>&& lineItems)
 {
     Vector<ApplePaySessionPaymentRequest::LineItem> result;
     if (!lineItems)
@@ -227,13 +227,6 @@ static ExceptionOr<ApplePaySessionPaymentRequest> convertAndValidate(unsigned ve
         return lineItems.releaseException();
     result.setLineItems(lineItems.releaseReturnValue());
 
-    if (paymentRequest.requiredShippingContactFields) {
-        auto requiredShippingContactFields = convertAndValidate(version, WTFMove(*paymentRequest.requiredShippingContactFields));
-        if (requiredShippingContactFields.hasException())
-            return requiredShippingContactFields.releaseException();
-        result.setRequiredShippingContactFields(requiredShippingContactFields.releaseReturnValue());
-    }
-
     result.setShippingType(paymentRequest.shippingType);
 
     if (paymentRequest.shippingMethods) {
@@ -273,9 +266,6 @@ static ExceptionOr<PaymentAuthorizationResult> convertAndValidate(ApplePayPaymen
 {
     PaymentAuthorizationResult convertedResult;
 
-    std::optional<ApplePayError::Code> errorCode;
-    std::optional<ApplePayError::ContactField> contactField;
-
     switch (result.status) {
     case ApplePaySession::STATUS_SUCCESS:
         convertedResult.status = PaymentAuthorizationStatus::Success;
@@ -287,7 +277,7 @@ static ExceptionOr<PaymentAuthorizationResult> convertAndValidate(ApplePayPaymen
 
     case ApplePaySession::STATUS_INVALID_BILLING_POSTAL_ADDRESS:
         convertedResult.status = PaymentAuthorizationStatus::Failure;
-        convertedResult.errors.append({ PaymentError::Code::BillingContactInvalid, { }, std::nullopt });
+        convertedResult.errors.append({ PaymentError::Code::BillingContactInvalid, { }, WTF::nullopt });
         break;
 
     case ApplePaySession::STATUS_INVALID_SHIPPING_POSTAL_ADDRESS:
@@ -297,7 +287,7 @@ static ExceptionOr<PaymentAuthorizationResult> convertAndValidate(ApplePayPaymen
 
     case ApplePaySession::STATUS_INVALID_SHIPPING_CONTACT:
         convertedResult.status = PaymentAuthorizationStatus::Failure;
-        convertedResult.errors.append({ PaymentError::Code::ShippingContactInvalid, { }, std::nullopt });
+        convertedResult.errors.append({ PaymentError::Code::ShippingContactInvalid, { }, WTF::nullopt });
         break;
 
     case ApplePaySession::STATUS_PIN_REQUIRED:
@@ -406,12 +396,10 @@ ExceptionOr<Ref<ApplePaySession>> ApplePaySession::create(Document& document, un
     if (!UserGestureIndicator::processingUserGesture())
         return Exception { InvalidAccessError, "Must create a new ApplePaySession from a user gesture handler." };
 
-    auto& paymentCoordinator = document.frame()->mainFrame().paymentCoordinator();
+    if (!document.page())
+        return Exception { InvalidAccessError, "Frame is detached" };
 
-    if (!version || !paymentCoordinator.supportsVersion(version))
-        return Exception { InvalidAccessError, makeString("\"" + String::number(version), "\" is not a supported version.") };
-
-    auto convertedPaymentRequest = convertAndValidate(version, WTFMove(paymentRequest), paymentCoordinator);
+    auto convertedPaymentRequest = convertAndValidate(version, WTFMove(paymentRequest), document.page()->paymentCoordinator());
     if (convertedPaymentRequest.hasException())
         return convertedPaymentRequest.releaseException();
 
@@ -419,11 +407,11 @@ ExceptionOr<Ref<ApplePaySession>> ApplePaySession::create(Document& document, un
 }
 
 ApplePaySession::ApplePaySession(Document& document, unsigned version, ApplePaySessionPaymentRequest&& paymentRequest)
-    : ActiveDOMObject { &document }
+    : ActiveDOMObject { document }
     , m_paymentRequest { WTFMove(paymentRequest) }
     , m_version { version }
 {
-    ASSERT(document.frame()->mainFrame().paymentCoordinator().supportsVersion(version));
+    ASSERT(document.page()->paymentCoordinator().supportsVersion(version));
     suspendIfNeeded();
 }
 
@@ -440,7 +428,11 @@ ExceptionOr<bool> ApplePaySession::supportsVersion(ScriptExecutionContext& scrip
     if (canCall.hasException())
         return canCall.releaseException();
 
-    return document.frame()->mainFrame().paymentCoordinator().supportsVersion(version);
+    auto* page = document.page();
+    if (!page)
+        return Exception { InvalidAccessError };
+
+    return page->paymentCoordinator().supportsVersion(version);
 }
 
 static bool shouldDiscloseApplePayCapability(Document& document)
@@ -460,7 +452,11 @@ ExceptionOr<bool> ApplePaySession::canMakePayments(ScriptExecutionContext& scrip
     if (canCall.hasException())
         return canCall.releaseException();
 
-    return document.frame()->mainFrame().paymentCoordinator().canMakePayments();
+    auto* page = document.page();
+    if (!page)
+        return Exception { InvalidAccessError };
+
+    return page->paymentCoordinator().canMakePayments();
 }
 
 ExceptionOr<void> ApplePaySession::canMakePaymentsWithActiveCard(ScriptExecutionContext& scriptExecutionContext, const String& merchantIdentifier, Ref<DeferredPromise>&& passedPromise)
@@ -473,7 +469,11 @@ ExceptionOr<void> ApplePaySession::canMakePaymentsWithActiveCard(ScriptExecution
 
     RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
     if (!shouldDiscloseApplePayCapability(document)) {
-        auto& paymentCoordinator = document.frame()->mainFrame().paymentCoordinator();
+        auto* page = document.page();
+        if (!page)
+            return Exception { InvalidAccessError };
+
+        auto& paymentCoordinator = page->paymentCoordinator();
         bool canMakePayments = paymentCoordinator.canMakePayments();
 
         RunLoop::main().dispatch([promise, canMakePayments]() mutable {
@@ -482,7 +482,11 @@ ExceptionOr<void> ApplePaySession::canMakePaymentsWithActiveCard(ScriptExecution
         return { };
     }
 
-    auto& paymentCoordinator = document.frame()->mainFrame().paymentCoordinator();
+    auto* page = document.page();
+    if (!page)
+        return Exception { InvalidAccessError };
+
+    auto& paymentCoordinator = page->paymentCoordinator();
 
     paymentCoordinator.canMakePaymentsWithActiveCard(merchantIdentifier, document.domain(), [promise](bool canMakePayments) mutable {
         promise->resolve<IDLBoolean>(canMakePayments);
@@ -501,9 +505,13 @@ ExceptionOr<void> ApplePaySession::openPaymentSetup(ScriptExecutionContext& scri
     if (!UserGestureIndicator::processingUserGesture())
         return Exception { InvalidAccessError, "Must call ApplePaySession.openPaymentSetup from a user gesture handler." };
 
-    RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
-    auto& paymentCoordinator = document.frame()->mainFrame().paymentCoordinator();
+    auto* page = document.page();
+    if (!page)
+        return Exception { InvalidAccessError };
 
+    auto& paymentCoordinator = page->paymentCoordinator();
+
+    RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
     paymentCoordinator.openPaymentSetup(merchantIdentifier, document.domain(), [promise](bool result) mutable {
         promise->resolve<IDLBoolean>(result);
     });
@@ -530,7 +538,7 @@ ExceptionOr<void> ApplePaySession::begin()
 
     m_state = State::Active;
 
-    setPendingActivity(this);
+    setPendingActivity(*this);
 
     return { };
 }
@@ -637,7 +645,7 @@ ExceptionOr<void> ApplePaySession::completePayment(ApplePayPaymentAuthorizationR
     }
 
     m_state = State::Completed;
-    unsetPendingActivity(this);
+    unsetPendingActivity(*this);
 
     return { };
 }
@@ -676,8 +684,8 @@ ExceptionOr<void> ApplePaySession::completeShippingContactSelection(unsigned sho
 {
     ApplePayShippingContactUpdate update;
 
-    std::optional<ApplePayError::Code> errorCode;
-    std::optional<ApplePayError::ContactField> contactField;
+    Optional<ApplePayError::Code> errorCode;
+    Optional<ApplePayError::ContactField> contactField;
 
     switch (status) {
     case ApplePaySession::STATUS_SUCCESS:
@@ -740,7 +748,7 @@ unsigned ApplePaySession::version() const
     return m_version;
 }
 
-void ApplePaySession::validateMerchant(const URL& validationURL)
+void ApplePaySession::validateMerchant(URL&& validationURL)
 {
     if (m_state == State::Aborted) {
         // ApplePaySession::abort has been called.
@@ -758,7 +766,7 @@ void ApplePaySession::validateMerchant(const URL& validationURL)
 
     m_merchantValidationState = MerchantValidationState::ValidatingMerchant;
 
-    auto event = ApplePayValidateMerchantEvent::create(eventNames().validatemerchantEvent, validationURL);
+    auto event = ApplePayValidateMerchantEvent::create(eventNames().validatemerchantEvent, WTFMove(validationURL));
     dispatchEvent(event.get());
 }
 
@@ -820,7 +828,7 @@ void ApplePaySession::didCancelPaymentSession()
 
     m_state = State::Canceled;
 
-    auto event = Event::create(eventNames().cancelEvent, false, false);
+    auto event = Event::create(eventNames().cancelEvent, Event::CanBubble::No, Event::IsCancelable::No);
     dispatchEvent(event.get());
 
     didReachFinalState();
@@ -863,7 +871,7 @@ void ApplePaySession::stop()
 
 PaymentCoordinator& ApplePaySession::paymentCoordinator() const
 {
-    return downcast<Document>(*scriptExecutionContext()).frame()->mainFrame().paymentCoordinator();
+    return downcast<Document>(*scriptExecutionContext()).page()->paymentCoordinator();
 }
 
 bool ApplePaySession::canBegin() const
@@ -1032,7 +1040,7 @@ bool ApplePaySession::isFinalState() const
 void ApplePaySession::didReachFinalState()
 {
     ASSERT(isFinalState());
-    unsetPendingActivity(this);
+    unsetPendingActivity(*this);
 }
 
 }

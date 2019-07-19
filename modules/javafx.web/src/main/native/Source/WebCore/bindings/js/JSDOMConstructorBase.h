@@ -28,7 +28,7 @@ class JSDOMConstructorBase : public JSDOMObject {
 public:
     using Base = JSDOMObject;
 
-    static const unsigned StructureFlags = Base::StructureFlags | JSC::ImplementsHasInstance | JSC::ImplementsDefaultHasInstance | JSC::TypeOfShouldCallGetCallData;
+    static const unsigned StructureFlags = Base::StructureFlags | JSC::ImplementsHasInstance | JSC::ImplementsDefaultHasInstance | JSC::OverridesGetCallData;
     static JSC::Structure* createStructure(JSC::VM&, JSC::JSGlobalObject*, JSC::JSValue);
 
 protected:
@@ -37,18 +37,14 @@ protected:
     {
     }
 
-    static String className(const JSObject*);
+    static String className(const JSObject*, JSC::VM&);
+    static String toStringName(const JSObject*, JSC::ExecState*);
     static JSC::CallType getCallData(JSCell*, JSC::CallData&);
 };
 
 inline JSC::Structure* JSDOMConstructorBase::createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
 {
     return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
-}
-
-inline String JSDOMConstructorBase::className(const JSObject*)
-{
-    return ASCIILiteral("Function");
 }
 
 } // namespace WebCore

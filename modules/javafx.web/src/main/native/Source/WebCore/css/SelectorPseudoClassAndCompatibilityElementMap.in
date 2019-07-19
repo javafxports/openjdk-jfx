@@ -28,6 +28,9 @@ first-line, PseudoClassUnknown, PseudoElementFirstLine
 first-of-type
 focus
 focus-within
+#if ENABLE(ATTACHMENT_ELEMENT)
+has-attachment
+#endif
 horizontal
 host, PseudoClassHost, PseudoElementUnknown
 hover
@@ -72,6 +75,7 @@ window-inactive
 -webkit-full-screen
 -webkit-full-screen-ancestor
 -webkit-full-screen-document
+-webkit-full-screen-controls-hidden
 #endif
 
 #if ENABLE(VIDEO_TRACK)

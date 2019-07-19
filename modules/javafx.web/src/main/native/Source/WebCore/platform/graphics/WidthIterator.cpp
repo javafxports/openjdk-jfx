@@ -22,6 +22,7 @@
 #include "config.h"
 #include "WidthIterator.h"
 
+#include "CharacterProperties.h"
 #include "Font.h"
 #include "FontCascade.h"
 #include "GlyphBuffer.h"
@@ -31,8 +32,8 @@
 
 
 namespace WebCore {
-using namespace WTF;
-using namespace Unicode;
+
+using namespace WTF::Unicode;
 
 WidthIterator::WidthIterator(const FontCascade* font, const TextRun& run, HashSet<const Font*>* fallbackFonts, bool accountForGlyphBounds, bool forTextEmphasis)
     : m_font(font)
@@ -53,7 +54,7 @@ WidthIterator::WidthIterator(const FontCascade* font, const TextRun& run, HashSe
     if (!m_expansion)
         m_expansionPerOpportunity = 0;
     else {
-        unsigned expansionOpportunityCount = FontCascade::expansionOpportunityCount(m_run.text(), m_run.ltr() ? LTR : RTL, run.expansionBehavior()).first;
+        unsigned expansionOpportunityCount = FontCascade::expansionOpportunityCount(m_run.text(), m_run.ltr() ? TextDirection::LTR : TextDirection::RTL, run.expansionBehavior()).first;
 
         if (!expansionOpportunityCount)
             m_expansionPerOpportunity = 0;
@@ -114,6 +115,9 @@ inline float WidthIterator::applyFontTransforms(GlyphBuffer* glyphBuffer, bool l
 
     font->applyTransforms(glyphBuffer->glyphs(lastGlyphCount), advances + lastGlyphCount, glyphBufferSize - lastGlyphCount, m_enableKerning, m_requiresShaping);
 
+    for (unsigned i = lastGlyphCount; i < glyphBufferSize; ++i)
+        advances[i].setHeight(-advances[i].height());
+
     if (!ltr)
         glyphBuffer->reverse(lastGlyphCount, glyphBufferSize - lastGlyphCount);
 
@@ -162,11 +166,6 @@ static inline std::pair<bool, bool> expansionLocation(bool ideograph, bool treat
     return std::make_pair(expandLeft, expandRight);
 }
 
-static inline bool characterMustDrawSomething(UChar32 character)
-{
-    return !u_hasBinaryProperty(character, UCHAR_DEFAULT_IGNORABLE_CODE_POINT);
-}
-
 template <typename TextIterator>
 inline unsigned WidthIterator::advanceInternal(TextIterator& textIterator, GlyphBuffer* glyphBuffer)
 {
@@ -198,10 +197,19 @@ inline unsigned WidthIterator::advanceInternal(TextIterator& textIterator, Glyph
     // We are iterating in string order, not glyph order. Compare this to ComplexTextController::adjustGlyphsAndAdvances()
     while (textIterator.consume(character, clusterLength)) {
         unsigned advanceLength = clusterLength;
+        bool characterMustDrawSomething = !isDefaultIgnorableCodePoint(character);
+#if USE(FREETYPE)
+        // Freetype based ports only override the characters with Default_Ignorable unicode property when the font
+        // doesn't support the code point. We should ignore them at this point to ensure they are not displayed.
+        if (!characterMustDrawSomething) {
+            textIterator.advance(advanceLength);
+            continue;
+        }
+#endif
         int currentCharacter = textIterator.currentIndex();
         const GlyphData& glyphData = m_font->glyphDataForCharacter(character, rtl);
         Glyph glyph = glyphData.glyph;
-        if (!glyph && !characterMustDrawSomething(character)) {
+        if (!glyph && !characterMustDrawSomething) {
             textIterator.advance(advanceLength);
             continue;
         }
@@ -342,7 +350,7 @@ inline unsigned WidthIterator::advanceInternal(TextIterator& textIterator, Glyph
         previousCharacter = character;
     }
 
-    if (leftoverJustificationWidth) {
+    if (glyphBuffer && leftoverJustificationWidth) {
         if (m_forTextEmphasis)
             glyphBuffer->add(lastFontData->zeroWidthSpaceGlyph(), lastFontData, leftoverJustificationWidth, m_run.length() - 1);
         else

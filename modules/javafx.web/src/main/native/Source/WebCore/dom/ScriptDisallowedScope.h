@@ -26,6 +26,10 @@
 #include "ContainerNode.h"
 #include <wtf/MainThread.h>
 
+#if PLATFORM(IOS_FAMILY)
+#include "WebCoreThread.h"
+#endif
+
 namespace WebCore {
 
 class ScriptDisallowedScope {
@@ -83,10 +87,20 @@ public:
 #endif
         }
 
+        static bool hasDisallowedScope()
+        {
+            ASSERT(isMainThread());
+            return s_count;
+        }
+
         static bool isScriptAllowed()
         {
             ASSERT(isMainThread());
+#if PLATFORM(IOS_FAMILY)
+            return !s_count || webThreadDelegateMessageScopeCount;
+#else
             return !s_count;
+#endif
         }
     };
 
@@ -129,7 +143,8 @@ public:
     };
 #endif
 
-    // FIXME: Remove this class once the sync layout inside SVGImage::draw is removed
+    // FIXME: Remove this class once the sync layout inside SVGImage::draw is removed,
+    // CachedSVGFont::ensureCustomFontData no longer synchronously creates a document during style resolution,
     // and refactored the code in RenderFrameBase::performLayoutWithFlattening.
     class DisableAssertionsInScope {
     public:

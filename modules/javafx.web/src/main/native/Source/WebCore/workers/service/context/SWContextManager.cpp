@@ -31,7 +31,6 @@
 #include "MessageWithMessagePorts.h"
 #include "ServiceWorkerClientIdentifier.h"
 #include "ServiceWorkerGlobalScope.h"
-#include <unistd.h>
 
 namespace WebCore {
 
@@ -65,7 +64,7 @@ void SWContextManager::registerServiceWorkerThreadForInstall(Ref<ServiceWorkerTh
     });
 }
 
-void SWContextManager::startedServiceWorker(std::optional<ServiceWorkerJobDataIdentifier> jobDataIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, const String& exceptionMessage)
+void SWContextManager::startedServiceWorker(Optional<ServiceWorkerJobDataIdentifier> jobDataIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, const String& exceptionMessage)
 {
     connection()->serviceWorkerStartedWithMessage(jobDataIdentifier, serviceWorkerIdentifier, exceptionMessage);
     if (m_serviceWorkerCreationCallback)
@@ -118,7 +117,8 @@ void SWContextManager::terminateWorker(ServiceWorkerIdentifier identifier, Secon
 
     m_pendingServiceWorkerTerminationRequests.add(identifier, std::make_unique<ServiceWorkerTerminationRequest>(*this, identifier, timeout));
 
-    serviceWorker->thread().stop([this, identifier, serviceWorker = WTFMove(serviceWorker), completionHandler = WTFMove(completionHandler)]() mutable {
+    auto& thread = serviceWorker->thread();
+    thread.stop([this, identifier, serviceWorker = WTFMove(serviceWorker), completionHandler = WTFMove(completionHandler)]() mutable {
         m_pendingServiceWorkerTerminationRequests.remove(identifier);
 
         if (auto* connection = SWContextManager::singleton().connection())

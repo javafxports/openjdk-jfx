@@ -68,7 +68,7 @@ void Grid::insert(RenderBox& child, const GridArea& area)
 
     for (auto row : area.rows) {
         for (auto column : area.columns)
-            m_grid[row][column].append(&child);
+            m_grid[row][column].append(makeWeakPtr(child));
     }
 
     setGridItemArea(child, area);
@@ -157,7 +157,6 @@ void Grid::setNeedsItemsPlacement(bool needsItemsPlacement)
 
     m_grid.shrink(0);
     m_gridItemArea.clear();
-    m_hasAnyOrthogonalGridItem = false;
     m_smallestRowStart = 0;
     m_smallestColumnStart = 0;
     m_autoRepeatEmptyColumns = nullptr;
@@ -189,7 +188,7 @@ RenderBox* GridIterator::nextGridItem()
     for (; varyingTrackIndex < endOfVaryingTrackIndex; ++varyingTrackIndex) {
         const auto& children = m_grid[m_rowIndex][m_columnIndex];
         if (m_childIndex < children.size())
-            return children[m_childIndex++];
+            return children[m_childIndex++].get();
 
         m_childIndex = 0;
     }

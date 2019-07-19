@@ -25,7 +25,7 @@
 
 namespace JSC {
 
-class RegExpPrototype : public JSNonFinalObject {
+class RegExpPrototype final : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
     static const unsigned StructureFlags = Base::StructureFlags;
@@ -44,17 +44,11 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
     }
 
-    JS_EXPORT_PRIVATE static void visitChildren(JSCell*, SlotVisitor&);
-
-    RegExp* emptyRegExp() const { return m_emptyRegExp.get(); }
-
 protected:
     RegExpPrototype(VM&, Structure*);
 
 private:
     void finishCreation(VM&, JSGlobalObject*);
-
-    WriteBarrier<RegExp> m_emptyRegExp;
 };
 
 EncodedJSValue JSC_HOST_CALL regExpProtoFuncMatchFast(ExecState*);

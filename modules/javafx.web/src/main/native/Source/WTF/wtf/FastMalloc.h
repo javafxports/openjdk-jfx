@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2009, 2015-2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2005-2018 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef WTF_FastMalloc_h
-#define WTF_FastMalloc_h
+#pragma once
 
 #include <new>
 #include <stdlib.h>
@@ -54,6 +53,7 @@ WTF_EXPORT_PRIVATE char* fastStrDup(const char*) RETURNS_NONNULL;
 WTF_EXPORT_PRIVATE TryMallocReturnValue tryFastMalloc(size_t);
 WTF_EXPORT_PRIVATE TryMallocReturnValue tryFastZeroedMalloc(size_t);
 WTF_EXPORT_PRIVATE TryMallocReturnValue tryFastCalloc(size_t numElements, size_t elementSize);
+WTF_EXPORT_PRIVATE TryMallocReturnValue tryFastRealloc(void*, size_t);
 
 WTF_EXPORT_PRIVATE void fastFree(void*);
 
@@ -69,6 +69,11 @@ WTF_EXPORT_PRIVATE size_t fastMallocGoodSize(size_t);
 
 WTF_EXPORT_PRIVATE void releaseFastMallocFreeMemory();
 WTF_EXPORT_PRIVATE void releaseFastMallocFreeMemoryForThisThread();
+
+WTF_EXPORT_PRIVATE void fastCommitAlignedMemory(void*, size_t);
+WTF_EXPORT_PRIVATE void fastDecommitAlignedMemory(void*, size_t);
+
+WTF_EXPORT_PRIVATE void fastEnableMiniMode();
 
 struct FastMallocStatistics {
     size_t reservedVMBytes;
@@ -200,6 +205,26 @@ struct FastMalloc {
     static void free(void* p) { fastFree(p); }
 };
 
+template<typename T>
+struct FastFree {
+    static_assert(std::is_trivially_destructible<T>::value, "");
+
+    void operator()(T* pointer) const
+    {
+        fastFree(const_cast<typename std::remove_cv<T>::type*>(pointer));
+    }
+};
+
+template<typename T>
+struct FastFree<T[]> {
+    static_assert(std::is_trivially_destructible<T>::value, "");
+
+    void operator()(T* pointer) const
+    {
+        fastFree(const_cast<typename std::remove_cv<T>::type*>(pointer));
+    }
+};
+
 } // namespace WTF
 
 #if !defined(NDEBUG)
@@ -208,6 +233,7 @@ using WTF::fastSetMaxSingleAllocationSize;
 
 using WTF::FastAllocator;
 using WTF::FastMalloc;
+using WTF::FastFree;
 using WTF::isFastMallocEnabled;
 using WTF::fastCalloc;
 using WTF::fastFree;
@@ -224,9 +250,9 @@ using WTF::tryFastZeroedMalloc;
 using WTF::fastAlignedMalloc;
 using WTF::fastAlignedFree;
 
-#if COMPILER(GCC_OR_CLANG) && OS(DARWIN)
+#if COMPILER(GCC_COMPATIBLE) && OS(DARWIN)
 #define WTF_PRIVATE_INLINE __private_extern__ inline __attribute__((always_inline))
-#elif COMPILER(GCC_OR_CLANG)
+#elif COMPILER(GCC_COMPATIBLE)
 #define WTF_PRIVATE_INLINE inline __attribute__((always_inline))
 #elif COMPILER(MSVC)
 #define WTF_PRIVATE_INLINE __forceinline
@@ -272,5 +298,3 @@ typedef int __thisIsHereToForceASemicolonAfterThisMacro
 #define WTF_MAKE_STRUCT_FAST_ALLOCATED \
     WTF_MAKE_FAST_ALLOCATED_IMPL \
 typedef int __thisIsHereToForceASemicolonAfterThisMacro
-
-#endif /* WTF_FastMalloc_h */

@@ -52,9 +52,8 @@ exclude .*\/(Configurations|mac|ios|cf|cg|cocoa|Cocoa|objc|avfoundation|cairo|ca
 
 # JavaFX needs few other platform files as well
 include Source/WTF/wtf/spi/cf/.*$
-include Source/WTF/wtf/text/(cf|mac|win)/.*$
+include Source/WTF/wtf/text/(cf|cocoa|win)/.*$
 include Source/WTF/wtf/(cf|cocoa|win|mac)/.*$
-include Source/ThirdParty/icu/\*/Makefile.in$
 
 directory Source
 
@@ -65,7 +64,6 @@ exclude Source/JavaScriptCore/inspector/scripts/tests
 exclude Source/JavaScriptCore/replay/scripts/tests
 exclude Source/WebDriver
 exclude Source/ThirdParty
-include Source/ThirdParty/(icu|libxml|libxslt|sqlite)
 exclude Source/WebCore/platform/audio/resources
 exclude Source/WebCore/bindings/scripts/test
 exclude Source/WebCore/Resources
@@ -82,7 +80,7 @@ exclude Source/WebCore/Modules/modern-media-controls/images/(iOS|macOS)/*
 
 # Include Versions.xconfig
 file Source/WebKitLegacy/mac/Configurations/Version.xcconfig
-file Source/WebCore/English.lproj/mediaControlsLocalizedStrings.js
+file Source/WebCore/en.lproj/mediaControlsLocalizedStrings.js
 file Source/WebCore/Resources/plugIns.js
 
 file Source/bmalloc/bmalloc/ProcessCheck.mm
@@ -92,9 +90,6 @@ file Source/WebCore/PAL/pal/unix/LoggingUnix.cpp
 file Source/WebCore/platform/win/SystemInfo.cpp
 file Source/WebCore/platform/win/SystemInfo.h
 file Source/WebCore/platform/cf/SharedBufferCF.cpp
-file Source/WebCore/platform/cf/URLCF.cpp
-file Source/WebCore/platform/cf/CFURLExtras.cpp
-file Source/WebCore/platform/cf/CFURLExtras.h
 
 file CMakeLists.txt
 file Tools/CMakeLists.txt

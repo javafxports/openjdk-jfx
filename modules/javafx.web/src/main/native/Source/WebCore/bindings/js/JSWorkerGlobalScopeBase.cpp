@@ -28,15 +28,17 @@
 #include "config.h"
 #include "JSWorkerGlobalScopeBase.h"
 
+#include "ActiveDOMCallbackMicrotask.h"
 #include "DOMWrapperWorld.h"
 #include "JSDOMGlobalObjectTask.h"
 #include "JSDedicatedWorkerGlobalScope.h"
-#include "JSDynamicDowncast.h"
+#include "JSMicrotaskCallback.h"
 #include "JSWorkerGlobalScope.h"
 #include "WorkerGlobalScope.h"
 #include "WorkerThread.h"
 #include <JavaScriptCore/JSCInlines.h>
 #include <JavaScriptCore/JSCJSValueInlines.h>
+#include <JavaScriptCore/JSProxy.h>
 #include <JavaScriptCore/Microtask.h>
 #include <wtf/Language.h>
 
@@ -61,8 +63,10 @@ const GlobalObjectMethodTable JSWorkerGlobalScopeBase::s_globalObjectMethodTable
     nullptr, // moduleLoaderFetch
     nullptr, // moduleLoaderCreateImportMetaProperties
     nullptr, // moduleLoaderEvaluate
-    nullptr, // promiseRejectionTracker
-    &defaultLanguage
+    &promiseRejectionTracker,
+    &defaultLanguage,
+    nullptr, // compileStreaming
+    nullptr, // instantiateStreaming
 };
 
 JSWorkerGlobalScopeBase::JSWorkerGlobalScopeBase(JSC::VM& vm, JSC::Structure* structure, RefPtr<WorkerGlobalScope>&& impl)
@@ -128,7 +132,14 @@ RuntimeFlags JSWorkerGlobalScopeBase::javaScriptRuntimeFlags(const JSGlobalObjec
 void JSWorkerGlobalScopeBase::queueTaskToEventLoop(JSGlobalObject& object, Ref<JSC::Microtask>&& task)
 {
     JSWorkerGlobalScopeBase& thisObject = static_cast<JSWorkerGlobalScopeBase&>(object);
-    thisObject.scriptExecutionContext()->postTask(JSGlobalObjectTask(thisObject, WTFMove(task)));
+
+    auto callback = JSMicrotaskCallback::create(thisObject, WTFMove(task));
+    auto& context = thisObject.wrapped();
+    auto microtask = std::make_unique<ActiveDOMCallbackMicrotask>(context.microtaskQueue(), context, [callback = WTFMove(callback)]() mutable {
+        callback->call();
+    });
+
+    context.microtaskQueue().append(WTFMove(microtask));
 }
 
 JSValue toJS(ExecState* exec, JSDOMGlobalObject*, WorkerGlobalScope& workerGlobalScope)
@@ -154,7 +165,7 @@ JSDedicatedWorkerGlobalScope* toJSDedicatedWorkerGlobalScope(VM& vm, JSValue val
     if (classInfo == JSDedicatedWorkerGlobalScope::info())
         return jsCast<JSDedicatedWorkerGlobalScope*>(asObject(value));
     if (classInfo == JSProxy::info())
-        return jsDynamicDowncast<JSDedicatedWorkerGlobalScope*>(vm, jsCast<JSProxy*>(asObject(value))->target());
+        return jsDynamicCast<JSDedicatedWorkerGlobalScope*>(vm, jsCast<JSProxy*>(asObject(value))->target());
     return nullptr;
 }
 
@@ -172,7 +183,7 @@ JSWorkerGlobalScope* toJSWorkerGlobalScope(VM& vm, JSValue value)
 #endif
 
     if (classInfo == JSProxy::info())
-        return jsDynamicDowncast<JSWorkerGlobalScope*>(vm, jsCast<JSProxy*>(asObject(value))->target());
+        return jsDynamicCast<JSWorkerGlobalScope*>(vm, jsCast<JSProxy*>(asObject(value))->target());
 
     return nullptr;
 }
@@ -186,7 +197,7 @@ JSServiceWorkerGlobalScope* toJSServiceWorkerGlobalScope(VM& vm, JSValue value)
     if (classInfo == JSServiceWorkerGlobalScope::info())
         return jsCast<JSServiceWorkerGlobalScope*>(asObject(value));
     if (classInfo == JSProxy::info())
-        return jsDynamicDowncast<JSServiceWorkerGlobalScope*>(vm, jsCast<JSProxy*>(asObject(value))->target());
+        return jsDynamicCast<JSServiceWorkerGlobalScope*>(vm, jsCast<JSProxy*>(asObject(value))->target());
     return nullptr;
 }
 #endif

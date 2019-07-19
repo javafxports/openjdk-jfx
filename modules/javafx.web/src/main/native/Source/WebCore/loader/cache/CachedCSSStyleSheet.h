@@ -34,7 +34,7 @@ struct CSSParserContext;
 
 class CachedCSSStyleSheet final : public CachedResource {
 public:
-    CachedCSSStyleSheet(CachedResourceRequest&&, PAL::SessionID);
+    CachedCSSStyleSheet(CachedResourceRequest&&, const PAL::SessionID&, const CookieJar*);
     virtual ~CachedCSSStyleSheet();
 
     enum class MIMETypeCheckHint { Strict, Lax };
@@ -71,4 +71,4 @@ protected:
 
 } // namespace WebCore
 
-SPECIALIZE_TYPE_TRAITS_CACHED_RESOURCE(CachedCSSStyleSheet, CachedResource::CSSStyleSheet)
+SPECIALIZE_TYPE_TRAITS_CACHED_RESOURCE(CachedCSSStyleSheet, CachedResource::Type::CSSStyleSheet)

@@ -83,6 +83,8 @@ enum class TimelineRecordType {
     RequestAnimationFrame,
     CancelAnimationFrame,
     FireAnimationFrame,
+
+    ObserverCallback,
 };
 
 class InspectorTimelineAgent final
@@ -98,7 +100,7 @@ public:
     void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) final;
     void willDestroyFrontendAndBackend(Inspector::DisconnectReason) final;
 
-    void start(ErrorString&, const int* const maxCallStackDepth = nullptr) final;
+    void start(ErrorString&, const int* maxCallStackDepth = nullptr) final;
     void stop(ErrorString&) final;
     void setAutoCaptureEnabled(ErrorString&, bool) final;
     void setInstruments(ErrorString&, const JSON::Array&) final;
@@ -116,11 +118,11 @@ public:
     void didRemoveTimer(int timerId, Frame*);
     void willFireTimer(int timerId, Frame*);
     void didFireTimer();
-    void willCallFunction(const String& scriptName, int scriptLine, Frame*);
+    void willCallFunction(const String& scriptName, int scriptLine, int scriptColumn, Frame*);
     void didCallFunction(Frame*);
     void willDispatchEvent(const Event&, Frame*);
     void didDispatchEvent();
-    void willEvaluateScript(const String&, int, Frame&);
+    void willEvaluateScript(const String&, int lineNumber, int columnNumber, Frame&);
     void didEvaluateScript(Frame&);
     void didInvalidateLayout(Frame&);
     void willLayout(Frame&);
@@ -137,6 +139,8 @@ public:
     void didCancelAnimationFrame(int callbackId, Frame*);
     void willFireAnimationFrame(int callbackId, Frame*);
     void didFireAnimationFrame();
+    void willFireObserverCallback(const String& callbackType, Frame*);
+    void didFireObserverCallback();
     void time(Frame&, const String&);
     void timeEnd(Frame&, const String&);
     void mainFrameStartedLoading();
@@ -160,6 +164,7 @@ private:
     void toggleInstruments(InstrumentState);
     void toggleScriptProfilerInstrument(InstrumentState);
     void toggleHeapInstrument(InstrumentState);
+    void toggleCPUInstrument(InstrumentState);
     void toggleMemoryInstrument(InstrumentState);
     void toggleTimelineInstrument(InstrumentState);
     void disableBreakpoints();

@@ -34,8 +34,8 @@
 #include "DFGPredictionPropagationPhase.h"
 #include "DFGVariableAccessDataDump.h"
 #include "JSCInlines.h"
-#include <unordered_map>
 #include <wtf/HashMethod.h>
+#include <wtf/StdUnorderedMap.h>
 
 namespace JSC { namespace DFG {
 
@@ -150,6 +150,7 @@ public:
         CodeOrigin m_maxOrigin;
         unsigned m_count { 0 }; // If this is zero then the bounds won't necessarily make sense.
         bool m_hoisted { false };
+        Node* m_dependency { nullptr };
     };
 
     IntegerCheckCombiningPhase(Graph& graph)
@@ -257,14 +258,15 @@ private:
                             Arith::Unchecked);
                     }
 
+                    Node* minCheck = nullptr;
                     if (minNode) {
-                        m_insertionSet.insertNode(
+                        minCheck = m_insertionSet.insertNode(
                             nodeIndex, SpecNone, CheckInBounds, node->origin,
                             Edge(minNode, Int32Use), Edge(data.m_key.m_key, Int32Use));
                     }
-                    m_insertionSet.insertNode(
+                    m_map[data.m_key].m_dependency = m_insertionSet.insertNode(
                         nodeIndex, SpecNone, CheckInBounds, node->origin,
-                        Edge(maxNode, Int32Use), Edge(data.m_key.m_key, Int32Use));
+                        Edge(maxNode, Int32Use), Edge(data.m_key.m_key, Int32Use), Edge(minCheck, UntypedUse));
                     break;
                 }
 
@@ -284,7 +286,7 @@ private:
                 break;
 
             case ArrayBounds:
-                node->remove(m_graph);
+                node->convertToIdentityOn(m_map[data.m_key].m_dependency);
                 m_changed = true;
                 break;
 
@@ -377,7 +379,7 @@ private:
                 nodeIndex, origin, jsNumber(addend), source.useKind()));
     }
 
-    using RangeMap = std::unordered_map<RangeKey, Range, HashMethod<RangeKey>, std::equal_to<RangeKey>, FastAllocator<std::pair<const RangeKey, Range>>>;
+    using RangeMap = StdUnorderedMap<RangeKey, Range, HashMethod<RangeKey>>;
     RangeMap m_map;
 
     InsertionSet m_insertionSet;

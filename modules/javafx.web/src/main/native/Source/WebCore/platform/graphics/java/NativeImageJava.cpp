@@ -30,7 +30,7 @@
 #include "BitmapImage.h"
 #include "GraphicsContext.h"
 #include "ImageObserver.h"
-#include <wtf/java/JavaEnv.h>
+#include "PlatformJavaClasses.h"
 #include "GraphicsContextJava.h"
 
 #include "PlatformContextJava.h"
@@ -48,7 +48,7 @@ IntSize nativeImageSize(const NativeImagePtr& image)
         return {};
     }
 
-    JNIEnv* env = WebCore_GetJavaEnv();
+    JNIEnv* env = WTF::GetJavaEnv();
     static jmethodID midGetSize = env->GetMethodID(
         PG_GetImageFrameClass(env),
         "getSize",
@@ -91,7 +91,7 @@ void drawNativeImage(const NativeImagePtr& image, GraphicsContext& context, cons
     context.save();
 
     // Set the compositing operation.
-    if (op == CompositeSourceOver && mode == BlendModeNormal && !nativeImageHasAlpha(image))
+    if (op == CompositeSourceOver && mode == BlendMode::Normal && !nativeImageHasAlpha(image))
         context.setCompositeOperation(CompositeCopy);
     else
         context.setCompositeOperation(op, mode);

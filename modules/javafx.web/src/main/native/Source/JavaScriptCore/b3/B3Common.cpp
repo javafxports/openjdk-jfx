@@ -65,17 +65,12 @@ bool shouldSaveIRBeforePhase()
     return Options::verboseValidationFailure();
 }
 
-bool shouldMeasurePhaseTiming()
-{
-    return Options::logB3PhaseTimes();
-}
-
-std::optional<GPRReg> pinnedExtendedOffsetAddrRegister()
+Optional<GPRReg> pinnedExtendedOffsetAddrRegister()
 {
 #if CPU(ARM64)
     return static_cast<GPRReg>(+MacroAssembler::dataTempRegister);
 #elif CPU(X86_64)
-    return std::nullopt;
+    return WTF::nullopt;
 #else
 #error Unhandled architecture.
 #endif

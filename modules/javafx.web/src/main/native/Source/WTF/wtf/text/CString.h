@@ -23,21 +23,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CString_h
-#define CString_h
+#pragma once
 
 #include <wtf/HashFunctions.h>
 #include <wtf/HashTraits.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
-#include <wtf/text/StringMalloc.h>
 
 namespace WTF {
 
 // CStringBuffer is the ref-counted storage class for the characters in a CString.
 // The data is implicitly allocated 1 character longer than length(), as it is zero-terminated.
 class CStringBuffer : public RefCounted<CStringBuffer> {
-    WTF_MAKE_STRING_ALLOCATED;
 public:
     const char* data() { return mutableData(); }
     size_t length() const { return m_length; }
@@ -112,5 +109,3 @@ template<> struct HashTraits<CString> : SimpleClassHashTraits<CString> { };
 } // namespace WTF
 
 using WTF::CString;
-
-#endif // CString_h

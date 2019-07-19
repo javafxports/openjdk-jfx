@@ -29,7 +29,7 @@
 #include "CryptoAlgorithmParameters.h"
 #include <wtf/Vector.h>
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 namespace WebCore {
 
@@ -40,7 +40,7 @@ public:
 
     Class parametersClass() const final { return Class::AesCtrParams; }
 
-    const Vector<uint8_t>& counterVector()
+    const Vector<uint8_t>& counterVector() const
     {
         if (!m_counterVector.isEmpty() || !counter.length())
             return m_counterVector;
@@ -49,12 +49,22 @@ public:
         return m_counterVector;
     }
 
+    CryptoAlgorithmAesCtrParams isolatedCopy() const
+    {
+        CryptoAlgorithmAesCtrParams result;
+        result.identifier = identifier;
+        result.m_counterVector = counterVector();
+        result.length = length;
+
+        return result;
+    }
+
 private:
-    Vector<uint8_t> m_counterVector;
+    mutable Vector<uint8_t> m_counterVector;
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CRYPTO_ALGORITHM_PARAMETERS(AesCtrParams)
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

@@ -47,7 +47,7 @@ namespace WebCore {
 using namespace Inspector;
 
 InspectorLayerTreeAgent::InspectorLayerTreeAgent(WebAgentContext& context)
-    : InspectorAgentBase(ASCIILiteral("LayerTree"), context)
+    : InspectorAgentBase("LayerTree"_s, context)
     , m_frontendDispatcher(std::make_unique<Inspector::LayerTreeFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(Inspector::LayerTreeBackendDispatcher::create(context.backendDispatcher, this))
 {
@@ -74,6 +74,7 @@ void InspectorLayerTreeAgent::reset()
     m_idToLayer.clear();
     m_pseudoElementToIdMap.clear();
     m_idToPseudoElement.clear();
+    m_suppressLayerChangeEvents = false;
 }
 
 void InspectorLayerTreeAgent::enable(ErrorString&)
@@ -88,6 +89,11 @@ void InspectorLayerTreeAgent::disable(ErrorString&)
 
 void InspectorLayerTreeAgent::layerTreeDidChange()
 {
+    if (m_suppressLayerChangeEvents)
+        return;
+
+    m_suppressLayerChangeEvents = true;
+
     m_frontendDispatcher->layerTreeDidChange();
 }
 
@@ -107,18 +113,22 @@ void InspectorLayerTreeAgent::layersForNode(ErrorString& errorString, int nodeId
 
     auto* node = m_instrumentingAgents.inspectorDOMAgent()->nodeForId(nodeId);
     if (!node) {
-        errorString = ASCIILiteral("Provided node id doesn't match any known node");
+        errorString = "Provided node id doesn't match any known node"_s;
         return;
     }
 
     auto* renderer = node->renderer();
     if (!renderer) {
-        errorString = ASCIILiteral("Node for provided node id doesn't have a renderer");
+        errorString = "Node for provided node id doesn't have a renderer"_s;
         return;
     }
 
-    if (is<RenderElement>(*renderer))
-        gatherLayersUsingRenderObjectHierarchy(errorString, downcast<RenderElement>(*renderer), layers);
+    if (!is<RenderElement>(*renderer))
+        return;
+
+    gatherLayersUsingRenderObjectHierarchy(errorString, downcast<RenderElement>(*renderer), layers);
+
+    m_suppressLayerChangeEvents = false;
 }
 
 void InspectorLayerTreeAgent::gatherLayersUsingRenderObjectHierarchy(ErrorString& errorString, RenderElement& renderer, RefPtr<JSON::ArrayOf<Inspector::Protocol::LayerTree::Layer>>& layers)
@@ -191,9 +201,9 @@ Ref<Inspector::Protocol::LayerTree::Layer> InspectorLayerTreeAgent::buildObjectF
     if (isAnonymous && !renderer->isRenderView()) {
         layerObject->setIsAnonymous(true);
         const RenderStyle& style = renderer->style();
-        if (style.styleType() == FIRST_LETTER)
+        if (style.styleType() == PseudoId::FirstLetter)
             layerObject->setPseudoElement("first-letter");
-        else if (style.styleType() == FIRST_LINE)
+        else if (style.styleType() == PseudoId::FirstLine)
             layerObject->setPseudoElement("first-line");
     }
 
@@ -229,7 +239,7 @@ void InspectorLayerTreeAgent::reasonsForCompositingLayer(ErrorString& errorStrin
     const RenderLayer* renderLayer = m_idToLayer.get(layerId);
 
     if (!renderLayer) {
-        errorString = ASCIILiteral("Could not find a bound layer for the provided id");
+        errorString = "Could not find a bound layer for the provided id"_s;
         return;
     }
 

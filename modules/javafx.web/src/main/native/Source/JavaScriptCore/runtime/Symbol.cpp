@@ -89,7 +89,7 @@ double Symbol::toNumber(ExecState* exec) const
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    throwTypeError(exec, scope, ASCIILiteral("Cannot convert a symbol to a number"));
+    throwTypeError(exec, scope, "Cannot convert a symbol to a number"_s);
     return 0.0;
 }
 
@@ -103,6 +103,12 @@ String Symbol::descriptiveString() const
     return makeString("Symbol(", String(privateName().uid()), ')');
 }
 
+String Symbol::description() const
+{
+    auto& uid = privateName().uid();
+    return uid.isNullSymbol() ? String() : uid;
+}
+
 Symbol* Symbol::create(VM& vm)
 {
     Symbol* symbol = new (NotNull, allocateCell<Symbol>(vm.heap)) Symbol(vm);
@@ -110,11 +116,9 @@ Symbol* Symbol::create(VM& vm)
     return symbol;
 }
 
-Symbol* Symbol::create(ExecState* exec, JSString* description)
+Symbol* Symbol::createWithDescription(VM& vm, const String& description)
 {
-    VM& vm = exec->vm();
-    String desc = description->value(exec);
-    Symbol* symbol = new (NotNull, allocateCell<Symbol>(vm.heap)) Symbol(vm, desc);
+    Symbol* symbol = new (NotNull, allocateCell<Symbol>(vm.heap)) Symbol(vm, description);
     symbol->finishCreation(vm);
     return symbol;
 }

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2000 Peter Kelly (pmk@post.com)
- * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2013 Samsung Electronics. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -31,13 +31,17 @@
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "MediaList.h"
+#include "MediaQueryParser.h"
 #include "StyleScope.h"
 #include "StyleSheetContents.h"
 #include "XMLDocumentParser.h"
 #include "XSLStyleSheet.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/SetForScope.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(ProcessingInstruction);
 
 inline ProcessingInstruction::ProcessingInstruction(Document& document, const String& target, const String& data)
     : CharacterData(document, data, CreateOther)
@@ -118,7 +122,7 @@ void ProcessingInstruction::checkStyleSheet()
             // We need to make a synthetic XSLStyleSheet that is embedded.  It needs to be able
             // to kick off import/include loads that can hang off some parent sheet.
             if (m_isXSL) {
-                URL finalURL(ParsedURLString, m_localHref);
+                URL finalURL({ }, m_localHref);
                 m_sheet = XSLStyleSheet::createEmbedded(this, finalURL);
                 m_loading = false;
                 document().scheduleToApplyXSLTransforms();
@@ -163,7 +167,7 @@ void ProcessingInstruction::checkStyleSheet()
 #endif
             {
                 String charset = attributes->get("charset");
-                CachedResourceRequest request(document().completeURL(href), CachedResourceLoader::defaultCachedResourceOptions(), std::nullopt, charset.isEmpty() ? document().charset() : WTFMove(charset));
+                CachedResourceRequest request(document().completeURL(href), CachedResourceLoader::defaultCachedResourceOptions(), WTF::nullopt, charset.isEmpty() ? document().charset() : WTFMove(charset));
 
                 m_cachedSheet = document().cachedResourceLoader().requestCSSStyleSheet(WTFMove(request)).value_or(nullptr);
             }
@@ -218,7 +222,7 @@ void ProcessingInstruction::setCSSStyleSheet(const String& href, const URL& base
     auto cssSheet = CSSStyleSheet::create(StyleSheetContents::create(href, parserContext), *this);
     cssSheet.get().setDisabled(m_alternate);
     cssSheet.get().setTitle(m_title);
-    cssSheet.get().setMediaQueries(MediaQuerySet::create(m_media));
+    cssSheet.get().setMediaQueries(MediaQuerySet::create(m_media, MediaQueryParserContext(document())));
 
     m_sheet = WTFMove(cssSheet);
 

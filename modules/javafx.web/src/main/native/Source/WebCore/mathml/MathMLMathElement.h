@@ -34,6 +34,7 @@
 namespace WebCore {
 
 class MathMLMathElement final : public MathMLRowElement {
+    WTF_MAKE_ISO_ALLOCATED(MathMLMathElement);
 public:
     static Ref<MathMLMathElement> create(const QualifiedName& tagName, Document&);
 
@@ -44,7 +45,7 @@ private:
 
     bool acceptsDisplayStyleAttribute() final { return true; }
     bool acceptsMathVariantAttribute() final { return true; }
-    std::optional<bool> specifiedDisplayStyle() final;
+    Optional<bool> specifiedDisplayStyle() final;
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 };

@@ -22,20 +22,20 @@
  */
 
 #include "config.h"
-#include "AtomicStringImpl.h"
+#include <wtf/text/AtomicStringImpl.h>
 
-#include "AtomicStringTable.h"
-#include "CommaPrinter.h"
-#include "DataLog.h"
-#include "HashSet.h"
-#include "IntegerToStringConversion.h"
-#include "StringHash.h"
-#include "StringPrintStream.h"
-#include "Threading.h"
-#include <wtf/unicode/UTF8.h>
+#include <wtf/CommaPrinter.h>
+#include <wtf/DataLog.h>
+#include <wtf/HashSet.h>
+#include <wtf/StringPrintStream.h>
+#include <wtf/Threading.h>
+#include <wtf/text/AtomicStringTable.h>
+#include <wtf/text/IntegerToStringConversion.h>
+#include <wtf/text/StringHash.h>
+#include <wtf/unicode/UTF8Conversion.h>
 
 #if USE(WEB_THREAD)
-#include "Lock.h"
+#include <wtf/Lock.h>
 #endif
 
 namespace WTF {
@@ -47,7 +47,7 @@ using namespace Unicode;
 class AtomicStringTableLocker : public LockHolder {
     WTF_MAKE_NONCOPYABLE(AtomicStringTableLocker);
 
-    static StaticLock s_stringTableLock;
+    static Lock s_stringTableLock;
 public:
     AtomicStringTableLocker()
         : LockHolder(&s_stringTableLock)
@@ -55,7 +55,7 @@ public:
     }
 };
 
-StaticLock AtomicStringTableLocker::s_stringTableLock;
+Lock AtomicStringTableLocker::s_stringTableLock;
 
 #else
 

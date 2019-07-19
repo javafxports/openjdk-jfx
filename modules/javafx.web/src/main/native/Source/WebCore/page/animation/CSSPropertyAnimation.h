@@ -41,7 +41,8 @@ public:
     static bool isPropertyAnimatable(CSSPropertyID);
     static bool animationOfPropertyIsAccelerated(CSSPropertyID);
     static bool propertiesEqual(CSSPropertyID, const RenderStyle* a, const RenderStyle* b);
-    static CSSPropertyID getPropertyAtIndex(int, bool& isShorthand);
+    static bool canPropertyBeInterpolated(CSSPropertyID, const RenderStyle* a, const RenderStyle* b);
+    static CSSPropertyID getPropertyAtIndex(int, Optional<bool>& isShorthand);
     static int getNumProperties();
 
     static HashSet<CSSPropertyID> animatableShorthandsAffectingProperty(CSSPropertyID);

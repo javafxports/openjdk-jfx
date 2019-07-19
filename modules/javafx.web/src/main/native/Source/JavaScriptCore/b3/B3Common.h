@@ -45,7 +45,6 @@ bool shouldDumpIRAtEachPhase(B3ComplitationMode);
 bool shouldValidateIR();
 bool shouldValidateIRAtEachPhase();
 bool shouldSaveIRBeforePhase();
-bool shouldMeasurePhaseTiming();
 
 template<typename BitsType, typename InputType>
 inline bool isIdentical(InputType left, InputType right)
@@ -183,7 +182,7 @@ inline unsigned defaultOptLevel()
     return Options::defaultB3OptLevel();
 }
 
-std::optional<GPRReg> pinnedExtendedOffsetAddrRegister();
+Optional<GPRReg> pinnedExtendedOffsetAddrRegister();
 
 } } // namespace JSC::B3
 

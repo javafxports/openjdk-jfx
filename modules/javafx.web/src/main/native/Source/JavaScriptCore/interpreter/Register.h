@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -65,18 +65,25 @@ namespace JSC {
         JSObject* object() const;
         JSScope* scope() const;
         int32_t unboxedInt32() const;
+        int32_t asanUnsafeUnboxedInt32() const;
         int64_t unboxedInt52() const;
+        int64_t asanUnsafeUnboxedInt52() const;
         int64_t unboxedStrictInt52() const;
+        int64_t asanUnsafeUnboxedStrictInt52() const;
         bool unboxedBoolean() const;
         double unboxedDouble() const;
+        double asanUnsafeUnboxedDouble() const;
         JSCell* unboxedCell() const;
+        JSCell* asanUnsafeUnboxedCell() const;
         int32_t payload() const;
         int32_t tag() const;
+        int32_t unsafePayload() const;
         int32_t unsafeTag() const;
         int32_t& payload();
         int32_t& tag();
 
         void* pointer() const;
+        void* asanUnsafePointer() const;
 
         static Register withInt(int32_t i)
         {
@@ -168,12 +175,27 @@ namespace JSC {
         return payload();
     }
 
+    SUPPRESS_ASAN ALWAYS_INLINE int32_t Register::asanUnsafeUnboxedInt32() const
+    {
+        return unsafePayload();
+    }
+
     ALWAYS_INLINE int64_t Register::unboxedInt52() const
     {
         return u.integer >> JSValue::int52ShiftAmount;
     }
 
+    SUPPRESS_ASAN ALWAYS_INLINE int64_t Register::asanUnsafeUnboxedInt52() const
+    {
+        return u.integer >> JSValue::int52ShiftAmount;
+    }
+
     ALWAYS_INLINE int64_t Register::unboxedStrictInt52() const
+    {
+        return u.integer;
+    }
+
+    SUPPRESS_ASAN ALWAYS_INLINE int64_t Register::asanUnsafeUnboxedStrictInt52() const
     {
         return u.integer;
     }
@@ -188,7 +210,21 @@ namespace JSC {
         return u.number;
     }
 
+    SUPPRESS_ASAN ALWAYS_INLINE double Register::asanUnsafeUnboxedDouble() const
+    {
+        return u.number;
+    }
+
     ALWAYS_INLINE JSCell* Register::unboxedCell() const
+    {
+#if USE(JSVALUE64)
+        return u.encodedValue.ptr;
+#else
+        return bitwise_cast<JSCell*>(payload());
+#endif
+    }
+
+    SUPPRESS_ASAN ALWAYS_INLINE JSCell* Register::asanUnsafeUnboxedCell() const
     {
 #if USE(JSVALUE64)
         return u.encodedValue.ptr;
@@ -206,6 +242,15 @@ namespace JSC {
 #endif
     }
 
+    SUPPRESS_ASAN ALWAYS_INLINE void* Register::asanUnsafePointer() const
+    {
+#if USE(JSVALUE64)
+        return u.encodedValue.ptr;
+#else
+        return bitwise_cast<void*>(unsafePayload());
+#endif
+    }
+
     ALWAYS_INLINE int32_t Register::payload() const
     {
         return u.encodedValue.asBits.payload;
@@ -214,6 +259,11 @@ namespace JSC {
     ALWAYS_INLINE int32_t Register::tag() const
     {
         return u.encodedValue.asBits.tag;
+    }
+
+    SUPPRESS_ASAN ALWAYS_INLINE int32_t Register::unsafePayload() const
+    {
+        return u.encodedValue.asBits.payload;
     }
 
     SUPPRESS_ASAN ALWAYS_INLINE int32_t Register::unsafeTag() const

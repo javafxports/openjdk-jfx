@@ -39,10 +39,11 @@ OBJC_CLASS NSDictionary;
 
 namespace WebCore {
 
-enum class NetworkLoadPriority {
+enum class NetworkLoadPriority : uint8_t {
     Low,
     Medium,
     High,
+    Unknown,
 };
 
 class NetworkLoadMetrics {
@@ -67,14 +68,12 @@ public:
         copy.complete = complete;
         copy.protocol = protocol.isolatedCopy();
 
-        if (remoteAddress)
-            copy.remoteAddress = remoteAddress.value().isolatedCopy();
-        if (connectionIdentifier)
-            copy.connectionIdentifier = connectionIdentifier.value().isolatedCopy();
-        if (priority)
-            copy.priority = *priority;
-        if (requestHeaders)
-            copy.requestHeaders = requestHeaders.value().isolatedCopy();
+        copy.remoteAddress = remoteAddress.isolatedCopy();
+        copy.connectionIdentifier = connectionIdentifier.isolatedCopy();
+        copy.priority = priority;
+        copy.tlsProtocol = tlsProtocol.isolatedCopy();
+        copy.tlsCipher = tlsCipher.isolatedCopy();
+        copy.requestHeaders = requestHeaders.isolatedCopy();
 
         copy.requestHeaderBytesSent = requestHeaderBytesSent;
         copy.requestBodyBytesSent = requestBodyBytesSent;
@@ -97,28 +96,22 @@ public:
         responseEnd = Seconds(0);
         complete = false;
         protocol = String();
-        remoteAddress = std::nullopt;
-        connectionIdentifier = std::nullopt;
-        priority = std::nullopt;
-        requestHeaders = std::nullopt;
-        requestHeaderBytesSent = std::nullopt;
-        requestBodyBytesSent = std::nullopt;
-        responseHeaderBytesReceived = std::nullopt;
-        responseBodyBytesReceived = std::nullopt;
-        responseBodyDecodedSize = std::nullopt;
+        clearNonTimingData();
     }
 
     void clearNonTimingData()
     {
-        remoteAddress = std::nullopt;
-        connectionIdentifier = std::nullopt;
-        priority = std::nullopt;
-        requestHeaders = std::nullopt;
-        requestHeaderBytesSent = std::nullopt;
-        requestBodyBytesSent = std::nullopt;
-        responseHeaderBytesReceived = std::nullopt;
-        responseBodyBytesReceived = std::nullopt;
-        responseBodyDecodedSize = std::nullopt;
+        remoteAddress = String();
+        connectionIdentifier = String();
+        priority = NetworkLoadPriority::Unknown;
+        tlsProtocol = String();
+        tlsCipher = String();
+        requestHeaders.clear();
+        requestHeaderBytesSent = std::numeric_limits<uint32_t>::max();
+        requestBodyBytesSent = std::numeric_limits<uint64_t>::max();
+        responseHeaderBytesReceived = std::numeric_limits<uint32_t>::max();
+        responseBodyBytesReceived = std::numeric_limits<uint64_t>::max();
+        responseBodyDecodedSize = std::numeric_limits<uint64_t>::max();
     }
 
     bool operator==(const NetworkLoadMetrics& other) const
@@ -136,6 +129,8 @@ public:
             && remoteAddress == other.remoteAddress
             && connectionIdentifier == other.connectionIdentifier
             && priority == other.priority
+            && tlsProtocol == other.tlsProtocol
+            && tlsCipher == other.tlsCipher
             && requestHeaders == other.requestHeaders
             && requestHeaderBytesSent == other.requestHeaderBytesSent
             && requestBodyBytesSent == other.requestBodyBytesSent
@@ -166,22 +161,26 @@ public:
     Seconds responseStart;
     Seconds responseEnd;
 
-    // Whether or not all of the properties (0 or otherwise) have been set.
-    bool complete { false };
-
     // ALPN Protocol ID: https://w3c.github.io/resource-timing/#bib-RFC7301
     String protocol;
 
-    std::optional<String> remoteAddress;
-    std::optional<String> connectionIdentifier;
-    std::optional<NetworkLoadPriority> priority;
-    std::optional<HTTPHeaderMap> requestHeaders;
+    String remoteAddress;
+    String connectionIdentifier;
+    NetworkLoadPriority priority;
 
-    std::optional<uint64_t> requestHeaderBytesSent;
-    std::optional<uint64_t> requestBodyBytesSent;
-    std::optional<uint64_t> responseHeaderBytesReceived;
-    std::optional<uint64_t> responseBodyBytesReceived;
-    std::optional<uint64_t> responseBodyDecodedSize;
+    String tlsProtocol;
+    String tlsCipher;
+
+    // Whether or not all of the properties (0 or otherwise) have been set.
+    bool complete { false };
+
+    HTTPHeaderMap requestHeaders;
+
+    uint32_t requestHeaderBytesSent;
+    uint32_t responseHeaderBytesReceived;
+    uint64_t requestBodyBytesSent;
+    uint64_t responseBodyBytesReceived;
+    uint64_t responseBodyDecodedSize;
 };
 
 #if PLATFORM(COCOA)
@@ -208,6 +207,8 @@ void NetworkLoadMetrics::encode(Encoder& encoder) const
     encoder << remoteAddress;
     encoder << connectionIdentifier;
     encoder << priority;
+    encoder << tlsProtocol;
+    encoder << tlsCipher;
     encoder << requestHeaders;
     encoder << requestHeaderBytesSent;
     encoder << requestBodyBytesSent;
@@ -232,6 +233,8 @@ bool NetworkLoadMetrics::decode(Decoder& decoder, NetworkLoadMetrics& metrics)
         && decoder.decode(metrics.remoteAddress)
         && decoder.decode(metrics.connectionIdentifier)
         && decoder.decode(metrics.priority)
+        && decoder.decode(metrics.tlsProtocol)
+        && decoder.decode(metrics.tlsCipher)
         && decoder.decode(metrics.requestHeaders)
         && decoder.decode(metrics.requestHeaderBytesSent)
         && decoder.decode(metrics.requestBodyBytesSent)
@@ -246,13 +249,13 @@ bool NetworkLoadMetrics::decode(Decoder& decoder, NetworkLoadMetrics& metrics)
 namespace WTF {
 namespace Persistence {
 
-template<> struct Coder<std::optional<WebCore::NetworkLoadPriority>> {
-    static NO_RETURN_DUE_TO_ASSERT void encode(Encoder&, const std::optional<WebCore::NetworkLoadPriority>&)
+template<> struct Coder<Optional<WebCore::NetworkLoadPriority>> {
+    static NO_RETURN_DUE_TO_ASSERT void encode(Encoder&, const Optional<WebCore::NetworkLoadPriority>&)
     {
         ASSERT_NOT_REACHED();
     }
 
-    static bool decode(Decoder&, std::optional<WebCore::NetworkLoadPriority>&)
+    static bool decode(Decoder&, Optional<WebCore::NetworkLoadPriority>&)
     {
         ASSERT_NOT_REACHED();
         return false;

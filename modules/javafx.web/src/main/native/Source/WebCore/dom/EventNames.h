@@ -45,11 +45,21 @@ namespace WebCore {
     macro(DOMNodeRemovedFromDocument) \
     macro(DOMSubtreeModified) \
     macro(abort) \
+    macro(accessiblecontextmenu) \
+    macro(accessibleclick) \
+    macro(accessibledecrement) \
+    macro(accessibledismiss) \
+    macro(accessiblefocus) \
+    macro(accessibleincrement) \
+    macro(accessiblescrollintoview) \
+    macro(accessiblesetvalue) \
+    macro(accessibleselect) \
     macro(activate) \
     macro(active) \
     macro(addsourcebuffer) \
     macro(addstream) \
     macro(addtrack) \
+    macro(animationcancel) \
     macro(animationend) \
     macro(animationiteration) \
     macro(animationstart) \
@@ -91,6 +101,7 @@ namespace WebCore {
     macro(copy) \
     macro(cuechange) \
     macro(cut) \
+    macro(dataavailable) \
     macro(datachannel) \
     macro(dblclick) \
     macro(devicechange) \
@@ -129,6 +140,7 @@ namespace WebCore {
     macro(gesturestart) \
     macro(gesturetap) \
     macro(gesturetapdown) \
+    macro(gotpointercapture) \
     macro(hashchange) \
     macro(icecandidate) \
     macro(iceconnectionstatechange) \
@@ -151,6 +163,7 @@ namespace WebCore {
     macro(loadingdone) \
     macro(loadingerror) \
     macro(loadstart) \
+    macro(lostpointercapture) \
     macro(mark) \
     macro(merchantvalidation) \
     macro(message) \
@@ -179,12 +192,18 @@ namespace WebCore {
     macro(pageshow) \
     macro(paste) \
     macro(pause) \
+    macro(payerdetailchange) \
     macro(paymentauthorized) \
+    macro(paymentmethodchange) \
     macro(paymentmethodselected) \
     macro(play) \
     macro(playing) \
     macro(pointerlockchange) \
     macro(pointerlockerror) \
+    macro(pointercancel) \
+    macro(pointerdown) \
+    macro(pointermove) \
+    macro(pointerup) \
     macro(popstate) \
     macro(previoustrack) \
     macro(progress) \
@@ -225,6 +244,7 @@ namespace WebCore {
     macro(start) \
     macro(started) \
     macro(statechange) \
+    macro(stop) \
     macro(storage) \
     macro(submit) \
     macro(success) \
@@ -240,7 +260,10 @@ namespace WebCore {
     macro(touchmove) \
     macro(touchstart) \
     macro(track) \
+    macro(transitioncancel) \
     macro(transitionend) \
+    macro(transitionrun) \
+    macro(transitionstart) \
     macro(unhandledrejection) \
     macro(unload) \
     macro(unmute) \
@@ -338,7 +361,7 @@ public:
     bool isGamepadEventType(const AtomicString& eventType) const;
 #endif
 
-    std::array<std::reference_wrapper<const AtomicString>, 5> touchEventNames() const;
+    std::array<std::reference_wrapper<const AtomicString>, 9> touchAndPointerEventNames() const;
     std::array<std::reference_wrapper<const AtomicString>, 3> gestureEventNames() const;
 
 private:
@@ -372,7 +395,11 @@ inline bool EventNames::isTouchEventType(const AtomicString& eventType) const
         || eventType == touchmoveEvent
         || eventType == touchendEvent
         || eventType == touchcancelEvent
-        || eventType == touchforcechangeEvent;
+        || eventType == touchforcechangeEvent
+        || eventType == pointerdownEvent
+        || eventType == pointermoveEvent
+        || eventType == pointerupEvent
+        || eventType == pointercancelEvent;
 }
 
 inline bool EventNames::isWheelEventType(const AtomicString& eventType) const
@@ -381,9 +408,9 @@ inline bool EventNames::isWheelEventType(const AtomicString& eventType) const
         || eventType == mousewheelEvent;
 }
 
-inline std::array<std::reference_wrapper<const AtomicString>, 5> EventNames::touchEventNames() const
+inline std::array<std::reference_wrapper<const AtomicString>, 9> EventNames::touchAndPointerEventNames() const
 {
-    return { { touchstartEvent, touchmoveEvent, touchendEvent, touchcancelEvent, touchforcechangeEvent } };
+    return { { touchstartEvent, touchmoveEvent, touchendEvent, touchcancelEvent, touchforcechangeEvent, pointerdownEvent, pointermoveEvent, pointerupEvent, pointercancelEvent } };
 }
 
 inline std::array<std::reference_wrapper<const AtomicString>, 3> EventNames::gestureEventNames() const

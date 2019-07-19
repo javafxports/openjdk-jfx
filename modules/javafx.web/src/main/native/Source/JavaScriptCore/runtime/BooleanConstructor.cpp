@@ -43,7 +43,7 @@ static EncodedJSValue JSC_HOST_CALL constructWithBooleanConstructor(ExecState* e
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue boolean = jsBoolean(exec->argument(0).toBoolean(exec));
-    Structure* booleanStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), asInternalFunction(exec->jsCallee())->globalObject()->booleanObjectStructure());
+    Structure* booleanStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), jsCast<InternalFunction*>(exec->jsCallee())->globalObject(vm)->booleanObjectStructure());
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     BooleanObject* obj = BooleanObject::create(vm, booleanStructure);
     obj->setInternalValue(vm, boolean);
@@ -57,7 +57,7 @@ BooleanConstructor::BooleanConstructor(VM& vm, Structure* structure)
 
 void BooleanConstructor::finishCreation(VM& vm, BooleanPrototype* booleanPrototype)
 {
-    Base::finishCreation(vm, booleanPrototype->classInfo()->className);
+    Base::finishCreation(vm, booleanPrototype->classInfo(vm)->className);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, booleanPrototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 }

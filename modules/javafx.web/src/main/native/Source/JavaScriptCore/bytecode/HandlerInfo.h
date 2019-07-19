@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -89,6 +89,10 @@ struct HandlerInfoBase {
 };
 
 struct UnlinkedHandlerInfo : public HandlerInfoBase {
+    UnlinkedHandlerInfo()
+    {
+    }
+
     UnlinkedHandlerInfo(uint32_t start, uint32_t end, uint32_t target, HandlerType handlerType)
     {
         this->start = start;
@@ -109,13 +113,13 @@ struct HandlerInfo : public HandlerInfoBase {
     }
 
 #if ENABLE(JIT)
-    void initialize(const UnlinkedHandlerInfo& unlinkedInfo, CodeLocationLabel label)
+    void initialize(const UnlinkedHandlerInfo& unlinkedInfo, CodeLocationLabel<ExceptionHandlerPtrTag> label)
     {
         initialize(unlinkedInfo);
         nativeCode = label;
     }
 
-    CodeLocationLabel nativeCode;
+    CodeLocationLabel<ExceptionHandlerPtrTag> nativeCode;
 #endif
 };
 

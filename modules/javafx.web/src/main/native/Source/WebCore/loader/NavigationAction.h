@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2017 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,16 +28,27 @@
 
 #pragma once
 
+#include "AdClickAttribution.h"
+#include "BackForwardItemIdentifier.h"
 #include "FrameLoaderTypes.h"
+#include "LayoutPoint.h"
 #include "ResourceRequest.h"
+#include "SecurityOrigin.h"
 #include "UserGestureIndicator.h"
 #include <wtf/Forward.h>
+#include <wtf/Optional.h>
 
 namespace WebCore {
 
 class Document;
 class Event;
+class HistoryItem;
+class MouseEvent;
+class UIEventWithKeyState;
 
+// NavigationAction should never hold a strong reference to the originating document either directly
+// or indirectly as doing so prevents its destruction even after navigating away from it because
+// DocumentLoader keeps around the NavigationAction for the last navigation.
 class NavigationAction {
 public:
     NavigationAction();
@@ -52,35 +63,100 @@ public:
     NavigationAction(NavigationAction&&);
     NavigationAction& operator=(NavigationAction&&);
 
+    using PageIDAndFrameIDPair = std::pair<uint64_t /* pageID */, uint64_t /* frameID */>;
+    class Requester {
+    public:
+        Requester(const Document&);
+
+        const URL& url() const { return m_url; }
+        const SecurityOrigin& securityOrigin() const { return *m_origin; }
+        uint64_t pageID() const { return m_pageIDAndFrameIDPair.first; }
+        uint64_t frameID() const { return m_pageIDAndFrameIDPair.second; }
+    private:
+        URL m_url;
+        RefPtr<SecurityOrigin> m_origin;
+        PageIDAndFrameIDPair m_pageIDAndFrameIDPair;
+    };
+    const Optional<Requester>& requester() const { return m_requester; }
+
+    struct UIEventWithKeyStateData {
+        UIEventWithKeyStateData(const UIEventWithKeyState&);
+
+        bool isTrusted;
+        bool shiftKey;
+        bool ctrlKey;
+        bool altKey;
+        bool metaKey;
+    };
+    struct MouseEventData : UIEventWithKeyStateData {
+        MouseEventData(const MouseEvent&);
+
+        LayoutPoint absoluteLocation;
+        FloatPoint locationInRootViewCoordinates;
+        unsigned short button;
+        unsigned short syntheticClickType;
+        bool buttonDown;
+    };
+    const Optional<UIEventWithKeyStateData>& keyStateEventData() const { return m_keyStateEventData; }
+    const Optional<MouseEventData>& mouseEventData() const { return m_mouseEventData; }
+
     NavigationAction copyWithShouldOpenExternalURLsPolicy(ShouldOpenExternalURLsPolicy) const;
 
-    bool isEmpty() const { return !m_sourceDocument || m_resourceRequest.url().isEmpty(); }
+    bool isEmpty() const { return !m_requester || m_requester->url().isEmpty() || m_resourceRequest.url().isEmpty(); }
 
     URL url() const { return m_resourceRequest.url(); }
     const ResourceRequest& resourceRequest() const { return m_resourceRequest; }
 
     NavigationType type() const { return m_type; }
-    const Event* event() const { return m_event.get(); }
-
-    const Document* sourceDocument() const { return m_sourceDocument.get(); }
 
     bool processingUserGesture() const { return m_userGestureToken ? m_userGestureToken->processingUserGesture() : false; }
     RefPtr<UserGestureToken> userGestureToken() const { return m_userGestureToken; }
 
     ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy() const { return m_shouldOpenExternalURLsPolicy; }
+    void setShouldOpenExternalURLsPolicy(ShouldOpenExternalURLsPolicy policy) {  m_shouldOpenExternalURLsPolicy = policy; }
     InitiatedByMainFrame initiatedByMainFrame() const { return m_initiatedByMainFrame; }
 
     const AtomicString& downloadAttribute() const { return m_downloadAttribute; }
 
+    bool treatAsSameOriginNavigation() const { return m_treatAsSameOriginNavigation; }
+
+    bool hasOpenedFrames() const { return m_hasOpenedFrames; }
+    void setHasOpenedFrames(bool value) { m_hasOpenedFrames = value; }
+
+    bool openedByDOMWithOpener() const { return m_openedByDOMWithOpener; }
+    void setOpenedByDOMWithOpener() { m_openedByDOMWithOpener = true; }
+
+    void setTargetBackForwardItem(HistoryItem&);
+    const Optional<BackForwardItemIdentifier>& targetBackForwardItemIdentifier() const { return m_targetBackForwardItemIdentifier; }
+
+    LockHistory lockHistory() const { return m_lockHistory; }
+    void setLockHistory(LockHistory lockHistory) { m_lockHistory = lockHistory; }
+
+    LockBackForwardList lockBackForwardList() const { return m_lockBackForwardList; }
+    void setLockBackForwardList(LockBackForwardList lockBackForwardList) { m_lockBackForwardList = lockBackForwardList; }
+
+    const Optional<AdClickAttribution>& adClickAttribution() { return m_adClickAttribution; };
+    void setAdClickAttribution(AdClickAttribution&& adClickAttribution) { m_adClickAttribution = adClickAttribution; };
+
 private:
-    RefPtr<Document> m_sourceDocument;
+    // Do not add a strong reference to the originating document or a subobject that holds the
+    // originating document. See comment above the class for more details.
+    Optional<Requester> m_requester;
     ResourceRequest m_resourceRequest;
     NavigationType m_type;
     ShouldOpenExternalURLsPolicy m_shouldOpenExternalURLsPolicy;
     InitiatedByMainFrame m_initiatedByMainFrame;
-    RefPtr<Event> m_event;
+    Optional<UIEventWithKeyStateData> m_keyStateEventData;
+    Optional<MouseEventData> m_mouseEventData;
     RefPtr<UserGestureToken> m_userGestureToken { UserGestureIndicator::currentUserGesture() };
     AtomicString m_downloadAttribute;
+    bool m_treatAsSameOriginNavigation;
+    bool m_hasOpenedFrames { false };
+    bool m_openedByDOMWithOpener { false };
+    Optional<BackForwardItemIdentifier> m_targetBackForwardItemIdentifier;
+    LockHistory m_lockHistory { LockHistory::No };
+    LockBackForwardList m_lockBackForwardList { LockBackForwardList::No };
+    Optional<AdClickAttribution> m_adClickAttribution;
 };
 
 } // namespace WebCore

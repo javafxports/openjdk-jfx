@@ -32,7 +32,7 @@
 #include "Element.h"
 #include "HTMLDocument.h"
 #include "HTMLElement.h"
-#include <WebCore/DOMException.h>
+#include "DOMException.h"
 
 #include <wtf/java/JavaEnv.h>
 
@@ -79,8 +79,7 @@ void raiseDOMErrorException(JNIEnv* env, Exception&& ec)
 
 namespace WebCore {
 extern "C" {
-namespace {
-jobject makeObjectFromNode(
+static jobject makeObjectFromNode(
     JNIEnv* env,
     Frame*,
     Node* peer)
@@ -95,7 +94,6 @@ jobject makeObjectFromNode(
         midGetImpl,
         ptr_to_jlong(peer));
 }
-} // namespace
 
 JNIEXPORT jobject JNICALL Java_com_sun_webkit_WebPage_twkGetDocument
     (JNIEnv* env, jclass, jlong jframe)
@@ -129,7 +127,7 @@ JNIEXPORT jobject JNICALL Java_com_sun_webkit_WebPage_twkGetOwnerElement
 
 uint32_t getJavaHashCode(jobject o)
 {
-    JNIEnv* env = WebCore_GetJavaEnv();
+    JNIEnv* env = WTF::GetJavaEnv();
 
     static JGClass clObject(env->FindClass("java/lang/Object"));
     static jmethodID midHash = env->GetMethodID(clObject, "hashCode", "()I");
@@ -143,7 +141,7 @@ bool isJavaEquals(jobject o1, jobject o2)
     if (!o1)
         return !o2;
 
-    JNIEnv* env = WebCore_GetJavaEnv();
+    JNIEnv* env = WTF::GetJavaEnv();
 
     static jmethodID midEquals = env->GetMethodID(
         JLClass(env->FindClass("java/lang/Object")),

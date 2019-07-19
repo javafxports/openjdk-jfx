@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,11 +39,11 @@
 #include "DFGScannable.h"
 #include "FullBytecodeLiveness.h"
 #include "MethodOfGettingAValueProfile.h"
-#include <unordered_map>
 #include <wtf/BitVector.h>
 #include <wtf/HashMap.h>
 #include <wtf/Vector.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/StdUnorderedMap.h>
 
 namespace WTF {
 template <typename T> class SingleRootGraph;
@@ -84,23 +84,12 @@ using SSANaturalLoops = NaturalLoops<SSACFG>;
                     thingToDo(_node, (graph).m_varArgChildren[_childIdx]); \
             }                                                           \
         } else {                                                        \
-            if (!_node->child1()) {                                     \
-                ASSERT(                                                 \
-                    !_node->child2()                                    \
-                    && !_node->child3());                               \
-                break;                                                  \
+            for (unsigned _edgeIndex = 0; _edgeIndex < AdjacencyList::Size; _edgeIndex++) { \
+                Edge& _edge = _node->children.child(_edgeIndex);        \
+                if (!_edge)                                             \
+                    break;                                              \
+                thingToDo(_node, _edge);                                \
             }                                                           \
-            thingToDo(_node, _node->child1());                          \
-                                                                        \
-            if (!_node->child2()) {                                     \
-                ASSERT(!_node->child3());                               \
-                break;                                                  \
-            }                                                           \
-            thingToDo(_node, _node->child2());                          \
-                                                                        \
-            if (!_node->child3())                                       \
-                break;                                                  \
-            thingToDo(_node, _node->child3());                          \
         }                                                               \
     } while (false)
 
@@ -249,7 +238,7 @@ public:
 
     AddSpeculationMode addSpeculationMode(Node* add, bool leftShouldSpeculateInt32, bool rightShouldSpeculateInt32, PredictionPass pass)
     {
-        ASSERT(add->op() == ValueAdd || add->op() == ArithAdd || add->op() == ArithSub);
+        ASSERT(add->op() == ValueAdd || add->op() == ValueSub || add->op() == ArithAdd || add->op() == ArithSub);
 
         RareCaseProfilingSource source = add->sourceFor(pass);
 
@@ -428,9 +417,9 @@ public:
     ScriptExecutable* executableFor(InlineCallFrame* inlineCallFrame)
     {
         if (!inlineCallFrame)
-            return m_codeBlock->ownerScriptExecutable();
+            return m_codeBlock->ownerExecutable();
 
-        return inlineCallFrame->baselineCodeBlock->ownerScriptExecutable();
+        return inlineCallFrame->baselineCodeBlock->ownerExecutable();
     }
 
     ScriptExecutable* executableFor(const CodeOrigin& codeOrigin)
@@ -638,7 +627,7 @@ public:
     void initializeNodeOwners();
 
     BlockList blocksInPreOrder();
-    BlockList blocksInPostOrder();
+    BlockList blocksInPostOrder(bool isSafeToValidate = true);
 
     class NaturalBlockIterable {
     public:
@@ -719,19 +708,32 @@ public:
     }
 
     template<typename ChildFunctor>
-    void doToChildrenWithNode(Node* node, const ChildFunctor& functor)
+    ALWAYS_INLINE void doToChildrenWithNode(Node* node, const ChildFunctor& functor)
     {
         DFG_NODE_DO_TO_CHILDREN(*this, node, functor);
     }
 
     template<typename ChildFunctor>
-    void doToChildren(Node* node, const ChildFunctor& functor)
+    ALWAYS_INLINE void doToChildren(Node* node, const ChildFunctor& functor)
     {
-        doToChildrenWithNode(
-            node,
-            [&functor] (Node*, Edge& edge) {
-                functor(edge);
-            });
+        class ForwardingFunc {
+        public:
+            ForwardingFunc(const ChildFunctor& functor)
+                : m_functor(functor)
+            {
+            }
+
+            // This is a manually written func because we want ALWAYS_INLINE.
+            ALWAYS_INLINE void operator()(Node*, Edge& edge) const
+            {
+                m_functor(edge);
+            }
+
+        private:
+            const ChildFunctor& m_functor;
+        };
+
+        doToChildrenWithNode(node, ForwardingFunc(functor));
     }
 
     bool uses(Node* node, Node* child)
@@ -779,10 +781,11 @@ public:
         return isWatchingGlobalObjectWatchpoint(globalObject, set);
     }
 
-    Profiler::Compilation* compilation() { return m_plan.compilation.get(); }
+    Profiler::Compilation* compilation() { return m_plan.compilation(); }
 
-    DesiredIdentifiers& identifiers() { return m_plan.identifiers; }
-    DesiredWatchpoints& watchpoints() { return m_plan.watchpoints; }
+    DesiredIdentifiers& identifiers() { return m_plan.identifiers(); }
+    DesiredWatchpoints& watchpoints() { return m_plan.watchpoints(); }
+    DesiredGlobalProperties& globalProperties() { return m_plan.globalProperties(); }
 
     // Returns false if the key is already invalid or unwatchable. If this is a Presence condition,
     // this also makes it cheap to query if the condition holds. Also makes sure that the GC knows
@@ -790,30 +793,16 @@ public:
     bool watchCondition(const ObjectPropertyCondition&);
     bool watchConditions(const ObjectPropertyConditionSet&);
 
+    bool watchGlobalProperty(JSGlobalObject*, unsigned identifierNumber);
+
     // Checks if it's known that loading from the given object at the given offset is fine. This is
     // computed by tracking which conditions we track with watchCondition().
     bool isSafeToLoad(JSObject* base, PropertyOffset);
 
-    void registerInferredType(const InferredType::Descriptor& type)
-    {
-        if (type.structure())
-            registerStructure(type.structure());
-    }
-
-    // Tells us what inferred type we are able to prove the property to have now and in the future.
-    InferredType::Descriptor inferredTypeFor(const PropertyTypeKey&);
-    InferredType::Descriptor inferredTypeForProperty(Structure* structure, UniquedStringImpl* uid)
-    {
-        return inferredTypeFor(PropertyTypeKey(structure, uid));
-    }
-
-    AbstractValue inferredValueForProperty(
-        const RegisteredStructureSet& base, UniquedStringImpl* uid, StructureClobberState = StructuresAreWatched);
-
     // This uses either constant property inference or property type inference to derive a good abstract
     // value for some property accessed with the given abstract value base.
     AbstractValue inferredValueForProperty(
-        const AbstractValue& base, UniquedStringImpl* uid, PropertyOffset, StructureClobberState);
+        const AbstractValue& base, PropertyOffset, StructureClobberState);
 
     FullBytecodeLiveness& livenessFor(CodeBlock*);
     FullBytecodeLiveness& livenessFor(InlineCallFrame*);
@@ -851,7 +840,7 @@ public:
             CodeBlock* codeBlock = baselineCodeBlockFor(inlineCallFrame);
             FullBytecodeLiveness& fullLiveness = livenessFor(codeBlock);
             const FastBitVector& liveness = fullLiveness.getLiveness(codeOriginPtr->bytecodeIndex);
-            for (unsigned relativeLocal = codeBlock->m_numCalleeLocals; relativeLocal--;) {
+            for (unsigned relativeLocal = codeBlock->numCalleeLocals(); relativeLocal--;) {
                 VirtualRegister reg = stackOffset + virtualRegisterForLocal(relativeLocal);
 
                 // Don't report if our callee already reported.
@@ -1050,6 +1039,7 @@ public:
     Bag<SwitchData> m_switchData;
     Bag<MultiGetByOffsetData> m_multiGetByOffsetData;
     Bag<MultiPutByOffsetData> m_multiPutByOffsetData;
+    Bag<MatchStructureData> m_matchStructureData;
     Bag<ObjectMaterializationData> m_objectMaterializationData;
     Bag<CallVarargsData> m_callVarargsData;
     Bag<LoadVarargsData> m_loadVarargsData;
@@ -1061,7 +1051,6 @@ public:
     HashMap<CodeBlock*, std::unique_ptr<FullBytecodeLiveness>> m_bytecodeLiveness;
     HashMap<CodeBlock*, std::unique_ptr<BytecodeKills>> m_bytecodeKills;
     HashSet<std::pair<JSObject*, PropertyOffset>> m_safeToLoad;
-    HashMap<PropertyTypeKey, InferredType::Descriptor> m_inferredTypes;
     Vector<Ref<Snippet>> m_domJITSnippets;
     std::unique_ptr<CPSDominators> m_cpsDominators;
     std::unique_ptr<SSADominators> m_ssaDominators;
@@ -1080,7 +1069,7 @@ public:
     HashMap<const StringImpl*, String> m_copiedStrings;
 
 #if USE(JSVALUE32_64)
-    std::unordered_map<int64_t, double*, std::hash<int64_t>, std::equal_to<int64_t>, FastAllocator<std::pair<const int64_t, double*>>> m_doubleConstantsMap;
+    StdUnorderedMap<int64_t, double*> m_doubleConstantsMap;
     std::unique_ptr<Bag<double>> m_doubleConstants;
 #endif
 
@@ -1093,7 +1082,7 @@ public:
     bool m_hasDebuggerEnabled;
     bool m_hasExceptionHandlers { false };
     bool m_isInSSAConversion { false };
-    std::optional<uint32_t> m_maxLocalsForCatchOSREntry;
+    Optional<uint32_t> m_maxLocalsForCatchOSREntry;
     std::unique_ptr<FlowIndexing> m_indexingCache;
     std::unique_ptr<FlowMap<AbstractValue>> m_abstractValuesCache;
     Bag<EntrySwitchData> m_entrySwitchData;

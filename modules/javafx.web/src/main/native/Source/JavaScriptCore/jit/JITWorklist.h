@@ -57,7 +57,8 @@ public:
 
     void compileNow(CodeBlock*, unsigned loopOSREntryBytecodeOffset = 0);
 
-    static JITWorklist* instance();
+    static JITWorklist& ensureGlobalWorklist();
+    static JITWorklist* existingGlobalWorklistOrNull();
 
 private:
     JITWorklist();
@@ -72,7 +73,7 @@ private:
     HashSet<CodeBlock*> m_planned;
 
     Box<Lock> m_lock;
-    RefPtr<AutomaticThreadCondition> m_condition; // We use One True Condition for everything because that's easier.
+    Ref<AutomaticThreadCondition> m_condition; // We use One True Condition for everything because that's easier.
     RefPtr<AutomaticThread> m_thread;
 
     unsigned m_numAvailableThreads { 0 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,57 +25,89 @@
 
 #pragma once
 
-#include "AnimationEffectTiming.h"
-#include "ComputedTimingProperties.h"
+#include "AnimationEffect.h"
+#include "AnimationEffectPhase.h"
+#include "BasicEffectTiming.h"
+#include "ComputedEffectTiming.h"
+#include "ExceptionOr.h"
+#include "FillMode.h"
+#include "KeyframeEffectOptions.h"
+#include "OptionalEffectTiming.h"
+#include "PlaybackDirection.h"
+#include "TimingFunction.h"
 #include "WebAnimation.h"
+#include "WebAnimationUtilities.h"
 #include <wtf/Forward.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/Seconds.h>
+#include <wtf/Variant.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
 class AnimationEffect : public RefCounted<AnimationEffect> {
 public:
-    virtual ~AnimationEffect() = default;
+    virtual ~AnimationEffect();
 
-    bool isKeyframeEffect() const { return m_classType == KeyframeEffectClass; }
-    AnimationEffectTiming* timing() const { return m_timing.get(); }
-    ComputedTimingProperties getComputedTiming();
+    virtual bool isKeyframeEffect() const { return false; }
+
+    EffectTiming getTiming() const;
+    BasicEffectTiming getBasicTiming() const;
+    ComputedEffectTiming getComputedTiming() const;
+    ExceptionOr<void> updateTiming(Optional<OptionalEffectTiming>);
+
     virtual void apply(RenderStyle&) = 0;
+    virtual void invalidate() = 0;
+    virtual void animationDidSeek() = 0;
+    virtual void animationSuspensionStateDidChange(bool) = 0;
 
     WebAnimation* animation() const { return m_animation.get(); }
-    void setAnimation(RefPtr<WebAnimation>&& animation) { m_animation = animation; }
+    void setAnimation(WebAnimation* animation) { m_animation = makeWeakPtr(animation); }
 
-    std::optional<Seconds> localTime() const;
-    std::optional<Seconds> activeTime() const;
-    std::optional<double> iterationProgress() const;
+    Seconds delay() const { return m_delay; }
+    void setDelay(const Seconds&);
 
-    enum class Phase { Before, Active, After, Idle };
-    Phase phase() const;
+    Seconds endDelay() const { return m_endDelay; }
+    void setEndDelay(const Seconds&);
+
+    FillMode fill() const { return m_fill; }
+    void setFill(FillMode);
+
+    double iterationStart() const { return m_iterationStart; }
+    ExceptionOr<void> setIterationStart(double);
+
+    double iterations() const { return m_iterations; }
+    ExceptionOr<void> setIterations(double);
+
+    Seconds iterationDuration() const { return m_iterationDuration; }
+    void setIterationDuration(const Seconds&);
+
+    PlaybackDirection direction() const { return m_direction; }
+    void setDirection(PlaybackDirection);
+
+    TimingFunction* timingFunction() const { return m_timingFunction.get(); }
+    void setTimingFunction(const RefPtr<TimingFunction>&);
 
 protected:
-    enum ClassType {
-        KeyframeEffectClass
-    };
-
-    ClassType classType() const { return m_classType; }
-
-    explicit AnimationEffect(ClassType);
+    explicit AnimationEffect();
 
 private:
-    enum class ComputedDirection { Forwards, Reverse };
+    enum class ComputedDirection : uint8_t { Forwards, Reverse };
 
-    std::optional<double> overallProgress() const;
-    std::optional<double> simpleIterationProgress() const;
-    std::optional<double> currentIteration() const;
-    AnimationEffect::ComputedDirection currentDirection() const;
-    std::optional<double> directedProgress() const;
-    std::optional<double> transformedProgress() const;
+    FillMode m_fill { FillMode::Auto };
+    PlaybackDirection m_direction { PlaybackDirection::Normal };
 
-    ClassType m_classType;
-    RefPtr<WebAnimation> m_animation;
-    RefPtr<AnimationEffectTiming> m_timing;
+    WeakPtr<WebAnimation> m_animation;
+    RefPtr<TimingFunction> m_timingFunction;
+
+    double m_iterationStart { 0 };
+    double m_iterations { 1 };
+
+    Seconds m_delay { 0_s };
+    Seconds m_endDelay { 0_s };
+    Seconds m_iterationDuration { 0_s };
 };
 
 } // namespace WebCore

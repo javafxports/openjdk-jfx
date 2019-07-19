@@ -70,24 +70,18 @@ private:
     struct Invalid { };
 
     struct CMYKAColor {
-#if !COMPILER_SUPPORTS(NSDMI_FOR_AGGREGATES)
-        CMYKAColor() = default;
-        CMYKAColor(Color color, float cyan, float magenta, float yellow, float black, float alpha)
-            : color(color), c(cyan), m(magenta), y(yellow), k(black), a(alpha)
-        {
-        }
-#endif
-
         Color color;
         float c { 0 };
         float m { 0 };
         float y { 0 };
         float k { 0 };
         float a { 0 };
+
+        CMYKAColor(const CMYKAColor&) = default;
     };
 
     struct CurrentColor {
-        std::optional<float> overrideAlpha;
+        Optional<float> overrideAlpha;
     };
 
     CanvasStyle(CurrentColor);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,10 +30,10 @@
     ConstructorCallWith=Document,
     ConstructorMayThrowException,
     EnabledBySetting=PaymentRequest,
-    SecureContext
+    SecureContext,
 ] interface PaymentRequest : EventTarget {
-    [CallWith=Document] Promise<PaymentResponse> show();
-    [MayThrowException] Promise<void> abort();
+    [CallWith=Document] Promise<PaymentResponse> show(optional Promise<PaymentDetailsUpdate> detailsPromise);
+    Promise<void> abort();
     [CallWith=Document] Promise<boolean> canMakePayment();
 
     readonly attribute DOMString id;
@@ -41,7 +41,8 @@
     readonly attribute DOMString? shippingOption;
     readonly attribute PaymentShippingType? shippingType;
 
+    attribute EventHandler onmerchantvalidation;
     attribute EventHandler onshippingaddresschange;
     attribute EventHandler onshippingoptionchange;
-    attribute EventHandler onmerchantvalidation;
+    attribute EventHandler onpaymentmethodchange;
 };

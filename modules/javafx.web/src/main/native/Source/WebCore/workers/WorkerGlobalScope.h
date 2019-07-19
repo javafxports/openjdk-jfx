@@ -32,7 +32,7 @@
 #include "ImageBitmap.h"
 #include "ScriptExecutionContext.h"
 #include "Supplementable.h"
-#include "URL.h"
+#include <wtf/URL.h>
 #include "WorkerCacheStorageConnection.h"
 #include "WorkerEventQueue.h"
 #include "WorkerScriptController.h"
@@ -44,6 +44,7 @@ namespace WebCore {
 
 class ContentSecurityPolicyResponseHeaders;
 class Crypto;
+class MicrotaskQueue;
 class Performance;
 class ScheduledAction;
 class WorkerInspectorController;
@@ -68,7 +69,6 @@ public:
 
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionProxy* idbConnectionProxy() final;
-    void stopIndexedDatabase();
 #endif
 
     WorkerCacheStorageConnection& cacheStorageConnection();
@@ -77,6 +77,8 @@ public:
     void clearScript() { m_script = nullptr; }
 
     WorkerInspectorController& inspectorController() const { return *m_inspectorController; }
+
+    MicrotaskQueue& microtaskQueue() const { return *m_microtaskQueue; }
 
     WorkerThread& thread() const { return m_thread; }
 
@@ -114,6 +116,8 @@ public:
     Crypto& crypto();
     Performance& performance() const;
 
+    void prepareForTermination();
+
     void removeAllEventListeners() final;
 
     void createImageBitmap(ImageBitmap::Source&&, ImageBitmapOptions&&, ImageBitmap::Promise&&);
@@ -122,7 +126,7 @@ public:
     unsigned long createUniqueIdentifier() { return m_uniqueIdentifier++; }
 
 protected:
-    WorkerGlobalScope(const URL&, const String& identifier, const String& userAgent, bool isOnline, WorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy*, SocketProvider*, PAL::SessionID);
+    WorkerGlobalScope(const URL&, Ref<SecurityOrigin>&&, const String& identifier, const String& userAgent, bool isOnline, WorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy*, SocketProvider*, PAL::SessionID);
 
     void applyContentSecurityPolicyResponseHeaders(const ContentSecurityPolicyResponseHeaders&);
 
@@ -157,7 +161,7 @@ private:
     bool isJSExecutionForbidden() const final;
     SecurityOrigin& topOrigin() const final { return m_topOrigin.get(); }
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
     // The following two functions are side effects of providing extra protection to serialized
     // CryptoKey data that went through the structured clone algorithm to local storage such as
     // IndexedDB. They don't provide any proctection against communications between mainThread
@@ -167,6 +171,10 @@ private:
     // workerThreads and the mainThread.
     bool wrapCryptoKey(const Vector<uint8_t>& key, Vector<uint8_t>& wrappedKey) final;
     bool unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<uint8_t>& key) final;
+#endif
+
+#if ENABLE(INDEXED_DATABASE)
+    void stopIndexedDatabase();
 #endif
 
     URL m_url;
@@ -179,6 +187,7 @@ private:
     WorkerThread& m_thread;
     std::unique_ptr<WorkerScriptController> m_script;
     std::unique_ptr<WorkerInspectorController> m_inspectorController;
+    std::unique_ptr<MicrotaskQueue> m_microtaskQueue;
 
     bool m_closing { false };
     bool m_isOnline;

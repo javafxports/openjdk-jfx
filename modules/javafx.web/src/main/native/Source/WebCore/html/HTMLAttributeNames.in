@@ -66,6 +66,8 @@ aria-valuenow
 aria-valuetext
 as
 async
+adcampaignid
+addestination
 autocomplete
 autofocus
 autoplay
@@ -144,6 +146,7 @@ http_equiv
 id
 incremental
 indeterminate
+inputmode
 integrity
 is
 ismap
@@ -190,9 +193,19 @@ novalidate
 nowrap
 object
 onabort
+onaccessiblecontextmenu
+onaccessibleclick
+onaccessibledecrement
+onaccessibledismiss
+onaccessiblefocus
+onaccessibleincrement
+onaccessiblescrollintoview
+onaccessiblesetvalue
+onaccessibleselect
 onanimationstart
 onanimationiteration
 onanimationend
+onanimationcancel
 onautocomplete
 onautocompleteerror
 onbeforecopy
@@ -282,7 +295,10 @@ ontouchstart
 ontouchmove
 ontouchend
 ontouchcancel
+ontransitioncancel
 ontransitionend
+ontransitionrun
+ontransitionstart
 onunload
 onvolumechange
 onwaiting
@@ -406,3 +422,5 @@ x-apple-data-detectors-type
 x-apple-data-detectors-result
 
 x-apple-pdf-annotation
+
+x-apple-editable-image

@@ -71,7 +71,7 @@ void IDBOpenDBRequest::onError(const IDBResultData& data)
     ASSERT(&originThread() == &Thread::current());
 
     m_domError = data.error().toDOMException();
-    enqueueEvent(IDBRequestCompletionEvent::create(eventNames().errorEvent, true, true, *this));
+    enqueueEvent(IDBRequestCompletionEvent::create(eventNames().errorEvent, Event::CanBubble::Yes, Event::IsCancelable::Yes, *this));
 }
 
 void IDBOpenDBRequest::versionChangeTransactionDidFinish()
@@ -91,7 +91,7 @@ void IDBOpenDBRequest::fireSuccessAfterVersionChangeCommit()
     ASSERT(hasPendingActivity());
     m_transaction->addRequest(*this);
 
-    auto event = IDBRequestCompletionEvent::create(eventNames().successEvent, false, false, *this);
+    auto event = IDBRequestCompletionEvent::create(eventNames().successEvent, Event::CanBubble::No, Event::IsCancelable::No, *this);
     m_openDatabaseSuccessEvent = &event.get();
 
     enqueueEvent(WTFMove(event));
@@ -109,12 +109,15 @@ void IDBOpenDBRequest::fireErrorAfterVersionChangeCompletion()
     setResultToUndefined();
 
     m_transaction->addRequest(*this);
-    enqueueEvent(IDBRequestCompletionEvent::create(eventNames().errorEvent, true, true, *this));
+    enqueueEvent(IDBRequestCompletionEvent::create(eventNames().errorEvent, Event::CanBubble::Yes, Event::IsCancelable::Yes, *this));
 }
 
 void IDBOpenDBRequest::cancelForStop()
 {
     connectionProxy().openDBRequestCancelled({ connectionProxy(), *this });
+
+    if (m_transaction && m_transaction->isVersionChange())
+        m_transaction->removeRequest(*this);
 }
 
 void IDBOpenDBRequest::dispatchEvent(Event& event)
@@ -138,7 +141,7 @@ void IDBOpenDBRequest::onSuccess(const IDBResultData& resultData)
     setResult(IDBDatabase::create(*scriptExecutionContext(), connectionProxy(), resultData));
     m_readyState = ReadyState::Done;
 
-    enqueueEvent(IDBRequestCompletionEvent::create(eventNames().successEvent, false, false, *this));
+    enqueueEvent(IDBRequestCompletionEvent::create(eventNames().successEvent, Event::CanBubble::No, Event::IsCancelable::No, *this));
 }
 
 void IDBOpenDBRequest::onUpgradeNeeded(const IDBResultData& resultData)

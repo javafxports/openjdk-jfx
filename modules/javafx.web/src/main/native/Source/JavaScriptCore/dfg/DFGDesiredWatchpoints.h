@@ -28,7 +28,6 @@
 #if ENABLE(DFG_JIT)
 
 #include "DFGCommonData.h"
-#include "DFGDesiredInferredType.h"
 #include "InferredValue.h"
 #include "JSArrayBufferView.h"
 #include "ObjectPropertyCondition.h"
@@ -46,7 +45,10 @@ struct SetPointerAdaptor {
     {
         return set->add(common.watchpoints.add(codeBlock));
     }
-    static bool hasBeenInvalidated(T set) { return set->hasBeenInvalidated(); }
+    static bool hasBeenInvalidated(T set)
+    {
+        return set->hasBeenInvalidated();
+    }
     static void dumpInContext(PrintStream& out, T set, DumpContext*)
     {
         out.print(RawPointer(set));
@@ -85,18 +87,6 @@ struct AdaptiveStructureWatchpointAdaptor {
     }
     static void dumpInContext(
         PrintStream& out, const ObjectPropertyCondition& key, DumpContext* context)
-    {
-        out.print(inContext(key, context));
-    }
-};
-
-struct InferredTypeAdaptor {
-    static void add(CodeBlock*, const DesiredInferredType&, CommonData&);
-    static bool hasBeenInvalidated(const DesiredInferredType& key)
-    {
-        return !key.isStillValid();
-    }
-    static void dumpInContext(PrintStream& out, const DesiredInferredType& key, DumpContext* context)
     {
         out.print(inContext(key, context));
     }
@@ -171,10 +161,6 @@ public:
     // the required GC magic as well as some other bookkeeping.
     void addLazily(const ObjectPropertyCondition&);
 
-    // It's recommended that you don't call this directly. Use Graph::inferredTypeFor(), which does
-    // the required GC magic.
-    void addLazily(const DesiredInferredType&);
-
     bool consider(Structure*);
 
     void reallyAdd(CodeBlock*, CommonData&);
@@ -201,11 +187,6 @@ public:
     {
         return m_adaptiveStructureSets.isWatched(key);
     }
-    bool isWatched(const DesiredInferredType& key)
-    {
-        return m_inferredTypes.isWatched(key);
-    }
-
     void dumpInContext(PrintStream&, DumpContext*) const;
     void dump(PrintStream&) const;
 
@@ -215,7 +196,6 @@ private:
     GenericDesiredWatchpoints<InferredValue*, InferredValueAdaptor> m_inferredValues;
     GenericDesiredWatchpoints<JSArrayBufferView*, ArrayBufferViewWatchpointAdaptor> m_bufferViews;
     GenericDesiredWatchpoints<ObjectPropertyCondition, AdaptiveStructureWatchpointAdaptor> m_adaptiveStructureSets;
-    GenericDesiredWatchpoints<DesiredInferredType, InferredTypeAdaptor> m_inferredTypes;
 };
 
 } } // namespace JSC::DFG

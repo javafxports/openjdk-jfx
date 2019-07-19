@@ -326,8 +326,8 @@ TextStream& operator<<(TextStream& ts, const GraphicsContextStateChange& stateCh
     return ts;
 }
 
-GraphicsContext::GraphicsContext(NonPaintingReasons nonPaintingReasons)
-    : m_nonPaintingReasons(nonPaintingReasons)
+GraphicsContext::GraphicsContext(PaintInvalidationReasons paintInvalidationReasons)
+    : m_paintInvalidationReasons(paintInvalidationReasons)
 {
 }
 
@@ -631,7 +631,7 @@ void GraphicsContext::endTransparencyLayer()
     --m_transparencyCount;
 }
 
-float GraphicsContext::drawText(const FontCascade& font, const TextRun& run, const FloatPoint& point, unsigned from, std::optional<unsigned> to)
+float GraphicsContext::drawText(const FontCascade& font, const TextRun& run, const FloatPoint& point, unsigned from, Optional<unsigned> to)
 {
     if (paintingDisabled())
         return 0;
@@ -640,20 +640,20 @@ float GraphicsContext::drawText(const FontCascade& font, const TextRun& run, con
     return font.drawText(*this, run, point, from, to);
 }
 
-void GraphicsContext::drawGlyphs(const FontCascade& fontCascade, const Font& font, const GlyphBuffer& buffer, unsigned from, unsigned numGlyphs, const FloatPoint& point)
+void GraphicsContext::drawGlyphs(const Font& font, const GlyphBuffer& buffer, unsigned from, unsigned numGlyphs, const FloatPoint& point, FontSmoothingMode fontSmoothingMode)
 {
     if (paintingDisabled())
         return;
 
     if (m_impl) {
-        m_impl->drawGlyphs(font, buffer, from, numGlyphs, point, fontCascade.fontDescription().fontSmoothing());
+        m_impl->drawGlyphs(font, buffer, from, numGlyphs, point, fontSmoothingMode);
         return;
     }
 
-    fontCascade.drawGlyphs(*this, font, buffer, from, numGlyphs, point, fontCascade.fontDescription().fontSmoothing());
+    FontCascade::drawGlyphs(*this, font, buffer, from, numGlyphs, point, fontSmoothingMode);
 }
 
-void GraphicsContext::drawEmphasisMarks(const FontCascade& font, const TextRun& run, const AtomicString& mark, const FloatPoint& point, unsigned from, std::optional<unsigned> to)
+void GraphicsContext::drawEmphasisMarks(const FontCascade& font, const TextRun& run, const AtomicString& mark, const FloatPoint& point, unsigned from, Optional<unsigned> to)
 {
     if (paintingDisabled())
         return;
@@ -683,10 +683,10 @@ void GraphicsContext::drawBidiText(const FontCascade& font, const TextRun& run, 
     while (bidiRun) {
         TextRun subrun = run.subRun(bidiRun->start(), bidiRun->stop() - bidiRun->start());
         bool isRTL = bidiRun->level() % 2;
-        subrun.setDirection(isRTL ? RTL : LTR);
+        subrun.setDirection(isRTL ? TextDirection::RTL : TextDirection::LTR);
         subrun.setDirectionalOverride(bidiRun->dirOverride(false));
 
-        float width = font.drawText(*this, subrun, currPoint, 0, std::nullopt, customFontNotReadyAction);
+        float width = font.drawText(*this, subrun, currPoint, 0, WTF::nullopt, customFontNotReadyAction);
         currPoint.move(width, 0);
 
         bidiRun = bidiRun->next();
@@ -702,7 +702,7 @@ ImageDrawResult GraphicsContext::drawImage(Image& image, const FloatPoint& desti
 
 ImageDrawResult GraphicsContext::drawImage(Image& image, const FloatRect& destination, const ImagePaintingOptions& imagePaintingOptions)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     FloatRect srcRect(FloatPoint(), image.originalSize());
 #else
     FloatRect srcRect(FloatPoint(), image.size());
@@ -909,7 +909,7 @@ void GraphicsContext::fillRectWithRoundedHole(const IntRect& rect, const FloatRo
     WindRule oldFillRule = fillRule();
     Color oldFillColor = fillColor();
 
-    setFillRule(RULE_EVENODD);
+    setFillRule(WindRule::EvenOdd);
     setFillColor(color);
 
     fillPath(path);
@@ -1085,18 +1085,18 @@ void GraphicsContext::platformStrokeEllipse(const FloatRect& ellipse)
 }
 #endif
 
-FloatRect GraphicsContext::computeUnderlineBoundsForText(const FloatPoint& point, float width, bool printing)
+FloatRect GraphicsContext::computeUnderlineBoundsForText(const FloatRect& rect, bool printing)
 {
     Color dummyColor;
-    return computeLineBoundsAndAntialiasingModeForText(point, width, printing, dummyColor);
+    return computeLineBoundsAndAntialiasingModeForText(rect, printing, dummyColor);
 }
 
-FloatRect GraphicsContext::computeLineBoundsAndAntialiasingModeForText(const FloatPoint& point, float width, bool printing, Color& color)
+FloatRect GraphicsContext::computeLineBoundsAndAntialiasingModeForText(const FloatRect& rect, bool printing, Color& color)
 {
-    FloatPoint origin = point;
-    float thickness = std::max(strokeThickness(), 0.5f);
+    FloatPoint origin = rect.location();
+    float thickness = std::max(rect.height(), 0.5f);
     if (printing)
-        return FloatRect(origin, FloatSize(width, thickness));
+        return FloatRect(origin, FloatSize(rect.width(), thickness));
 
     AffineTransform transform = getCTM(GraphicsContext::DefinitelyIncludeDeviceScale);
     // Just compute scale in x dimension, assuming x and y scales are equal.
@@ -1110,12 +1110,12 @@ FloatRect GraphicsContext::computeLineBoundsAndAntialiasingModeForText(const Flo
         color = color.colorWithAlphaMultipliedBy(shade);
     }
 
-    FloatPoint devicePoint = transform.mapPoint(point);
+    FloatPoint devicePoint = transform.mapPoint(rect.location());
     // Visual overflow might occur here due to integral roundf/ceilf. visualOverflowForDecorations adjusts the overflow value for underline decoration.
     FloatPoint deviceOrigin = FloatPoint(roundf(devicePoint.x()), ceilf(devicePoint.y()));
     if (auto inverse = transform.inverse())
         origin = inverse.value().mapPoint(deviceOrigin);
-    return FloatRect(origin, FloatSize(width, thickness));
+    return FloatRect(origin, FloatSize(rect.width(), thickness));
 }
 
 void GraphicsContext::applyState(const GraphicsContextState& state)

@@ -29,6 +29,12 @@
 #define CSS_MEDIAQUERY_DISPLAY_MODE(macro)
 #endif
 
+#if ENABLE(DARK_MODE_CSS)
+#define CSS_MEDIAQUERY_PREFERS_COLOR_SCHEME(macro) macro(prefersColorScheme, "prefers-color-scheme")
+#else
+#define CSS_MEDIAQUERY_PREFERS_COLOR_SCHEME(macro)
+#endif
+
 #define CSS_MEDIAQUERY_NAMES_FOR_EACH_MEDIAFEATURE(macro) \
     macro(animation, "-webkit-animation") \
     macro(anyHover, "any-hover") \
@@ -70,6 +76,7 @@
     macro(monochrome, "monochrome") \
     macro(orientation, "orientation") \
     macro(pointer, "pointer") \
+    macro(prefersDarkInterface, "prefers-dark-interface") \
     macro(prefersReducedMotion, "prefers-reduced-motion") \
     macro(resolution, "resolution") \
     macro(transform2d, "-webkit-transform-2d") \
@@ -78,6 +85,7 @@
     macro(videoPlayableInline, "-webkit-video-playable-inline") \
     macro(width, "width") \
     CSS_MEDIAQUERY_DISPLAY_MODE(macro) \
+    CSS_MEDIAQUERY_PREFERS_COLOR_SCHEME(macro) \
 
 // end of macro
 

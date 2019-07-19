@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,8 +47,9 @@ UnlinkedFunctionExecutable* name##Executable(); \
 const SourceCode& name##Source() { return m_##name##Source; }
 
     JSC_FOREACH_BUILTIN_CODE(EXPOSE_BUILTIN_EXECUTABLES)
-#undef EXPOSE_BUILTIN_SOURCES
+#undef EXPOSE_BUILTIN_EXECUTABLES
 
+    static SourceCode defaultConstructorSourceCode(ConstructorKind);
     UnlinkedFunctionExecutable* createDefaultConstructor(ConstructorKind, const Identifier& name);
 
     static UnlinkedFunctionExecutable* createExecutable(VM&, const SourceCode&, const Identifier&, ConstructorKind, ConstructAbility);
@@ -59,6 +60,7 @@ private:
 
     UnlinkedFunctionExecutable* createBuiltinExecutable(const SourceCode&, const Identifier&, ConstructAbility);
 
+    Ref<StringSourceProvider> m_combinedSourceProvider;
 #define DECLARE_BUILTIN_SOURCE_MEMBERS(name, functionName, overriddenName, length)\
     SourceCode m_##name##Source; \
     Weak<UnlinkedFunctionExecutable> m_##name##Executable;

@@ -30,7 +30,8 @@
 
 #pragma once
 
-#include "URL.h"
+#include "CookieRequestHeaderFieldProxy.h"
+#include <wtf/URL.h>
 #include "ResourceResponse.h"
 #include "WebSocketExtensionDispatcher.h"
 #include "WebSocketExtensionProcessor.h"
@@ -63,8 +64,9 @@ public:
     String clientOrigin() const;
     String clientLocation() const;
 
-    CString clientHandshakeMessage();
-    ResourceRequest clientHandshakeRequest();
+    CString clientHandshakeMessage() const;
+    ResourceRequest clientHandshakeRequest() const;
+    Optional<CookieRequestHeaderFieldProxy> clientHandshakeCookieRequestHeaderFieldProxy() const;
 
     void reset();
     void clearDocument();

@@ -48,6 +48,9 @@
 
 #include <algorithm>
 
+#define MOUSE_BACK_BTN 8
+#define MOUSE_FORWARD_BTN 9
+
 WindowContext * WindowContextBase::sm_grab_window = NULL;
 WindowContext * WindowContextBase::sm_mouse_drag_window = NULL;
 
@@ -196,6 +199,11 @@ void WindowContextBase::process_destroy() {
 
     std::set<WindowContextTop*>::iterator it;
     for (it = children.begin(); it != children.end(); ++it) {
+        // FIX JDK-8226537: this method calls set_owner(NULL) which prevents
+        // WindowContextTop::process_destroy() to call remove_child() (because children
+        // is being iterated here) but also prevents gtk_window_set_transient_for from
+        // being called - this causes the crash on gnome.
+        gtk_window_set_transient_for((*it)->get_gtk_window(), NULL);
         (*it)->set_owner(NULL);
         destroy_and_delete_ctx(*it);
     }
@@ -241,6 +249,10 @@ static inline jint gtk_button_number_to_mouse_button(guint button) {
             return com_sun_glass_events_MouseEvent_BUTTON_OTHER;
         case 3:
             return com_sun_glass_events_MouseEvent_BUTTON_RIGHT;
+        case MOUSE_BACK_BTN:
+            return com_sun_glass_events_MouseEvent_BUTTON_BACK;
+        case MOUSE_FORWARD_BTN:
+            return com_sun_glass_events_MouseEvent_BUTTON_FORWARD;
         default:
             // Other buttons are not supported by quantum and are not reported by other platforms
             return com_sun_glass_events_MouseEvent_BUTTON_NONE;
@@ -264,6 +276,12 @@ void WindowContextBase::process_mouse_button(GdkEventButton* event) {
             break;
         case 3:
             mask = GDK_BUTTON3_MASK;
+            break;
+        case MOUSE_BACK_BTN:
+            mask = GDK_BUTTON4_MASK;
+            break;
+        case MOUSE_FORWARD_BTN:
+            mask = GDK_BUTTON5_MASK;
             break;
     }
 
@@ -290,9 +308,17 @@ void WindowContextBase::process_mouse_button(GdkEventButton* event) {
     // We can grab mouse pointer for these needs.
     if (press) {
         grab_mouse_drag_focus();
-    } else if ((event->state & MOUSE_BUTTONS_MASK)
+    } else {
+        if ((event->state & MOUSE_BUTTONS_MASK)
             && !(state & MOUSE_BUTTONS_MASK)) { // all buttons released
-        ungrab_mouse_drag_focus();
+            ungrab_mouse_drag_focus();
+        } else if (event->button == 8 || event->button == 9) {
+            // GDK X backend interprets button press events for buttons 4-7 as
+            // scroll events so GDK_BUTTON4_MASK and GDK_BUTTON5_MASK will never
+            // be set on the event->state from GDK. Thus we cannot check if all
+            // buttons have been released in the usual way (as above).
+            ungrab_mouse_drag_focus();
+        }
     }
 
     jint button = gtk_button_number_to_mouse_button(event->button);
@@ -323,7 +349,9 @@ void WindowContextBase::process_mouse_motion(GdkEventMotion* event) {
     jint isDrag = glass_modifier & (
             com_sun_glass_events_KeyEvent_MODIFIER_BUTTON_PRIMARY |
             com_sun_glass_events_KeyEvent_MODIFIER_BUTTON_MIDDLE |
-            com_sun_glass_events_KeyEvent_MODIFIER_BUTTON_SECONDARY);
+            com_sun_glass_events_KeyEvent_MODIFIER_BUTTON_SECONDARY |
+            com_sun_glass_events_KeyEvent_MODIFIER_BUTTON_BACK |
+            com_sun_glass_events_KeyEvent_MODIFIER_BUTTON_FORWARD);
     jint button = com_sun_glass_events_MouseEvent_BUTTON_NONE;
 
     if (glass_modifier & com_sun_glass_events_KeyEvent_MODIFIER_BUTTON_PRIMARY) {
@@ -332,6 +360,10 @@ void WindowContextBase::process_mouse_motion(GdkEventMotion* event) {
         button = com_sun_glass_events_MouseEvent_BUTTON_OTHER;
     } else if (glass_modifier & com_sun_glass_events_KeyEvent_MODIFIER_BUTTON_SECONDARY) {
         button = com_sun_glass_events_MouseEvent_BUTTON_RIGHT;
+    } else if (glass_modifier & com_sun_glass_events_KeyEvent_MODIFIER_BUTTON_BACK) {
+        button = com_sun_glass_events_MouseEvent_BUTTON_BACK;
+    } else if (glass_modifier & com_sun_glass_events_KeyEvent_MODIFIER_BUTTON_FORWARD) {
+        button = com_sun_glass_events_MouseEvent_BUTTON_FORWARD;
     }
 
     if (jview) {
@@ -579,11 +611,7 @@ bool WindowContextBase::set_view(jobject view) {
     }
 
     if (view) {
-        gint width, height;
         jview = mainEnv->NewGlobalRef(view);
-        gtk_window_get_size(GTK_WINDOW(gtk_widget), &width, &height);
-        mainEnv->CallVoidMethod(view, jViewNotifyResize, width, height);
-        CHECK_JNI_EXCEPTION_RET(mainEnv, FALSE)
     } else {
         jview = NULL;
     }
@@ -1134,6 +1162,11 @@ void WindowContextTop::set_visible(bool visible)
         }
     }
     WindowContextBase::set_visible(visible);
+    //JDK-8220272 - fire event first because GDK_FOCUS_CHANGE is not always in order
+    if (visible && jwindow && isEnabled()) {
+        mainEnv->CallVoidMethod(jwindow, jWindowNotifyFocus, com_sun_glass_events_WindowEvent_FOCUS_GAINED);
+        CHECK_JNI_EXCEPTION(mainEnv);
+    }
 }
 
 void WindowContextTop::set_bounds(int x, int y, bool xSet, bool ySet, int w, int h, int cw, int ch) {
@@ -1249,6 +1282,14 @@ void WindowContextTop::window_configure(XWindowChanges *windowChanges,
             gtk_window_set_geometry_hints(GTK_WINDOW(gtk_widget), NULL, &geom, hints);
         }
         gtk_window_resize(GTK_WINDOW(gtk_widget), newWidth, newHeight);
+
+        //JDK-8193502: Moved here from WindowContextBase::set_view because set_view is called
+        //first and the size is not set yet. This also guarantees that the size will be correct
+        //see: gtk_window_get_size doc for more context.
+        if (jview) {
+            mainEnv->CallVoidMethod(jview, jViewNotifyResize, newWidth, newHeight);
+            CHECK_JNI_EXCEPTION(mainEnv);
+        }
     }
 }
 
@@ -1316,7 +1357,12 @@ void WindowContextTop::exit_fullscreen() {
 }
 
 void WindowContextTop::request_focus() {
-    gtk_window_present(GTK_WINDOW(gtk_widget));
+    //JDK-8212060: Window show and then move glitch.
+    //The WindowContextBase::set_visible will take care of showing the window.
+    //The below code will only handle later request_focus.
+    if (is_visible()) {
+        gtk_window_present(GTK_WINDOW(gtk_widget));
+    }
 }
 
 void WindowContextTop::set_focusable(bool focusable) {

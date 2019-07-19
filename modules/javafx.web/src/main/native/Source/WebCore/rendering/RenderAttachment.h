@@ -50,6 +50,7 @@ private:
     const char* renderName() const override { return "RenderAttachment"; }
 
     bool shouldDrawSelectionTint() const override { return false; }
+    void paintReplaced(PaintInfo&, const LayoutPoint& offset) final;
 
     void layout() override;
 
@@ -58,6 +59,11 @@ private:
     LayoutUnit m_minimumIntrinsicWidth;
     bool m_shouldDrawBorder { true };
 };
+
+inline RenderAttachment* HTMLAttachmentElement::renderer() const
+{
+    return downcast<RenderAttachment>(HTMLElement::renderer());
+}
 
 } // namespace WebCore
 

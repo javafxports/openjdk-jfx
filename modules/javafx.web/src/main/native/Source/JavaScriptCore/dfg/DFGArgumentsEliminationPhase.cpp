@@ -128,7 +128,7 @@ private:
                 case NewArrayWithSpread: {
                     if (m_graph.isWatchingHavingABadTimeWatchpoint(node)) {
                         BitVector* bitVector = node->bitVector();
-                        // We only allow for Spreads to be of rest nodes for now.
+                        // We only allow for Spreads to be of CreateRest or NewArrayBuffer nodes for now.
                         bool isOK = true;
                         for (unsigned i = 0; i < node->numChildren(); i++) {
                             if (bitVector->get(i)) {
@@ -148,7 +148,7 @@ private:
                 }
 
                 case NewArrayBuffer: {
-                    if (m_graph.isWatchingHavingABadTimeWatchpoint(node) && !hasAnyArrayStorage(node->indexingType()))
+                    if (m_graph.isWatchingHavingABadTimeWatchpoint(node) && !hasAnyArrayStorage(node->indexingMode()))
                         m_candidates.add(node);
                     break;
                 }
@@ -252,7 +252,7 @@ private:
                 // If we're out-of-bounds then we proceed only if the prototype chain
                 // for the allocation is sane (i.e. doesn't have indexed properties).
                 JSGlobalObject* globalObject = m_graph.globalObjectFor(edge->origin.semantic);
-                Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure();
+                Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure(m_graph.m_vm);
                 if (objectPrototypeStructure->transitionWatchpointSetIsStillValid()
                     && globalObject->objectPrototypeIsSane()) {
                     m_graph.registerAndWatchStructureTransition(objectPrototypeStructure);
@@ -275,9 +275,9 @@ private:
                 // If we're out-of-bounds then we proceed only if the prototype chain
                 // for the allocation is sane (i.e. doesn't have indexed properties).
                 JSGlobalObject* globalObject = m_graph.globalObjectFor(edge->origin.semantic);
-                Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure();
+                Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure(m_graph.m_vm);
                 if (edge->op() == CreateRest) {
-                    Structure* arrayPrototypeStructure = globalObject->arrayPrototype()->structure();
+                    Structure* arrayPrototypeStructure = globalObject->arrayPrototype()->structure(m_graph.m_vm);
                     if (arrayPrototypeStructure->transitionWatchpointSetIsStillValid()
                         && objectPrototypeStructure->transitionWatchpointSetIsStillValid()
                         && globalObject->arrayPrototypeChainIsSane()) {
@@ -317,15 +317,14 @@ private:
                     escapeBasedOnArrayMode(node->arrayMode(), m_graph.varArgChild(node, 0), node);
                     escape(m_graph.varArgChild(node, 1), node);
                     escape(m_graph.varArgChild(node, 2), node);
-                    escape(m_graph.varArgChild(node, 3), node);
                     break;
 
                 case GetArrayLength:
-                    // FIXME: It would not be hard to support NewArrayWithSpread here if it is only over Spread(CreateRest) nodes.
                     escape(node->child2(), node);
-                    break;
-
-                case GetArrayMask:
+                    // Computing the length of a NewArrayWithSpread can require some additions.
+                    // These additions can overflow if the array is sufficiently enormous, and in that case we will need to exit.
+                    if ((node->child1()->op() == NewArrayWithSpread) && !node->origin.exitOK)
+                        escape(node->child1(), node);
                     break;
 
                 case NewArrayWithSpread: {
@@ -401,6 +400,12 @@ private:
                     // butterfly's child and check if it's a candidate.
                     break;
 
+                case FilterGetByIdStatus:
+                case FilterPutByIdStatus:
+                case FilterCallLinkStatus:
+                case FilterInByIdStatus:
+                    break;
+
                 case CheckArray:
                     escapeBasedOnArrayMode(node->arrayMode(), node->child1(), node);
                     break;
@@ -430,9 +435,9 @@ private:
                         break;
                     case NewArrayBuffer: {
                         ASSERT(m_graph.isWatchingHavingABadTimeWatchpoint(target));
-                        IndexingType indexingType = target->indexingType();
-                        ASSERT(!hasAnyArrayStorage(indexingType));
-                        structure = globalObject->originalArrayStructureForIndexingType(indexingType);
+                        IndexingType indexingMode = target->indexingMode();
+                        ASSERT(!hasAnyArrayStorage(indexingMode));
+                        structure = globalObject->originalArrayStructureForIndexingType(indexingMode);
                         break;
                     }
                     default:
@@ -619,9 +624,12 @@ private:
 
     void transform()
     {
+        bool modifiedCFG = false;
+
         InsertionSet insertionSet(m_graph);
 
         for (BasicBlock* block : m_graph.blocksInPreOrder()) {
+            Node* pseudoTerminal = nullptr;
             for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
                 Node* node = block->at(nodeIndex);
 
@@ -726,20 +734,6 @@ private:
                     break;
                 }
 
-                case GetArrayMask: {
-                    Node* candidate = node->child1().node();
-                    if (!isEliminatedAllocation(candidate))
-                        break;
-
-                    // NOTE: This is valid because the only user of this node at the moment is GetByVal.
-                    // If the candidate is eliminated, it must also be eliminated for all GetByVal users.
-                    // Therefore, we'll transform those GetByVal nodes to no longer use us. If we introduce
-                    // other users of this node, we'll need to change this code. That would be easy: just
-                    // introduce a ComputeArrayMask node, and transform this into ComputeArrayMask(getArrayLength(candidate)).
-                    node->convertToConstant(m_graph.freeze(jsNumber(0)));
-                    break;
-                }
-
                 case GetByVal: {
                     // FIXME: For ClonedArguments, we would have already done a separate bounds check.
                     // This code will cause us to have two bounds checks - the original one that we
@@ -762,11 +756,11 @@ private:
                         InlineCallFrame* inlineCallFrame = candidate->origin.semantic.inlineCallFrame;
                         index += numberOfArgumentsToSkip;
 
-                        bool safeToGetStack;
+                        bool safeToGetStack = index >= numberOfArgumentsToSkip;
                         if (inlineCallFrame)
-                            safeToGetStack = index < inlineCallFrame->argumentCountIncludingThis - 1;
+                            safeToGetStack &= index < inlineCallFrame->argumentCountIncludingThis - 1;
                         else {
-                            safeToGetStack =
+                            safeToGetStack &=
                                 index < static_cast<unsigned>(codeBlock()->numParameters()) - 1;
                         }
                         if (safeToGetStack) {
@@ -776,14 +770,15 @@ private:
                                 arg += inlineCallFrame->stackOffset;
                             data = m_graph.m_stackAccessData.add(arg, FlushedJSValue);
 
+                            Node* check = nullptr;
                             if (!inlineCallFrame || inlineCallFrame->isVarargs()) {
-                                insertionSet.insertNode(
+                                check = insertionSet.insertNode(
                                     nodeIndex, SpecNone, CheckInBounds, node->origin,
                                     m_graph.varArgChild(node, 1), Edge(getArrayLength(candidate), Int32Use));
                             }
 
                             result = insertionSet.insertNode(
-                                nodeIndex, node->prediction(), GetStack, node->origin, OpInfo(data));
+                                nodeIndex, node->prediction(), GetStack, node->origin, OpInfo(data), Edge(check, UntypedUse));
                         }
                     }
 
@@ -882,7 +877,7 @@ private:
                                 }
 
                                 if (candidate->op() == PhantomNewArrayBuffer)
-                                    return candidate->castOperand<JSFixedArray*>()->length();
+                                    return candidate->castOperand<JSImmutableButterfly*>()->length();
 
                                 ASSERT(candidate->op() == PhantomCreateRest);
                                 unsigned numberOfArgumentsToSkip = candidate->numberOfArgumentsToSkip();
@@ -919,8 +914,7 @@ private:
                                     }
 
                                     if (candidate->op() == PhantomNewArrayBuffer) {
-                                        bool canExit = true;
-                                        auto* array = candidate->castOperand<JSFixedArray*>();
+                                        auto* array = candidate->castOperand<JSImmutableButterfly*>();
                                         for (unsigned index = 0; index < array->length(); ++index) {
                                             JSValue constant;
                                             if (candidate->indexingType() == ArrayWithDouble)
@@ -1137,7 +1131,7 @@ private:
 
                                 if (candidate->op() == PhantomNewArrayBuffer) {
                                     bool canExit = true;
-                                    auto* array = candidate->castOperand<JSFixedArray*>();
+                                    auto* array = candidate->castOperand<JSImmutableButterfly*>();
                                     for (unsigned index = 0; index < array->length(); ++index) {
                                         JSValue constant;
                                         if (candidate->indexingType() == ArrayWithDouble)
@@ -1198,7 +1192,11 @@ private:
                 }
 
                 case CheckArray:
-                case GetButterfly: {
+                case GetButterfly:
+                case FilterGetByIdStatus:
+                case FilterPutByIdStatus:
+                case FilterCallLinkStatus:
+                case FilterInByIdStatus: {
                     if (!isEliminatedAllocation(node->child1().node()))
                         break;
                     node->remove(m_graph);
@@ -1216,11 +1214,32 @@ private:
                 default:
                     break;
                 }
-                if (node->isPseudoTerminal())
+
+                if (node->isPseudoTerminal()) {
+                    pseudoTerminal = node;
                     break;
+                }
             }
 
             insertionSet.execute(block);
+
+            if (pseudoTerminal) {
+                for (unsigned i = 0; i < block->size(); ++i) {
+                    Node* node = block->at(i);
+                    if (node != pseudoTerminal)
+                        continue;
+                    block->resize(i + 1);
+                    block->append(m_graph.addNode(SpecNone, Unreachable, node->origin));
+                    modifiedCFG = true;
+                    break;
+                }
+            }
+        }
+
+        if (modifiedCFG) {
+            m_graph.invalidateCFG();
+            m_graph.resetReachability();
+            m_graph.killUnreachableBlocks();
         }
     }
 

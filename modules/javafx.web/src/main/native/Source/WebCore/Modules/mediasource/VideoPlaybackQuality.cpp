@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,20 +26,27 @@
 #include "config.h"
 #include "VideoPlaybackQuality.h"
 
+#if ENABLE(VIDEO)
+
+#include "MediaPlayer.h"
+
 namespace WebCore {
 
-Ref<VideoPlaybackQuality> VideoPlaybackQuality::create(double creationTime, unsigned long totalVideoFrames, unsigned long droppedVideoFrames, unsigned long corruptedVideoFrames, double totalFrameDelay)
+Ref<VideoPlaybackQuality> VideoPlaybackQuality::create(double creationTime, const VideoPlaybackQualityMetrics& metrics)
 {
-    return adoptRef(*new VideoPlaybackQuality(creationTime, totalVideoFrames, droppedVideoFrames, corruptedVideoFrames, totalFrameDelay));
+    return adoptRef(*new VideoPlaybackQuality(creationTime, metrics));
 }
 
-VideoPlaybackQuality::VideoPlaybackQuality(double creationTime, unsigned long totalVideoFrames, unsigned long droppedVideoFrames, unsigned long corruptedVideoFrames, double totalFrameDelay)
+VideoPlaybackQuality::VideoPlaybackQuality(double creationTime, const VideoPlaybackQualityMetrics& metrics)
     : m_creationTime(creationTime)
-    , m_totalVideoFrames(totalVideoFrames)
-    , m_droppedVideoFrames(droppedVideoFrames)
-    , m_corruptedVideoFrames(corruptedVideoFrames)
-    , m_totalFrameDelay(totalFrameDelay)
+    , m_totalVideoFrames(metrics.totalVideoFrames)
+    , m_droppedVideoFrames(metrics.droppedVideoFrames)
+    , m_corruptedVideoFrames(metrics.corruptedVideoFrames)
+    , m_displayCompositedVideoFrames(metrics.displayCompositedVideoFrames)
+    , m_totalFrameDelay(metrics.totalFrameDelay)
 {
 }
 
 }
+
+#endif // ENABLE(VIDEO)

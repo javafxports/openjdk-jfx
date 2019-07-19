@@ -303,63 +303,6 @@ NS_CLASS_AVAILABLE(10_9, 7_0)
 - (NSDictionary *)toDictionary;
 
 /*!
-@methodgroup Accessing Properties
-*/
-/*!
-@method
-@abstract Access a property of a JSValue.
-@result The JSValue for the requested property or the JSValue <code>undefined</code>
- if the property does not exist.
-*/
-- (JSValue *)valueForProperty:(NSString *)property;
-
-/*!
-@method
-@abstract Set a property on a JSValue.
-*/
-- (void)setValue:(id)value forProperty:(NSString *)property;
-
-/*!
-@method
-@abstract Delete a property from a JSValue.
-@result YES if deletion is successful, NO otherwise.
-*/
-- (BOOL)deleteProperty:(NSString *)property;
-
-/*!
-@method
-@abstract Check if a JSValue has a property.
-@discussion This method has the same function as the JavaScript operator <code>in</code>.
-@result Returns YES if property is present on the value.
-*/
-- (BOOL)hasProperty:(NSString *)property;
-
-/*!
-@method
-@abstract Define properties with custom descriptors on JSValues.
-@discussion This method may be used to create a data or accessor property on an object.
- This method operates in accordance with the Object.defineProperty method in the
- JavaScript language.
-*/
-- (void)defineProperty:(NSString *)property descriptor:(id)descriptor;
-
-/*!
-@method
-@abstract Access an indexed (numerical) property on a JSValue.
-@result The JSValue for the property at the specified index.
- Returns the JavaScript value <code>undefined</code> if no property exists at that index.
-*/
-- (JSValue *)valueAtIndex:(NSUInteger)index;
-
-/*!
-@method
-@abstract Set an indexed (numerical) property on a JSValue.
-@discussion For JSValues that are JavaScript arrays, indices greater than
- UINT_MAX - 1 will not affect the length of the array.
-*/
-- (void)setValue:(id)value atIndex:(NSUInteger)index;
-
-/*!
 @functiongroup Checking JavaScript Types
 */
 
@@ -406,13 +349,13 @@ NS_CLASS_AVAILABLE(10_9, 7_0)
 @property
 @abstract Check if a JSValue is an array.
 */
-@property (readonly) BOOL isArray NS_AVAILABLE(10_11, 9_0);
+@property (readonly) BOOL isArray JSC_API_AVAILABLE(macosx(10.11), ios(9.0));
 
 /*!
 @property
 @abstract Check if a JSValue is a date.
 */
-@property (readonly) BOOL isDate NS_AVAILABLE(10_11, 9_0);
+@property (readonly) BOOL isDate JSC_API_AVAILABLE(macosx(10.11), ios(9.0));
 
 /*!
 @method
@@ -552,6 +495,68 @@ Create a JSValue from a CGRect.
 @result The new CGSize.
 */
 - (CGSize)toSize;
+
+@end
+
+/*!
+ @category
+ @discussion These methods enable querying properties on a JSValue.
+ */
+@interface JSValue (PropertyAccess)
+
+/*!
+ @method
+ @abstract Access a property of a JSValue.
+ @result The JSValue for the requested property or the JSValue <code>undefined</code>
+ if the property does not exist.
+ */
+- (JSValue *)valueForProperty:(NSString *)property;
+
+/*!
+ @method
+ @abstract Set a property on a JSValue.
+ */
+- (void)setValue:(id)value forProperty:(NSString *)property;
+
+/*!
+ @method
+ @abstract Delete a property from a JSValue.
+ @result YES if deletion is successful, NO otherwise.
+ */
+- (BOOL)deleteProperty:(NSString *)property;
+
+/*!
+ @method
+ @abstract Check if a JSValue has a property.
+ @discussion This method has the same function as the JavaScript operator <code>in</code>.
+ @result Returns YES if property is present on the value.
+ */
+- (BOOL)hasProperty:(NSString *)property;
+
+/*!
+ @method
+ @abstract Define properties with custom descriptors on JSValues.
+ @discussion This method may be used to create a data or accessor property on an object.
+ This method operates in accordance with the Object.defineProperty method in the
+ JavaScript language.
+ */
+- (void)defineProperty:(NSString *)property descriptor:(id)descriptor;
+
+/*!
+ @method
+ @abstract Access an indexed (numerical) property on a JSValue.
+ @result The JSValue for the property at the specified index.
+ Returns the JavaScript value <code>undefined</code> if no property exists at that index.
+ */
+- (JSValue *)valueAtIndex:(NSUInteger)index;
+
+/*!
+ @method
+ @abstract Set an indexed (numerical) property on a JSValue.
+ @discussion For JSValues that are JavaScript arrays, indices greater than
+ UINT_MAX - 1 will not affect the length of the array.
+ */
+- (void)setValue:(id)value atIndex:(NSUInteger)index;
 
 @end
 

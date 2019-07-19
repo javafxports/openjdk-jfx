@@ -199,12 +199,12 @@ String PropertySetCSSStyleDeclaration::getPropertyValue(const String& propertyNa
 String PropertySetCSSStyleDeclaration::getPropertyPriority(const String& propertyName)
 {
     if (isCustomPropertyName(propertyName))
-        return m_propertySet->customPropertyIsImportant(propertyName) ? ASCIILiteral("important") : emptyString();
+        return m_propertySet->customPropertyIsImportant(propertyName) ? "important"_s : emptyString();
 
     CSSPropertyID propertyID = cssPropertyID(propertyName);
     if (!propertyID)
         return String();
-    return m_propertySet->propertyIsImportant(propertyID) ? ASCIILiteral("important") : emptyString();
+    return m_propertySet->propertyIsImportant(propertyID) ? "important"_s : emptyString();
 }
 
 String PropertySetCSSStyleDeclaration::getPropertyShorthand(const String& propertyName)
@@ -241,9 +241,16 @@ ExceptionOr<void> PropertySetCSSStyleDeclaration::setProperty(const String& prop
         return { };
 
     bool changed;
-    if (propertyID == CSSPropertyCustom)
-        changed = m_propertySet->setCustomProperty(propertyName, value, important, cssParserContext());
-    else
+    if (UNLIKELY(propertyID == CSSPropertyCustom)) {
+        Document* document = nullptr;
+
+        if (parentElement())
+            document = &parentElement()->document();
+        else
+            document = parentStyleSheet()->ownerDocument();
+
+        changed = m_propertySet->setCustomProperty(document, propertyName, value, important, cssParserContext());
+    } else
         changed = m_propertySet->setProperty(propertyID, value, important, cssParserContext());
 
     didMutate(changed ? PropertyChanged : NoChanges);
@@ -308,7 +315,7 @@ ExceptionOr<bool> PropertySetCSSStyleDeclaration::setPropertyInternal(CSSPropert
     return changed;
 }
 
-DeprecatedCSSOMValue* PropertySetCSSStyleDeclaration::wrapForDeprecatedCSSOM(CSSValue* internalValue)
+RefPtr<DeprecatedCSSOMValue> PropertySetCSSStyleDeclaration::wrapForDeprecatedCSSOM(CSSValue* internalValue)
 {
     if (!internalValue)
         return nullptr;
@@ -316,12 +323,15 @@ DeprecatedCSSOMValue* PropertySetCSSStyleDeclaration::wrapForDeprecatedCSSOM(CSS
     // The map is here to maintain the object identity of the CSSValues over multiple invocations.
     // FIXME: It is likely that the identity is not important for web compatibility and this code should be removed.
     if (!m_cssomValueWrappers)
-        m_cssomValueWrappers = std::make_unique<HashMap<CSSValue*, RefPtr<DeprecatedCSSOMValue>>>();
+        m_cssomValueWrappers = std::make_unique<HashMap<CSSValue*, WeakPtr<DeprecatedCSSOMValue>>>();
 
-    RefPtr<DeprecatedCSSOMValue>& clonedValue = m_cssomValueWrappers->add(internalValue, RefPtr<DeprecatedCSSOMValue>()).iterator->value;
-    if (!clonedValue)
-        clonedValue = internalValue->createDeprecatedCSSOMWrapper(*this);
-    return clonedValue.get();
+    auto& clonedValue = m_cssomValueWrappers->add(internalValue, WeakPtr<DeprecatedCSSOMValue>()).iterator->value;
+    if (clonedValue)
+        return clonedValue.get();
+
+    RefPtr<DeprecatedCSSOMValue> wrapper = internalValue->createDeprecatedCSSOMWrapper(*this);
+    clonedValue = makeWeakPtr(wrapper.get());
+    return wrapper;
 }
 
 StyleSheetContents* PropertySetCSSStyleDeclaration::contextStyleSheet() const

@@ -44,6 +44,13 @@ struct SameSizeAsElementRareData : NodeRareData {
     LayoutSize sizeForResizing;
     IntPoint savedLayerScrollPosition;
     void* pointers[8];
+#if ENABLE(INTERSECTION_OBSERVER)
+    void* intersectionObserverData;
+#endif
+#if ENABLE(CSS_TYPED_OM)
+    void* typedOMData;
+#endif
+
 };
 
 static_assert(sizeof(ElementRareData) == sizeof(SameSizeAsElementRareData), "ElementRareData should stay small");

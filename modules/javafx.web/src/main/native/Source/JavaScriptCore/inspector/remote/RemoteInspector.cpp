@@ -130,7 +130,7 @@ void RemoteInspector::updateClientCapabilities()
     std::lock_guard<Lock> lock(m_mutex);
 
     if (!m_client)
-        m_clientCapabilities = std::nullopt;
+        m_clientCapabilities = WTF::nullopt;
     else {
         RemoteInspector::Client::Capabilities updatedCapabilities = {
             m_client->remoteAutomationAllowed(),
@@ -238,6 +238,10 @@ void RemoteInspector::updateHasActiveDebugSession()
 
     // FIXME: Expose some way to access this state in an embedder.
     // Legacy iOS WebKit 1 had a notification. This will need to be smarter with WebKit2.
+}
+
+RemoteInspector::Client::~Client()
+{
 }
 
 } // namespace Inspector

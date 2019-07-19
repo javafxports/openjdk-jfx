@@ -29,32 +29,16 @@
 #define USE_FILE_LOCK 1
 #endif
 
-#if PLATFORM(WIN)
-#include <PALHeaderDetection.h>
-#endif
-
 #include "PlatformExportMacros.h"
 #include <JavaScriptCore/JSExportMacros.h>
 #include <pal/ExportMacros.h>
 
-#ifdef __APPLE__
-#define HAVE_FUNC_USLEEP 1
-#endif /* __APPLE__ */
-
-#if OS(WINDOWS)
-
-// CURL needs winsock, so don't prevent inclusion of it
-#if !USE(CURL)
-#ifndef _WINSOCKAPI_
-#define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h
-#endif
-#endif
-
-#endif /* OS(WINDOWS) */
-
 // Using CMake with Unix makefiles does not use prefix headers.
 #if PLATFORM(MAC) && defined(BUILDING_WITH_CMAKE)
 #include "WebCorePrefix.h"
+#ifndef JSC_API_AVAILABLE
+#define JSC_API_AVAILABLE(...)
+#endif
 #endif
 
 #ifdef __cplusplus
@@ -71,27 +55,6 @@
 
 #include <wtf/DisallowCType.h>
 
-#if PLATFORM(WIN)
-#if PLATFORM(WIN_CAIRO)
-#undef USE_CG
-#define USE_CURL 1
-#ifndef _WINSOCKAPI_
-#define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h
-#endif
-#elif USE(DIRECT2D)
-#undef USE_CA
-#undef USE_CG
-#elif !USE(WINGDI)
-#define USE_CG 1
-#undef USE_CAIRO
-#undef USE_CURL
-#endif
-#endif
-
-#if PLATFORM(MAC) || PLATFORM(WPE)
-#define USE_NEW_THEME 1
-#endif
-
 #if USE(CG)
 #ifndef CGFLOAT_DEFINED
 #if (defined(__LP64__) && __LP64__) || (defined(__x86_64__) && __x86_64__) || defined(_M_X64) || defined(__amd64__)
@@ -102,15 +65,3 @@ typedef float CGFloat;
 #define CGFLOAT_DEFINED 1
 #endif
 #endif /* USE(CG) */
-
-#if PLATFORM(WIN) && USE(CG) && HAVE(AVCF)
-#define USE_AVFOUNDATION 1
-
-#if HAVE(AVCF_LEGIBLE_OUTPUT)
-#define USE_AVFOUNDATION 1
-#define HAVE_AVFOUNDATION_MEDIA_SELECTION_GROUP 1
-#define HAVE_AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT 1
-#define HAVE_MEDIA_ACCESSIBILITY_FRAMEWORK 1
-#endif
-
-#endif

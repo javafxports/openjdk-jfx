@@ -93,7 +93,6 @@ public:
     // flow thread portion we contain. For sets, we have to figure out the top of the nearest column or
     // page.
     virtual LayoutUnit pageLogicalTopForOffset(LayoutUnit offset) const;
-    virtual LayoutUnit pageLogicalHeightForOffset(LayoutUnit offset) const;
 
     // Whether or not this fragment is a set.
     virtual bool isRenderFragmentContainerSet() const { return false; }
@@ -121,6 +120,8 @@ public:
     VisiblePosition positionForPoint(const LayoutPoint&, const RenderFragmentContainer*) override;
 
     virtual void absoluteQuadsForBoxInFragment(Vector<FloatQuad>&, bool*, const RenderBox*, float, float) { }
+
+    String debugString() const;
 
 protected:
     RenderFragmentContainer(Element&, RenderStyle&&, RenderFragmentedFlow*);

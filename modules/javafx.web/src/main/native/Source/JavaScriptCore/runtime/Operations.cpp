@@ -23,6 +23,7 @@
 #include "Operations.h"
 
 #include "Error.h"
+#include "JSBigInt.h"
 #include "JSCInlines.h"
 #include "JSObject.h"
 #include "JSString.h"
@@ -51,23 +52,42 @@ NEVER_INLINE JSValue jsAddSlowCase(CallFrame* callFrame, JSValue v1, JSValue v2)
     RETURN_IF_EXCEPTION(scope, { });
 
     if (p1.isString()) {
-        JSString* p2String = p2.toString(callFrame);
+        if (p2.isCell()) {
+            JSString* p2String = p2.toString(callFrame);
+            RETURN_IF_EXCEPTION(scope, { });
+            RELEASE_AND_RETURN(scope, jsString(callFrame, asString(p1), p2String));
+        }
+        String p2String = p2.toWTFString(callFrame);
         RETURN_IF_EXCEPTION(scope, { });
-        scope.release();
-        return jsString(callFrame, asString(p1), p2String);
+        RELEASE_AND_RETURN(scope, jsString(callFrame, asString(p1), p2String));
     }
 
     if (p2.isString()) {
-        JSString* p1String = p1.toString(callFrame);
+        if (p1.isCell()) {
+            JSString* p1String = p1.toString(callFrame);
+            RETURN_IF_EXCEPTION(scope, { });
+            RELEASE_AND_RETURN(scope, jsString(callFrame, p1String, asString(p2)));
+        }
+        String p1String = p1.toWTFString(callFrame);
         RETURN_IF_EXCEPTION(scope, { });
-        scope.release();
-        return jsString(callFrame, p1String, asString(p2));
+        RELEASE_AND_RETURN(scope, jsString(callFrame, p1String, asString(p2)));
     }
 
-    double p1Number = p1.toNumber(callFrame);
+    auto leftNumeric = p1.toNumeric(callFrame);
     RETURN_IF_EXCEPTION(scope, { });
-    scope.release();
-    return jsNumber(p1Number + p2.toNumber(callFrame));
+    auto rightNumeric = p2.toNumeric(callFrame);
+    RETURN_IF_EXCEPTION(scope, { });
+
+    if (WTF::holds_alternative<JSBigInt*>(leftNumeric) || WTF::holds_alternative<JSBigInt*>(rightNumeric)) {
+        if (WTF::holds_alternative<JSBigInt*>(leftNumeric) && WTF::holds_alternative<JSBigInt*>(rightNumeric)) {
+            scope.release();
+            return JSBigInt::add(callFrame, WTF::get<JSBigInt*>(leftNumeric), WTF::get<JSBigInt*>(rightNumeric));
+        }
+
+        return throwTypeError(callFrame, scope, "Invalid mix of BigInt and other type in addition."_s);
+    }
+
+    return jsNumber(WTF::get<double>(leftNumeric) + WTF::get<double>(rightNumeric));
 }
 
 JSValue jsTypeStringForValue(VM& vm, JSGlobalObject* globalObject, JSValue v)
@@ -90,14 +110,8 @@ JSValue jsTypeStringForValue(VM& vm, JSGlobalObject* globalObject, JSValue v)
         // as null when doing comparisons.
         if (object->structure(vm)->masqueradesAsUndefined(globalObject))
             return vm.smallStrings.undefinedString();
-        if (object->type() == JSFunctionType)
+        if (object->isFunction(vm))
             return vm.smallStrings.functionString();
-        if (object->inlineTypeFlags() & TypeOfShouldCallGetCallData) {
-            CallData callData;
-            JSObject* object = asObject(v);
-            if (object->methodTable(vm)->getCallData(object, callData) != CallType::None)
-                return vm.smallStrings.functionString();
-        }
     }
     return vm.smallStrings.objectString();
 }
@@ -119,23 +133,11 @@ bool jsIsObjectTypeOrNull(CallFrame* callFrame, JSValue v)
     if (type >= ObjectType) {
         if (asObject(v)->structure(vm)->masqueradesAsUndefined(callFrame->lexicalGlobalObject()))
             return false;
-        CallData callData;
         JSObject* object = asObject(v);
-        if (object->methodTable(vm)->getCallData(object, callData) != CallType::None)
+        if (object->isFunction(vm))
             return false;
     }
     return true;
-}
-
-bool jsIsFunctionType(JSValue v)
-{
-    if (v.isObject()) {
-        CallData callData;
-        JSObject* object = asObject(v);
-        if (object->methodTable()->getCallData(object, callData) != CallType::None)
-            return true;
-    }
-    return false;
 }
 
 size_t normalizePrototypeChain(CallFrame* callFrame, JSCell* base, bool& sawPolyProto)

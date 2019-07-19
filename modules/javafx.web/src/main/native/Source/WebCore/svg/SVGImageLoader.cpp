@@ -39,9 +39,9 @@ SVGImageLoader::~SVGImageLoader() = default;
 void SVGImageLoader::dispatchLoadEvent()
 {
     if (image()->errorOccurred())
-        element().dispatchEvent(Event::create(eventNames().errorEvent, false, false));
+        element().dispatchEvent(Event::create(eventNames().errorEvent, Event::CanBubble::No, Event::IsCancelable::No));
     else {
-        if (downcast<SVGImageElement>(element()).externalResourcesRequiredBaseValue())
+        if (downcast<SVGImageElement>(element()).externalResourcesRequired())
             downcast<SVGImageElement>(ImageLoader::element()).sendSVGLoadEventIfPossible(true);
     }
 }
@@ -49,7 +49,7 @@ void SVGImageLoader::dispatchLoadEvent()
 String SVGImageLoader::sourceURI(const AtomicString& attribute) const
 {
     URL base = element().baseURI();
-    if (base != blankURL())
+    if (base != WTF::blankURL())
         return URL(base, stripLeadingAndTrailingHTMLSpaces(attribute)).string();
     return element().document().completeURL(stripLeadingAndTrailingHTMLSpaces(attribute));
 }

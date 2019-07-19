@@ -27,6 +27,7 @@
 #define VMAllocate_h
 
 #include "BAssert.h"
+#include "BVMTags.h"
 #include "Logging.h"
 #include "Range.h"
 #include "Sizes.h"
@@ -37,27 +38,29 @@
 
 #if BOS(DARWIN)
 #include <mach/vm_page_size.h>
-#include <mach/vm_statistics.h>
 #endif
 
 namespace bmalloc {
 
-#if BOS(DARWIN)
-#define BMALLOC_VM_TAG VM_MAKE_TAG(VM_MEMORY_TCMALLOC)
-#define BMALLOC_NORESERVE 0
-#elif BOS(LINUX)
-#define BMALLOC_VM_TAG -1
+#ifndef BMALLOC_VM_TAG
+#define BMALLOC_VM_TAG VM_TAG_FOR_TCMALLOC_MEMORY
+#endif
+
+#if BOS(LINUX)
 #define BMALLOC_NORESERVE MAP_NORESERVE
 #else
-#define BMALLOC_VM_TAG -1
 #define BMALLOC_NORESERVE 0
 #endif
 
 inline size_t vmPageSize()
 {
     static size_t cached;
-    if (!cached)
-        cached = sysconf(_SC_PAGESIZE);
+    if (!cached) {
+        long pageSize = sysconf(_SC_PAGESIZE);
+        if (pageSize < 0)
+            BCRASH();
+        cached = pageSize;
+    }
     return cached;
 }
 
@@ -76,7 +79,7 @@ inline size_t vmSize(size_t size)
 
 inline void vmValidate(size_t vmSize)
 {
-    UNUSED(vmSize);
+    BUNUSED(vmSize);
     BASSERT(vmSize);
     BASSERT(vmSize == roundUpToMultipleOf(vmPageSize(), vmSize));
 }
@@ -85,14 +88,14 @@ inline void vmValidate(void* p, size_t vmSize)
 {
     vmValidate(vmSize);
 
-    UNUSED(p);
+    BUNUSED(p);
     BASSERT(p);
     BASSERT(p == mask(p, ~(vmPageSize() - 1)));
 }
 
 inline size_t vmPageSizePhysical()
 {
-#if BPLATFORM(IOS)
+#if BPLATFORM(IOS_FAMILY)
     return vm_kernel_page_size;
 #else
     static size_t cached;
@@ -104,7 +107,7 @@ inline size_t vmPageSizePhysical()
 
 inline void vmValidatePhysical(size_t vmSize)
 {
-    UNUSED(vmSize);
+    BUNUSED(vmSize);
     BASSERT(vmSize);
     BASSERT(vmSize == roundUpToMultipleOf(vmPageSizePhysical(), vmSize));
 }
@@ -113,15 +116,15 @@ inline void vmValidatePhysical(void* p, size_t vmSize)
 {
     vmValidatePhysical(vmSize);
 
-    UNUSED(p);
+    BUNUSED(p);
     BASSERT(p);
     BASSERT(p == mask(p, ~(vmPageSizePhysical() - 1)));
 }
 
-inline void* tryVMAllocate(size_t vmSize)
+inline void* tryVMAllocate(size_t vmSize, VMTag usage = VMTag::Malloc)
 {
     vmValidate(vmSize);
-    void* result = mmap(0, vmSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | BMALLOC_NORESERVE, BMALLOC_VM_TAG, 0);
+    void* result = mmap(0, vmSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | BMALLOC_NORESERVE, static_cast<int>(usage), 0);
     if (result == MAP_FAILED)
         return nullptr;
     return result;
@@ -146,19 +149,19 @@ inline void vmRevokePermissions(void* p, size_t vmSize)
     mprotect(p, vmSize, PROT_NONE);
 }
 
-inline void vmZeroAndPurge(void* p, size_t vmSize)
+inline void vmZeroAndPurge(void* p, size_t vmSize, VMTag usage = VMTag::Malloc)
 {
     vmValidate(p, vmSize);
     // MAP_ANON guarantees the memory is zeroed. This will also cause
     // page faults on accesses to this range following this call.
-    void* result = mmap(p, vmSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_FIXED | BMALLOC_NORESERVE, BMALLOC_VM_TAG, 0);
+    void* result = mmap(p, vmSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_FIXED | BMALLOC_NORESERVE, static_cast<int>(usage), 0);
     RELEASE_BASSERT(result == p);
 }
 
 // Allocates vmSize bytes at a specified power-of-two alignment.
 // Use this function to create maskable memory regions.
 
-inline void* tryVMAllocate(size_t vmAlignment, size_t vmSize)
+inline void* tryVMAllocate(size_t vmAlignment, size_t vmSize, VMTag usage = VMTag::Malloc)
 {
     vmValidate(vmSize);
     vmValidate(vmAlignment);
@@ -167,7 +170,7 @@ inline void* tryVMAllocate(size_t vmAlignment, size_t vmSize)
     if (mappedSize < vmAlignment || mappedSize < vmSize) // Check for overflow
         return nullptr;
 
-    char* mapped = static_cast<char*>(tryVMAllocate(mappedSize));
+    char* mapped = static_cast<char*>(tryVMAllocate(mappedSize, usage));
     if (!mapped)
         return nullptr;
     char* mappedEnd = mapped + mappedSize;
@@ -217,6 +220,18 @@ inline void vmAllocatePhysicalPages(void* p, size_t vmSize)
     SYSCALL(madvise(p, vmSize, MADV_DODUMP));
 #endif
 #endif
+}
+
+// Returns how much memory you would commit/decommit had you called
+// vmDeallocate/AllocatePhysicalPagesSloppy with p and size.
+inline size_t physicalPageSizeSloppy(void* p, size_t size)
+{
+    char* begin = roundUpToMultipleOf(vmPageSizePhysical(), static_cast<char*>(p));
+    char* end = roundDownToMultipleOf(vmPageSizePhysical(), static_cast<char*>(p) + size);
+
+    if (begin >= end)
+        return 0;
+    return end - begin;
 }
 
 // Trims requests that are un-page-aligned.

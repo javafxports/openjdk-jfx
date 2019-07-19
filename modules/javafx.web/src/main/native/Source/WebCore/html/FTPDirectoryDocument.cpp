@@ -39,10 +39,14 @@
 #include "SharedBuffer.h"
 #include "Text.h"
 #include <wtf/GregorianDateTime.h>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 #include <wtf/unicode/CharacterNames.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(FTPDirectoryDocument);
 
 using namespace HTMLNames;
 
@@ -156,7 +160,7 @@ Ref<Element> FTPDirectoryDocumentParser::createTDForFilename(const String& filen
 static String processFilesizeString(const String& size, bool isDirectory)
 {
     if (isDirectory)
-        return ASCIILiteral("--");
+        return "--"_s;
 
     bool valid;
     int64_t bytes = size.toUInt64(&valid);
@@ -164,12 +168,12 @@ static String processFilesizeString(const String& size, bool isDirectory)
         return unknownFileSizeText();
 
     if (bytes < 1000000)
-        return String::format("%.2f KB", static_cast<float>(bytes)/1000);
+        return makeString(FormattedNumber::fixedWidth(bytes / 1000., 2), " KB");
 
     if (bytes < 1000000000)
-        return String::format("%.2f MB", static_cast<float>(bytes)/1000000);
+        return makeString(FormattedNumber::fixedWidth(bytes / 1000000., 2), " MB");
 
-    return String::format("%.2f GB", static_cast<float>(bytes)/1000000000);
+    return makeString(FormattedNumber::fixedWidth(bytes / 1000000000., 2), " GB");
 }
 
 static bool wasLastDayOfMonth(int year, int month, int day)
@@ -206,12 +210,12 @@ static String processFileDateString(const FTPTime& fileTime)
         if (hour < 12) {
             if (hour == 0)
                 hour = 12;
-            timeOfDay = String::format(", %i:%02i AM", hour, fileTime.tm_min);
+            timeOfDay = makeString(", ", hour, ':', pad('0', 2, fileTime.tm_min), " AM");
         } else {
             hour = hour - 12;
             if (hour == 0)
                 hour = 12;
-            timeOfDay = String::format(", %i:%02i PM", hour, fileTime.tm_min);
+            timeOfDay = makeString(", ", hour, ':', pad('0', 2, fileTime.tm_min), " PM");
         }
     }
 
@@ -244,9 +248,9 @@ static String processFileDateString(const FTPTime& fileTime)
     String dateString;
 
     if (fileTime.tm_year > -1)
-        dateString = makeString(months[month], ' ', String::number(fileTime.tm_mday), ", ", String::number(fileTime.tm_year));
+        dateString = makeString(months[month], ' ', fileTime.tm_mday, ", ", fileTime.tm_year);
     else
-        dateString = makeString(months[month], ' ', String::number(fileTime.tm_mday), ", ", String::number(now.year()));
+        dateString = makeString(months[month], ' ', fileTime.tm_mday, ", ", now.year());
 
     return dateString + timeOfDay;
 }
@@ -278,7 +282,7 @@ void FTPDirectoryDocumentParser::parseAndAppendOneLine(const String& inputLine)
 
 static inline RefPtr<SharedBuffer> createTemplateDocumentData(const Settings& settings)
 {
-    RefPtr<SharedBuffer> buffer = SharedBuffer::createWithContentsOfFile(settings.ftpDirectoryTemplatePath());
+    auto buffer = SharedBuffer::createWithContentsOfFile(settings.ftpDirectoryTemplatePath());
     if (buffer)
         LOG(FTP, "Loaded FTPDirectoryTemplate of length %zu\n", buffer->size());
     return buffer;
@@ -299,7 +303,7 @@ bool FTPDirectoryDocumentParser::loadDocumentTemplate()
 
     auto& document = *this->document();
 
-    auto foundElement = makeRefPtr(document.getElementById(String(ASCIILiteral("ftpDirectoryTable"))));
+    auto foundElement = makeRefPtr(document.getElementById(String("ftpDirectoryTable"_s)));
     if (!foundElement)
         LOG_ERROR("Unable to find element by id \"ftpDirectoryTable\" in the template document.");
     else if (!is<HTMLTableElement>(foundElement))

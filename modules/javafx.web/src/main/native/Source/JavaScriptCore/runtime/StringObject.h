@@ -27,7 +27,7 @@ namespace JSC {
 
 class StringObject : public JSWrapperObject {
 public:
-    typedef JSWrapperObject Base;
+    using Base = JSWrapperObject;
     static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | OverridesGetPropertyNames;
 
     static StringObject* create(VM& vm, Structure* structure)
@@ -59,25 +59,17 @@ public:
 
     DECLARE_EXPORT_INFO;
 
-    JSString* internalValue() const { return asString(JSWrapperObject::internalValue());}
+    JSString* internalValue() const { return asString(JSWrapperObject::internalValue()); }
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+        return Structure::create(vm, globalObject, prototype, TypeInfo(StringObjectType, StructureFlags), info());
     }
 
 protected:
     JS_EXPORT_PRIVATE void finishCreation(VM&, JSString*);
     JS_EXPORT_PRIVATE StringObject(VM&, Structure*);
 };
-
-StringObject* asStringObject(JSValue);
-
-inline StringObject* asStringObject(JSValue value)
-{
-    ASSERT(asObject(value)->inherits(*value.getObject()->vm(), StringObject::info()));
-    return static_cast<StringObject*>(asObject(value));
-}
 
 JS_EXPORT_PRIVATE StringObject* constructString(VM&, JSGlobalObject*, JSValue);
 

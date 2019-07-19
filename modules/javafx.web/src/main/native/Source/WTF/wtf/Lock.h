@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WTF_Lock_h
-#define WTF_Lock_h
+#pragma once
 
 #include <wtf/LockAlgorithm.h>
 #include <wtf/Locker.h>
@@ -32,7 +31,7 @@
 
 namespace TestWebKitAPI {
 struct LockInspector;
-};
+}
 
 namespace WTF {
 
@@ -52,7 +51,7 @@ class Lock {
     WTF_MAKE_NONCOPYABLE(Lock);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    Lock() = default;
+    constexpr Lock() = default;
 
     void lock()
     {
@@ -132,14 +131,9 @@ private:
     Atomic<uint8_t> m_byte { 0 };
 };
 
-using StaticLock = Lock;
 using LockHolder = Locker<Lock>;
 
 } // namespace WTF
 
 using WTF::Lock;
 using WTF::LockHolder;
-using WTF::StaticLock;
-
-#endif // WTF_Lock_h
-
