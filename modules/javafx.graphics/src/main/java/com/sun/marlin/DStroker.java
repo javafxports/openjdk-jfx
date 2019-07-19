@@ -39,9 +39,6 @@ public final class DStroker implements DPathConsumer2D, MarlinConst {
     private static final int DRAWING_OP_TO = 1; // ie. curve, line, or quad
     private static final int CLOSE = 2;
 
-    /* epsilon value to roughly evaluate Math.ulp((float) x) ~ 1e-7 */
-    private final static double EPS = 1e-7d;
-
     // round join threshold = 1 subpixel
     private static final double ERR_JOIN = (1.0f / MIN_SUBPIXELS);
     private static final double ROUND_JOIN_THRESHOLD = ERR_JOIN * ERR_JOIN;
@@ -850,8 +847,8 @@ public final class DStroker implements DPathConsumer2D, MarlinConst {
 
         // if p1 == p2 && p3 == p4: draw line from p1->p4, unless p1 == p4,
         // in which case ignore if p1 == p2
-        final boolean p1eqp2 = within(x1, y1, x2, y2, Math.abs(EPS * y2)); // 6 ulp float(y2)
-        final boolean p3eqp4 = within(x3, y3, x4, y4, Math.abs(EPS * y4)); // 6 ulp float(y4)
+        final boolean p1eqp2 = within(x1, y1, x2, y2, 6.0d * Math.ulp(y2));
+        final boolean p3eqp4 = within(x3, y3, x4, y4, 6.0d * Math.ulp(y4));
 
         if (p1eqp2 && p3eqp4) {
             getLineOffsets(x1, y1, x4, y4, leftOff, rightOff);
@@ -869,7 +866,7 @@ public final class DStroker implements DPathConsumer2D, MarlinConst {
         dotsq *= dotsq;
         double l1sq = dx1 * dx1 + dy1 * dy1, l4sq = dx4 * dx4 + dy4 * dy4;
 
-        if (DHelpers.within(dotsq, l1sq * l4sq, (EPS * dotsq))) { // 4 ulp (dotsq)
+        if (DHelpers.within(dotsq, l1sq * l4sq, 4.0d * Math.ulp(dotsq))) {
             getLineOffsets(x1, y1, x4, y4, leftOff, rightOff);
             return 4;
         }
@@ -1005,8 +1002,8 @@ public final class DStroker implements DPathConsumer2D, MarlinConst {
 
         // if p1 == p2 && p3 == p4: draw line from p1->p4, unless p1 == p4,
         // in which case ignore.
-        final boolean p1eqp2 = within(x1, y1, x2, y2, Math.abs(EPS * y2)); // 6 ulp float(y2)
-        final boolean p2eqp3 = within(x2, y2, x3, y3, Math.abs(EPS * y3)); // 6 ulp float(y3)
+        final boolean p1eqp2 = within(x1, y1, x2, y2, 6.0d * Math.ulp(y2));
+        final boolean p2eqp3 = within(x2, y2, x3, y3, 6.0d * Math.ulp(y3));
 
         if (p1eqp2 || p2eqp3) {
             getLineOffsets(x1, y1, x3, y3, leftOff, rightOff);
@@ -1018,7 +1015,7 @@ public final class DStroker implements DPathConsumer2D, MarlinConst {
         dotsq *= dotsq;
         double l1sq = dx1 * dx1 + dy1 * dy1, l3sq = dx3 * dx3 + dy3 * dy3;
 
-        if (DHelpers.within(dotsq, l1sq * l3sq, (EPS * dotsq))) { // 4 ulp (dotsq)
+        if (DHelpers.within(dotsq, l1sq * l3sq, 4.0d * Math.ulp(dotsq))) {
             getLineOffsets(x1, y1, x3, y3, leftOff, rightOff);
             return 4;
         }
