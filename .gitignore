@@ -1,25 +1,33 @@
 # Ignore the following directories and files
 .gradle/
-apps/samples/Ensemble8/lib/
+.hg/
+Debug/
+Release/
+bin/
 build/
 dist/
 gradle.properties
+testbin/
+**/Ensemble8/lib/
+**/Ensemble8/src/generated/resources/ensemble/search/index/write.lock
 **/nbproject/private/
 
 # Ignore webrevs
-webrev.zip
-webrev/
+/webrev/
+/webrev.zip
 
 # Ignore IntelliJ files
 .idea/tasks.xml
 .idea/workspace.xml
-.idea/inspectionProfiles/*
+.idea/inspectionProfiles/**
 .idea/copyright/profiles_settings.xml
-.idea/codeStyles/*
+.idea/codeStyles/**
 .idea/checkstyle-idea.xml
 
 # Ignore the following file suffixes
+*.vcxproj.user
 *.orig
 *.bak
 *.rej
 *.swp
+*~
