@@ -76,6 +76,9 @@ import test.util.Util;
  *    to TEST_COLOR using the modifyXXXBuffer.
  * 5. Verify that, color of pixel (0.5 * WIDTH, 0.45 * HEIGHT) is TEST_COLOR
  *    and color of pixel (0.5 * WIDTH, 0.55 * HEIGHT) is INIT_COLOR.
+ *
+ * Additionally this test also verifies that, an IllegalStateException is thrown
+ * when PixelBuffer.updateBuffer() is called on Non JavaFX Application Thread.
  */
 
 public class PixelBufferDrawTest {
@@ -266,6 +269,16 @@ public class PixelBufferDrawTest {
         // Step #1
         createBytePixelBuffer(false);
         performTest(bytePixelBuffer, byteBufferCallback);
+    }
+
+    @Test
+    public void testUpdateBufferOnNonFxAppThread() {
+        createBytePixelBuffer(true);
+        try {
+            bytePixelBuffer.updateBuffer(byteBufferCallback);
+            fail("Expected IllegalStateException");
+        } catch (IllegalStateException e) {
+        }
     }
 
     public static class TestApp extends Application {
