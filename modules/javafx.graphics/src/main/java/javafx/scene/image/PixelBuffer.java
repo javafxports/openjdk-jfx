@@ -50,8 +50,7 @@ import java.util.Objects;
  * all {@code WritableImage}s that were created using this {@code PixelBuffer} are redrawn.
  * <p>
  * Example code that shows how to create a {@code PixelBuffer}:
- * <pre>{@code
- * // Creating a PixelBuffer using BYTE_BGRA_PRE pixel format.
+ * <pre>{@code  // Creating a PixelBuffer using BYTE_BGRA_PRE pixel format.
  * ByteBuffer byteBuffer = ByteBuffer.allocateDirect(width * height * 4);
  * PixelFormat<ByteBuffer> pixelFormat = PixelFormat.getByteBgraPreInstance();
  * PixelBuffer<ByteBuffer> pixelBuffer = new PixelBuffer<>(width, height, byteBuffer, pixelFormat);
@@ -61,10 +60,10 @@ import java.util.Objects;
  * IntBuffer intBuffer = IntBuffer.allocate(width * height);
  * PixelFormat<IntBuffer> pixelFormat = PixelFormat.getIntArgbPreInstance();
  * PixelBuffer<IntBuffer> pixelBuffer = new PixelBuffer<>(width, height, intBuffer, pixelFormat);
- * Image img = new WritableImage(pixelBuffer);
- * }</pre>
+ * Image img = new WritableImage(pixelBuffer);}</pre>
  *
- * @param <T> the type of {@link Buffer} that should be either {@link IntBuffer} or {@link ByteBuffer}
+ * @param <T> the type of {@code Buffer} that stores the pixel data.
+ *           Only {@code ByteBuffer} and {@code IntBuffer} are supported.
  * @see WritableImage#WritableImage(PixelBuffer)
  * @since 13
  */
@@ -80,15 +79,15 @@ public class PixelBuffer<T extends Buffer> {
      * Constructs a {@code PixelBuffer} using the specified {@code Buffer} and {@code PixelFormat}.
      * The type of the specified {@code PixelFormat} must be either {@code PixelFormat.Type.INT_ARGB_PRE}
      * or {@code PixelFormat.Type.BYTE_BGRA_PRE}.
-     * The constructor does not allocate memory to store the pixel data. The application must provide
-     * a buffer with sufficient memory for the combination of dimensions {@code (width, height)} and
-     * {@code PixelFormat}. The {@code PixelFormat.Type.INT_ARGB_PRE} requires an {@link IntBuffer} with
-     * minimum capacity of {@code width * height} and the {@code PixelFormat.Type.BYTE_BGRA_PRE} requires
-     * a {@link ByteBuffer} with minimum capacity of {@code width * height * 4}.
+     * <p>The constructor does not allocate memory to store the pixel data. The application must provide
+     * a buffer with sufficient memory for the combination of dimensions {@code (width, height)} and the type
+     * of {@code PixelFormat}. The {@code PixelFormat.Type.INT_ARGB_PRE} requires an {@code IntBuffer} with
+     * minimum capacity of {@code width * height}, and the {@code PixelFormat.Type.BYTE_BGRA_PRE} requires
+     * a {@code ByteBuffer} with minimum capacity of {@code width * height * 4}.
      *
      * @param width       width in pixels of this {@code PixelBuffer}
      * @param height      height in pixels of this {@code PixelBuffer}
-     * @param buffer      {@code java.nio.Buffer} that stores the pixel data
+     * @param buffer      the buffer that stores the pixel data
      * @param pixelFormat format of pixels in the {@code buffer}
      * @throws IllegalArgumentException if either {@code width} or {@code height}
      *                                  is negative or zero, or if the type of {@code pixelFormat}
@@ -131,27 +130,27 @@ public class PixelBuffer<T extends Buffer> {
     }
 
     /**
-     * Returns the {@link java.nio.Buffer} of this {@code PixelBuffer}.
+     * Returns the {@code buffer} of this {@code PixelBuffer}.
      *
-     * @return the {@link java.nio.Buffer} of this {@code PixelBuffer}
+     * @return the {@code buffer} of this {@code PixelBuffer}
      */
     public T getBuffer() {
         return buffer;
     }
 
     /**
-     * Returns the width of this {@code PixelBuffer}.
+     * Returns the {@code width} of this {@code PixelBuffer}.
      *
-     * @return the width of this {@code PixelBuffer}
+     * @return the {@code width} of this {@code PixelBuffer}
      */
     public int getWidth() {
         return width;
     }
 
     /**
-     * Returns the height of this {@code PixelBuffer}.
+     * Returns the {@code height} of this {@code PixelBuffer}.
      *
-     * @return the height of this {@code PixelBuffer}
+     * @return the {@code height} of this {@code PixelBuffer}
      */
     public int getHeight() {
         return height;
@@ -167,22 +166,19 @@ public class PixelBuffer<T extends Buffer> {
     }
 
     /**
-     * Invokes the specified {@link Callback} method and updates the dirty region of
+     * Invokes the specified {@code Callback} method and updates the dirty region of
      * all {@code WritableImage}s that were created using this {@code PixelBuffer}.
      * The {@code Callback} method is expected to update the {@code Buffer} and
-     * return a {@link Rectangle2D} that encloses the dirty region, or
+     * return a {@code Rectangle2D} that encloses the dirty region, or
      * return {@code null} to indicate that entire buffer is dirty.
-     * This method must be called on the JavaFX Application thread.
-     * <p>
-     * Example code that shows how to use this method:
-     * <pre>{@code
-     * Callback<PixelBuffer<ByteBuffer>, Rectangle2D> callback = pixelBuffer -> {
+     * <p>This method must be called on the JavaFX Application Thread.
+     * <p>Example code that shows how to use this method:
+     * <pre>{@code  Callback<PixelBuffer<ByteBuffer>, Rectangle2D> callback = pixelBuffer -> {
      *     ByteBuffer buffer = pixelBuffer.getBuffer();
      *     // Update the buffer.
      *     return new Rectangle2D(x, y, dirtyWidth, dirtyHeight);
      * };
-     * pixelBuffer.updateBuffer(callback);
-     * }</pre>
+     * pixelBuffer.updateBuffer(callback);}</pre>
      *
      * @param callback the {@code Callback} method that updates the {@code Buffer}
      * @throws IllegalStateException if this method is called on a thread
@@ -190,13 +186,16 @@ public class PixelBuffer<T extends Buffer> {
      * @throws NullPointerException  if {@code callback} is {@code null}
      **/
     public void updateBuffer(Callback<PixelBuffer<T>, Rectangle2D> callback) {
-        Objects.requireNonNull(callback, "callback must not be null.");
         Toolkit.getToolkit().checkFxUserThread();
+        Objects.requireNonNull(callback, "callback must not be null.");
         Rectangle2D rect2D = callback.call(this);
         Rectangle rect = null;
         if (rect2D != null) {
-            rect = new Rectangle((int) rect2D.getMinX(), (int) rect2D.getMinY(),
-                    (int) rect2D.getWidth(), (int) rect2D.getHeight());
+            int x1 = (int) Math.floor(rect2D.getMinX());
+            int y1 = (int) Math.floor(rect2D.getMinY());
+            int x2 = (int) Math.ceil(rect2D.getMaxX());
+            int y2 = (int) Math.ceil(rect2D.getMaxY());
+            rect = new Rectangle(x1, y1, x2 - x1, y2 - y1);
         }
         bufferDirty(rect);
     }

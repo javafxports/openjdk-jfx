@@ -22,6 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package test.robot.javafx.scene;
 
 import javafx.application.Application;
@@ -42,6 +43,7 @@ import javafx.util.Callback;
 
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -86,13 +88,13 @@ public class PixelBufferDrawTest {
 
     private static final int DELAY = 100;
     private static final int NUM_IMAGES = 4;
-    private static final int IMAGE_WIDTH = 25;
+    private static final int IMAGE_WIDTH = 24;
     private static final int IMAGE_HEIGHT = IMAGE_WIDTH;
     private static final int SCENE_WIDTH = IMAGE_WIDTH * NUM_IMAGES + NUM_IMAGES - 1;
     private static final int SCENE_HEIGHT = IMAGE_HEIGHT;
-    private static final Color TEST_COLOR = Color.CYAN;
-    private static final Color INIT_COLOR = Color.MAROON;
-    private static volatile Color actualColor = Color.BLACK;
+    private static final Color TEST_COLOR = new Color(0.2, 0.6, 0.8, 1);
+    private static final Color INIT_COLOR = new Color(0.92, 0.56, 0.1, 1);
+    private volatile Color actualColor = Color.BLACK;
     private PixelBuffer<ByteBuffer> bytePixelBuffer;
     private PixelBuffer<IntBuffer> intPixelBuffer;
     private IntBuffer sourceIntBuffer;
@@ -150,17 +152,24 @@ public class PixelBufferDrawTest {
         int green = (int) Math.round(c.getGreen() * 255.0);
         int blue = (int) Math.round(c.getBlue() * 255.0);
         int alpha = (int) Math.round(c.getOpacity() * 255.0);
-        int color;
+        int color = 0;
         IntBuffer intBuffer;
 
         if (isDirect) {
             ByteBuffer bf = ByteBuffer.allocateDirect(w * h * 4);
             intBuffer = bf.asIntBuffer();
+            // Direct IntBuffer's byte order is BIG ENDIAN
             color = blue << 24 | green << 16 | red << 8 | alpha;
         } else {
             intBuffer = IntBuffer.allocate(w * h);
-            color = alpha << 24 | red << 16 | green << 8 | blue;
+            // Non-direct IntBuffer's byte order is native order
+            if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
+                color = alpha << 24 | red << 16 | green << 8 | blue;
+            } else {
+                color = blue << 24 | green << 16 | red << 8 | alpha;
+            }
         }
+
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
                 intBuffer.put(color);
@@ -181,6 +190,13 @@ public class PixelBufferDrawTest {
         return new ImageView(new WritableImage(pixelBuffer));
     }
 
+    public void compareColor(Color exp, Color act) {
+        Assert.assertEquals(exp.getRed(), act.getRed(), 0.005);
+        Assert.assertEquals(exp.getBlue(), act.getBlue(), 0.005);
+        Assert.assertEquals(exp.getGreen(), act.getGreen(), 0.005);
+        Assert.assertEquals(exp.getOpacity(), act.getOpacity(), 0.005);
+    }
+
     private void verifyColor(Color color1, Color color2) {
         for (int i = 0; i < root.getChildren().size(); i++) {
             final int x = (int) (scene.getWindow().getX() + scene.getX() +
@@ -190,7 +206,7 @@ public class PixelBufferDrawTest {
             Util.runAndWait(() -> {
                 actualColor = robot.getPixelColor(x, y);
             });
-            Assert.assertEquals(color1, actualColor);
+            compareColor(color1, actualColor);
 
             final int x1 = (int) (scene.getWindow().getX() + scene.getX() +
                     root.getChildren().get(i).getLayoutX() + IMAGE_WIDTH / 2);
@@ -199,15 +215,16 @@ public class PixelBufferDrawTest {
             Util.runAndWait(() -> {
                 actualColor = robot.getPixelColor(x1, y1);
             });
-            Assert.assertEquals(color2, actualColor);
+            compareColor(color2, actualColor);
         }
     }
 
-    private <T extends Buffer>void performTest(PixelBuffer<T> pixelBuffer, Callback<PixelBuffer<T>, Rectangle2D> callback) {
+    private <T extends Buffer> void performTest(PixelBuffer<T> pixelBuffer, Callback<PixelBuffer<T>, Rectangle2D> callback) {
         // Step #2
         Util.runAndWait(() -> {
-            for (int i = 0; i < NUM_IMAGES; i++)
-            root.getChildren().add(createImageViewPB(pixelBuffer));
+            for (int i = 0; i < NUM_IMAGES; i++) {
+                root.getChildren().add(createImageViewPB(pixelBuffer));
+            }
         });
         delay();
         // Step #3
@@ -234,7 +251,7 @@ public class PixelBufferDrawTest {
     public void testIntArgbPreIndirectBuffer() {
         // Step #1
         createIntPixelBuffer(false);
-        performTest(intPixelBuffer,intBufferCallback);
+        performTest(intPixelBuffer, intBufferCallback);
     }
 
     @Test
@@ -268,7 +285,7 @@ public class PixelBufferDrawTest {
     }
 
     @BeforeClass
-    public static void initFX() {
+    public static void initFX() throws Exception {
         startupLatch = new CountDownLatch(1);
         new Thread(() -> Application.launch(TestApp.class, (String[]) null)).start();
         waitForLatch(startupLatch, 10, "Timeout waiting for FX runtime to start");
@@ -280,11 +297,6 @@ public class PixelBufferDrawTest {
             root = new HBox(1);
             scene = new Scene(root, SCENE_WIDTH, SCENE_HEIGHT);
             stage.setScene(scene);
-            sourceIntBuffer = null;
-            sourceByteBuffer = null;
-            intPixelBuffer = null;
-            bytePixelBuffer = null;
-            actualColor = Color.BLACK;
         });
         delay();
     }
@@ -305,13 +317,7 @@ public class PixelBufferDrawTest {
         }
     }
 
-    public static void waitForLatch(CountDownLatch latch, int seconds, String msg) {
-        try {
-            if (!latch.await(seconds, TimeUnit.SECONDS)) {
-                fail(msg);
-            }
-        } catch (Exception ex) {
-            fail("Unexpected exception: " + ex);
-        }
+    public static void waitForLatch(CountDownLatch latch, int seconds, String msg) throws Exception {
+        Assert.assertTrue(msg, latch.await(seconds, TimeUnit.SECONDS));
     }
 }

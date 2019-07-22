@@ -84,7 +84,7 @@ public class WritableImage extends Image {
      * The {@code java.nio.Buffer} provided by the {@code PixelBuffer} will be used
      * directly as the pixel data for this image.
      * The {@code PixelBuffer} can be shared by multiple {@code WritableImage}s.
-     * Images constructed this way are readable using {@code Image.getPixelReader()}
+     * Images constructed this way are readable using {@code Image.getPixelReader()},
      * but are not writable using {@code WritableImage.getPixelWriter()}.
      *
      * @param pixelBuffer the {@code PixelBuffer} used to construct this image

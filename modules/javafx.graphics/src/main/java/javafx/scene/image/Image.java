@@ -741,9 +741,9 @@ public class Image {
     }
 
     /**
-     * Package private internal constructor used only by {@link WritableImage}.
+     * Package private internal constructor used only by {@code WritableImage}.
      *
-     * @param pixelBuffer the {@code PixelBuffer} to construct from.
+     * @param pixelBuffer the {@code PixelBuffer} used to construct this image.
      */
     Image(PixelBuffer pixelBuffer) {
         this(null, null, pixelBuffer.getWidth(), pixelBuffer.getHeight(),
