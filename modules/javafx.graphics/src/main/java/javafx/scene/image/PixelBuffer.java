@@ -88,10 +88,10 @@ public class PixelBuffer<T extends Buffer> {
      * @param width       width in pixels of this {@code PixelBuffer}
      * @param height      height in pixels of this {@code PixelBuffer}
      * @param buffer      the buffer that stores the pixel data
-     * @param pixelFormat format of pixels in the {@code buffer}
+     * @param pixelFormat the format of pixels in the {@code buffer}
      * @throws IllegalArgumentException if either {@code width} or {@code height}
      *                                  is negative or zero, or if the type of {@code pixelFormat}
-     *                                  is unsupported, or if the {@code buffer} does
+     *                                  is unsupported, or if {@code buffer} does
      *                                  not have sufficient memory, or if the type of {@code buffer}
      *                                  and {@code pixelFormat} do not match
      * @throws NullPointerException     if {@code buffer} or {@code pixelFormat} is {@code null}
@@ -168,9 +168,9 @@ public class PixelBuffer<T extends Buffer> {
     /**
      * Invokes the specified {@code Callback} method and updates the dirty region of
      * all {@code WritableImage}s that were created using this {@code PixelBuffer}.
-     * The {@code Callback} method is expected to update the {@code Buffer} and
+     * The {@code Callback} method is expected to update the {@code buffer} and
      * return a {@code Rectangle2D} that encloses the dirty region, or
-     * return {@code null} to indicate that entire buffer is dirty.
+     * return {@code null} to indicate that the entire buffer is dirty.
      * <p>This method must be called on the JavaFX Application Thread.
      * <p>Example code that shows how to use this method:
      * <pre>{@code  Callback<PixelBuffer<ByteBuffer>, Rectangle2D> callback = pixelBuffer -> {

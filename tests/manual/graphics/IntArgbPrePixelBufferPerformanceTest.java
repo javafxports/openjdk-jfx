@@ -53,7 +53,7 @@ public class IntArgbPrePixelBufferPerformanceTest extends Application {
     private int cpyH = imH;
 
     private PixelBuffer<IntBuffer> pb;
-    private IntBuffer byteBuffer;
+    private IntBuffer intBuffer;
     private ArrayList<Color> colors = new ArrayList<>();
     private int count = 0;
     private List<IntBuffer> copyBuffers = new ArrayList<>();
@@ -84,7 +84,7 @@ public class IntArgbPrePixelBufferPerformanceTest extends Application {
         }
     }
 
-    private void updateDirectByteBuffer(IntBuffer buf) {
+    private void updateIntBuffer(IntBuffer buf) {
         IntBuffer src = copyBuffers.get(count++);
         buf.put(src);
 
@@ -96,18 +96,18 @@ public class IntArgbPrePixelBufferPerformanceTest extends Application {
     }
 
     private WritableImage createWImageFromBuffer(int w, int h, Color c) {
-        byteBuffer = createBuffer(w, h, c);
+        intBuffer = createBuffer(w, h, c);
         WritableImage img = new WritableImage(w, h);
         PixelFormat<IntBuffer> pf = PixelFormat.getIntArgbPreInstance();
         PixelWriter pw = img.getPixelWriter();
-        pw.setPixels(0, 0, w, h, pf, byteBuffer, w);
+        pw.setPixels(0, 0, w, h, pf, intBuffer, w);
         return img;
     }
 
     private WritableImage createWImageFromPixelBuffer(int w, int h, Color c) {
-        IntBuffer byteBuffer = createBuffer(w, h, c);
+        IntBuffer intBuffer = createBuffer(w, h, c);
         PixelFormat<IntBuffer> pf = PixelFormat.getIntArgbPreInstance();
-        pb = new PixelBuffer<>(w, h, byteBuffer, pf);
+        pb = new PixelBuffer<>(w, h, intBuffer, pf);
         return new WritableImage(pb);
     }
 
@@ -122,10 +122,10 @@ public class IntArgbPrePixelBufferPerformanceTest extends Application {
 
             double t1 = System.nanoTime();
             for (int i = 0; i < numIter; i++) {
-                updateDirectByteBuffer(byteBuffer);
+                updateIntBuffer(intBuffer);
                 PixelWriter pw = ((WritableImage) bImage).getPixelWriter();
                 PixelFormat<IntBuffer> pf = PixelFormat.getIntArgbPreInstance();
-                pw.setPixels(0, 0, cpyW, cpyH, pf, byteBuffer, cpyW);
+                pw.setPixels(0, 0, cpyW, cpyH, pf, intBuffer, cpyW);
             }
             double t2 = System.nanoTime();
             double t3 = t2 - t1;
@@ -150,7 +150,7 @@ public class IntArgbPrePixelBufferPerformanceTest extends Application {
             double t1 = System.nanoTime();
             for (int i = 0; i < numIter; i++) {
                 pb.updateBuffer(pixBuf -> {
-                    updateDirectByteBuffer(pixBuf.getBuffer());
+                    updateIntBuffer(pixBuf.getBuffer());
                     return new Rectangle2D(0, 0, cpyW, cpyH);
                 });
             }

@@ -89,7 +89,7 @@ public class PixelBufferDrawTest {
     private static Robot robot;
     private static CountDownLatch startupLatch;
 
-    private static final int DELAY = 100;
+    private static final int DELAY = 200;
     private static final int NUM_IMAGES = 4;
     private static final int IMAGE_WIDTH = 24;
     private static final int IMAGE_HEIGHT = IMAGE_WIDTH;
@@ -155,22 +155,14 @@ public class PixelBufferDrawTest {
         int green = (int) Math.round(c.getGreen() * 255.0);
         int blue = (int) Math.round(c.getBlue() * 255.0);
         int alpha = (int) Math.round(c.getOpacity() * 255.0);
-        int color = 0;
+        int color = alpha << 24 | red << 16 | green << 8 | blue;
         IntBuffer intBuffer;
 
         if (isDirect) {
-            ByteBuffer bf = ByteBuffer.allocateDirect(w * h * 4);
+            ByteBuffer bf = ByteBuffer.allocateDirect(w * h * 4).order(ByteOrder.nativeOrder());
             intBuffer = bf.asIntBuffer();
-            // Direct IntBuffer's byte order is BIG ENDIAN
-            color = blue << 24 | green << 16 | red << 8 | alpha;
         } else {
             intBuffer = IntBuffer.allocate(w * h);
-            // Non-direct IntBuffer's byte order is native order
-            if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
-                color = alpha << 24 | red << 16 | green << 8 | blue;
-            } else {
-                color = blue << 24 | green << 16 | red << 8 | alpha;
-            }
         }
 
         for (int y = 0; y < h; y++) {
@@ -311,14 +303,11 @@ public class PixelBufferDrawTest {
             scene = new Scene(root, SCENE_WIDTH, SCENE_HEIGHT);
             stage.setScene(scene);
         });
-        delay();
     }
 
     @AfterClass
     public static void exit() {
-        Platform.runLater(() -> {
-            stage.hide();
-        });
+        Platform.runLater(() -> stage.hide());
         Platform.exit();
     }
 
