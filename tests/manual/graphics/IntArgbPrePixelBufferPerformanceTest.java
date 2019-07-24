@@ -45,14 +45,14 @@ import java.util.List;
 
 public class IntArgbPrePixelBufferPerformanceTest extends Application {
 
-    private int scW = 1000;
-    private int scH = 1000;
-    private int imW = scW;
-    private int imH = scH;
-    private int cpyW = imW;
-    private int cpyH = imH;
+    private static final int SCENE_WIDTH = 1000;
+    private static final int SCENE_HEIGHT = 1000;
+    private static final int IMAGE_WIDTH = SCENE_WIDTH;
+    private static final int IMAGE_HEIGHT = SCENE_HEIGHT;
+    private static final int COPY_BUFFER_WIDTH = IMAGE_WIDTH;
+    private static final int COPY_BUFFER_HEIGHT = IMAGE_HEIGHT;
 
-    private PixelBuffer<IntBuffer> pb;
+    private PixelBuffer<IntBuffer> pixelBuffer;
     private IntBuffer intBuffer;
     private ArrayList<Color> colors = new ArrayList<>();
     private int count = 0;
@@ -79,7 +79,7 @@ public class IntArgbPrePixelBufferPerformanceTest extends Application {
 
     private void createCopyBuffers() {
         for (Color clr : colors) {
-            IntBuffer buf = createBuffer(cpyW, cpyH, clr);
+            IntBuffer buf = createBuffer(COPY_BUFFER_WIDTH, COPY_BUFFER_HEIGHT, clr);
             copyBuffers.add(buf);
         }
     }
@@ -107,12 +107,12 @@ public class IntArgbPrePixelBufferPerformanceTest extends Application {
     private WritableImage createWImageFromPixelBuffer(int w, int h, Color c) {
         IntBuffer intBuffer = createBuffer(w, h, c);
         PixelFormat<IntBuffer> pf = PixelFormat.getIntArgbPreInstance();
-        pb = new PixelBuffer<>(w, h, intBuffer, pf);
-        return new WritableImage(pb);
+        pixelBuffer = new PixelBuffer<>(w, h, intBuffer, pf);
+        return new WritableImage(pixelBuffer);
     }
 
     private void loadWritableImage() {
-        final Image bImage = createWImageFromBuffer(imW, imH, Color.BLUE);
+        final Image bImage = createWImageFromBuffer(IMAGE_WIDTH, IMAGE_HEIGHT, Color.BLUE);
         ImageView bIv = new ImageView(bImage);
         final TextField tf = new TextField("100");
         final Label clr = new Label("Color");
@@ -125,7 +125,7 @@ public class IntArgbPrePixelBufferPerformanceTest extends Application {
                 updateIntBuffer(intBuffer);
                 PixelWriter pw = ((WritableImage) bImage).getPixelWriter();
                 PixelFormat<IntBuffer> pf = PixelFormat.getIntArgbPreInstance();
-                pw.setPixels(0, 0, cpyW, cpyH, pf, intBuffer, cpyW);
+                pw.setPixels(0, 0, COPY_BUFFER_WIDTH, COPY_BUFFER_HEIGHT, pf, intBuffer, COPY_BUFFER_WIDTH);
             }
             double t2 = System.nanoTime();
             double t3 = t2 - t1;
@@ -137,7 +137,7 @@ public class IntArgbPrePixelBufferPerformanceTest extends Application {
     }
 
     private void loadPBImage() {
-        Image pbImage = createWImageFromPixelBuffer(imW, imH, Color.BLUE);
+        Image pbImage = createWImageFromPixelBuffer(IMAGE_WIDTH, IMAGE_HEIGHT, Color.BLUE);
         ImageView pbIv = new ImageView(pbImage);
 
         final TextField tf = new TextField("100");
@@ -149,9 +149,9 @@ public class IntArgbPrePixelBufferPerformanceTest extends Application {
 
             double t1 = System.nanoTime();
             for (int i = 0; i < numIter; i++) {
-                pb.updateBuffer(pixBuf -> {
+                pixelBuffer.updateBuffer(pixBuf -> {
                     updateIntBuffer(pixBuf.getBuffer());
-                    return new Rectangle2D(0, 0, cpyW, cpyH);
+                    return new Rectangle2D(0, 0, COPY_BUFFER_WIDTH, COPY_BUFFER_HEIGHT);
                 });
             }
 
@@ -173,7 +173,7 @@ public class IntArgbPrePixelBufferPerformanceTest extends Application {
 
         createCopyBuffers();
         VBox pbRoot = new VBox(12);
-        Scene pbScene = new Scene(pbRoot, scW, scH);
+        Scene pbScene = new Scene(pbRoot, SCENE_WIDTH, SCENE_HEIGHT);
         loadPBImage();
         pbRoot.getChildren().add(pbImgContainer);
         pbImageStage.setScene(pbScene);
@@ -183,7 +183,7 @@ public class IntArgbPrePixelBufferPerformanceTest extends Application {
         pbImageStage.show();
 
         VBox wImRoot = new VBox(12);
-        Scene wImScene = new Scene(wImRoot, scW, scH);
+        Scene wImScene = new Scene(wImRoot, SCENE_WIDTH, SCENE_HEIGHT);
         loadWritableImage();
         wImRoot.getChildren().add(wImgContainer);
 
@@ -191,7 +191,7 @@ public class IntArgbPrePixelBufferPerformanceTest extends Application {
         wImStage.setScene(wImScene);
         wImStage.setTitle("WritableImage-PixelWriter");
 
-        wImStage.setX(scW + 50);
+        wImStage.setX(SCENE_WIDTH + 50);
         wImStage.setY(10);
         wImStage.show();
     }

@@ -172,7 +172,7 @@ public class WritableImage extends Image {
         pixelsDirty();
     }
 
-    private static PixelBuffer validatePixelBuffer(PixelBuffer<? extends Buffer> pixelBuffer) {
+    private static PixelBuffer<? extends Buffer> validatePixelBuffer(PixelBuffer<? extends Buffer> pixelBuffer) {
         return (Objects.requireNonNull(pixelBuffer, "pixelBuffer must not be null."));
     }
 

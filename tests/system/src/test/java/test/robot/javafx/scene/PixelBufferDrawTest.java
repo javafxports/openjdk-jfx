@@ -89,7 +89,7 @@ public class PixelBufferDrawTest {
     private static Robot robot;
     private static CountDownLatch startupLatch;
 
-    private static final int DELAY = 200;
+    private static final int DELAY = 500;
     private static final int NUM_IMAGES = 4;
     private static final int IMAGE_WIDTH = 24;
     private static final int IMAGE_HEIGHT = IMAGE_WIDTH;
@@ -185,7 +185,7 @@ public class PixelBufferDrawTest {
         return new ImageView(new WritableImage(pixelBuffer));
     }
 
-    public void compareColor(Color exp, Color act) {
+    private void compareColor(Color exp, Color act) {
         Assert.assertEquals(exp.getRed(), act.getRed(), 0.005);
         Assert.assertEquals(exp.getBlue(), act.getBlue(), 0.005);
         Assert.assertEquals(exp.getGreen(), act.getGreen(), 0.005);
@@ -198,18 +198,16 @@ public class PixelBufferDrawTest {
                     root.getChildren().get(i).getLayoutX() + IMAGE_WIDTH / 2);
             final int y = (int) (scene.getWindow().getY() + scene.getY() +
                     root.getChildren().get(i).getLayoutY() + IMAGE_HEIGHT * 0.45);
-            Util.runAndWait(() -> {
-                actualColor = robot.getPixelColor(x, y);
-            });
+
+            Util.runAndWait(() -> actualColor = robot.getPixelColor(x, y));
             compareColor(color1, actualColor);
 
             final int x1 = (int) (scene.getWindow().getX() + scene.getX() +
                     root.getChildren().get(i).getLayoutX() + IMAGE_WIDTH / 2);
             final int y1 = (int) (scene.getWindow().getY() + scene.getY() +
                     root.getChildren().get(i).getLayoutY() + IMAGE_HEIGHT * 0.55);
-            Util.runAndWait(() -> {
-                actualColor = robot.getPixelColor(x1, y1);
-            });
+
+            Util.runAndWait(() -> actualColor = robot.getPixelColor(x1, y1));
             compareColor(color2, actualColor);
         }
     }
@@ -226,9 +224,7 @@ public class PixelBufferDrawTest {
         verifyColor(INIT_COLOR, INIT_COLOR);
 
         // Step #4
-        Util.runAndWait(() -> {
-            pixelBuffer.updateBuffer(callback);
-        });
+        Util.runAndWait(() -> pixelBuffer.updateBuffer(callback));
         delay();
 
         // Step #5
@@ -311,7 +307,7 @@ public class PixelBufferDrawTest {
         Platform.exit();
     }
 
-    public static void delay() {
+    private static void delay() {
         try {
             Thread.sleep(DELAY);
         } catch (Exception ex) {

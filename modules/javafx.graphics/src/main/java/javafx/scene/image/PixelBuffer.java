@@ -168,7 +168,7 @@ public class PixelBuffer<T extends Buffer> {
     /**
      * Invokes the specified {@code Callback} method and updates the dirty region of
      * all {@code WritableImage}s that were created using this {@code PixelBuffer}.
-     * The {@code Callback} method is expected to update the {@code buffer} and
+     * The {@code Callback} method is expected to update the buffer and
      * return a {@code Rectangle2D} that encloses the dirty region, or
      * return {@code null} to indicate that the entire buffer is dirty.
      * <p>This method must be called on the JavaFX Application Thread.
@@ -180,7 +180,7 @@ public class PixelBuffer<T extends Buffer> {
      * };
      * pixelBuffer.updateBuffer(callback);}</pre>
      *
-     * @param callback the {@code Callback} method that updates the {@code Buffer}
+     * @param callback the {@code Callback} method that updates the buffer
      * @throws IllegalStateException if this method is called on a thread
      *                               other than the JavaFX Application Thread.
      * @throws NullPointerException  if {@code callback} is {@code null}
