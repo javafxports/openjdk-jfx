@@ -433,7 +433,7 @@ public final class DDasher implements DPathConsumer2D, MarlinConst {
                 // Advance phase within current dash segment
                 _phase += len;
 
-                // compare double values using epsilon:
+                // compare values using epsilon:
                 if (Math.abs(rem) <= EPS) {
                     _phase = 0.0d;
                     _idx = (_idx + 1) % _dashLen;
@@ -513,7 +513,7 @@ public final class DDasher implements DPathConsumer2D, MarlinConst {
                 // Advance phase within current dash segment
                 _phase += len;
 
-                // compare double values using epsilon:
+                // compare values using epsilon:
                 if (Math.abs(rem) <= EPS) {
                     _phase = 0.0d;
                     _idx = (_idx + 1) % _dashLen;
@@ -577,7 +577,7 @@ public final class DDasher implements DPathConsumer2D, MarlinConst {
 
         _phase += _li.lastSegLen();
 
-        // compare double values using epsilon:
+        // compare values using epsilon:
         if (_phase + EPS >= _dash[_idx]) {
             _phase = 0.0d;
             _idx = (_idx + 1) % _dashLen;
