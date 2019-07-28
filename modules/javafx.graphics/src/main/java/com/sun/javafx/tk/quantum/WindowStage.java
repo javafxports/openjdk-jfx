@@ -857,7 +857,7 @@ class WindowStage extends GlassStage {
         WindowStage window = activeWindows.get(activeWindows.size() - 1);
         window.setIconified(false);
         window.requestToFront();
-        //window.requestFocus();
+        window.requestFocus();
     }
 
     @Override public boolean grabFocus() {
