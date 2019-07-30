@@ -193,10 +193,9 @@ public class MenuButtonSkinBase<C extends MenuButton> extends SkinBase<C> {
                 // consumed to prevent them being used elsewhere).
                 // See JBS-8090026 for more detail.
                 Scene scene = getSkinnable().getScene();
-                Platform.runLater(() -> {
-                    mnemonics.forEach(scene::removeMnemonic);
-                    mnemonics.clear();
-                });
+                List<Mnemonic> mnemonicsToRemove = new ArrayList<>(mnemonics);
+                mnemonics.clear();
+                Platform.runLater(() -> mnemonicsToRemove.forEach(scene::removeMnemonic));
             }
         });
     }
