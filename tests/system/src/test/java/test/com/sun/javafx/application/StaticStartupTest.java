@@ -42,6 +42,15 @@ public class StaticStartupTest {
 
     @Test (timeout=15000)
     public void testStartupFromClinit() throws Exception {
+        Thread thr = new Thread(() -> {
+            try {
+                Thread.sleep(20000);
+            } catch (InterruptedException ex) {}
+            System.err.println("Test timeout exceeded -- calling System.exit");
+            System.exit(1);
+        });
+        thr.setDaemon(true);
+        thr.start();
         StaticClass.doSomething();
     }
 
