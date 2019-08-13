@@ -1238,14 +1238,17 @@ if (Integer.parseInt(NUM_COMPILE_THREADS.toString()) < 1) {
     NUM_COMPILE_THREADS = 1
 }
 
-// Check for Gradle 4.8, error if < 4.3.
-if (gradle.gradleVersion != "4.8") {
+// Check gradle version
+if (gradle.gradleVersion != jfxGradleVersion) {
     def ver = gradle.gradleVersion.split("[\\.]");
+    def verMin = jfxGradleVersionMin.split("[\\.]");
     def gradleMajor = Integer.parseInt(ver[0]);
     def gradleMinor = Integer.parseInt(ver[1].split("[^0-9]")[0]);
+    def gradleMajorMin = Integer.parseInt(verMin[0]);
+    def gradleMinorMin = Integer.parseInt(verMin[1].split("[^0-9]")[0]);
     def err = "";
-    if (gradleMajor < 4 || (gradleMajor == 4 && gradleMinor < 3)) {
-        err = "Gradle version too old: ${gradle.gradleVersion}; must be at least 4.3"
+    if (gradleMajor < gradleMajorMin || (gradleMajor == gradleMajorMin && gradleMinor < gradleMinorMin)) {
+        err = "Gradle version too old: ${gradle.gradleVersion}; must be at least ${jfxGradleVersionMin}"
     }
 
     if (IS_GRADLE_VERSION_CHECK && err != "") {
@@ -1254,7 +1257,7 @@ if (gradle.gradleVersion != "4.8") {
 
     logger.warn("*****************************************************************");
     logger.warn("Unsupported gradle version $gradle.gradleVersion in use.");
-    logger.warn("Only version 4.8 is supported. Use this version at your own risk");
+    logger.warn("Only version $jfxGradleVersion is supported. Use this version at your own risk");
     if ( err != "") logger.warn(err);
     logger.warn("*****************************************************************");
 }
@@ -1586,9 +1589,11 @@ void addMavenPublication(Project project, List<String> projectDependencies) {
                 maven(MavenPublication) {
                     artifactId = "javafx-${project.name}"
 
-                    artifact project.tasks."moduleEmptyPublicationJar$t.capital"
-                    artifact project.tasks."modularPublicationJar$t.capital" {
-                        classifier "$t.name"
+                    afterEvaluate {
+                        artifact project.tasks."moduleEmptyPublicationJar$t.capital"
+                        artifact project.tasks."modularPublicationJar$t.capital" {
+                            classifier "$t.name"
+                        }
                     }
 
                     pom.withXml {
@@ -1951,7 +1956,7 @@ project(":graphics") {
     dependencies {
         stubCompile group: "junit", name: "junit", version: "4.8.2"
 
-        antlr group: "org.antlr", name: "antlr-complete", version: "3.5.2"
+        antlr group: "org.antlr", name: "antlr4", version: "4.7.2", classifier: "complete"
     }
 
     project.ext.moduleSourcePath = defaultModuleSourcePath_GraphicsOne
@@ -2002,14 +2007,14 @@ project(":graphics") {
         executable = JAVA
         classpath = project.configurations.antlr
         workingDir = wd
-        main = "org.antlr.Tool"
+        main = "org.antlr.v4.Tool"
 
         args = [
-            "-Xconversiontimeout",
-            "30000",
             "-o",
             "$buildDir/gensrc/antlr",
-            "com/sun/scenario/effect/compiler/JSL.g" ]
+            "-package",
+            "com.sun.scenario.effect.compiler",
+            "com/sun/scenario/effect/compiler/JSL.g4" ]
 
         inputs.dir wd
         outputs.dir file("$buildDir/gensrc/antlr")
@@ -2330,7 +2335,7 @@ project(":graphics") {
             libsDir.mkdirs();
 
             def allLibsPresent = true
-            def libNames = [ "antlr-complete-3.5.2.jar" ]
+            def libNames = [ "antlr4-4.7.2-complete.jar" ]
             libNames.each { name ->
                 File f = new File(libsDir, name)
                 if (!f.exists()) allLibsPresent = false
@@ -2341,7 +2346,7 @@ project(":graphics") {
                 copy {
                     into libsDir
                     from f.getParentFile()
-                    include "**/antlr-complete-3.5.2.jar"
+                    include "**/antlr4-4.7.2-complete.jar"
                     includeEmptyDirs = false
                 }
             }
@@ -3205,6 +3210,7 @@ project(":media") {
             media name: "libav-11.4", ext: "tar.gz"
             media name: "libav-12.1", ext: "tar.gz"
             media name: "ffmpeg-3.3.3", ext: "tar.gz"
+            media name: "ffmpeg-4.0.2", ext: "tar.gz"
         }
     }
 
@@ -3373,7 +3379,7 @@ project(":media") {
                                                      "cpu_internal.h", "intfloat.h", "opt.h", "version.h", "avutil.h",
                                                      "crc.h", "intreadwrite.h", "parseutils.h", "xtea.h", "base64.h",
                                                      "dict.h", "lfg.h", "pixdesc.h", "intfloat_readwrite.h", "old_pix_fmts.h", "audioconvert.h",
-                                                     "cpu.h")
+                                                     "cpu.h", "hwcontext.h")
                     FileCollection libavutil_x86 = files("cpu.h") // Use cpu.h from x86 instead of libavutil root if exist
                     FileCollection libswscale = files("swscale.h", "version.h")
 
@@ -3555,8 +3561,8 @@ project(":media") {
                     doLast {
                         project.ext.libav = [:]
                         project.ext.libav.basedir = "${buildDir}/native/linux/ffmpeg"
-                        project.ext.libav.versions = [ "3.3.3" ]
-                        project.ext.libav.versionmap = [ "3.3.3" : "57" ]
+                        project.ext.libav.versions = [ "3.3.3", "4.0.2" ]
+                        project.ext.libav.versionmap = [ "3.3.3" : "57", "4.0.2" : "58" ]
 
                         libav.versions.each { version ->
                             def libavDir = "${libav.basedir}/ffmpeg-${version}"
@@ -3575,13 +3581,28 @@ project(":media") {
                             def libavDir = "${libav.basedir}/ffmpeg-${version}"
                             File dir = file(libavDir)
                             if (dir.exists()) {
-                                def configFile = "${libav.basedir}/ffmpeg-${version}/config.h"
+                                def configFile = "${libavDir}/config.h"
                                 File cfgFile = file(configFile)
                                 if (!cfgFile.exists()) {
                                     // Add execute permissions to version.sh, otherwise build fails
-                                    exec {
-                                        workingDir("$libavDir")
-                                        commandLine("chmod", "+x", "version.sh")
+                                    def versionFile = "${libavDir}/version.sh"
+                                    File verFile = file(versionFile)
+                                    if (verFile.exists()) {
+                                        exec {
+                                            workingDir("$libavDir")
+                                            commandLine("chmod", "+x", "version.sh")
+                                        }
+                                    } else {
+                                        versionFile = "${libavDir}/ffbuild/version.sh"
+                                        verFile = file(versionFile)
+                                        if (verFile.exists()) {
+                                            exec {
+                                                workingDir("${libavDir}/ffbuild")
+                                                commandLine("chmod")
+                                                args += "+x"
+                                                args += ["version.sh", "libversion.sh", "pkgconfig_generate.sh"]
+                                            }
+                                        }
                                     }
                                     exec {
                                         workingDir("$libavDir")
@@ -3621,7 +3642,7 @@ project(":media") {
                             project.ext.libav.libavffmpeg.versions = [ "56" ]
                             project.ext.libav.ffmpeg = [:]
                             project.ext.libav.ffmpeg.basedir = "${buildDir}/native/linux/ffmpeg/ffmpeg"
-                            project.ext.libav.ffmpeg.versions = [ "57" ]
+                            project.ext.libav.ffmpeg.versions = [ "57", "58" ]
 
                             project.ext.libav.versions.each { version ->
                                 def libavDir = "${project.ext.libav.basedir}-${version}"
@@ -4544,7 +4565,8 @@ compileTargets { t ->
         enabled = COMPILE_SWT
         group = "Basic"
         description = "Creates the javafx-swt.jar for the $t.name target"
-        archiveName = "${project(":swt").buildDir}/libs/javafx-swt.jar";
+        destinationDir = file("${project(":swt").buildDir}/libs")
+        archiveName = "javafx-swt.jar"
         includeEmptyDirs = false
         from("${project(":swt").buildDir}/classes/java/main");
         include("**/javafx/embed/swt/**")
@@ -4564,7 +4586,7 @@ compileTargets { t ->
         dependsOn(javafxSwtTask)
 
         doLast() {
-            ant.jar (update: true, index: true, destfile: javafxSwtTask.archiveName)
+            ant.jar (update: true, index: true, destfile: "${javafxSwtTask.destinationDir}/${javafxSwtTask.archiveName}")
         }
     }
 

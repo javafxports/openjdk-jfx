@@ -143,7 +143,7 @@ static const int AVCODEC_LIBAV_EXPLICIT_VERSIONS[] = { 54, 56 };
 // For ffmpeg (libavcodec-ffmpeg.so)
 static const int AVCODEC_FFMPEG_EXPLICIT_VERSIONS[] = { 56 };
 // For libav or ffmpeg (libavcodec.so)
-static const int AVCODEC_EXPLICIT_VERSIONS[] = { 57 };
+static const int AVCODEC_EXPLICIT_VERSIONS[] = { 57, 58 };
 
 /*
  * Callback passed to dl_iterate_phdr(): finds the path of
@@ -1995,8 +1995,9 @@ scan_and_update_registry (GstRegistry * default_registry,
 
 
   clear_scan_context (&context);
-#endif // GSTREAMER_LITE
+
   changed |= context.changed;
+#endif // GSTREAMER_LITE
 
   /* Remove cached plugins so stale info is cleared. */
   changed |= gst_registry_remove_cache_plugins (default_registry);
