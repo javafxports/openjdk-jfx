@@ -65,9 +65,9 @@ public class MenuButtonSkinBaseNPETest {
     public void testMenuButtonNPE() throws Exception {
         PrintStream defaultErrorStream = System.err;
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        System.setErr(new PrintStream(out,true));
+        System.setErr(new PrintStream(out, true));
         Thread.sleep(1000);
-        Util.runAndWait(()-> {
+        Util.runAndWait(() -> {
             menu.hide();
             menuBar.getMenus().clear();
         });
