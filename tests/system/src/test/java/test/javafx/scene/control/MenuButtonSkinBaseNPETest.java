@@ -37,6 +37,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import test.util.Util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -66,13 +67,13 @@ public class MenuButtonSkinBaseNPETest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         System.setErr(new PrintStream(out,true));
         Thread.sleep(1000);
-        Platform.runLater(()-> {
+        Util.runAndWait(()-> {
             menu.hide();
             menuBar.getMenus().clear();
         });
         Thread.sleep(100);
         System.setErr(defaultErrorStream);
-        Assert.assertEquals("No error should be thrown","", out.toString());
+        Assert.assertEquals("No error should be thrown", "", out.toString());
     }
 
     public static class TestApp extends Application {
@@ -90,16 +91,11 @@ public class MenuButtonSkinBaseNPETest {
     }
 
     @BeforeClass
-    public static void initFX() {
+    public static void initFX() throws Exception {
         startupLatch = new CountDownLatch(1);
         new Thread(() -> Application.launch(TestApp.class, (String[])null)).start();
-        try {
-            if (!startupLatch.await(15, TimeUnit.SECONDS)) {
-                Assert.fail("Timeout waiting for FX runtime to start");
-            }
-        } catch (InterruptedException ex) {
-            Assert.fail("Unexpected exception: " + ex);
-        }
+        Assert.assertTrue("Timeout waiting for FX runtime to start",
+                startupLatch.await(15, TimeUnit.SECONDS));
     }
 
     @AfterClass
