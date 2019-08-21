@@ -138,7 +138,7 @@ public final class PixelBufferTest {
         // This test verifies that an empty dirty region does not cause any exception
         PixelBuffer<ByteBuffer> pixelBuffer = new PixelBuffer<>(WIDTH, HEIGHT, BYTE_BUFFER, BYTE_BGRA_PRE_PF);
         Callback<PixelBuffer<ByteBuffer>, Rectangle2D> callback = pixBuf -> {
-            // Assuming this Callback modifies the buffer.
+            // Assuming no pixels were modified.
             return Rectangle2D.EMPTY;
         };
         pixelBuffer.updateBuffer(callback);
