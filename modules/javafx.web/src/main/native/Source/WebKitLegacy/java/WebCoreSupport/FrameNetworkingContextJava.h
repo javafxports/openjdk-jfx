@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@
 #include <WebCore/FrameLoaderClient.h>
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/Page.h>
+#include "NetworkStorageSessionMap.h"
 #include "WebPage.h"
 
 namespace WebCore {
@@ -43,7 +44,12 @@ public:
 
     NetworkStorageSession* storageSession() const override
     {
-        return nullptr;
+        ASSERT(isMainThread());
+
+        if (frame() && frame()->page() && frame()->page()->usesEphemeralSession())
+            return NetworkStorageSessionMap::storageSession(PAL::SessionID::legacyPrivateSessionID());
+
+        return &NetworkStorageSessionMap::defaultStorageSession();
     }
 
 private:

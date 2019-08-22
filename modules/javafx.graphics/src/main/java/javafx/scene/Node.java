@@ -104,6 +104,7 @@ import java.security.AccessControlContext;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -623,13 +624,15 @@ public abstract class Node implements EventTarget, Styleable {
      *                                                                        *
      *************************************************************************/
 
-    /*
+    /**
      * Set of dirty bits that are set when state is invalidated and cleared by
      * the updateState method, which is called from the synchronizer.
+     * <p>
+     * A node starts dirty.
      */
-    private int dirtyBits;
+    private Set<DirtyBits> dirtyBits = EnumSet.allOf(DirtyBits.class);
 
-    /*
+    /**
      * Mark the specified bit as dirty, and add this node to the scene's dirty list.
      *
      * Note: This method MUST only be called via its accessor method.
@@ -639,7 +642,7 @@ public abstract class Node implements EventTarget, Styleable {
             addToSceneDirtyList();
         }
 
-        dirtyBits |= dirtyBit.getMask();
+        dirtyBits.add(dirtyBit);
     }
 
     private void addToSceneDirtyList() {
@@ -652,39 +655,32 @@ public abstract class Node implements EventTarget, Styleable {
         }
     }
 
-    /*
+    /**
      * Test whether the specified dirty bit is set
      */
     final boolean isDirty(DirtyBits dirtyBit) {
-        return (dirtyBits & dirtyBit.getMask()) != 0;
+        return dirtyBits.contains(dirtyBit);
     }
 
-    /*
+    /**
      * Clear the specified dirty bit
      */
     final void clearDirty(DirtyBits dirtyBit) {
-        dirtyBits &= ~dirtyBit.getMask();
+        dirtyBits.remove(dirtyBit);
     }
 
-    /*
-     * Set all dirty bits
-     */
-    private void setDirty() {
-        dirtyBits = ~0;
-    }
-
-    /*
+    /**
      * Clear all dirty bits
      */
     private void clearDirty() {
-        dirtyBits = 0;
+        dirtyBits.clear();
     }
 
-    /*
+    /**
      * Test whether the set of dirty bits is empty
      */
-    final boolean isDirtyEmpty() {
-        return dirtyBits == 0;
+    private boolean isDirtyEmpty() {
+        return dirtyBits.isEmpty();
     }
 
     /**************************************************************************
@@ -696,7 +692,7 @@ public abstract class Node implements EventTarget, Styleable {
      *                                                                        *
      *************************************************************************/
 
-    /*
+    /**
      * Called by the synchronizer to update the state and
      * clear dirtybits of this node in the PG graph
      */
@@ -1515,15 +1511,15 @@ public abstract class Node implements EventTarget, Styleable {
 
     /**
      * The {@link javafx.scene.effect.BlendMode} used to blend this individual node
-     * into the scene behind it. If this node happens to be a Group then all of the
+     * into the scene behind it. If this node is a {@code Group}, then all of the
      * children will be composited individually into a temporary buffer using their
      * own blend modes and then that temporary buffer will be composited into the
      * scene using the specified blend mode.
      *
-     * A value of {@code null} is treated as pass-though this means no effect on a
-     * parent such as a Group and the equivalent of SRC_OVER for a single Node.
+     * A value of {@code null} is treated as pass-through. This means no effect on a
+     * parent (such as a {@code Group}), and the equivalent of {@code SRC_OVER} for a single {@code Node}.
      *
-     * @defaultValue null
+     * @defaultValue {@code null}
      */
     private javafx.beans.property.ObjectProperty<BlendMode> blendMode;
 
@@ -2621,7 +2617,6 @@ public abstract class Node implements EventTarget, Styleable {
         //if (PerformanceTracker.isLoggingEnabled()) {
         //    PerformanceTracker.logEvent("Node.init for [{this}, id=\"{id}\"]");
         //}
-        setDirty();
         updateTreeVisible(false);
         //if (PerformanceTracker.isLoggingEnabled()) {
         //    PerformanceTracker.logEvent("Node.postinit " +

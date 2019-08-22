@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -120,6 +120,7 @@ JNIEXPORT jint JNICALL Java_com_sun_glass_ui_gtk_GtkApplication__1initGTK
  * Method:    _queryLibrary
  * Signature: Signature: (IZ)I
  */
+#ifndef STATIC_BUILD
 JNIEXPORT jint JNICALL Java_com_sun_glass_ui_gtk_GtkApplication__1queryLibrary
   (JNIEnv *env, jclass clazz, jint suggestedVersion, jboolean verbose)
 {
@@ -143,6 +144,7 @@ JNIEXPORT jint JNICALL Java_com_sun_glass_ui_gtk_GtkApplication__1queryLibrary
 
     return com_sun_glass_ui_gtk_GtkApplication_QUERY_USE_CURRENT;
 }
+#endif
 
 /*
  * Class:     com_sun_glass_ui_gtk_GtkApplication

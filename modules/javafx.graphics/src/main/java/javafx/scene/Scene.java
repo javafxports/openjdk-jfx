@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -106,8 +106,8 @@ import java.lang.ref.WeakReference;
  * the {@code root} property.   If a {@code Group} is used as the root, the
  * contents of the scene graph will be clipped by the scene's width and height and
  * changes to the scene's size (if user resizes the stage) will not alter the
- * layout of the scene graph.    If a resizable node (layout {@code Region} or
- * {@code Control} is set as the root, then the root's size will track the
+ * layout of the scene graph. If a resizable node (layout {@code Region} or
+ * {@code Control}) is set as the root, then the root's size will track the
  * scene's size, causing the contents to be relayed out as necessary.
  * <p>
  * The scene's size may be initialized by the application during construction.
@@ -177,7 +177,7 @@ public class Scene implements EventTarget {
     private final boolean depthBuffer;
     private final SceneAntialiasing antiAliasing;
 
-    private int dirtyBits;
+    private EnumSet<DirtyBits> dirtyBits = EnumSet.noneOf(DirtyBits.class);
 
     final AccessControlContext acc = AccessController.getContext();
 
@@ -2240,28 +2240,28 @@ public class Scene implements EventTarget {
      * Set the specified dirty bit
      */
     private void setDirty(DirtyBits dirtyBit) {
-        dirtyBits |= dirtyBit.getMask();
+        dirtyBits.add(dirtyBit);
     }
 
     /**
      * Test the specified dirty bit
      */
     private boolean isDirty(DirtyBits dirtyBit) {
-        return ((dirtyBits & dirtyBit.getMask()) != 0);
+        return dirtyBits.contains(dirtyBit);
     }
 
     /**
      * Test whether the dirty bits are empty
      */
     private boolean isDirtyEmpty() {
-        return dirtyBits == 0;
+        return dirtyBits.isEmpty();
     }
 
     /**
      * Clear all dirty bits
      */
     private void clearDirty() {
-        dirtyBits = 0;
+        dirtyBits.clear();
     }
 
     private enum DirtyBits {
@@ -2270,14 +2270,6 @@ public class Scene implements EventTarget {
         CAMERA_DIRTY,
         LIGHTS_DIRTY,
         CURSOR_DIRTY;
-
-        private int mask;
-
-        private DirtyBits() {
-            mask = 1 << ordinal();
-        }
-
-        public final int getMask() { return mask; }
     }
 
     private List<LightBase> lights = new ArrayList<>();

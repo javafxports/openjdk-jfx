@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,22 @@
 #include <fontconfig/fontconfig.h>
 
 #include <jni.h>
+
+#ifdef STATIC_BUILD
+JNIEXPORT jint JNICALL
+JNI_OnLoad_javafx_font(JavaVM * vm, void * reserved) {
+#ifdef JNI_VERSION_1_8
+    //min. returned JNI_VERSION required by JDK8 for builtin libraries
+    JNIEnv *env;
+    if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_8) != JNI_OK) {
+        return JNI_VERSION_1_4;
+    }
+    return JNI_VERSION_1_8;
+#else
+    return JNI_VERSION_1_4;
+#endif
+}
+#endif
 
 /*
  * We are not explicitly linking against fontconfig. This isn't so

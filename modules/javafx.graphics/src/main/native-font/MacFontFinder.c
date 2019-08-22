@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@
 #include <jni.h>
 #include <com_sun_javafx_font_MacFontFinder.h>
 
-#if TARGET_OS_IPHONE /* iOS */
+#if TARGET_OS_IPHONE || defined(STATIC_BUILD) /* iOS or static build */
 
 #import <CoreText/CoreText.h>
 
