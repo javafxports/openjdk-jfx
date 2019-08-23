@@ -22,6 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package test.javafx.scene.image;
 
 import java.awt.Color;
@@ -55,6 +56,7 @@ import javafx.stage.WindowEvent;
 import test.util.Util;
 
 /**
+ * This test verifies the fix for JDK-8229890.
  * This test ensures that the callback provided to the {@link javafx.scene.image.PixelBuffer#updateBuffer()}
  * method may return {@link javafx.geometry.Rectangle2D.Empty} in order to
  * indicate that no update is necessary and no exception is thrown.
@@ -62,15 +64,15 @@ import test.util.Util;
 public class WritableImageFromBufferTest {
 
     static CountDownLatch startupLatch;
-    
-    private final static int IMG_WIDTH = 600;
-    private final static int IMG_HEIGHT = 400;
+
+    private static final int IMG_WIDTH = 600;
+    private static final int IMG_HEIGHT = 400;
 
     private PixelBuffer<IntBuffer> pixelBuffer;
     private Graphics2D g2d;
     private WritableImage fxImage;
-    
-    static private Scene scene;
+
+    private static Scene scene;
 
     public static class TestApp extends Application {
         @Override
@@ -81,7 +83,7 @@ public class WritableImageFromBufferTest {
             primaryStage.show();
         }
     }
-    
+
     @Before
     public void setUp() throws Exception {
         BufferedImage awtImage = new BufferedImage(IMG_WIDTH, IMG_HEIGHT, BufferedImage.TYPE_INT_ARGB_PRE);
@@ -102,7 +104,7 @@ public class WritableImageFromBufferTest {
         PrintStream defaultErrorStream = System.err;
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         System.setErr(new PrintStream(out, true));
-        
+
         Thread.sleep(1000);
         Util.runAndWait(() -> {
             StackPane root = (StackPane)scene.getRoot();
@@ -117,6 +119,7 @@ public class WritableImageFromBufferTest {
         Util.runAndWait(() -> {
             requestPartialUpdate();
         });
+        Thread.sleep(100);
 
         System.setErr(defaultErrorStream);
         Assert.assertEquals("No error should be thrown", "", out.toString());
@@ -134,8 +137,7 @@ public class WritableImageFromBufferTest {
     private void requestEmptyUpdate() {
         // This call should fail without the fix and pass after the fix.
         pixelBuffer.updateBuffer(pb -> {
-            g2d.setBackground(Color.decode("#00FF00"));
-            g2d.clearRect(0, 0, IMG_WIDTH, IMG_HEIGHT);
+            // Nothing to do.
             return Rectangle2D.EMPTY;
         });
     }
@@ -144,7 +146,7 @@ public class WritableImageFromBufferTest {
         // This call should work before and after the fix.
         pixelBuffer.updateBuffer(pb -> {
             g2d.setBackground(Color.decode("#0000FF"));
-            g2d.clearRect(0, 0, IMG_WIDTH, IMG_HEIGHT);
+            g2d.clearRect(0, 0, IMG_WIDTH / 2, IMG_HEIGHT);
             return new Rectangle2D(0, 0, IMG_WIDTH / 2, IMG_HEIGHT);
         });
     }
@@ -161,5 +163,5 @@ public class WritableImageFromBufferTest {
     public static void tearDown() {
         Platform.exit();
     }
-    
+
 }
