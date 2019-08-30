@@ -306,14 +306,14 @@ public class TextFieldTest {
     /**
      * test for JDK-8207774: ENTER must not be forwared if actionHandler
      * consumed the action.
-     * 
+     *
      * Here we test that an accelerator is not triggered.
      */
     @Test
     public void testEnterWithConsumingActionHandlerAccelerator() {
         initStage();
         root.getChildren().add(txtField);
-        txtField.addEventHandler(ActionEvent.ACTION, e -> 
+        txtField.addEventHandler(ActionEvent.ACTION, e ->
         e.consume()
                 );
         scene.getAccelerators().put(new KeyCodeCombination(ENTER), () ->
@@ -322,18 +322,18 @@ public class TextFieldTest {
         KeyEventFirer keyboard = new KeyEventFirer(txtField);
         keyboard.doKeyPress(ENTER);
     }
-    
+
     /**
      * test for JDK-8207774: ENTER must not be forwared if actionHandler
      * consumed the action.
-     * 
+     *
      * Here we test that handlers on parent are not notified.
      */
     @Test
     public void testEnterWithConsumingActionHandlerParentHandler() {
         initStage();
         root.getChildren().add(txtField);
-        txtField.addEventHandler(ActionEvent.ACTION, e -> 
+        txtField.addEventHandler(ActionEvent.ACTION, e ->
             e.consume()
         );
         root.addEventHandler(KeyEvent.KEY_PRESSED, e ->
@@ -342,7 +342,7 @@ public class TextFieldTest {
         KeyEventFirer keyboard = new KeyEventFirer(txtField);
         keyboard.doKeyPress(ENTER);
     }
-    
+
     /**
      * sanity: pressing enter actually triggers a consuming actionHandler.
      */
@@ -361,7 +361,7 @@ public class TextFieldTest {
         assertEquals("actionHandler must be notified", 1, actions.size());
         assertTrue("action must be consumed ", actions.get(0).isConsumed());
     }
-    
+
     /**
      * Helper method to init the stage only if really needed.
      */
