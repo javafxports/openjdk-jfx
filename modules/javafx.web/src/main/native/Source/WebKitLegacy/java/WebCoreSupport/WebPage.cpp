@@ -38,6 +38,7 @@
 #include "EditorClientJava.h"
 #include "FrameLoaderClientJava.h"
 #include "InspectorClientJava.h"
+#include "PageStorageSessionProvider.h"
 #include "PlatformStrategiesJava.h"
 #include "ProgressTrackerClientJava.h"
 #include "VisitedLinkStoreJava.h"
@@ -53,10 +54,8 @@
 #include <JavaScriptCore/JSContextRefPrivate.h>
 #include <JavaScriptCore/JSStringRef.h>
 #include <JavaScriptCore/Options.h>
-#include <PageStorageSessionProvider.h>
 #include <WebCore/BackForwardController.h>
 #include <WebCore/BridgeUtils.h>
-#include <WebCore/CacheStorageProvider.h>
 #include <WebCore/CharacterData.h>
 #include <WebCore/Chrome.h>
 #include <WebCore/ContextMenu.h>
@@ -82,7 +81,6 @@
 #include <WebCore/GraphicsLayerTextureMapper.h>
 #include <WebCore/InspectorController.h>
 #include <WebCore/KeyboardEvent.h>
-#include <WebCore/LibWebRTCProvider.h>
 #include <WebCore/NodeTraversal.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageConfiguration.h>
@@ -100,7 +98,6 @@
 #include <WebCore/ScriptController.h>
 #include <WebCore/SecurityPolicy.h>
 #include <WebCore/Settings.h>
-#include <WebCore/SocketProvider.h>
 #include <WebCore/StorageNamespaceProvider.h>
 #include <WebCore/TextIterator.h>
 #include <WebCore/TextureMapperJava.h>
