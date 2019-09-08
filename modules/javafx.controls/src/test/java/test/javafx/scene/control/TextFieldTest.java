@@ -298,7 +298,6 @@ public class TextFieldTest {
         assertEquals("x", dummyTxtField.getText());
     }
 
-    private Toolkit tk;
     private Scene scene;
     private Stage stage;
     private StackPane root;
@@ -313,9 +312,7 @@ public class TextFieldTest {
     public void testEnterWithConsumingActionHandlerAccelerator() {
         initStage();
         root.getChildren().add(txtField);
-        txtField.addEventHandler(ActionEvent.ACTION, e ->
-        e.consume()
-                );
+        txtField.addEventHandler(ActionEvent.ACTION, e -> e.consume());
         scene.getAccelerators().put(new KeyCodeCombination(ENTER), () ->
             fail("accelerator must not be notified"));
         stage.show();
@@ -333,11 +330,9 @@ public class TextFieldTest {
     public void testEnterWithConsumingActionHandlerParentHandler() {
         initStage();
         root.getChildren().add(txtField);
-        txtField.addEventHandler(ActionEvent.ACTION, e ->
-            e.consume()
-        );
+        txtField.addEventHandler(ActionEvent.ACTION, e -> e.consume());
         root.addEventHandler(KeyEvent.KEY_PRESSED, e ->
-                fail("parent handler must not be notified but received: " + e ));
+            fail("parent handler must not be notified but received: " + e ));
         stage.show();
         KeyEventFirer keyboard = new KeyEventFirer(txtField);
         keyboard.doKeyPress(ENTER);
@@ -366,7 +361,8 @@ public class TextFieldTest {
      * Helper method to init the stage only if really needed.
      */
     private void initStage() {
-        tk = (StubToolkit)Toolkit.getToolkit();//This step is not needed (Just to make sure StubToolkit is loaded into VM)
+        //This step is not needed (Just to make sure StubToolkit is loaded into VM)
+        Toolkit tk = (StubToolkit)Toolkit.getToolkit();
         root = new StackPane();
         scene = new Scene(root);
         stage = new Stage();
