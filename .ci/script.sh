@@ -4,7 +4,8 @@ set -uo pipefail
 echo "which java: $(which java)"
 ulimit -c unlimited -S
 
-echo "ANT_HOME=$ANT_HOME"
+ANT_HOME_VAL=${ANT_HOME:-}
+echo "ANT_HOME=$ANT_HOME_VAL"
 echo "which ant: $(which ant)"
 echo "ant -version"
 ant -version
