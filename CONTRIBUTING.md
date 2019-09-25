@@ -118,7 +118,13 @@ Once your changes and tests are ready to submit for review:
 
     Discussion and review of the pull request can happen either by adding
     a comment to the PR itself, or by replying to the mailing list "RFR"
-    thread. Comments are cross-forwarded between them. If any changes
+    thread. The Skara bot will cross-forward between them.
+    To approve a pull request, a reviewer must do that in the PR itself.
+    See the following
+    [GitHub help page](https://help.github.com/en/articles/reviewing-proposed-changes-in-a-pull-request)
+    for help on reviewing a pull request.
+    
+    If any changes
     are needed, you would push additional commits to the branch
     from which you made the pull request.
 
