@@ -123,7 +123,7 @@ Once your changes and tests are ready to submit for review:
     See the following
     [GitHub help page](https://help.github.com/en/articles/reviewing-proposed-changes-in-a-pull-request)
     for help on reviewing a pull request.
-    
+
     If any changes
     are needed, you would push additional commits to the branch
     from which you made the pull request.
