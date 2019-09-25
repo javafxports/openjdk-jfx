@@ -43,3 +43,6 @@ minimum=1
 
 [checks "merge"]
 message=Merge
+
+[checks "issues"]
+pattern=^([124-8][0-9]{6}): (\S.*)$
