@@ -52,6 +52,7 @@ If you are a first time contributor to OpenJFX, welcome! Please do the following
     A [JBS](https://bugs.openjdk.java.net) bug ID is needed for every
     pull request. If there isn't already a bug filed in JBS, then please
     file one at [bugreport.java.com](https://bugreport.java.com/).
+    A developer with an active OpenJDK ID can file a bug directly in JBS.
 
 TIP: A GitHub pull request (PR) should not be the first time we hear about your proposed change to OpenJFX. Unless clearly identified as experimental or work-in-progress (WIP), we will usually close a pull request that isn't associated with an existing bug report. Reading the policies below will help you in getting your change approved.
 
@@ -81,10 +82,13 @@ Once your changes and tests are ready to submit for review:
     8231326: Update README and CONTRIBUTING docs for Skara
     ```
 
-    The Skara bot will then run jcheck on the server to verify the format
+    The Skara bot will then run `jcheck` on the server to verify the format
     of the PR title and check for whitespace errors. Once that passes,
     it will automatically send a Request For Review (RFR) email to the
     [openjfx-dev](mailto:openjfx-dev@openjdk.java.net) mailing list.
+    See the
+    [Skara project page](https://github.com/openjdk/skara#openjdk-project-skara)
+    for information on `jcheck` and other Skara tools.
 
     TIP: prefix the pull request title with `WIP:` if you aren't yet
     ready for it to be reviewed. The Skara bot will not send an RFR
@@ -161,11 +165,23 @@ Once your changes and tests are ready to submit for review:
 6. Resolve the JBS bug as "Fixed"
 
     There is currently no automation for resolving JBS bugs, although
-    this a future Skara improvement will automate this. Until then,
+    a future Skara improvement will automate this. Until then,
     the Committer who integrated or sponsored the fix is responsible for
     resolving the JBS issue. You do this with the "Resolve" action in JBS,
-    selecting "Fixed" as the resolution. The commit notification message
-    (minus the list of modified files) should be added as a comment.
+    selecting "Fixed" as the resolution. You also need to add the commit
+    notification message (minus the list of modified files) as a comment.
+    This includes the URL of the commit. For example:
+
+    ```
+    Changeset: 1de25a49
+    Author:    Kevin Rushforth <kcr@openjdk.org>
+    Date:      2019-09-23 08:15:36 +7000
+    URL:       https://git.openjdk.java.net/jfx/commit/1de25a49
+
+    8231126: libxslt.md has incorrect version string
+
+    Reviewed-by: ghb
+    ```
 
 
 Contributing to the OpenJFX codebase
