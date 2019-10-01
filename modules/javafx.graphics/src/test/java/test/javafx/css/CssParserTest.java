@@ -214,6 +214,158 @@ public class CssParserTest {
 
     }
 
+    @Test
+    public void testFadein() {
+        // Properly fades in (makes more opaque) when given a positive percentage.
+        CssParser instance = new CssParser();
+        Stylesheet ss = instance.parse("* { -fx-background-color: fadein(rgba(35, 70, 112, 0.8), 10%); }");
+
+        assertNotNull(ss);
+        List<Rule> rules = ss.getRules();
+        assertEquals(1, rules.size(), 0);
+        List<Declaration> decls = RuleShim.getUnobservedDeclarationList(ss.getRules().get(0));
+        assertEquals(1, decls.size(), 0);
+        Declaration decl = decls.get(0);
+        ParsedValue value = decl.getParsedValue();
+        assertTrue(value != null);
+        assertTrue(((Paint[]) value.convert(null)).length == 1);
+        Color paint = (Color) ((Paint[]) value.convert(null))[0];
+        assertEquals(35 / 255d, paint.getRed(), 0.000001d);
+        assertEquals(70 / 255d, paint.getGreen(), 0.000001d);
+        assertEquals(112 / 255d, paint.getBlue(), 0.000001d);
+        assertEquals(0.88d, paint.getOpacity(), 0.01d);
+
+        // Properly fades out (makes less opaque) when given a negative percentage.
+        instance = new CssParser();
+        ss = instance.parse("* { -fx-background-color: fadein(rgba(35, 70, 112, 0.8), -10%); }");
+        assertNotNull(ss);
+        rules = ss.getRules();
+        assertEquals(1, rules.size(), 0);
+        decls = RuleShim.getUnobservedDeclarationList(ss.getRules().get(0));
+        assertEquals(1, decls.size(), 0);
+        decl = decls.get(0);
+        value = decl.getParsedValue();
+        assertTrue(value != null);
+        assertTrue(((Paint[]) value.convert(null)).length == 1);
+        paint = (Color) ((Paint[]) value.convert(null))[0];
+        assertEquals(35 / 255d, paint.getRed(), 0.000001d);
+        assertEquals(70 / 255d, paint.getGreen(), 0.000001d);
+        assertEquals(112 / 255d, paint.getBlue(), 0.000001d);
+        assertEquals(0.72d, paint.getOpacity(), 0.01d);
+
+        // Makes a color fully opaque when percentage is 100%.
+        instance = new CssParser();
+        ss = instance.parse("* { -fx-background-color: fadein(rgba(35, 70, 112, 0), 100%); }");
+        assertNotNull(ss);
+        rules = ss.getRules();
+        assertEquals(1, rules.size(), 0);
+        decls = RuleShim.getUnobservedDeclarationList(ss.getRules().get(0));
+        assertEquals(1, decls.size(), 0);
+        decl = decls.get(0);
+        value = decl.getParsedValue();
+        assertTrue(value != null);
+        assertTrue(((Paint[]) value.convert(null)).length == 1);
+        paint = (Color) ((Paint[]) value.convert(null))[0];
+        assertEquals(35 / 255d, paint.getRed(), 0.000001d);
+        assertEquals(70 / 255d, paint.getGreen(), 0.000001d);
+        assertEquals(112 / 255d, paint.getBlue(), 0.000001d);
+        assertEquals(1d, paint.getOpacity(), 0.01d);
+
+        // Does not change the opacity when color is already fully opaque.
+        instance = new CssParser();
+        ss = instance.parse("* { -fx-background-color: fadein(rgba(35, 70, 112, 1), 5%); }");
+        assertNotNull(ss);
+        rules = ss.getRules();
+        assertEquals(1, rules.size(), 0);
+        decls = RuleShim.getUnobservedDeclarationList(ss.getRules().get(0));
+        assertEquals(1, decls.size(), 0);
+        decl = decls.get(0);
+        value = decl.getParsedValue();
+        assertTrue(value != null);
+        assertTrue(((Paint[]) value.convert(null)).length == 1);
+        paint = (Color) ((Paint[]) value.convert(null))[0];
+        assertEquals(35 / 255d, paint.getRed(), 0.000001d);
+        assertEquals(70 / 255d, paint.getGreen(), 0.000001d);
+        assertEquals(112 / 255d, paint.getBlue(), 0.000001d);
+        assertEquals(1d, paint.getOpacity(), 0.01d);
+    }
+
+    @Test
+    public void testFadeout() {
+        // Properly fades out (makes less opaque) when given a positive percentage.
+        CssParser instance = new CssParser();
+        Stylesheet ss = instance.parse("* { -fx-background-color: fadeout(rgba(35, 70, 112, 0.8), 10%); }");
+
+        assertNotNull(ss);
+        List<Rule> rules = ss.getRules();
+        assertEquals(1, rules.size(), 0);
+        List<Declaration> decls = RuleShim.getUnobservedDeclarationList(ss.getRules().get(0));
+        assertEquals(1, decls.size(), 0);
+
+        Declaration decl = decls.get(0);
+        ParsedValue value = decl.getParsedValue();
+        assertTrue(value != null);
+        Color paint = (Color) ((Paint[]) value.convert(null))[0];
+        assertEquals(35 / 255d, paint.getRed(), 0.000001d);
+        assertEquals(70 / 255d, paint.getGreen(), 0.000001d);
+        assertEquals(112 / 255d, paint.getBlue(), 0.000001d);
+        assertEquals(0.72d, paint.getOpacity(), 0.01d);
+
+        // Properly fades in (makes more opaque) when given a negative percentage.
+        instance = new CssParser();
+        ss = instance.parse("* { -fx-background-color: fadeout(rgba(35, 70, 112, 0.8), -10%); }");
+        assertNotNull(ss);
+        rules = ss.getRules();
+        assertEquals(1, rules.size(), 0);
+        decls = RuleShim.getUnobservedDeclarationList(ss.getRules().get(0));
+        assertEquals(1, decls.size(), 0);
+        decl = decls.get(0);
+        value = decl.getParsedValue();
+        assertTrue(value != null);
+        assertTrue(((Paint[]) value.convert(null)).length == 1);
+        paint = (Color) ((Paint[]) value.convert(null))[0];
+        assertEquals(35 / 255d, paint.getRed(), 0.000001d);
+        assertEquals(70 / 255d, paint.getGreen(), 0.000001d);
+        assertEquals(112 / 255d, paint.getBlue(), 0.000001d);
+        assertEquals(0.88d, paint.getOpacity(), 0.01d);
+
+        // Makes a color fully transparent when percentage is 100%.
+        instance = new CssParser();
+        ss = instance.parse("* { -fx-background-color: fadeout(rgba(35, 70, 112, 1), 100%); }");
+        assertNotNull(ss);
+        rules = ss.getRules();
+        assertEquals(1, rules.size(), 0);
+        decls = RuleShim.getUnobservedDeclarationList(ss.getRules().get(0));
+        assertEquals(1, decls.size(), 0);
+        decl = decls.get(0);
+        value = decl.getParsedValue();
+        assertTrue(value != null);
+        assertTrue(((Paint[]) value.convert(null)).length == 1);
+        paint = (Color) ((Paint[]) value.convert(null))[0];
+        assertEquals(35 / 255d, paint.getRed(), 0.000001d);
+        assertEquals(70 / 255d, paint.getGreen(), 0.000001d);
+        assertEquals(112 / 255d, paint.getBlue(), 0.000001d);
+        assertEquals(0d, paint.getOpacity(), 0.01d);
+
+        // Does not change the opacity when color is already fully transparent.
+        instance = new CssParser();
+        ss = instance.parse("* { -fx-background-color: fadeout(rgba(35, 70, 112, 0), 5%); }");
+        assertNotNull(ss);
+        rules = ss.getRules();
+        assertEquals(1, rules.size(), 0);
+        decls = RuleShim.getUnobservedDeclarationList(ss.getRules().get(0));
+        assertEquals(1, decls.size(), 0);
+        decl = decls.get(0);
+        value = decl.getParsedValue();
+        assertTrue(value != null);
+        assertTrue(((Paint[]) value.convert(null)).length == 1);
+        paint = (Color) ((Paint[]) value.convert(null))[0];
+        assertEquals(35 / 255d, paint.getRed(), 0.000001d);
+        assertEquals(70 / 255d, paint.getGreen(), 0.000001d);
+        assertEquals(112 / 255d, paint.getBlue(), 0.000001d);
+        assertEquals(0d, paint.getOpacity(), 0.01d);
+    }
+
     @Test public void testFontFace() {
 
         // http://fonts.googleapis.com/css?family=Bree+Serif

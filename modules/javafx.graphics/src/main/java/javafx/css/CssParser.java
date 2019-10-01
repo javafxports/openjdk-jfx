@@ -34,6 +34,8 @@ import javafx.css.converter.BooleanConverter;
 import javafx.css.converter.DurationConverter;
 import javafx.css.converter.EffectConverter;
 import javafx.css.converter.EnumConverter;
+import javafx.css.converter.FadeinColorConverter;
+import javafx.css.converter.FadeoutColorConverter;
 import javafx.css.converter.FontConverter;
 import javafx.css.converter.InsetsConverter;
 import javafx.css.converter.PaintConverter;
@@ -1409,6 +1411,10 @@ final public class CssParser {
             return innershadow(root);
         } else if ("dropshadow".regionMatches(true, 0, fcn, 0, 10)) {
             return dropshadow(root);
+        } else if ("fadein".regionMatches(true, 0, fcn, 0, 6)) {
+            return fadein(root);
+        } else if ("fadeout".regionMatches(true, 0, fcn, 0, 7)) {
+            return fadeout(root);
         } else if ("linear-gradient".regionMatches(true, 0, fcn, 0, 15)) {
             return parseLinearGradient(root);
         } else if ("radial-gradient".regionMatches(true, 0, fcn, 0, 15)) {
@@ -1554,6 +1560,53 @@ final public class CssParser {
             offsetYVal
         };
         return new ParsedValueImpl<ParsedValue[],Effect>(values, EffectConverter.DropShadowConverter.getInstance());
+    }
+
+    // fadein <color> <number>%
+    private ParsedValueImpl<ParsedValue[],Color> fadein(final Term root) throws ParseException {
+        // first term in the chain is the function name...
+        final String fn = (root.token != null) ? root.token.getText() : null;
+        if (fn == null || !"fadein".regionMatches(true, 0, fn, 0, 6)) {
+            final String msg = "Expected \'fadein\'";
+            error(root, msg);
+        }
+
+        Term arg = root;
+        if ((arg = arg.firstArg) == null) error(root, "Expected \'<color>\'");
+
+        final ParsedValueImpl<?,Color> color = parseColor(arg);
+
+        final Term prev = arg;
+        if ((arg = arg.nextArg) == null) error(prev, "Expected \'<percent\'");
+
+        final ParsedValueImpl<?,Size> opacity = parseSize(arg);
+
+        ParsedValueImpl[] values = new ParsedValueImpl[] { color, opacity };
+        return new ParsedValueImpl<ParsedValue[],Color>(values, FadeinColorConverter.getInstance());
+
+    }
+
+    // fadeout <color> <number>%
+    private ParsedValueImpl<ParsedValue[],Color> fadeout(final Term root) throws ParseException {
+        // first term in the chain is the function name...
+        final String fn = (root.token != null) ? root.token.getText() : null;
+        if (fn == null || !"fadeout".regionMatches(true, 0, fn, 0, 7)) {
+            final String msg = "Expected \'fadeout\'";
+            error(root, msg);
+        }
+
+        Term arg = root;
+        if ((arg = arg.firstArg) == null) error(root, "Expected \'<color>\'");
+
+        final ParsedValueImpl<?,Color> color = parseColor(arg);
+
+        final Term prev = arg;
+        if ((arg = arg.nextArg) == null) error(prev, "Expected \'<percent\'");
+
+        final ParsedValueImpl<?,Size> transparency = parseSize(arg);
+
+        ParsedValueImpl[] values = new ParsedValueImpl[] { color, transparency };
+        return new ParsedValueImpl<ParsedValue[],Color>(values, FadeoutColorConverter.getInstance());
     }
 
     // returns null if the Term is null or is not a cycle method.
