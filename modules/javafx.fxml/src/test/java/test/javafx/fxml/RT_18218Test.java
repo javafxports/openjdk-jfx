@@ -25,7 +25,6 @@
 
 package test.javafx.fxml;
 
-import com.sun.javafx.fxml.FXMLLoaderHelper;
 import java.io.IOException;
 import java.util.Map;
 import javafx.fxml.FXMLLoader;
@@ -39,7 +38,7 @@ public class RT_18218Test {
     @SuppressWarnings({"unchecked", "deprecation"})
     public void testStaticScriptLoad() throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("rt_18218.fxml"));
-        FXMLLoaderHelper.setStaticLoad(fxmlLoader, true);
+        fxmlLoader.setStaticLoad(true);
         fxmlLoader.setLoadListener(new LoadListener() {
             private String unknownStaticPropertyElementName = null;
 

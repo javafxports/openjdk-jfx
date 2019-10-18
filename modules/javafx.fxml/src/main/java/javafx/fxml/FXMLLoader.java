@@ -82,7 +82,6 @@ import com.sun.javafx.fxml.expression.Expression;
 import com.sun.javafx.fxml.expression.ExpressionValue;
 import com.sun.javafx.fxml.expression.KeyPath;
 import static com.sun.javafx.FXPermissions.MODIFY_FXML_CLASS_LOADER_PERMISSION;
-import com.sun.javafx.fxml.FXMLLoaderHelper;
 import com.sun.javafx.fxml.MethodHelper;
 import java.net.MalformedURLException;
 import java.security.AccessController;
@@ -312,7 +311,7 @@ public class FXMLLoader {
                     throw constructLoadException("Cannot bind to builder property.");
                 }
 
-                if (!isStaticLoad()) {
+                if (!staticLoad) {
                     value = value.substring(BINDING_EXPRESSION_PREFIX.length(),
                             value.length() - 1);
                     expression = Expression.valueOf(value);
@@ -2052,13 +2051,6 @@ public class FXMLLoader {
                 return System.getProperty("javafx.version");
             }
         });
-
-        FXMLLoaderHelper.setFXMLLoaderAccessor(new FXMLLoaderHelper.FXMLLoaderAccessor() {
-            @Override
-            public void setStaticLoad(FXMLLoader fxmlLoader, boolean staticLoad) {
-                fxmlLoader.setStaticLoad(staticLoad);
-            }
-        });
     }
 
     /**
@@ -2378,21 +2370,22 @@ public class FXMLLoader {
         clearImports();
     }
 
-    /*
+    /**
      * Returns the static load flag.
+     * 
+     * @since 11
      */
-    boolean isStaticLoad() {
-        // SB-dependency: RT-21226 has been filed to track this
+    public final boolean isStaticLoad() {
         return staticLoad;
     }
 
-    /*
+    /**
      * Sets the static load flag.
      *
-     * @param staticLoad
+     * @param staticLoad The value for the static load flag
+     * @since 11
      */
-    void setStaticLoad(boolean staticLoad) {
-        // SB-dependency: RT-21226 has been filed to track this
+    public final void setStaticLoad(boolean staticLoad) {
         this.staticLoad = staticLoad;
     }
 

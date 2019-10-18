@@ -24,7 +24,6 @@ package test.javafx.fxml;
  * questions.
  */
 
-import com.sun.javafx.fxml.FXMLLoaderHelper;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -39,7 +38,7 @@ public class FXMLLoader_ScriptTest {
     @SuppressWarnings("deprecation")
     public void testStaticScriptLoad() throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("static_script_load.fxml"));
-        FXMLLoaderHelper.setStaticLoad(fxmlLoader, true);
+        fxmlLoader.setStaticLoad(true);
         AtomicBoolean scriptCalled = new AtomicBoolean();
         AtomicBoolean scriptEndCalled = new AtomicBoolean();
         fxmlLoader.setLoadListener(new LoadListener() {
