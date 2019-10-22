@@ -37,7 +37,7 @@
 #include <wtf/MainThread.h>
 #include <wtf/text/AtomicString.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "WebCoreThreadInternal.h"
 #endif
 
@@ -58,7 +58,7 @@ JSC::VM& commonVMSlow()
 
     vm.heap.acquireAccess(); // At any time, we may do things that affect the GC.
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     vm.setRunLoop(WebThreadRunLoop());
     vm.heap.machineThreads().addCurrentThread();
 #endif
@@ -73,6 +73,11 @@ JSC::VM& commonVMSlow()
 Frame* lexicalFrameFromCommonVM()
 {
     if (auto* topCallFrame = commonVM().topCallFrame) {
+#if PLATFORM(JAVA) && ENABLE(C_LOOP)
+        if (!topCallFrame->codeBlock()) {
+            return nullptr;
+        }
+#endif
         if (auto* globalObject = JSC::jsCast<JSDOMGlobalObject*>(topCallFrame->lexicalGlobalObject())) {
             if (auto* window = JSC::jsDynamicCast<JSDOMWindow*>(commonVM(), globalObject)) {
                 if (auto* frame = window->wrapped().frame())

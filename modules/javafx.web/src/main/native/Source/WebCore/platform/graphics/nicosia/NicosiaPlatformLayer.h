@@ -34,6 +34,7 @@
 #include "FloatPoint3D.h"
 #include "FloatRect.h"
 #include "FloatSize.h"
+#include "NicosiaAnimatedBackingStoreClient.h"
 #include "TextureMapperAnimation.h"
 #include "TransformationMatrix.h"
 #include <wtf/Function.h>
@@ -50,7 +51,8 @@ public:
     virtual bool isCompositionLayer() const { return false; }
     virtual bool isContentLayer() const { return false; }
 
-    uint64_t id() const { return m_id; }
+    using LayerID = uint64_t;
+    LayerID id() const { return m_id; }
 
 protected:
     explicit PlatformLayer(uint64_t);
@@ -109,6 +111,7 @@ public:
                     bool contentLayerChanged : 1;
                     bool backingStoreChanged : 1;
                     bool imageBackingChanged : 1;
+                    bool animatedBackingStoreClientChanged : 1;
                     bool repaintCounterChanged : 1;
                     bool debugBorderChanged : 1;
                 };
@@ -161,6 +164,7 @@ public:
         RefPtr<ContentLayer> contentLayer;
         RefPtr<BackingStore> backingStore;
         RefPtr<ImageBacking> imageBacking;
+        RefPtr<AnimatedBackingStoreClient> animatedBackingStoreClient;
 
         struct RepaintCounter {
             unsigned count { 0 };
@@ -180,6 +184,90 @@ public:
         functor(m_state.pending);
     }
 
+    template<typename T>
+    void flushState(const T& functor)
+    {
+        LockHolder locker(PlatformLayer::m_state.lock);
+        auto& pending = m_state.pending;
+        auto& staging = m_state.staging;
+
+        staging.delta.value |= pending.delta.value;
+
+        if (pending.delta.positionChanged)
+            staging.position = pending.position;
+        if (pending.delta.anchorPointChanged)
+            staging.anchorPoint = pending.anchorPoint;
+        if (pending.delta.sizeChanged)
+            staging.size = pending.size;
+
+        if (pending.delta.transformChanged)
+            staging.transform = pending.transform;
+        if (pending.delta.childrenTransformChanged)
+            staging.childrenTransform = pending.childrenTransform;
+
+        if (pending.delta.contentsRectChanged)
+            staging.contentsRect = pending.contentsRect;
+        if (pending.delta.contentsTilingChanged) {
+            staging.contentsTilePhase = pending.contentsTilePhase;
+            staging.contentsTileSize = pending.contentsTileSize;
+        }
+
+        if (pending.delta.opacityChanged)
+            staging.opacity = pending.opacity;
+        if (pending.delta.solidColorChanged)
+            staging.solidColor = pending.solidColor;
+
+        if (pending.delta.filtersChanged)
+            staging.filters = pending.filters;
+        if (pending.delta.animationsChanged)
+            staging.animations = pending.animations;
+
+        if (pending.delta.childrenChanged)
+            staging.children = pending.children;
+        if (pending.delta.maskChanged)
+            staging.mask = pending.mask;
+        if (pending.delta.replicaChanged)
+            staging.replica = pending.replica;
+
+        if (pending.delta.flagsChanged)
+            staging.flags.value = pending.flags.value;
+
+        if (pending.delta.repaintCounterChanged)
+            staging.repaintCounter = pending.repaintCounter;
+        if (pending.delta.debugBorderChanged)
+            staging.debugBorder = pending.debugBorder;
+
+        if (pending.delta.backingStoreChanged)
+            staging.backingStore = pending.backingStore;
+        if (pending.delta.contentLayerChanged)
+            staging.contentLayer = pending.contentLayer;
+        if (pending.delta.imageBackingChanged)
+            staging.imageBacking = pending.imageBacking;
+        if (pending.delta.animatedBackingStoreClientChanged)
+            staging.animatedBackingStoreClient = pending.animatedBackingStoreClient;
+
+        pending.delta = { };
+
+        functor(staging);
+    }
+
+    template<typename T>
+    void commitState(const T& functor)
+    {
+        LockHolder locker(PlatformLayer::m_state.lock);
+        m_state.committed = m_state.staging;
+        m_state.staging.delta = { };
+
+        functor(m_state.committed);
+    }
+
+    template<typename T>
+    void accessCommitted(const T& functor)
+    {
+        LockHolder locker(PlatformLayer::m_state.lock);
+        functor(m_state.committed);
+    }
+
 private:
     CompositionLayer(uint64_t, const Impl::Factory&);
 
@@ -187,6 +275,8 @@ private:
 
     struct {
         LayerState pending;
+        LayerState staging;
+        LayerState committed;
     } m_state;
 };
 
