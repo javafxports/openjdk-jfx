@@ -166,6 +166,7 @@ public abstract class ObjectBinding<T> extends ObjectExpression<T> implements
     public final void invalidate() {
         if (valid) {
             valid = false;
+            value = null;
             onInvalidating();
             ExpressionHelper.fireValueChangedEvent(helper);
         }
