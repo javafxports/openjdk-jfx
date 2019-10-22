@@ -1432,7 +1432,7 @@ final class CssStyleHelper {
                 // did we get a fontValue from the preceding block?
                 // if not, get it from our cacheEntry or choose the default
                 if (fontForFontRelativeSizes == null) {
-                    if (fontFromCacheEntry != null && fontFromCacheEntry.isRelative() == false) {
+                    if (fontFromCacheEntry != null) {
                         fontForFontRelativeSizes = (Font)fontFromCacheEntry.getValue();
                     } else {
                         fontForFontRelativeSizes = Font.getDefault();
