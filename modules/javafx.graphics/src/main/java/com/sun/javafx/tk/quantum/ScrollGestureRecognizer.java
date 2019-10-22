@@ -85,7 +85,7 @@ class ScrollGestureRecognizer implements GestureRecognizer {
 
     private double centerX, centerY;
     private double centerAbsX, centerAbsY;
-    private double lastCenterAbsX, lastCenterAbsY;
+    private double lastCenterX, lastCenterY;
 
     private double deltaX, deltaY;
     private double totalDeltaX, totalDeltaY;
@@ -106,7 +106,7 @@ class ScrollGestureRecognizer implements GestureRecognizer {
             totalDeltaY += deltaY;
 
             //send inertia scroll event
-            sendScrollEvent(true, centerAbsX, centerAbsY, currentTouchCount);
+            sendScrollEvent(true, centerX, centerY, currentTouchCount);
         });
     }
 
@@ -173,7 +173,7 @@ class ScrollGestureRecognizer implements GestureRecognizer {
 
         if (currentTouchCount < 1) {
             if (state == ScrollRecognitionState.ACTIVE) {
-                sendScrollFinishedEvent(lastCenterAbsX, lastCenterAbsY, lastTouchCount);
+                sendScrollFinishedEvent(lastCenterX, lastCenterY, lastTouchCount);
 
                 if (SCROLL_INERTIA_ENABLED) {
                     double timeFromLastScroll = ((double)time - scrollStartTime) / 1000000;
@@ -220,30 +220,30 @@ class ScrollGestureRecognizer implements GestureRecognizer {
                 }
                 if (state == ScrollRecognitionState.ACTIVE) {
                     //finish previous gesture
-                    sendScrollFinishedEvent(lastCenterAbsX, lastCenterAbsY, lastTouchCount);
+                    sendScrollFinishedEvent(lastCenterX, lastCenterY, lastTouchCount);
                     totalDeltaX = 0.0;
                     totalDeltaY = 0.0;
                     //start previous gesture
-                    sendScrollStartedEvent(centerAbsX, centerAbsY, currentTouchCount);
+                    sendScrollStartedEvent(centerX, centerY, currentTouchCount);
                 }
                 lastTouchCount = currentTouchCount;
-                lastCenterAbsX = centerAbsX;
-                lastCenterAbsY = centerAbsY;
+                lastCenterX = centerX;
+                lastCenterY = centerY;
             } else {
                 //state should be either TRACKING or ACTIVE
-                deltaX = centerAbsX - lastCenterAbsX;
-                deltaY = centerAbsY - lastCenterAbsY;
+                deltaX = centerX - lastCenterX;
+                deltaY = centerY - lastCenterY;
                 if (state == ScrollRecognitionState.TRACKING) {
                     if ( Math.abs(deltaX) > SCROLL_THRESHOLD || Math.abs(deltaY) > SCROLL_THRESHOLD) {
                         state = ScrollRecognitionState.ACTIVE;
-                        sendScrollStartedEvent(centerAbsX, centerAbsY, currentTouchCount);
+                        sendScrollStartedEvent(centerX, centerY, currentTouchCount);
                     }
                 }
                 if (state == ScrollRecognitionState.ACTIVE) {
                     totalDeltaX += deltaX;
                     totalDeltaY += deltaY;
 
-                    sendScrollEvent(false, centerAbsX, centerAbsY, currentTouchCount);
+                    sendScrollEvent(false, centerX, centerY, currentTouchCount);
                     double timePassed = ((double)time - scrollStartTime) / 1000000000;
                     if (timePassed > 1e-4) {
                         //capture radius (pytaguras) or init to variables x,y ???
@@ -255,8 +255,8 @@ class ScrollGestureRecognizer implements GestureRecognizer {
                         scrollStartTime = time;
                     }
 
-                    lastCenterAbsX = centerAbsX;
-                    lastCenterAbsY = centerAbsY;
+                    lastCenterX = centerX;
+                    lastCenterY = centerY;
                 }
             }
         }
