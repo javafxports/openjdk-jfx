@@ -449,8 +449,8 @@ class ES2Context extends BaseShaderContext {
         glContext.setAmbientLight(nativeHandle, r, g, b);
     }
 
-    void setPointLight(long nativeHandle, int index, float x, float y, float z, float r, float g, float b, float w) {
-        glContext.setPointLight(nativeHandle, index, x, y, z, r, g, b, w);
+    void setPointLight(long nativeHandle, int index, float x, float y, float z, float r, float g, float b, float w, float ra, float ca, float la, float qa) {
+        glContext.setPointLight(nativeHandle, index, x, y, z, r, g, b, w, ra, ca, la, qa);
     }
 
     @Override

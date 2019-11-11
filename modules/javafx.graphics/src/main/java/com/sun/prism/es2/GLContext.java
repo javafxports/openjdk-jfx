@@ -252,7 +252,7 @@ abstract class GLContext {
     private static native void nSetAmbientLight(long nativeCtxInfo, long nativeMeshViewInfo,
             float r, float g, float b);
     private static native void nSetPointLight(long nativeCtxInfo, long nativeMeshViewInfo,
-            int index, float x, float y, float z, float r, float g, float b, float w);
+            int index, float x, float y, float z, float r, float g, float b, float w, float ra, float ca, float la, float qa);
     private static native void nRenderMeshView(long nativeCtxInfo, long nativeMeshViewInfo);
     private static native void nBlit(long nativeCtxInfo, int srcFBO, int dstFBO,
             int srcX0, int srcY0, int srcX1, int srcY1,
@@ -808,8 +808,8 @@ abstract class GLContext {
         nSetAmbientLight(nativeCtxInfo, nativeMeshViewInfo, r, g, b);
     }
 
-    void setPointLight(long nativeMeshViewInfo, int index, float x, float y, float z, float r, float g, float b, float w) {
-        nSetPointLight(nativeCtxInfo, nativeMeshViewInfo, index, x, y, z, r, g, b, w);
+    void setPointLight(long nativeMeshViewInfo, int index, float x, float y, float z, float r, float g, float b, float w, float ra, float ca, float la, float qa) {
+        nSetPointLight(nativeCtxInfo, nativeMeshViewInfo, index, x, y, z, r, g, b, w, ra, ca, la, qa);
     }
 
     void renderMeshView(long nativeMeshViewInfo) {

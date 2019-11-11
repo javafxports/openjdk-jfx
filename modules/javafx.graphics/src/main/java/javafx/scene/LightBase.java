@@ -44,8 +44,10 @@ import java.util.stream.Collectors;
 import javafx.application.ConditionalFeature;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.ListChangeListener.Change;
 import javafx.collections.ObservableList;
@@ -86,8 +88,8 @@ import com.sun.javafx.logging.PlatformLogger;
  */
 public abstract class LightBase extends Node {
     static {
-         // This is used by classes in different packages to get access to
-         // private and package private methods.
+        // This is used by classes in different packages to get access to
+        // private and package private methods.
         LightBaseHelper.setLightBaseAccessor(new LightBaseHelper.LightBaseAccessor() {
             @Override
             public void doMarkDirty(Node node, DirtyBits dirtyBit) {
@@ -101,7 +103,7 @@ public abstract class LightBase extends Node {
 
             @Override
             public BaseBounds doComputeGeomBounds(Node node,
-                    BaseBounds bounds, BaseTransform tx) {
+                                                  BaseBounds bounds, BaseTransform tx) {
                 return ((LightBase) node).doComputeGeomBounds(bounds, tx);
             }
 
@@ -135,7 +137,7 @@ public abstract class LightBase extends Node {
         if (!Platform.isSupported(ConditionalFeature.SCENE3D)) {
             String logname = LightBase.class.getName();
             PlatformLogger.getLogger(logname).warning("System can't support "
-                                                      + "ConditionalFeature.SCENE3D");
+                    + "ConditionalFeature.SCENE3D");
         }
 
         setColor(color);
@@ -275,6 +277,20 @@ public abstract class LightBase extends Node {
         } else if (newScene != null) {
             newScene.addLight(this);
         }
+    }
+
+    /**
+     * For use by implementing subclasses. Treat as protected.
+     *
+     * Creates and returns a SimpleDoubleProperty with an invalidation scheme.
+     */
+    DoubleProperty getLightDoubleProperty(String name, double initialValue) {
+        return new SimpleDoubleProperty(this, name, initialValue) {
+            @Override
+            protected void invalidated() {
+                NodeHelper.markDirty(LightBase.this, DirtyBits.NODE_LIGHT);
+            }
+        };
     }
 
     private void markOwnerDirty() {

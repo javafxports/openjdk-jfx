@@ -55,6 +55,7 @@ vec4 apply_selfIllum();
 struct Light {
     vec4 pos;
     vec3 color;
+    vec4 atten;
 };
 
 uniform vec3 ambientColor;
@@ -74,25 +75,22 @@ void main()
 
     vec3 d = vec3(0.0);
     vec3 s = vec3(0.0);
+    vec3 rez = vec3(0.0);
 
     vec3 refl = reflect(normalize(eyePos), n);
     vec4 specular = apply_specular();
     float power = specular.a;
 
-    vec3 l = normalize(lightTangentSpacePositions[0].xyz);
-    d = clamp(dot(n,l), 0.0, 1.0)*(lights[0].color).rgb;
-    s = pow(clamp(dot(-refl, l), 0.0, 1.0), power) * lights[0].color.rgb;
-
-    l = normalize(lightTangentSpacePositions[1].xyz);
-    d += clamp(dot(n,l), 0.0, 1.0)*(lights[1].color).rgb;
-    s += pow(clamp(dot(-refl, l), 0.0, 1.0), power) * lights[1].color.rgb;
-
-    l = normalize(lightTangentSpacePositions[2].xyz);
-    d += clamp(dot(n,l), 0.0, 1.0)*(lights[2].color).rgb;
-    s += pow(clamp(dot(-refl, l), 0.0, 1.0), power) * lights[2].color.rgb;
-
-    vec3 rez = (ambientColor+d) * diffuse.xyz + s*specular.rgb;
+    for(int i=0;i<3;++i){
+        float dist = (lights[i].pos.xyz - gl_Position);
+        if(dist <= lights[i].atten.range){
+            vec3 l = normalize(lightTangentSpacePositions[i].xyz);
+            float att = 1.0 / (lights[i].atten.ca + lights[i].atten.la * dist + lights[i].atten.qa * (dist * dist));
+            d += clamp(dot(n,l), 0.0, 1.0)*(lights[i].color).rgb * att;
+            s += pow(clamp(dot(-refl, l), 0.0, 1.0), power) * lights[i].color.rgb *att;
+            rez = (ambientColor+d) * (diffuse.xyz + s*specular.rgb);
+        }
+    }
     rez += apply_selfIllum().xyz;
-
     gl_FragColor = vec4(clamp(rez, 0.0, 1.0) , diffuse.a);
 }

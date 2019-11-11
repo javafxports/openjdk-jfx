@@ -35,6 +35,7 @@ attribute vec4 tangent;
 struct Light {
     vec4 pos;
     vec3 color;
+    vec4 atten;
 };
 
 //3 lights used
@@ -50,13 +51,12 @@ vec3 getLocalVector(vec3 global, vec3 tangentFrame[3]) {
 
 void main()
 {
-    vec3 tangentFrame[3];    
-
+    vec3 tangentFrame[3];
     vec4 worldPos = worldMatrix * vec4(pos, 1.0);
 
     // Note: The breaking of a vector and scale computation statement into
-    //       2 separate statements is intentional to workaround a shader
-    //       compiler bug on the Freescale iMX6 platform. See RT-37789 for details. 
+    // 2 separate statements is intentional to workaround a shader
+    // compiler bug on the Freescale iMX6 platform. See RT-37789 for details.
     vec3 t1 = tangent.xyz * tangent.yzx;
          t1 *= 2.0;
     vec3 t2 = tangent.zxy * tangent.www;
@@ -73,9 +73,7 @@ void main()
     tangentFrame[2] = vec3(r1.z, r2.y, t4.x);
     tangentFrame[2] *= (tangent.w>=0.0) ? 1.0 : -1.0;
     
-    mat3 sWorldMatrix = mat3(worldMatrix[0].xyz, 
-                             worldMatrix[1].xyz, 
-                             worldMatrix[2].xyz);
+    mat3 sWorldMatrix = mat3(worldMatrix[0].xyz, worldMatrix[1].xyz, worldMatrix[2].xyz);
 
     //Translate the tangent frame to world space.
     tangentFrame[0] = sWorldMatrix * tangentFrame[0];

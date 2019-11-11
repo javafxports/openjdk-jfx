@@ -208,6 +208,7 @@ class ES2PhongShader {
             if (light != null && light.w > 0) {
                 shader.setConstant("lights[" + i + "].pos", light.x, light.y, light.z, light.w);
                 shader.setConstant("lights[" + i + "].color", light.r, light.g, light.b);
+                shader.setConstant("lights[" + i + "].atten", light.range, light.ca, light.la, light.qa);
                 i++;
             }
         }
