@@ -382,6 +382,9 @@ xsltNumberFormatTokenize(const xmlChar *format,
         tokens->tokens[tokens->nTokens].token = val - 1;
         ix += len;
         val = xmlStringCurrentChar(NULL, format+ix, &len);
+        } else {
+            tokens->tokens[tokens->nTokens].token = (xmlChar)'0';
+            tokens->tokens[tokens->nTokens].width = 1;
         }
     } else if ( (val == (xmlChar)'A') ||
             (val == (xmlChar)'a') ||
@@ -1274,13 +1277,14 @@ OUTPUT_NUMBER:
     number = floor((scale * number + 0.5)) / scale;
     if ((self->grouping != NULL) &&
         (self->grouping[0] != 0)) {
+        int gchar;
 
     len = xmlStrlen(self->grouping);
-    pchar = xsltGetUTF8Char(self->grouping, &len);
+    gchar = xsltGetUTF8Char(self->grouping, &len);
     xsltNumberFormatDecimal(buffer, floor(number), self->zeroDigit[0],
                 format_info.integer_digits,
                 format_info.group,
-                pchar, len);
+                gchar, len);
     } else
     xsltNumberFormatDecimal(buffer, floor(number), self->zeroDigit[0],
                 format_info.integer_digits,
