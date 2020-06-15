@@ -191,7 +191,10 @@ void AVFAudioSpectrumUnit::UpdateBands(int size, const float* magnitudes, const 
     // Call our listener to dispatch the spectrum event
     if (mSpectrumCallbackProc) {
         double duration = (double) mSamplesPerInterval / (double) 44100;
-        mSpectrumCallbackProc(mSpectrumCallbackContext, duration);
+        // We do not provide timestamp here. It will be queried from EventQueueThread
+        // due to reading current time from AVPlayer might hang when called
+        // from audio processing thread. This function is called from this thread.
+        mSpectrumCallbackProc(mSpectrumCallbackContext, duration, -1.0);
     }
 
     unlockBands();
@@ -269,10 +272,10 @@ void AVFAudioSpectrumUnit::SetupSpectralProcessor() {
     mSpectrum = GST_SPECTRUM(mSpectrumElement);
     mSpectrum->user_data = (void*)this;
 
-    // Set our own callback for post message
-    GstElementClass *klass;
-    klass = GST_ELEMENT_GET_CLASS(mSpectrumElement);
-    klass->post_message = PostMessageCallback;
+    // Set our own callback for post message, do not use
+    // GST_ELEMENT_GET_CLASS(mSpectrumElement)->post_message, since it will change
+    // callback for all instances of spectrum element.
+    mSpectrum->post_message_callback = PostMessageCallback;
 
     // Configure spectrum element
     // Do send magnitude and phase information, off by default

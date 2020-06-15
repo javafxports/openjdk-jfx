@@ -49,7 +49,8 @@
  * timeStamp: the beginning time in seconds of the sample period (from beginning of stream)
  * duration: the length of time in seconds of the sample period
  */
-typedef void (*AVFSpectrumUnitCallbackProc)(void *callbackContext, double duration);
+typedef void (*AVFSpectrumUnitCallbackProc)(void *callbackContext, double duration,
+                                            double timestamp);
 
 class AVFAudioSpectrumUnit : public CAudioSpectrum {
 public:
