@@ -69,6 +69,7 @@ public class GlyphCache {
     // segmented arrays are in blocks of 32 glyphs.
     private static final int SEGSHIFT = 5;
     private static final int SEGSIZE  = 1 << SEGSHIFT;
+    private static final int SEGMASK  = SEGSIZE - 1;
     HashMap<Integer, GlyphData[]>
         glyphDataMap = new HashMap<Integer, GlyphData[]>();
 
@@ -238,8 +239,8 @@ public class GlyphCache {
     }
 
     private GlyphData getCachedGlyph(int glyphCode, int subPixel) {
-        int segIndex = glyphCode >> SEGSHIFT;
-        int subIndex = glyphCode % SEGSIZE;
+        int segIndex = glyphCode >>> SEGSHIFT;
+        int subIndex = glyphCode & SEGMASK;
         segIndex |= (subPixel << SUBPIXEL_SHIFT);
         GlyphData[] segment = glyphDataMap.get(segIndex);
         if (segment != null) {
@@ -290,7 +291,12 @@ public class GlyphCache {
                     }
                     // If add fails,clear up the cache. Try add again.
                     clearAll();
-                    packer.add(rect);
+                    if (!packer.add(rect)) {
+                        if (PrismSettings.verbose) {
+                            System.out.println(rect + " won't fit in GlyphCache");
+                        }
+                        return null;
+                    }
                 }
 
                 // We always pass skipFlush=true to backingStore.update()
@@ -319,7 +325,9 @@ public class GlyphCache {
                                         0, 0, emw, emh, stride,
                                         skipFlush);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    if (PrismSettings.verbose) {
+                        e.printStackTrace();
+                    }
                     return null;
                 }
                 // Upload the glyph
