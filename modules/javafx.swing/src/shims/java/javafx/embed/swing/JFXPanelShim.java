@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package javafx.embed.swing;
 
-package test.sandbox;
+import java.awt.image.BufferedImage;
 
-/**
- * Global constants for sandbox tests.
- */
-public class Constants {
+public class JFXPanelShim {
 
-    // Test timeout in milliseconds
-    public static final int TIMEOUT = 30000;
-
-    // Time in milliseconds to show the stage
-    public static final int SHOWTIME = 2500;
-
-    // Error exit codes. Note that 0 and 1 are reserved for normal exit and
-    // failure to launch java, respectively
-    public static final int ERROR_NONE = 2;
-
-    public static final int ERROR_TIMEOUT = 3;
-    public static final int ERROR_SECURITY_EXCEPTION = 4;
-    public static final int ERROR_NO_SECURITY_EXCEPTION = 5;
-    public static final int ERROR_UNEXPECTED_EXCEPTION = 6;
-
-    // No need to ever create an instance of this class
-    private Constants() {}
+    public static BufferedImage getPixelsIm(JFXPanel panel) {
+        return panel.test_getPixelsIm();
+    }
 
 }
