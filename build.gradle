@@ -410,6 +410,13 @@ ext.IS_RETAIN_PACKAGER_TESTS = Boolean.parseBoolean(RETAIN_PACKAGER_TESTS)
 defineProperty("TEST_PACKAGER_DMG", "false")
 ext.IS_TEST_PACKAGER_DMG = Boolean.parseBoolean(TEST_PACKAGER_DMG)
 
+defineProperty("STATIC_BUILD", "false")
+ext.IS_STATIC_BUILD = Boolean.parseBoolean(STATIC_BUILD)
+
+if (IS_STATIC_BUILD && IS_COMPILE_MEDIA) {
+    throw new GradleException("Can not have COMPILE_MEDIA when STATIC_BUILD is enabled");
+}
+
 // BUILD_TOOLS_DOWNLOAD_SCRIPT specifies a path of a gradle script which downloads
 // required build tools.
 defineProperty("BUILD_TOOLS_DOWNLOAD_SCRIPT", "")
