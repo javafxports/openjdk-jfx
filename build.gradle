@@ -2450,14 +2450,28 @@ project(":swing") {
 
     sourceSets {
         main
-        //shims // no test shims needed
-        test
+        shims {
+            java {
+                compileClasspath += sourceSets.main.output
+                runtimeClasspath += sourceSets.main.output
+            }
+        }
+        test {
+            java {
+                compileClasspath += sourceSets.shims.output
+                runtimeClasspath += sourceSets.shims.output
+            }
+        }
     }
 
     project.ext.moduleSourcePath = defaultModuleSourcePath
     project.ext.moduleSourcePathShim = defaultModuleSourcePathShim
 
     commonModuleSetup(project, [ 'base', 'graphics', 'swing' ])
+
+    sourceSets.shims.java {
+        exclude("com/sun/javafx/embed/swing/oldimpl/**")
+    }
 
     dependencies {
     }
@@ -2593,18 +2607,8 @@ project(":fxpackagerservices") {
 
     sourceSets {
         main
-        shims {
-            java {
-                compileClasspath += sourceSets.main.output
-                runtimeClasspath += sourceSets.main.output
-            }
-        }
-        test {
-            java {
-                compileClasspath += sourceSets.shims.output
-                runtimeClasspath += sourceSets.shims.output
-            }
-        }
+        //shims // no test shims needed
+        test
     }
 
     project.ext.moduleSourcePath = defaultModuleSourcePath
