@@ -1126,6 +1126,102 @@ public class VirtualFlowTest {
         assertMinimalNumberOfCellsAreUsed(flow);
         assertEquals(flow.getViewportLength()-25.0, VirtualFlowShim.<IndexedCell>cells_getLast(flow.cells).getLayoutY(), 0.0);
     }
+
+    private void assertLastCellInsideViewport(boolean vertical) {
+        flow.setVertical(vertical);
+        flow.resize(400, 400);
+
+        int total = 10000;
+        flow.setCellCount(total);
+        pulse();
+
+        int count = 9000;
+        flow.setPosition(0d);
+        pulse();
+        flow.setPosition(((double)count) / total);
+        pulse();
+
+        //simulate 500 right key strokes
+        for (int i = 0; i < 500; i++) {
+            count++;
+            flow.scrollTo(count);
+            pulse();
+        }
+
+        IndexedCell vc = flow.getCell(count);
+
+        double cellPosition = flow.getCellPosition(vc);
+        double cellLength = flow.getCellLength(count);
+        double viewportLength = flow.getViewportLength();
+
+        assertEquals("Last cell must end on viewport size", viewportLength, (cellPosition + cellLength), 0.1);
+    }
+
+    @Test
+    // see JDK-8197536
+    public void testScrollOneCell() {
+        assertLastCellInsideViewport(true);
+    }
+
+    @Test
+    // see JDK-8197536
+    public void testScrollOneCellHorizontal() {
+        assertLastCellInsideViewport(false);
+    }
+
+    @Test
+    // see JDK-8178297
+    public void testPositionCellRemainsConstant() {
+        flow.setVertical(true);
+        flow.setCellCount(20);
+        flow.resize(300, 300);
+        flow.scrollPixels(10);
+        pulse();
+
+        IndexedCell vc = flow.getCell(0);
+        double cellPosition = flow.getCellPosition(vc);
+        assertEquals("Wrong first cell position", -10d, cellPosition, 0d);
+
+        for (int i = 1; i < 10; i++) {
+            flow.setCellCount(20 + i);
+            pulse();
+            vc = flow.getCell(0);
+            cellPosition = flow.getCellPosition(vc);
+            assertEquals("Wrong first cell position after inserting " + i + " cells", -10d, cellPosition, 0d);
+        }
+    }
+
+    @Test
+    // see JDK-8252811
+    public void testSheetChildrenRemainsConstant() {
+        flow.setVertical(true);
+        flow.setCellCount(20);
+        flow.resize(300, 300);
+        pulse();
+
+        int sheetChildrenSize = flow.sheetChildren.size();
+        assertEquals("Wrong number of sheet children", 12, sheetChildrenSize);
+
+        for (int i = 1; i < 50; i++) {
+            flow.setCellCount(20 + i);
+            pulse();
+            sheetChildrenSize = flow.sheetChildren.size();
+            assertEquals("Wrong number of sheet children after inserting " + i + " items", 12, sheetChildrenSize);
+        }
+
+        for (int i = 1; i < 50; i++) {
+            flow.setCellCount(70 - i);
+            pulse();
+            sheetChildrenSize = flow.sheetChildren.size();
+            assertEquals("Wrong number of sheet children after removing " + i + " items", 12, sheetChildrenSize);
+        }
+
+        flow.setCellCount(0);
+        pulse();
+        sheetChildrenSize = flow.sheetChildren.size();
+        assertEquals("Wrong number of sheet children after removing all items", 12, sheetChildrenSize);
+    }
+
 }
 
 class CellStub extends IndexedCellShim {

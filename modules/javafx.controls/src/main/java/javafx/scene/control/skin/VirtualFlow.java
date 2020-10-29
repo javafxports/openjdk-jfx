@@ -836,12 +836,6 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
             if (countChanged) {
                 layoutChildren();
 
-                // Fix for RT-13965: Without this line of code, the number of items in
-                // the sheet would constantly grow, leaking memory for the life of the
-                // application. This was especially apparent when the total number of
-                // cells changes - regardless of whether it became bigger or smaller.
-                sheetChildren.clear();
-
                 Parent parent = getParent();
                 if (parent != null) parent.requestLayout();
             }
@@ -1458,10 +1452,44 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
         if (cell != null) {
             scrollTo(cell);
         } else {
+            // see JDK-8197536
+            if (tryScrollOneCell(index, true)) {
+                return;
+            } else if (tryScrollOneCell(index, false)) {
+                return;
+            }
+
             adjustPositionToIndex(index);
             addAllToPile();
             requestLayout();
         }
+    }
+
+    // will return true if scroll is successful
+    private boolean tryScrollOneCell(int targetIndex, boolean downOrRight) {
+        // if going down, cell diff is -1, because it will get the target cell index and check if previous
+        // cell is visible to base the position
+        int indexDiff = downOrRight ? -1 : 1;
+
+        T targetCell = getVisibleCell(targetIndex + indexDiff);
+        if (targetCell != null) {
+            T cell = getAvailableCell(targetIndex);
+            setCellIndex(cell, targetIndex);
+            resizeCell(cell);
+            setMaxPrefBreadth(Math.max(getMaxPrefBreadth(), getCellBreadth(cell)));
+            cell.setVisible(true);
+            if (downOrRight) {
+                cells.addLast(cell);
+                scrollPixels(getCellLength(cell));
+            } else {
+                // up or left
+                cells.addFirst(cell);
+                scrollPixels(-getCellLength(cell));
+            }
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -1865,9 +1893,9 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     private void positionCell(T cell, double position) {
         if (isVertical()) {
             cell.setLayoutX(0);
-            cell.setLayoutY(snapSizeY(position));
+            cell.setLayoutY(snapSpaceY(position));
         } else {
-            cell.setLayoutX(snapSizeX(position));
+            cell.setLayoutX(snapSpaceX(position));
             cell.setLayoutY(0);
         }
     }
