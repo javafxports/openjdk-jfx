@@ -630,7 +630,7 @@ if (!project.hasProperty("jdkRuntimeVersion")) throw new Exception("Unable to de
 
 // Determine whether the javafx.* modules are present in the JDK. To do this,
 // we will execute "java --list-modules" and search for javafx.base.
-// Also, check if jdk.unsupported.desktop module is present in JDK to ensure 
+// Also, check if jdk.unsupported.desktop module is present in JDK to ensure
 // javafx.swing do not use internal JDK classes directly.
 ext.HAS_JAVAFX_MODULES = false;
 ext.HAS_UNSUPPORTED_DESKTOP = false;
@@ -4239,7 +4239,7 @@ project(":systemTests") {
             exclude("test/robot/**");
         }
         if (!IS_UNSTABLE_TEST) {
-            // JDK-8196607 Don't run monocle test cases 
+            // JDK-8196607 Don't run monocle test cases
             exclude("test/robot/com/sun/glass/ui/monocle/**");
         }
         if (!IS_AWT_TEST) {
@@ -4986,7 +4986,7 @@ compileTargets { t ->
             include "**/*.java"
             if (!HAS_UNSUPPORTED_DESKTOP) {
                 exclude("com/sun/javafx/embed/swing/newimpl/**")
-            }  
+            }
 
             if (project.hasProperty("sourceFilter")) {
                 filter(project.sourceFilter)
@@ -5135,8 +5135,8 @@ compileTargets { t ->
     def publicationDirName = "${platformPrefix}publications"
     def publicationDir = "${rootProject.buildDir}/${publicationDirName}"
 
-    moduleProjList.each { project -> 
-        // Create publications to be uploaded 
+    moduleProjList.each { project ->
+        // Create publications to be uploaded
 
         def moduleName = project.ext.moduleName
         def buildDir = project.buildDir

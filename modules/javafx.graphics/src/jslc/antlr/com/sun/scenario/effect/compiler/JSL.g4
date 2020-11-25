@@ -475,7 +475,7 @@ external_declaration returns [List<ExtDecl> res = new ArrayList<ExtDecl>()]
 
 function_definition returns [FuncDef def]
 @init {
-	symbols.enterFrame();
+    symbols.enterFrame();
 }
         : p=function_prototype s=compound_statement_no_new_scope { $def = tm.funcDef($p.func, $s.stmt); }
         ;
@@ -594,7 +594,7 @@ INTCONSTANT : ('0' | '1'..'9' DIGIT*) ;
 FLOATCONSTANT
         : DIGIT+ '.' DIGIT*
         |  '.' DIGIT+
-	;
+    ;
 
 fragment
 DIGIT   : '0'..'9' ;
