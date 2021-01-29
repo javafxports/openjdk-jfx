@@ -570,7 +570,7 @@ public class TreeTableView<S> extends Control {
         @Override public Boolean call(TreeTableView table) {
             try {
                 TreeItem rootItem = table.getRoot();
-                if (rootItem == null) return false;
+                if (rootItem == null || rootItem.getChildren().isEmpty()) return false;
 
                 TreeSortMode sortMode = table.getSortMode();
                 if (sortMode == null) return false;
