@@ -28,6 +28,7 @@ package com.sun.webkit;
 import com.sun.javafx.webkit.prism.WCBufferedContextShim;
 import com.sun.webkit.WebPage;
 import com.sun.webkit.event.WCMouseEvent;
+import com.sun.webkit.event.WCMouseWheelEvent;
 import com.sun.webkit.graphics.WCGraphicsContext;
 import com.sun.webkit.graphics.WCGraphicsManager;
 import com.sun.webkit.graphics.WCGraphicsManagerShim;
@@ -83,5 +84,14 @@ public class WebPageShim {
                     false, false, false, false, false);
         page.dispatchMouseEvent(mousePressEvent);
         page.dispatchMouseEvent(mouseReleaseEvent);
+    }
+
+    public static void scroll(WebPage page, int x, int y, int deltaX, int deltaY) {
+        WCMouseWheelEvent mouseWheelEvent =
+                new WCMouseWheelEvent(x, y, x, y,
+                    System.currentTimeMillis(),
+                    false, false, false, false,
+                    deltaX, deltaY);
+        page.dispatchMouseWheelEvent(mouseWheelEvent);
     }
 }
