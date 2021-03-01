@@ -726,6 +726,24 @@ public class J2DPrismGraphics
                 g2d.setPaint(toJ2DPaint(paint, shape.getBounds2D()));
             }
         }
+        if (this.paint.getType() == Paint.Type.IMAGE_PATTERN) {
+            ImagePattern imgpat = (ImagePattern) this.paint;
+            java.awt.geom.AffineTransform at = toJ2DTransform(imgpat.getPatternTransformNoClone());
+
+            if (!at.isIdentity()) {
+                g2d.setClip(shape);
+                g2d.transform(at);
+                tmpAT.setTransform(at);
+                try {
+                    tmpAT.invert();
+                    g2d.fill(tmpAT.createTransformedShape(shape));
+                } catch (NoninvertibleTransformException e) {
+                }
+                setTransform(transform);
+                setClipRect(clipRect);
+                return;
+            }
+        }
         g2d.fill(shape);
     }
 

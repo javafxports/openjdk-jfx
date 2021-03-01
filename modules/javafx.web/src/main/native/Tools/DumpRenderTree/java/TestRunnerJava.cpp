@@ -334,7 +334,7 @@ void TestRunner::abortModal()
     //FIXME: implement
 }
 
-void TestRunner::addOriginAccessWhitelistEntry(
+void TestRunner::addOriginAccessAllowListEntry(
     JSStringRef sourceOrigin,
     JSStringRef destinationProtocol,
     JSStringRef destinationHost,
@@ -370,7 +370,7 @@ bool TestRunner::callShouldCloseOnWebView()
     return false;
 }
 
-void TestRunner::removeOriginAccessWhitelistEntry(JSStringRef, JSStringRef, JSStringRef,bool) {
+void TestRunner::removeOriginAccessAllowListEntry(JSStringRef, JSStringRef, JSStringRef,bool) {
     //FIXME: implement
 }
 
@@ -572,11 +572,6 @@ unsigned TestRunner::imageCountInGeneralPasteboard() const
 void TestRunner::forceImmediateCompletion()
 {
     notifyDone();
-}
-
-void TestRunner::setSpellCheckerResults(JSContextRef, JSObjectRef)
-{
-    fprintf(testResult, "ERROR: TestRunner::setSpellCheckerResults() not implemented\n");
 }
 
 void TestRunner::setOnlyAcceptFirstPartyCookies(bool)

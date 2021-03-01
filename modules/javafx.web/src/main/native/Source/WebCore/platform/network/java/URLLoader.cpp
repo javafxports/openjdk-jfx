@@ -494,7 +494,7 @@ static void setupResponse(ResourceResponse& response,
 
     // Setup mime type for local resources
     if (/*kurl.hasPath()*/kurl.pathEnd() != kurl.pathStart() && kurl.protocol() == String("file")) {
-        response.setMimeType(MIMETypeRegistry::getMIMETypeForPath(kurl.path()));
+        response.setMimeType(MIMETypeRegistry::mimeTypeForPath(kurl.path().toString()));
     }
 }
 

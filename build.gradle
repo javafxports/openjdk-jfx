@@ -4063,6 +4063,7 @@ project(":systemTests") {
         testapp4
         testapp5
         testapp6
+        testapp7
     }
 
     project.ext.buildModule = false
@@ -4162,7 +4163,7 @@ project(":systemTests") {
     }
     test.dependsOn(createTestApps);
 
-    def modtestapps = [ "testapp2", "testapp3", "testapp4", "testapp5", "testapp6"  ]
+    def modtestapps = [ "testapp2", "testapp3", "testapp4", "testapp5", "testapp6", "testapp7"  ]
     modtestapps.each { testapp ->
         def testappCapital = testapp.capitalize()
         def copyTestAppTask = task("copy${testappCapital}", type: Copy) {

@@ -62,7 +62,7 @@ DerivedData
 *.suo
 *.ipch
 
-# whitelist default files (if they exist)
+# allow default files (if they exist)
 !default.pbxuser
 !default.mode1v3
 !default.mode2v3
